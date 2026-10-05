@@ -22,7 +22,7 @@ update-minutes: 2
 
 # Je Eintrag ein Kachelbaum. Die Kamera in Anführungszeichen.
 # download: true bietet einen Baum dem Mod zum Download an,
-# nur mit camera "top-north" und scale 4.
+# nur mit camera "top-north", scale 4 und ohne cinematic.
 trees:
   - camera: "2:1"
 

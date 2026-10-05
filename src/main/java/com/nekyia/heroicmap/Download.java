@@ -1,10 +1,12 @@
 package com.nekyia.heroicmap;
 
+import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
@@ -23,6 +25,7 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.function.Supplier;
+import java.util.logging.Logger;
 
 /**
  * Der Kartendownload für den Mod: Angebot, Anfrage, Grenzen, Token und der tägliche Abgleich.
@@ -56,6 +59,26 @@ final class Download {
 
     record Ausgestellt(int massstab, long ablauf, long deckel, String token) {}
 
+    private static final Gson GSON = new Gson();
+
+    static String alsJson(Spielerstand s) {
+        return GSON.toJson(s);
+    }
+
+    /** Der Stand aus dem PDC; null, wenn er unlesbar ist. */
+    static Spielerstand ausJson(String json) {
+        try {
+            var s = GSON.fromJson(json, Spielerstand.class);
+            if (s == null || s.voll == null || s.abgleich == null || s.baeume == null
+                    || s.baeume.values().stream().anyMatch(b -> b == null || b.token == null)) {
+                return null;
+            }
+            return s;
+        } catch (RuntimeException e) {
+            return null;
+        }
+    }
+
     private final Konfiguration konf;
     private final byte[] geheimnis;
     private final Supplier<Optional<String>> webserver;
@@ -63,6 +86,7 @@ final class Download {
     private final ZoneId zone;
     private final SecureRandom zufall = new SecureRandom();
     private volatile Map<String, Satz> saetze = Map.of();
+    private volatile Map<String, Optional<Instant>> abgedeckt = Map.of();
     private long[] serverVoll = {};
 
     /**
@@ -78,8 +102,20 @@ final class Download {
         this.zone = zone;
     }
 
-    /** Die angebotenen Bäume: nur mit {@code download: true} und mit gelesenem Manifest. */
-    void saetze(Map<String, Satz> neu) {
+    /**
+     * Die angebotenen Bäume: nur mit {@code download: true} und mit gelesenem Manifest. Für jeden neu
+     * gelesenen Satz gilt der Beginn des Laufs, der ihn schrieb; so gehören Manifest und
+     * {@code abdeckt_bis} zusammen. Siehe docs/download.md, „Was die Kacheln abdecken“.
+     */
+    synchronized void saetze(Map<String, Satz> neu) {
+        var alt = saetze;
+        var ab = new HashMap<String, Optional<Instant>>();
+        for (var e : neu.entrySet()) {
+            ab.put(e.getKey(), e.getValue() == alt.get(e.getKey())
+                    ? abgedeckt.getOrDefault(e.getKey(), Optional.empty())
+                    : erfolgreichSeit.apply(e.getKey()));
+        }
+        abgedeckt = Map.copyOf(ab);
         saetze = Map.copyOf(neu);
     }
 
@@ -168,33 +204,42 @@ final class Download {
         boolean voll = art.equals("voll") || bs == null || bs.massstab != massstab;
         String wirklich = voll ? "voll" : "abgleich";
 
-        // Nur ein voller Download bekommt sein Token noch einmal, zum Fortsetzen; ein Abgleich zählt jedes Mal.
-        var alt = bs == null || !voll ? null : bs.token.get("voll");
-        if (alt != null && alt.massstab() == massstab && alt.ablauf() - s >= NOCH_GUELTIG.toSeconds()) {
+        // Fortsetzen zählt nicht: voll, solange das Token noch 10 min gilt; ein Abgleich, solange es jünger
+        // als 10 min ist. Siehe docs/download.md, „Anfrage“.
+        var alt = bs == null ? null : bs.token.get(wirklich);
+        if (alt != null && alt.massstab() == massstab && (voll
+                ? alt.ablauf() - s >= NOCH_GUELTIG.toSeconds()
+                : s - (alt.ablauf() - GUELTIG.toSeconds()) < NOCH_GUELTIG.toSeconds())) {
             return freigabe(jetzt, baum, massstab, wirklich, url.get(), alt, satz, stufe);
         }
 
         var d = konf.download();
         if (voll) {
+            if (d.vollJeWoche() == 0 || d.vollJe10Min() == 0) {
+                return abgelehnt(jetzt, "Volle Downloads sind auf diesem Server abgeschaltet.", null);
+            }
             long[] spielerNeu = mitNeuer(stand.voll, s, WOCHE, d.vollJeWoche());
             if (spielerNeu == null) {
                 return abgelehnt(jetzt, "Du hast in den letzten 7 Tagen schon " + d.vollJeWoche()
-                        + " volle Downloads geholt.", wiederAb(stand.voll, WOCHE));
+                        + " volle Downloads geholt.", wiederAb(stand.voll, s, WOCHE, d.vollJeWoche()));
             }
             synchronized (this) {
                 long[] serverNeu = mitNeuer(serverVoll, s, ZEHN_MINUTEN, d.vollJe10Min());
                 if (serverNeu == null) {
                     return abgelehnt(jetzt, "Der Server hat in den letzten 10 Minuten schon " + d.vollJe10Min()
-                            + " volle Downloads ausgegeben.", wiederAb(serverVoll, ZEHN_MINUTEN));
+                            + " volle Downloads ausgegeben.", wiederAb(serverVoll, s, ZEHN_MINUTEN, d.vollJe10Min()));
                 }
                 serverVoll = serverNeu;
             }
             stand.voll = spielerNeu;
         } else {
+            if (d.abgleichJeTag() == 0) {
+                return abgelehnt(jetzt, "Abgleiche von Hand sind auf diesem Server abgeschaltet.", null);
+            }
             long[] neu = mitNeuer(stand.abgleich, s, TAG, d.abgleichJeTag());
             if (neu == null) {
                 return abgelehnt(jetzt, "Du hast in den letzten 24 Stunden schon " + d.abgleichJeTag()
-                        + " Abgleiche geholt.", wiederAb(stand.abgleich, TAG));
+                        + " Abgleiche geholt.", wiederAb(stand.abgleich, s, TAG, d.abgleichJeTag()));
             }
             stand.abgleich = neu;
         }
@@ -274,7 +319,7 @@ final class Download {
 
     private Optional<Long> abdecktBis(String baum) {
         long reserve = Duration.ofMinutes(konf.download().reserveMinuten()).toSeconds();
-        return erfolgreichSeit.apply(baum).map(i -> i.getEpochSecond() - reserve);
+        return abgedeckt.getOrDefault(baum, Optional.empty()).map(i -> i.getEpochSecond() - reserve);
     }
 
     private static JsonObject abgelehnt(Instant jetzt, String grund, Long wieder) {
@@ -308,29 +353,40 @@ final class Download {
         return neu;
     }
 
-    /** Wann im Fenster wieder Platz ist: die älteste Zeit plus das Fenster. */
-    static Long wiederAb(long[] zeiten, long fenster) {
-        return zeiten.length == 0 ? null : Arrays.stream(zeiten).min().getAsLong() + fenster;
+    /**
+     * Wann im Fenster wieder Platz ist: wenn so viele Zeiten herausgefallen sind, dass weniger als
+     * {@code hoechstens} übrig bleiben. Nur für {@code hoechstens} ab 1 und ein volles Fenster.
+     */
+    static long wiederAb(long[] zeiten, long jetzt, long fenster, int hoechstens) {
+        long[] drin = Arrays.stream(zeiten).filter(t -> t > jetzt - fenster).sorted().toArray();
+        return drin[drin.length - hoechstens] + fenster;
     }
 
-    /** Das Geheimnis für die Token: 32 Byte in der Datei, beim ersten Start erzeugt. */
-    static byte[] geheimnis(Path datei) throws IOException {
+    /**
+     * Das Geheimnis für die Token: 32 Byte in der Datei, beim ersten Start erzeugt, unter POSIX gleich
+     * nur für den Besitzer. Siehe docs/download.md, „Token“.
+     */
+    static byte[] geheimnis(Path datei, Logger log) throws IOException {
         if (Files.exists(datei)) {
             byte[] g = Files.readAllBytes(datei);
             if (g.length == Token.GEHEIMNIS) {
                 return g;
             }
+            log.warning(datei + " hat " + g.length + " statt " + Token.GEHEIMNIS
+                    + " Byte; ein neues Geheimnis, ältere Token gelten nicht mehr");
         }
         byte[] g = new byte[Token.GEHEIMNIS];
         new SecureRandom().nextBytes(g);
         Files.createDirectories(datei.getParent());
         Path neu = datei.resolveSibling(datei.getFileName() + ".neu");
-        Files.write(neu, g);
-        try {
-            Files.setPosixFilePermissions(neu, PosixFilePermissions.fromString("rw-------"));
-        } catch (UnsupportedOperationException e) {
+        Files.deleteIfExists(neu);
+        if (FileSystems.getDefault().supportedFileAttributeViews().contains("posix")) {
+            Files.createFile(neu, PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rw-------")));
+        } else {
             // Windows kennt keine POSIX-Rechte; die Datei liegt im Ordner des Plugins.
+            Files.createFile(neu);
         }
+        Files.write(neu, g);
         Files.move(neu, datei, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
         return g;
     }

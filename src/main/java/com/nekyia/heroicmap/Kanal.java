@@ -1,6 +1,5 @@
 package com.nekyia.heroicmap;
 
-import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -8,6 +7,8 @@ import java.nio.file.NoSuchFileException;
 import java.nio.file.attribute.FileTime;
 import java.time.Instant;
 import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
 import org.bukkit.NamespacedKey;
@@ -25,14 +26,13 @@ import org.bukkit.plugin.messaging.PluginMessageListener;
  */
 final class Kanal implements Listener, PluginMessageListener {
 
-    private static final Gson GSON = new Gson();
-
     private final JavaPlugin plugin;
     private final Konfiguration konf;
     private final Download download;
     private final NamespacedKey schluessel;
     private final Map<String, Satz> saetze = new ConcurrentHashMap<>();
     private final Map<String, FileTime> gelesen = new ConcurrentHashMap<>();
+    private final Set<UUID> gewarnt = ConcurrentHashMap.newKeySet();
 
     Kanal(JavaPlugin plugin, Konfiguration konf, Download download) {
         this.plugin = plugin;
@@ -54,39 +54,57 @@ final class Kanal implements Listener, PluginMessageListener {
      * dann allen mit Mod das Angebot.
      */
     void aktualisiere() {
-        plugin.getServer().getAsyncScheduler().runNow(plugin, t -> {
-            boolean anders = false;
-            for (var b : download.angeboteneBaeume()) {
-                var ordner = konf.kacheln().resolve(b.ordner());
-                try {
-                    var zeit = Files.getLastModifiedTime(ordner.resolve("manifest"));
-                    if (zeit.equals(gelesen.get(b.ordner()))) {
-                        continue;
-                    }
-                    gelesen.put(b.ordner(), zeit);
-                    saetze.put(b.ordner(), Satz.lies(ordner));
-                    anders = true;
-                } catch (NoSuchFileException e) {
-                    gelesen.remove(b.ordner());
-                    anders |= saetze.remove(b.ordner()) != null;
-                } catch (Exception e) {
-                    plugin.getLogger().log(Level.WARNING, "Manifest von " + b.ordner() + " nicht gelesen", e);
-                    anders |= saetze.remove(b.ordner()) != null;
-                }
-            }
-            download.saetze(saetze);
-            if (anders) {
-                plugin.getServer().getGlobalRegionScheduler().execute(plugin, this::angebotAnAlle);
-            }
-        });
+        if (!plugin.isEnabled()) {
+            return;
+        }
+        plugin.getServer().getAsyncScheduler().runNow(plugin, t -> liesSaetze());
     }
 
+    /** Nacheinander, damit ein älterer Satz nie einen neueren überschreibt. */
+    private synchronized void liesSaetze() {
+        boolean anders = false;
+        for (var b : download.angeboteneBaeume()) {
+            var ordner = konf.kacheln().resolve(b.ordner());
+            try {
+                var zeit = Files.getLastModifiedTime(ordner.resolve("manifest"));
+                if (zeit.equals(gelesen.get(b.ordner()))) {
+                    continue;
+                }
+                gelesen.put(b.ordner(), zeit);
+                saetze.put(b.ordner(), Satz.lies(ordner));
+                anders = true;
+            } catch (NoSuchFileException e) {
+                gelesen.remove(b.ordner());
+                anders |= saetze.remove(b.ordner()) != null;
+            } catch (Exception e) {
+                plugin.getLogger().log(Level.WARNING, "Manifest von " + b.ordner() + " nicht gelesen", e);
+                anders |= saetze.remove(b.ordner()) != null;
+            }
+        }
+        download.saetze(saetze);
+        if (anders && plugin.isEnabled()) {
+            plugin.getServer().getGlobalRegionScheduler().execute(plugin, this::angebotAnAlle);
+        }
+    }
+
+    /** Nach neuen Sätzen: allen mit Mod das Angebot, und der tägliche Abgleich, wo er fällig ist. */
     private void angebotAnAlle() {
-        var angebot = download.angebot(Instant.now());
+        var jetzt = Instant.now();
+        var angebot = download.angebot(jetzt);
         for (Player p : plugin.getServer().getOnlinePlayers()) {
             if (p.getListeningPluginChannels().contains(Download.KANAL)) {
                 sende(p, angebot);
+                taeglich(p, jetzt);
             }
+        }
+    }
+
+    private void taeglich(Player p, Instant jetzt) {
+        var stand = lies(p);
+        var raus = download.beimJoin(p.getUniqueId(), stand, jetzt);
+        if (!raus.isEmpty()) {
+            schreibe(p, stand);
+            raus.forEach(n -> sende(p, n));
         }
     }
 
@@ -99,12 +117,7 @@ final class Kanal implements Listener, PluginMessageListener {
         var p = e.getPlayer();
         var jetzt = Instant.now();
         sende(p, download.angebot(jetzt));
-        var stand = lies(p);
-        var raus = download.beimJoin(p.getUniqueId(), stand, jetzt);
-        if (!raus.isEmpty()) {
-            schreibe(p, stand);
-            raus.forEach(n -> sende(p, n));
-        }
+        taeglich(p, jetzt);
     }
 
     @Override
@@ -118,23 +131,21 @@ final class Kanal implements Listener, PluginMessageListener {
         sende(player, antwort);
     }
 
+    /** Ein unlesbarer Stand beginnt neu; die Warnung kommt einmal je Spieler und Start, nicht je Anfrage. */
     private Download.Spielerstand lies(Player p) {
         String json = p.getPersistentDataContainer().get(schluessel, PersistentDataType.STRING);
-        if (json != null) {
-            try {
-                var s = GSON.fromJson(json, Download.Spielerstand.class);
-                if (s != null && s.voll != null && s.abgleich != null && s.baeume != null) {
-                    return s;
-                }
-            } catch (RuntimeException e) {
-                plugin.getLogger().log(Level.WARNING, "Stand des Downloads von " + p.getName() + " unlesbar, neu", e);
+        var s = json == null ? new Download.Spielerstand() : Download.ausJson(json);
+        if (s == null) {
+            if (gewarnt.add(p.getUniqueId())) {
+                plugin.getLogger().warning("Stand des Downloads von " + p.getName() + " unlesbar, er beginnt neu");
             }
+            return new Download.Spielerstand();
         }
-        return new Download.Spielerstand();
+        return s;
     }
 
     private void schreibe(Player p, Download.Spielerstand s) {
-        p.getPersistentDataContainer().set(schluessel, PersistentDataType.STRING, GSON.toJson(s));
+        p.getPersistentDataContainer().set(schluessel, PersistentDataType.STRING, Download.alsJson(s));
     }
 
     private void sende(Player p, JsonObject nachricht) {

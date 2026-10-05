@@ -63,7 +63,7 @@ final class Laeufe {
     private final Map<String, Letzter> letzte = new LinkedHashMap<>();
     private final Map<String, Instant> erfolgreich = new LinkedHashMap<>();
 
-    /** Läuft nach jedem Lauf, der Kacheln gezeichnet hat, im Faden des Laufs. */
+    /** Läuft nach jedem Baum, dessen Prozess Kacheln gezeichnet hat, im Faden des Laufs. */
     private volatile Runnable nachLauf = () -> {};
 
     private volatile String letzteZeile = "";
@@ -313,6 +313,10 @@ final class Laeufe {
                         erfolgreich.put(a.baum(), start);
                     }
                 }
+                // Gleich nach dem Baum, nicht nach allen: sein Manifest ist jetzt neu.
+                if (ausgang.equals(GEZEICHNET)) {
+                    nachLauf.run();
+                }
                 ergebnisse.add(a.baum() + " " + ausgang);
                 if (istAbgebrochen()) {
                     break;
@@ -327,9 +331,6 @@ final class Laeufe {
             }
             if (!ergebnisse.stream().allMatch(e -> e.endsWith(" " + NICHTS))) {
                 log.info(ende);
-            }
-            if (ergebnisse.stream().anyMatch(e -> e.endsWith(" " + GEZEICHNET))) {
-                nachLauf.run();
             }
         }
     }

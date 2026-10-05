@@ -271,7 +271,22 @@ class LaeufeTest {
         assertTrue(l.warte(30_000));
         assertEquals(a, l.erfolgreichSeit("a").orElseThrow(), "--resume zählt nicht");
         assertTrue(l.erfolgreichSeit("c").isPresent());
-        assertEquals(1, nachLauf[0]);
+        assertEquals(2, nachLauf[0], "je Baum mit gezeichneten Kacheln");
+    }
+
+    @Test
+    void nach_lauf_gleich_nach_dem_baum_nicht_erst_am_ende() throws Exception {
+        var l = laeufe();
+        var gemeldet = new java.util.concurrent.atomic.AtomicInteger();
+        l.nachLauf(gemeldet::incrementAndGet);
+        l.starte("Voller Lauf", List.of(new Auftrag("a", falscher("exit", "0"), false), new Auftrag("b", falscher("sleep"), false)));
+        for (int i = 0; i < 3000 && !l.status().contains("Baum b, PID"); i++) {
+            Thread.sleep(10);
+        }
+        assertTrue(l.status().contains("Baum b, PID"), l::status);
+        assertEquals(1, gemeldet.get(), "a ist fertig, b läuft noch");
+        l.stoppe();
+        assertEquals(1, gemeldet.get());
     }
 
     @Test

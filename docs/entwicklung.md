@@ -49,7 +49,7 @@ kommt mit heroic-map-renderer#146 dazu.
   Stufe, Deckel und Ablauf, Fortsetzen, Wechsel des Massstabs, alle drei
   Grenzen samt `wieder`, der tägliche Abgleich um die Uhrzeit herum, das
   Geheimnis. Ohne Bukkit; den Webserver gibt der Test als Adresse vor.
-- **Mutationen,** am 05.10.: Jede der 50 Änderungen am Code liess einen
+- **Mutationen,** am 05.10.: Jede der 58 Änderungen am Code liess einen
   Test fallen, etwa ohne `RAYON_NUM_THREADS`, ohne `destroy`, ohne
   `--resume`, ohne den Vergleich der ausführbaren Datei, ohne das Ende des
   Prozesses nach einem Lesefehler, ohne leise Updates, mit einer Dauer von

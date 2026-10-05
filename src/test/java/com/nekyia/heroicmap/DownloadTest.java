@@ -16,6 +16,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalTime;
 import java.time.ZoneOffset;
+import java.util.Arrays;
 import java.util.Base64;
 import java.util.List;
 import java.util.Map;
@@ -168,7 +169,10 @@ class DownloadTest {
         var dann = d.anfrage(anfrage("top-north-s", 4, "voll"), SPIELER, stand, JETZT.plus(Duration.ofHours(23)));
         assertEquals(erst.get("token").getAsString(), dann.get("token").getAsString());
         assertEquals(1, stand.voll.length);
-        var spaeter = d.anfrage(anfrage("top-north-s", 4, "voll"), SPIELER, stand, JETZT.plus(Duration.ofMinutes(23 * 60 + 51)));
+        var genau = d.anfrage(anfrage("top-north-s", 4, "voll"), SPIELER, stand, JETZT.plus(Duration.ofMinutes(23 * 60 + 50)));
+        assertEquals(erst.get("token").getAsString(), genau.get("token").getAsString(), "noch genau 10 min");
+        var spaeter = d.anfrage(anfrage("top-north-s", 4, "voll"), SPIELER, stand,
+                JETZT.plus(Duration.ofMinutes(23 * 60 + 50)).plusSeconds(1));
         assertNotEquals(erst.get("token").getAsString(), spaeter.get("token").getAsString());
         assertEquals(2, stand.voll.length);
     }
@@ -187,18 +191,36 @@ class DownloadTest {
     }
 
     @Test
-    void abgleich_von_hand_hat_einen_kleinen_deckel_und_zaehlt_jedes_mal() {
+    void abgleich_von_hand_hat_einen_kleinen_deckel_und_zaehlt_nach_zehn_minuten_neu() throws Exception {
         var d = download();
         var stand = new Download.Spielerstand();
         d.anfrage(anfrage("top-north-s", 4, "voll"), SPIELER, stand, JETZT);
         var a = d.anfrage(anfrage("top-north-s", 4, "abgleich"), SPIELER, stand, JETZT.plusSeconds(60));
-        var b = d.anfrage(anfrage("top-north-s", 4, "abgleich"), SPIELER, stand, JETZT.plusSeconds(120));
         assertEquals("abgleich", a.get("art").getAsString());
         assertEquals(1_160, a.get("bytes").getAsLong());
         assertEquals(1_160, inhalt(a.get("token").getAsString()).getLong(25));
-        assertNotEquals(a.get("token").getAsString(), b.get("token").getAsString());
+        assertEquals(1, stand.abgleich.length);
+
+        // Jünger als 10 min: dasselbe Token, mit dem aktuellen Manifest, und es zählt nicht.
+        var neuerSatz = neuesManifest();
+        d.saetze(Map.of("top-north-s", neuerSatz));
+        var b = d.anfrage(anfrage("top-north-s", 4, "abgleich"), SPIELER, stand, JETZT.plusSeconds(60 + 599));
+        assertEquals(a.get("token").getAsString(), b.get("token").getAsString());
+        assertEquals(neuerSatz.sha256(), b.get("manifest_sha256").getAsString());
+        assertEquals(1, stand.abgleich.length);
+
+        // Genau 10 min alt: ein neues, das zählt.
+        var c = d.anfrage(anfrage("top-north-s", 4, "abgleich"), SPIELER, stand, JETZT.plusSeconds(60 + 600));
+        assertNotEquals(a.get("token").getAsString(), c.get("token").getAsString());
         assertEquals(2, stand.abgleich.length);
         assertEquals(1, stand.voll.length);
+    }
+
+    /** Ein neues Manifest mit einer Kachel mehr, als neuer Satz in {@code d}. */
+    private Satz neuesManifest() throws Exception {
+        SatzTest.baum(tmp.resolve("top-north-s"), 2, 5, "2/0/0 100 \"a\"", "3/0/0 200 \"b\"", "3/-1/0 300 \"c\"",
+                "4/0/0 1000 \"d\"", "5/0/0 4000 \"e\"", "5/-1/-1 6000 \"f\"", "5/1/1 10 \"g\"");
+        return Satz.lies(tmp.resolve("top-north-s"));
     }
 
     @Test
@@ -214,8 +236,95 @@ class DownloadTest {
         assertEquals("abgelehnt", nein.get("typ").getAsString());
         assertEquals("Du hast in den letzten 7 Tagen schon 5 volle Downloads geholt.", nein.get("grund").getAsString());
         assertEquals(JETZT.plus(Duration.ofDays(7)).getEpochSecond(), nein.get("wieder").getAsLong());
-        var wieder = d.anfrage(anfrage("top-north-s", 1, "voll"), SPIELER, stand, JETZT.plus(Duration.ofDays(7)).plusSeconds(1));
+        var knapp = d.anfrage(anfrage("top-north-s", 1, "voll"), SPIELER, stand, JETZT.plus(Duration.ofDays(7)).minusSeconds(1));
+        assertEquals("abgelehnt", knapp.get("typ").getAsString());
+        var wieder = d.anfrage(anfrage("top-north-s", 1, "voll"), SPIELER, stand, JETZT.plus(Duration.ofDays(7)));
         assertEquals("freigabe", wieder.get("typ").getAsString());
+    }
+
+    @Test
+    void fortsetzen_liefert_das_neue_manifest() throws Exception {
+        var d = download();
+        var stand = new Download.Spielerstand();
+        var erst = d.anfrage(anfrage("top-north-s", 4, "voll"), SPIELER, stand, JETZT);
+        var neu = neuesManifest();
+        d.saetze(Map.of("top-north-s", neu));
+        var dann = d.anfrage(anfrage("top-north-s", 4, "voll"), SPIELER, stand, JETZT.plusSeconds(60));
+        assertEquals(erst.get("token").getAsString(), dann.get("token").getAsString());
+        assertEquals(neu.sha256(), dann.get("manifest_sha256").getAsString());
+        assertEquals(11_610, dann.get("bytes").getAsLong());
+        assertEquals(1, stand.voll.length);
+    }
+
+    @Test
+    void abdeckt_bis_gehoert_zum_manifest() throws Exception {
+        var d = download();
+        erfolgreich = Optional.of(JETZT.minusSeconds(1000));
+        var erst = neuesManifest();
+        d.saetze(Map.of("top-north-s", erst));
+        assertEquals(JETZT.getEpochSecond() - 1000 - 600, abdecktBis(d));
+        erfolgreich = Optional.of(JETZT.minusSeconds(10));
+        assertEquals(JETZT.getEpochSecond() - 1000 - 600, abdecktBis(d), "ohne neues Manifest bleibt es");
+        d.saetze(Map.of("top-north-s", erst));
+        assertEquals(JETZT.getEpochSecond() - 1000 - 600, abdecktBis(d), "derselbe Satz noch einmal übergeben");
+        var gleich = Satz.lies(tmp.resolve("top-north-s"));
+        d.saetze(Map.of("top-north-s", gleich));
+        assertEquals(JETZT.getEpochSecond() - 10 - 600, abdecktBis(d), "neu gelesen, neuer Lauf");
+    }
+
+    private static long abdecktBis(Download d) {
+        return d.angebot(JETZT).getAsJsonArray("baeume").get(0).getAsJsonObject().get("abdeckt_bis").getAsLong();
+    }
+
+    @Test
+    void ablehnung_durch_den_spieler_verbraucht_keinen_platz_am_server() {
+        var d = download();
+        var stand = new Download.Spielerstand();
+        stand.voll = new long[] {1, 2, 3, 4, JETZT.getEpochSecond() - 10};
+        stand.voll = Arrays.stream(stand.voll).map(t -> JETZT.getEpochSecond() - 100 + t).toArray();
+        assertEquals("abgelehnt", d.anfrage(anfrage("top-north-s", 4, "voll"), SPIELER, stand, JETZT).get("typ").getAsString());
+        for (int i = 0; i < 10; i++) {
+            assertEquals("freigabe", d.anfrage(anfrage("top-north-s", 4, "voll"), UUID.randomUUID(),
+                    new Download.Spielerstand(), JETZT.plusSeconds(1)).get("typ").getAsString(), "Platz " + (i + 1));
+        }
+    }
+
+    @Test
+    void abgeschaltete_grenzen() {
+        var konf = new Konfiguration(tmp.resolve("r"), tmp.resolve("welt"), tmp, List.of(), List.of(), false, 2,
+                List.of(OBEN), new Konfiguration.Download(10, 0, 0, LocalTime.MIDNIGHT, 10));
+        var d = new Download(konf, new byte[32], () -> webserver, b -> erfolgreich, ZoneOffset.UTC);
+        d.saetze(Map.of("top-north-s", satz));
+        var stand = new Download.Spielerstand();
+        var voll = d.anfrage(anfrage("top-north-s", 4, "voll"), SPIELER, stand, JETZT);
+        assertEquals("Volle Downloads sind auf diesem Server abgeschaltet.", voll.get("grund").getAsString());
+        assertFalse(voll.has("wieder"));
+        stand.baeume.put("top-north-s", new Download.BaumStand());
+        stand.baeume.get("top-north-s").massstab = 4;
+        var abgleich = d.anfrage(anfrage("top-north-s", 4, "abgleich"), SPIELER, stand, JETZT);
+        assertEquals("Abgleiche von Hand sind auf diesem Server abgeschaltet.", abgleich.get("grund").getAsString());
+    }
+
+    @Test
+    void stand_als_json_hin_und_zurueck() {
+        var d = download();
+        var stand = new Download.Spielerstand();
+        d.anfrage(anfrage("top-north-s", 2, "voll"), SPIELER, stand, JETZT);
+        d.anfrage(anfrage("top-north-s", 2, "abgleich"), SPIELER, stand, JETZT.plusSeconds(700));
+        var zurueck = Download.ausJson(Download.alsJson(stand));
+        assertArrayEquals(stand.voll, zurueck.voll);
+        assertArrayEquals(stand.abgleich, zurueck.abgleich);
+        var bs = zurueck.baeume.get("top-north-s");
+        assertEquals(2, bs.massstab);
+        assertEquals(stand.baeume.get("top-north-s").abgeglichen, bs.abgeglichen);
+        assertEquals(stand.baeume.get("top-north-s").token, bs.token);
+        // Fortsetzen geht auch mit dem gelesenen Stand.
+        var f = d.anfrage(anfrage("top-north-s", 2, "voll"), SPIELER, zurueck, JETZT.plusSeconds(800));
+        assertEquals(bs.token.get("voll").token(), f.get("token").getAsString());
+        for (String kaputt : List.of("kein json", "[]", "{\"voll\":null}", "{\"baeume\":{\"a\":null}}",
+                "{\"baeume\":{\"a\":{\"token\":null}}}", "{\"voll\":\"x\"}")) {
+            assertNull(Download.ausJson(kaputt), kaputt);
+        }
     }
 
     @Test
@@ -240,12 +349,18 @@ class DownloadTest {
         var stand = new Download.Spielerstand();
         d.anfrage(anfrage("top-north-s", 4, "voll"), SPIELER, stand, JETZT);
         for (int i = 1; i <= 20; i++) {
-            assertEquals("freigabe", d.anfrage(anfrage("top-north-s", 4, "abgleich"), SPIELER, stand, JETZT.plusSeconds(i))
+            assertEquals("freigabe", d.anfrage(anfrage("top-north-s", 4, "abgleich"), SPIELER, stand, JETZT.plusSeconds(600L * i))
                     .get("typ").getAsString());
         }
-        var nein = d.anfrage(anfrage("top-north-s", 4, "abgleich"), SPIELER, stand, JETZT.plusSeconds(21));
+        assertEquals(20, stand.abgleich.length);
+        var nein = d.anfrage(anfrage("top-north-s", 4, "abgleich"), SPIELER, stand, JETZT.plusSeconds(600L * 21));
         assertEquals("Du hast in den letzten 24 Stunden schon 20 Abgleiche geholt.", nein.get("grund").getAsString());
-        assertEquals(JETZT.plusSeconds(1 + 86_400).getEpochSecond(), nein.get("wieder").getAsLong());
+        long wieder = JETZT.plusSeconds(600 + 86_400).getEpochSecond();
+        assertEquals(wieder, nein.get("wieder").getAsLong());
+        assertEquals("abgelehnt", d.anfrage(anfrage("top-north-s", 4, "abgleich"), SPIELER, stand,
+                Instant.ofEpochSecond(wieder - 1)).get("typ").getAsString());
+        assertEquals("freigabe", d.anfrage(anfrage("top-north-s", 4, "abgleich"), SPIELER, stand,
+                Instant.ofEpochSecond(wieder)).get("typ").getAsString());
     }
 
     @Test
@@ -285,22 +400,45 @@ class DownloadTest {
     @Test
     void grenze_im_fenster() {
         assertArrayEquals(new long[] {5, 9}, Download.mitNeuer(new long[] {1, 5}, 9, 5, 2));
+        assertArrayEquals(new long[] {5, 9}, Download.mitNeuer(new long[] {4, 5}, 9, 5, 2), "genau ein Fenster alt ist draussen");
         assertNull(Download.mitNeuer(new long[] {5, 6}, 9, 5, 2));
         assertArrayEquals(new long[] {9}, Download.mitNeuer(new long[] {}, 9, 5, 1));
         assertNull(Download.mitNeuer(new long[] {}, 9, 5, 0));
-        assertEquals(10, Download.wiederAb(new long[] {7, 5}, 5));
-        assertNull(Download.wiederAb(new long[] {}, 5));
+        assertEquals(10, Download.wiederAb(new long[] {7, 5}, 9, 5, 2));
+        assertEquals(11, Download.wiederAb(new long[] {1, 5, 6, 7}, 9, 5, 2), "Grenze gesenkt: erst wenn nur noch eine drin ist");
+        assertEquals(10, Download.wiederAb(new long[] {1, 5}, 9, 5, 1), "eine ausserhalb zählt nicht");
     }
 
     @Test
     void geheimnis_einmal_erzeugt_dann_gelesen() throws Exception {
+        var meldungen = new java.util.ArrayList<String>();
+        var log = java.util.logging.Logger.getAnonymousLogger();
+        log.setUseParentHandlers(false);
+        log.addHandler(new java.util.logging.Handler() {
+            @Override
+            public void publish(java.util.logging.LogRecord r) {
+                meldungen.add(r.getMessage());
+            }
+
+            @Override
+            public void flush() {}
+
+            @Override
+            public void close() {}
+        });
         Path datei = tmp.resolve("plugin/token.geheimnis");
-        byte[] g = Download.geheimnis(datei);
+        byte[] g = Download.geheimnis(datei, log);
         assertEquals(32, g.length);
-        assertArrayEquals(g, Download.geheimnis(datei));
+        assertArrayEquals(g, Download.geheimnis(datei, log));
+        assertEquals(List.of(), meldungen);
+        if (java.nio.file.FileSystems.getDefault().supportedFileAttributeViews().contains("posix")) {
+            assertEquals("rw-------", java.nio.file.attribute.PosixFilePermissions.toString(Files.getPosixFilePermissions(datei)));
+        }
         Files.write(datei, new byte[5]);
-        byte[] neu = Download.geheimnis(datei);
+        byte[] neu = Download.geheimnis(datei, log);
         assertEquals(32, neu.length);
         assertArrayEquals(neu, Files.readAllBytes(datei));
+        assertEquals(1, meldungen.size());
+        assertTrue(meldungen.get(0).contains("hat 5 statt 32 Byte"), meldungen::toString);
     }
 }

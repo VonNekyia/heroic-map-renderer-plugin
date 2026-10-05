@@ -66,10 +66,12 @@ Das Plugin liest daraus nur, was es braucht (`Satz.lies`):
 - **dazu aus `map.json`** `minZoom` und `maxZoom`, und als `stand` die
   Änderungszeit von `map.json`.
 
-Gelesen wird beim Start und nach jedem Lauf, der Kacheln gezeichnet hat,
-ausserhalb des Hauptthreads. Danach schickt das Plugin allen Spielern mit
-Mod ein neues Angebot. Ein unlesbares Manifest steht im Log, sein Baum fällt
-aus dem Angebot.
+Gelesen wird beim Start und gleich nach jedem Baum, dessen Prozess Kacheln
+gezeichnet hat, nicht erst nach allen Bäumen des Laufs. Das läuft
+ausserhalb des Hauptthreads und nacheinander, damit ein älterer Satz nie
+einen neueren überschreibt. Danach schickt das Plugin allen Spielern mit
+Mod ein neues Angebot. Ein unlesbares Manifest steht einmal im Log, sein
+Baum fällt aus dem Angebot, bis es sich ändert.
 
 **Massstab und Stufe:** 4 px ist `maxZoom`, 2 px eine Stufe gröber, 1 px
 zwei. Ein Satz enthält seine Stufe und alle gröberen bis `minZoom`. Liegt
@@ -91,8 +93,14 @@ Der Reihe nach, die erste Ablehnung gilt:
 5. **Art:** Ein `abgleich` mit einem anderen Massstab als dem gespeicherten,
    oder ohne gespeicherten, ist ein voller Download. Ein Spieler hat je
    Baum nur einen Massstab.
-6. **Fortsetzen:** Bei `voll` mit demselben Massstab kommt das letzte Token
-   noch einmal, solange es noch mindestens 10 min gilt. Das zählt nicht.
+6. **Noch einmal dasselbe Token,** mit dem aktuellen Manifest, und es zählt
+   nicht:
+   - bei `voll` mit demselben Massstab, solange es noch mindestens 10 min
+     gilt, zum Fortsetzen;
+   - bei `abgleich`, solange es jünger als 10 min ist. So kostet eine
+     Neuanfrage nach einem Fehler der Prüfsumme keinen Abgleich, und ein
+     neues Budget gibt es erst nach 10 min. Entschieden im Review, steht an
+     #154.
 7. **Grenzen,** siehe dort, dann ein neues Token und die `freigabe`.
 
 Eine Ablehnung zählt nicht und ändert den Stand nicht.
@@ -110,9 +118,17 @@ Eine Ablehnung zählt nicht und ändert den Stand nicht.
   Fenster.
 - **Die Grenze des Servers** liegt im Speicher und beginnt nach einem
   Neustart leer. Die Grenzen je Spieler liegen in seinem Stand.
-- **Ein Abgleich von Hand** bekommt immer ein neues Token und zählt. Gäbe er
-  das alte zurück, wäre seine Grenze wirkungslos, denn ein Token gilt 24 h.
+- **Ein Abgleich von Hand** bekommt ein neues Token und zählt, sobald das
+  letzte 10 min alt ist, siehe „Anfrage“.
 - **Der tägliche Abgleich** zählt nicht.
+- **Eine Grenze 0** schaltet die Art ab: „Volle Downloads sind auf diesem
+  Server abgeschaltet.“ oder „Abgleiche von Hand sind auf diesem Server
+  abgeschaltet.“, ohne `wieder`.
+- **`wieder`** nimmt nur Zeiten im Fenster. Senkt der Betreiber eine Grenze,
+  ist es der Zeitpunkt, ab dem weniger als die neue Grenze im Fenster
+  liegen.
+- **Offen beim Maintainer:** 20 Abgleiche zu je 10 % sind bis zu 200 % des
+  Satzes je Spieler und Tag. Die Vorgabe legt er fest.
 
 ## Token
 
@@ -127,26 +143,33 @@ des Renderers. `TokenTest` prüft gegen dessen Testvektoren. Die Kopie in
   10 %.
 - **Zufall:** 16 Byte aus `SecureRandom`.
 - **Geheimnis:** 32 Byte in `plugins/HeroicMap/token.geheimnis`, beim ersten
-  Start erzeugt, unter Linux nur für den Besitzer lesbar. Hat die Datei eine
-  andere Länge, ersetzt das Plugin sie. Ältere Token gelten dann nicht mehr.
+  Start erzeugt. Unter Linux entsteht die Datei gleich nur für den Besitzer
+  lesbar, nicht erst danach. Hat sie eine andere Länge, ersetzt das Plugin
+  sie und warnt im Log; ältere Token gelten dann nicht mehr.
 
 ## Täglicher Abgleich
 
-Meldet ein Spieler mit Mod den Kanal an, schickt das Plugin nach dem Angebot
-je Baum eine `freigabe` mit `art` `abgleich`, wenn alle drei zutreffen:
+Meldet ein Spieler mit Mod den Kanal an, und bei jedem neuen Angebot an alle
+Spieler mit Mod, schickt das Plugin je Baum eine `freigabe` mit `art`
+`abgleich`, wenn alle drei zutreffen:
 
 - er hat für den Baum einen Massstab gespeichert, hat also schon geladen;
 - sein letzter Abgleich, auch ein voller Download, liegt vor dem letzten
-  Zeitpunkt von `download.abgleich-ab`, heute oder gestern, nach der Uhr des
-  Servers;
+  Zeitpunkt von `download.abgleich-ab`, heute oder gestern, in der
+  Standardzeitzone der JVM des Servers;
 - der Webserver läuft.
 
-Er zählt gegen keine Grenze und hat den Deckel eines Abgleichs.
+Er zählt gegen keine Grenze und hat den Deckel eines Abgleichs. Wer über
+die Uhrzeit hinaus online bleibt, bekommt ihn mit dem nächsten neuen
+Angebot, also nach dem nächsten Lauf, der Kacheln zeichnet. Wer vor dem
+ersten Lesen der Manifeste beitritt, bekommt ihn mit dem ersten Angebot.
 
 ## Was die Kacheln abdecken
 
-`abdeckt_bis` ist der Beginn des letzten Laufs des Baums, der ihn auf den
-Stand brachte, minus `download.reserve-minuten`, Vorgabe 10.
+`abdeckt_bis` ist der Beginn des Laufs, der das Manifest des Baums
+schrieb, minus `download.reserve-minuten`, Vorgabe 10. Festgehalten wird er,
+wenn das Plugin ein neues Manifest liest. So gehören Manifest und
+`abdeckt_bis` immer zum selben Lauf.
 
 - **Auf dem Stand** ist ein Baum nach „Kacheln gezeichnet“ oder „nichts zu
   zeichnen“, siehe [Läufe](laeufe.md), „Status“.
@@ -165,4 +188,6 @@ JSON unter `heroicmap:download` im `PersistentDataContainer` des Spielers:
 - je Baum der Massstab, die Zeit des letzten Abgleichs und je Art das
   zuletzt ausgestellte Token mit Massstab, Ablauf und Deckel.
 
-Ist der Stand unlesbar, steht das im Log, und er beginnt neu.
+Ist der Stand unlesbar, beginnt er neu. Die Warnung im Log kommt einmal je
+Spieler und Start, nicht je Anfrage; ein Client kann so das Log nicht
+füllen. `DownloadTest` prüft den Weg hin und zurück über JSON.

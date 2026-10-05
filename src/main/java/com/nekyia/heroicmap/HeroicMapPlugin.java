@@ -53,7 +53,7 @@ public final class HeroicMapPlugin extends JavaPlugin {
     private void starteDownload(Konfiguration konf) {
         byte[] geheimnis;
         try {
-            geheimnis = Download.geheimnis(getDataFolder().toPath().resolve("token.geheimnis"));
+            geheimnis = Download.geheimnis(getDataFolder().toPath().resolve("token.geheimnis"), getLogger());
         } catch (IOException e) {
             getLogger().log(Level.SEVERE, "Geheimnis für die Token nicht gelesen, kein Download", e);
             return;
