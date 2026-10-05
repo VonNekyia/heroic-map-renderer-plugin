@@ -94,8 +94,9 @@ class LaeufeTest {
         assertTrue(log.contains("RAYON_NUM_THREADS=1"), log::toString);
         assertTrue(log.contains("Höhen:      bereit"), log::toString);
         assertTrue(log.contains("auf stderr"), log::toString);
-        assertTrue(log.stream().noneMatch(z -> z.contains("Kacheln")), log::toString);
-        assertTrue(l.status().endsWith(": a fertig"), l::status);
+        assertTrue(log.stream().noneMatch(z -> z.contains("200/400 Kacheln")), log::toString);
+        assertTrue(l.status().contains("\na, zuletzt Test vor "), l::status);
+        assertTrue(l.status().endsWith(", Kacheln gezeichnet"), l::status);
         assertFalse(Files.exists(tmp.resolve("renderer.pid")));
     }
 
@@ -104,7 +105,8 @@ class LaeufeTest {
         var l = laeufe();
         l.starte("Test", List.of(new Auftrag("a", falscher("exit", "3"), false), new Auftrag("b", falscher("exit", "0"), false)));
         assertTrue(l.warte(30_000));
-        assertTrue(l.status().endsWith(": a mit Code 3, b fertig"), l::status);
+        assertTrue(l.status().contains(", Fehler, Code 3\nb, zuletzt Test vor "), l::status);
+        assertTrue(l.status().endsWith(", Kacheln gezeichnet"), l::status);
     }
 
     @Test
@@ -116,7 +118,8 @@ class LaeufeTest {
         assertTrue(l.brichAb());
         assertTrue(l.warte(10_000));
         assertFalse(lebt(pid));
-        assertTrue(l.status().endsWith(": a abgebrochen"), l::status);
+        assertTrue(l.status().endsWith(", abgebrochen"), l::status);
+        assertFalse(l.status().contains("\nb,"), l::status);
         assertFalse(l.brichAb());
     }
 
@@ -127,7 +130,8 @@ class LaeufeTest {
         l.starte("Test", List.of(new Auftrag("a", falscher("sleep"), false)));
         assertTrue(l.brichAb());
         assertTrue(l.warte(10_000));
-        assertTrue(l.status().endsWith(": a abgebrochen"), l::status);
+        assertTrue(l.status().endsWith(", abgebrochen"), l::status);
+        assertFalse(l.status().contains("\nb,"), l::status);
     }
 
     @Test
@@ -162,7 +166,7 @@ class LaeufeTest {
         var l = laeufe();
         l.starte("Test", List.of(new Auftrag("a", List.of(tmp.resolve("fehlt").toString()), false)));
         assertTrue(l.warte(10_000));
-        assertTrue(l.status().contains(": a nicht gestartet: "), l::status);
+        assertTrue(l.status().contains(", Fehler, nicht gestartet: "), l::status);
     }
 
     @Test
@@ -197,7 +201,7 @@ class LaeufeTest {
         assertTrue(l.warte(30_000));
         assertTrue(pid[0] > 0);
         assertFalse(lebt(pid[0]));
-        assertTrue(l.status().contains(": a beendet, Ausgabe nicht gelesen: java.lang.IllegalStateException: Log voll, b "),
+        assertTrue(l.status().contains(", Fehler, Ausgabe nicht gelesen, beendet: java.lang.IllegalStateException: Log voll\nb, "),
                 l::status);
         assertFalse(Files.exists(tmp.resolve("renderer.pid")));
     }
@@ -208,7 +212,7 @@ class LaeufeTest {
         l.starte("Update", List.of(new Auftrag("a", falscher("nichts"), true)));
         assertTrue(l.warte(30_000));
         assertEquals(List.of(), log);
-        assertTrue(l.status().endsWith(": a nichts zu zeichnen"), l::status);
+        assertTrue(l.status().endsWith(", nichts zu zeichnen"), l::status);
     }
 
     @Test
@@ -218,7 +222,40 @@ class LaeufeTest {
         assertTrue(l.warte(30_000));
         assertEquals(2, log.stream().filter(z -> z.equals("Höhen:      bereit")).count(), log::toString);
         assertTrue(log.stream().anyMatch(z -> z.startsWith("Update, Baum a: ")), log::toString);
-        assertTrue(log.stream().anyMatch(z -> z.endsWith(": a fertig, b mit Code 3")), log::toString);
+        assertTrue(log.stream().anyMatch(z -> z.endsWith(": a Kacheln gezeichnet, b Fehler, Code 3")), log::toString);
+    }
+
+    @Test
+    void status_nennt_je_baum_dauer_und_ausgang_aber_das_log_nicht() throws Exception {
+        var l = laeufe();
+        assertEquals("Kein Lauf seit dem Start.", l.status());
+        l.starte("Update", List.of(new Auftrag("a", falscher("nichts"), true), new Auftrag("b", falscher("exit", "3"), true)));
+        assertTrue(l.warte(30_000));
+        var zeilen = l.status().split("\n");
+        assertEquals("Kein Lauf.", zeilen[0]);
+        assertTrue(zeilen[1].matches("a, zuletzt Update vor \\d+,\\d s: \\d+,\\d s, nichts zu zeichnen"), zeilen[1]);
+        assertTrue(zeilen[2].matches("b, zuletzt Update vor \\d+,\\d s: \\d+,\\d s, Fehler, Code 3"), zeilen[2]);
+        assertEquals(3, zeilen.length);
+        assertTrue(log.stream().noneMatch(z -> z.contains("zuletzt") || z.matches(".*\\d+,\\d s.*")), log::toString);
+    }
+
+    @Test
+    void dauer_im_status_ist_die_laufzeit_des_prozesses() throws Exception {
+        var l = laeufe();
+        l.starte("Test", List.of(new Auftrag("a", falscher("kurz"), false)));
+        assertTrue(l.warte(30_000));
+        var m = java.util.regex.Pattern.compile(": (\\d+),(\\d) s, Kacheln gezeichnet$").matcher(l.status());
+        assertTrue(m.find(), l::status);
+        double sekunden = Double.parseDouble(m.group(1) + "." + m.group(2));
+        assertTrue(sekunden >= 1.5 && sekunden < 30, l::status);
+    }
+
+    @Test
+    void dauer_fuer_den_status() {
+        assertEquals("0,7 s", Laeufe.dauer(java.time.Duration.ofMillis(700)));
+        assertEquals("59,9 s", Laeufe.dauer(java.time.Duration.ofMillis(59_940)));
+        assertEquals("2 min 5 s", Laeufe.dauer(java.time.Duration.ofSeconds(125)));
+        assertEquals("2 h 10 min", Laeufe.dauer(java.time.Duration.ofSeconds(7_830)));
     }
 
     @Test
