@@ -3,6 +3,8 @@ package com.nekyia.heroicmap;
 import java.math.BigInteger;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.LocalTime;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -21,18 +23,22 @@ record Konfiguration(
         List<Path> daten,
         boolean grafikkarte,
         int updateMinuten,
-        List<Baum> baeume) {
+        List<Baum> baeume,
+        Download download) {
 
     private static final Pattern SCHRAEG = Pattern.compile("(\\d+):(\\d+)");
 
-    /** Ein Kachelbaum, mit Kamera und Richtung, wie der Renderer sie schreibt. */
-    record Baum(String kamera, String richtung, Integer scale, boolean cinematic) {
+    /** Ein Kachelbaum, mit Kamera und Richtung, wie der Renderer sie schreibt; mit {@code download} für den Mod angeboten. */
+    record Baum(String kamera, String richtung, Integer scale, boolean cinematic, boolean download) {
 
         /** Der Ordner unter der Wurzel, wie `baum_name` im Renderer. Siehe docs/konfiguration.md, „Bäume“. */
         String ordner() {
             return kamera.replace(':', 'x') + "-" + richtung + (cinematic ? "-cinematic" : "");
         }
     }
+
+    /** Die Grenzen und Zeiten des Kartendownloads. Siehe docs/download.md, „Grenzen“. */
+    record Download(int vollJe10Min, int vollJeWoche, int abgleichJeTag, LocalTime abgleichAb, int reserveMinuten) {}
 
     /**
      * Liest die Einstellungen; relative Pfade gelten ab {@code server}, ohne Welt gilt
@@ -74,10 +80,31 @@ record Konfiguration(
                 fehler.add("trees: scale " + scale + " ist keine ganze Zahl");
                 continue;
             }
-            baeume.add(new Baum(kamera, richtung, (Integer) scale, Boolean.TRUE.equals(m.get("cinematic"))));
+            boolean cinematic = Boolean.TRUE.equals(m.get("cinematic"));
+            boolean download = Boolean.TRUE.equals(m.get("download"));
+            if (download && !(kamera.equals("top-north") && Integer.valueOf(4).equals(scale) && !cinematic)) {
+                fehler.add("trees: download nur mit camera \"top-north\", scale 4 und ohne cinematic");
+                continue;
+            }
+            baeume.add(new Baum(kamera, richtung, (Integer) scale, cinematic, download));
         }
         if (baeume.isEmpty() && fehler.isEmpty()) {
             fehler.add("trees: kein Baum");
+        }
+
+        var grenzen = new int[4];
+        String[] namen = {"voll-je-10-min", "voll-je-woche", "abgleich-je-tag", "reserve-minuten"};
+        for (int i = 0; i < namen.length; i++) {
+            grenzen[i] = c.getInt("download." + namen[i]);
+            if (grenzen[i] < 0) {
+                fehler.add("download." + namen[i] + ": " + grenzen[i] + " ist kleiner als 0");
+            }
+        }
+        LocalTime ab = LocalTime.MIDNIGHT;
+        try {
+            ab = LocalTime.parse(c.getString("download.abgleich-ab", "00:00"));
+        } catch (DateTimeParseException e) {
+            fehler.add("download.abgleich-ab: " + c.getString("download.abgleich-ab") + " ist keine Uhrzeit wie \"00:00\"");
         }
 
         if (!fehler.isEmpty()) {
@@ -91,7 +118,20 @@ record Konfiguration(
                 c.getStringList("renderer.data").stream().map(server::resolve).toList(),
                 c.getBoolean("renderer.gpu"),
                 minuten,
-                List.copyOf(baeume));
+                List.copyOf(baeume),
+                new Download(grenzen[0], grenzen[1], grenzen[2], ab, grenzen[3]));
+    }
+
+    /**
+     * Die Dimension der Welt: die Weltwurzel ist die Oberwelt, ein Ordner
+     * {@code dimensions/<ns>/<name>} darin heisst {@code <ns>:<name>}, wie im Layout ab 26.1.
+     */
+    String dimension() {
+        int n = welt.getNameCount();
+        if (n >= 3 && welt.getName(n - 3).toString().equals("dimensions")) {
+            return welt.getName(n - 2) + ":" + welt.getName(n - 1);
+        }
+        return "minecraft:overworld";
     }
 
     /** W:H gekürzt wie im Renderer, 16:10 wird 8:5; andere Kameras bleiben. */

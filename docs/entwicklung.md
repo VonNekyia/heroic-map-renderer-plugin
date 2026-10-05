@@ -40,11 +40,22 @@ kommt mit heroic-map-renderer#146 dazu.
   `RAYON_NUM_THREADS=1`, Fehlercode, Abbruch vor und während eines
   Prozesses, ein Fehler beim Lesen der Ausgabe, Stoppen, ein Lauf zur Zeit,
   ein Binär, das fehlt, und verwaiste Prozesse.
-- **Mutationen,** am 05.10.: Jede der 25 Änderungen am Code liess einen
+- **`TokenTest`:** stellt jedes gültige Token aus den Testvektoren des
+  Renderers Zeichen für Zeichen gleich aus, lehnt ab, was kein gültiges
+  ergäbe.
+- **`SatzTest`:** ein Manifest von Hand im Format aus #154: Summen je
+  Massstab, Prüfsumme, kaputte Zeilen.
+- **`DownloadTest`:** Angebot, unlesbare Anfragen, „Webserver aus“, Token mit
+  Stufe, Deckel und Ablauf, Fortsetzen, Wechsel des Massstabs, alle drei
+  Grenzen samt `wieder`, der tägliche Abgleich um die Uhrzeit herum, das
+  Geheimnis. Ohne Bukkit; den Webserver gibt der Test als Adresse vor.
+- **Mutationen,** am 05.10.: Jede der 50 Änderungen am Code liess einen
   Test fallen, etwa ohne `RAYON_NUM_THREADS`, ohne `destroy`, ohne
   `--resume`, ohne den Vergleich der ausführbaren Datei, ohne das Ende des
-  Prozesses nach einem Lesefehler, ohne leise Updates oder mit einer Dauer
-  von null im Status.
+  Prozesses nach einem Lesefehler, ohne leise Updates, mit einer Dauer von
+  null im Status, mit falschem Deckel, ohne eine der drei Grenzen, mit
+  vertauschten Feldern im Token oder ohne die Uhrzeit des täglichen
+  Abgleichs. Das Skript prüft die Sperrdatei vor jeder Mutation.
 
 ## Probe mit dem echten Renderer
 
@@ -80,6 +91,9 @@ Build 129, eine Kopie der Testwelt, das Jar des Plugins unter `plugins/`,
 
 - **Gradle** unter Ubuntu und Windows, denn `Process.destroy` wirkt dort
   verschieden.
+- **Testvektoren:** `src/test/resources/token.json` ist eine Kopie von
+  `renderer/tests/fixtures/token.json` aus dem Renderer. Der Job „Doku“
+  vergleicht sie mit `master` und fällt, wenn sie abweicht.
 - **Doku:** Das Prüfskript des Renderers prüft Verweise, Links,
   Frontmatter und `docs/index.md`. Die CI lädt es vom Branch `master`, wie
   in [`AGENTS.md`](../AGENTS.md) beschrieben.

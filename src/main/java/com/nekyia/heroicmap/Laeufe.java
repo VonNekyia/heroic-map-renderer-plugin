@@ -17,6 +17,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
@@ -60,6 +61,10 @@ final class Laeufe {
     private LocalTime seit;
     private boolean abgebrochen;
     private final Map<String, Letzter> letzte = new LinkedHashMap<>();
+    private final Map<String, Instant> erfolgreich = new LinkedHashMap<>();
+
+    /** Läuft nach jedem Lauf, der Kacheln gezeichnet hat, im Faden des Laufs. */
+    private volatile Runnable nachLauf = () -> {};
 
     private volatile String letzteZeile = "";
 
@@ -198,6 +203,18 @@ final class Laeufe {
         return s < 3600 ? s / 60 + " min " + s % 60 + " s" : s / 3600 + " h " + s % 3600 / 60 + " min";
     }
 
+    void nachLauf(Runnable r) {
+        nachLauf = r;
+    }
+
+    /**
+     * Beginn des letzten Aufrufs eines Baums, der ihn ganz auf den Stand brachte, seit dem Start.
+     * Siehe docs/download.md, „Was die Kacheln abdecken“.
+     */
+    synchronized Optional<Instant> erfolgreichSeit(String baum) {
+        return Optional.ofNullable(erfolgreich.get(baum));
+    }
+
     /** Bricht den Lauf ab; false, wenn keiner läuft. */
     synchronized boolean brichAb() {
         if (faden == null) {
@@ -285,11 +302,16 @@ final class Laeufe {
                 }
                 List<String> puffer = a.leise() ? new ArrayList<>() : null;
                 melde(puffer, name + ", Baum " + a.baum() + ": " + String.join(" ", a.befehl()));
+                var start = Instant.now();
                 long beginn = System.nanoTime();
                 String ausgang = fuehreAus(a.befehl(), puffer);
                 var letzter = new Letzter(name, Instant.now(), Duration.ofNanos(System.nanoTime() - beginn), ausgang);
                 synchronized (this) {
                     letzte.put(a.baum(), letzter);
+                    // Ein fortgesetzter Lauf behält Kacheln von vor seinem Beginn; er zählt nicht.
+                    if ((ausgang.equals(GEZEICHNET) || ausgang.equals(NICHTS)) && !a.befehl().contains("--resume")) {
+                        erfolgreich.put(a.baum(), start);
+                    }
                 }
                 ergebnisse.add(a.baum() + " " + ausgang);
                 if (istAbgebrochen()) {
@@ -305,6 +327,9 @@ final class Laeufe {
             }
             if (!ergebnisse.stream().allMatch(e -> e.endsWith(" " + NICHTS))) {
                 log.info(ende);
+            }
+            if (ergebnisse.stream().anyMatch(e -> e.endsWith(" " + GEZEICHNET))) {
+                nachLauf.run();
             }
         }
     }

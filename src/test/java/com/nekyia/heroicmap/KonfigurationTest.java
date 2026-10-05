@@ -47,8 +47,51 @@ class KonfigurationTest {
         assertEquals(List.of(), k.daten());
         assertFalse(k.grafikkarte());
         assertEquals(2, k.updateMinuten());
-        assertEquals(List.of(new Baum("2:1", "se", null, false)), k.baeume());
+        assertEquals(List.of(new Baum("2:1", "se", null, false, false)), k.baeume());
         assertEquals("2x1-se", k.baeume().getFirst().ordner());
+        assertEquals(new Konfiguration.Download(10, 5, 20, java.time.LocalTime.MIDNIGHT, 10), k.download());
+        assertEquals("minecraft:overworld", k.dimension());
+    }
+
+    @Test
+    void download_nur_fuer_genordete_baeume_mit_scale_4() throws Exception {
+        Files.createFile(server.resolve("r"));
+        var k = Konfiguration.aus(yaml("""
+                renderer:
+                  binary: r
+                  assets: [a]
+                world: welt/dimensions/minecraft/the_nether
+                trees:
+                  - camera: top-north
+                    scale: 4
+                    download: true
+                download:
+                  abgleich-ab: "06:30"
+                """), server, server);
+        assertEquals(List.of(new Baum("top-north", "s", 4, false, true)), k.baeume());
+        assertEquals(java.time.LocalTime.of(6, 30), k.download().abgleichAb());
+        assertEquals("minecraft:the_nether", k.dimension());
+
+        var e = assertThrows(IllegalArgumentException.class, () -> Konfiguration.aus(yaml("""
+                renderer:
+                  binary: r
+                  assets: [a]
+                trees:
+                  - camera: "2:1"
+                    download: true
+                  - camera: top-north
+                    download: true
+                  - camera: top-north
+                    scale: 4
+                    cinematic: true
+                    download: true
+                download:
+                  voll-je-woche: -1
+                  abgleich-ab: "halb sieben"
+                """), server, server));
+        String nur = "trees: download nur mit camera \"top-north\", scale 4 und ohne cinematic";
+        assertEquals(nur + "; " + nur + "; " + nur + "; download.voll-je-woche: -1 ist kleiner als 0; "
+                + "download.abgleich-ab: halb sieben ist keine Uhrzeit wie \"00:00\"", e.getMessage());
     }
 
     @Test
@@ -82,9 +125,9 @@ class KonfigurationTest {
         assertEquals(List.of(server.resolve("vanilla-assets"), server.resolve("assets")), k.assets());
         assertEquals(List.of(server.resolve("vanilla-data")), k.daten());
         assertEquals(List.of(
-                new Baum("8:5", "se", null, false),
-                new Baum("top-north", "s", 4, false),
-                new Baum("2:1", "nw", null, true)), k.baeume());
+                new Baum("8:5", "se", null, false, false),
+                new Baum("top-north", "s", 4, false, false),
+                new Baum("2:1", "nw", null, true, false)), k.baeume());
         assertEquals(List.of("8x5-se", "top-north-s", "2x1-nw-cinematic"),
                 k.baeume().stream().map(Baum::ordner).toList());
     }
