@@ -94,6 +94,7 @@ class LaeufeTest {
         assertTrue(log.contains("RAYON_NUM_THREADS=1"), log::toString);
         assertTrue(log.contains("Höhen:      bereit"), log::toString);
         assertTrue(log.contains("auf stderr"), log::toString);
+        assertTrue(log.stream().noneMatch(z -> z.contains("Kacheln")), log::toString);
         assertTrue(l.status().endsWith(": a fertig"), l::status);
         assertFalse(Files.exists(tmp.resolve("renderer.pid")));
     }
@@ -145,9 +146,12 @@ class LaeufeTest {
         var l = laeufe();
         l.starte("Erster", List.of(new Auftrag("a", falscher("sleep"))));
         assertEquals("Es läuft schon: Erster", l.starte("Zweiter", List.of(new Auftrag("b", falscher("exit", "0")))));
-        warteAufZeile("bereit");
+        for (int i = 0; i < 3000 && !l.status().endsWith("Letzte Zeile: 200/400 Kacheln"); i++) {
+            Thread.sleep(10);
+        }
         assertTrue(l.status().startsWith("Läuft seit "), l::status);
         assertTrue(l.status().contains(": Erster, Baum a, PID "), l::status);
+        assertTrue(l.status().endsWith(". Letzte Zeile: 200/400 Kacheln"), l::status);
         l.stoppe();
     }
 
@@ -156,7 +160,44 @@ class LaeufeTest {
         var l = laeufe();
         l.starte("Test", List.of(new Auftrag("a", List.of(tmp.resolve("fehlt").toString()))));
         assertTrue(l.warte(10_000));
-        assertTrue(l.status().contains("Renderer nicht gestartet"), l::status);
+        assertTrue(l.status().contains(": a nicht gestartet: "), l::status);
+    }
+
+    @Test
+    void lesefehler_beendet_den_prozess() throws Exception {
+        // Ein Fehler beim Lesen der Ausgabe, hier aus dem Log, ohne Abbruch.
+        long[] pid = {0};
+        var kaputt = Logger.getAnonymousLogger();
+        kaputt.setUseParentHandlers(false);
+        kaputt.addHandler(new Handler() {
+            @Override
+            public void publish(LogRecord r) {
+                if (r.getMessage().contains("bereit")) {
+                    try {
+                        // Nur der erste Baum: b endet ohnehin selbst.
+                        pid[0] = pid[0] == 0 ? pid() : pid[0];
+                    } catch (Exception e) {
+                        throw new IllegalStateException(e);
+                    }
+                    throw new IllegalStateException("Log voll");
+                }
+                log.add(r.getMessage());
+            }
+
+            @Override
+            public void flush() {}
+
+            @Override
+            public void close() {}
+        });
+        var l = new Laeufe(konf(JAVA, false, List.of()), kaputt, tmp.resolve("renderer.pid"));
+        l.starte("Test", List.of(new Auftrag("a", falscher("sleep")), new Auftrag("b", falscher("exit", "0"))));
+        assertTrue(l.warte(30_000));
+        assertTrue(pid[0] > 0);
+        assertFalse(lebt(pid[0]));
+        assertTrue(l.status().contains(": a beendet, Ausgabe nicht gelesen: java.lang.IllegalStateException: Log voll, b "),
+                l::status);
+        assertFalse(Files.exists(tmp.resolve("renderer.pid")));
     }
 
     @Test

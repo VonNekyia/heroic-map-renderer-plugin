@@ -5,7 +5,7 @@ import java.io.FileOutputStream;
 import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
 
-/** Steht in den Tests für den Renderer: `exit N` endet mit Code N, `sleep` wartet eine Minute. */
+/** Steht in den Tests für den Renderer: gibt Zeilen wie er aus; `exit N` endet mit Code N, `sleep` wartet eine Minute. */
 public final class FalscherRenderer {
 
     public static void main(String[] args) throws InterruptedException {
@@ -13,6 +13,7 @@ public final class FalscherRenderer {
         out.println("RAYON_NUM_THREADS=" + System.getenv("RAYON_NUM_THREADS"));
         out.println("Höhen:      bereit");
         System.err.println("auf stderr");
+        out.println("            200/400 Kacheln");
         switch (args[0]) {
             case "exit" -> System.exit(Integer.parseInt(args[1]));
             case "sleep" -> Thread.sleep(60_000);

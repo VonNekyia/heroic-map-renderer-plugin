@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.regex.Pattern;
 
 /**
  * Die Läufe des Renderers: einer zur Zeit, darin je Baum ein Kindprozess, nacheinander.
@@ -28,6 +29,9 @@ final class Laeufe {
     record Auftrag(String baum, List<String> befehl) {}
 
     private static final byte[] MAGIE = "HMRSTAND".getBytes(StandardCharsets.US_ASCII);
+    private static final String ABGEBROCHEN = "abgebrochen";
+    /** Die Zeile, mit der der Renderer alle 200 Kacheln den Fortschritt meldet. */
+    private static final Pattern FORTSCHRITT = Pattern.compile("\\s*\\d+/\\d+ Kacheln");
 
     private final Konfiguration konf;
     private final Logger log;
@@ -237,16 +241,11 @@ final class Laeufe {
                     laeuft = name + ", Baum " + a.baum();
                 }
                 log.info(name + ", Baum " + a.baum() + ": " + String.join(" ", a.befehl()));
-                Integer code = fuehreAus(a.befehl());
-                if (code == null) {
-                    ergebnisse.add(a.baum() + " abgebrochen");
+                ergebnisse.add(a.baum() + " " + fuehreAus(a.befehl()));
+                if (istAbgebrochen()) {
                     break;
                 }
-                ergebnisse.add(a.baum() + (code == 0 ? " fertig" : " mit Code " + code));
             }
-        } catch (IOException e) {
-            log.log(Level.SEVERE, "Renderer nicht gestartet", e);
-            ergebnisse.add("Renderer nicht gestartet: " + e.getMessage());
         } finally {
             String ende = name + " bis " + LocalTime.now().truncatedTo(ChronoUnit.SECONDS) + ": " + String.join(", ", ergebnisse);
             synchronized (this) {
@@ -259,17 +258,22 @@ final class Laeufe {
         }
     }
 
-    /** Ein Kindprozess bis zu seinem Ende; sein Code, oder null, wenn er abgebrochen wurde. */
-    private Integer fuehreAus(List<String> befehl) throws IOException {
+    /** Ein Kindprozess bis zu seinem Ende, und was aus ihm wurde. Er endet auf jedem Weg hier. */
+    private String fuehreAus(List<String> befehl) {
         var pb = new ProcessBuilder(befehl).redirectErrorStream(true);
-        // ponytail: ein Thread über rayon, bis #148 --threads und die Priorität bringt.
+        // ponytail: ein Thread über rayon, bis heroic-map-renderer#148 --threads und die Priorität bringt.
         pb.environment().put("RAYON_NUM_THREADS", "1");
         Process p;
         synchronized (this) {
             if (abgebrochen) {
-                return null;
+                return ABGEBROCHEN;
             }
-            p = pb.start();
+            try {
+                p = pb.start();
+            } catch (IOException e) {
+                log.log(Level.SEVERE, "Renderer nicht gestartet", e);
+                return "nicht gestartet: " + e.getMessage();
+            }
             prozess = p;
         }
         try {
@@ -278,26 +282,58 @@ final class Laeufe {
         } catch (IOException e) {
             log.log(Level.WARNING, "PID-Datei " + pidDatei + " nicht geschrieben", e);
         }
-        // ponytail: jede Zeile ins Log, bei der grossen Welt rund 12 500 Zeilen Fortschritt; #149 bringt ihn als JSON.
+        try {
+            lies(p);
+            int code = p.waitFor();
+            return istAbgebrochen() ? ABGEBROCHEN : code == 0 ? "fertig" : "mit Code " + code;
+        } catch (IOException | RuntimeException e) {
+            // Ein abgebrochener Prozess kann die Leitung mitten in einer Zeile schliessen.
+            if (istAbgebrochen()) {
+                return ABGEBROCHEN;
+            }
+            log.log(Level.SEVERE, "Ausgabe des Renderers nicht gelesen, er wird beendet", e);
+            return "beendet, Ausgabe nicht gelesen: " + e;
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return ABGEBROCHEN;
+        } finally {
+            beende(p);
+            try {
+                Files.deleteIfExists(pidDatei);
+            } catch (IOException e) {
+                log.log(Level.WARNING, "PID-Datei " + pidDatei + " nicht entfernt", e);
+            }
+        }
+    }
+
+    /**
+     * Liest die Ausgabe bis zum Ende: den Fortschritt nur für den Status, alles andere auch ins Log.
+     * Siehe docs/laeufe.md, „Der Kindprozess“.
+     */
+    private void lies(Process p) throws IOException {
         try (var r = p.inputReader(StandardCharsets.UTF_8)) {
             for (String z; (z = r.readLine()) != null; ) {
                 letzteZeile = z;
-                log.info(z);
-            }
-        } catch (IOException e) {
-            // Ein abgebrochener Prozess kann die Leitung mitten in einer Zeile schliessen.
-            if (!istAbgebrochen()) {
-                throw e;
+                if (!FORTSCHRITT.matcher(z).matches()) {
+                    log.info(z);
+                }
             }
         }
+    }
+
+    /** Beendet den Prozess, falls er noch läuft, und wartet auf ihn; nach 10 s hart. */
+    private static void beende(Process p) {
+        if (!p.isAlive()) {
+            return;
+        }
+        p.destroy();
         try {
-            int code = p.waitFor();
-            Files.deleteIfExists(pidDatei);
-            return istAbgebrochen() ? null : code;
+            if (!p.waitFor(10, TimeUnit.SECONDS)) {
+                p.destroyForcibly().waitFor(5, TimeUnit.SECONDS);
+            }
         } catch (InterruptedException e) {
             p.destroyForcibly();
             Thread.currentThread().interrupt();
-            return null;
         }
     }
 

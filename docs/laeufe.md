@@ -12,7 +12,7 @@ code:
 Ein Lauf startet den Renderer je Baum einmal als Kindprozess, die Bäume
 nacheinander, über `ProcessBuilder`. Es läuft höchstens ein Lauf zur Zeit.
 Den Anstoss gibt ein Befehl oder der Zeitplan der Updates. Die Ausgabe des
-Renderers steht im Log des Servers. Der Code steht in `Laeufe` in
+Renderers steht im Log des Servers, sein Fortschritt nur im Status. Der Code steht in `Laeufe` in
 [`Laeufe.java`](../src/main/java/com/nekyia/heroicmap/Laeufe.java), die
 Befehle und der Zeitplan in `HeroicMapPlugin`. Der Renderer als Kindprozess
 ist die Entscheidung des Maintainers in heroic-map-renderer#153.
@@ -54,9 +54,14 @@ Lauf, fällt das Update aus.
   bis heroic-map-renderer#148 `--threads` und eine niedrige Priorität bringt. Eine Priorität
   setzt das Plugin noch nicht.
 - **Ausgabe:** stdout und stderr zusammen, Zeile für Zeile als UTF-8 ins
-  Log. Der Renderer meldet den Fortschritt alle 200 Kacheln, bei der grossen
-  Welt rund 12 500 Zeilen je vollem Lauf. Mit heroic-map-renderer#149 kommt der Fortschritt als
-  JSON, dann fasst das Plugin ihn zusammen.
+  Log, bis auf den Fortschritt. Den meldet der Renderer alle 200 Kacheln als
+  `n/N Kacheln`, mit einem Thread rund alle 10 s, bei der grossen Welt rund
+  12 500 Zeilen je vollem Lauf. Er steht nur in `status` als letzte Zeile.
+  Mit heroic-map-renderer#149 kommt er als JSON.
+- **Fehler beim Lesen:** Bricht das Lesen der Ausgabe ohne Abbruch ab,
+  beendet das Plugin den Prozess wie bei `cancel` und wartet auf ihn. Ein
+  Prozess, dessen Ausgabe niemand liest, bliebe sonst stehen, sobald die
+  Leitung voll ist. Im Status steht „beendet, Ausgabe nicht gelesen“.
 - **Ende:** Code 0 heisst fertig. Jeder andere Code steht im Log und im
   Status. Der nächste Baum läuft trotzdem.
 - **Faden:** ein eigener Faden `HeroicMap-Lauf`, nicht einer aus dem Pool
