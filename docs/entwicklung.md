@@ -4,7 +4,6 @@ description: Bauen und Testen mit Gradle 9.7.1 und Java 25, was im Jar steckt, d
 code:
   - build.gradle.kts
   - .github/workflows/ci.yml
-  - .github/pruefe-doku.sh
   - src/test/java/com/nekyia/heroicmap/LaeufeTest.java
   - src/test/java/com/nekyia/heroicmap/KonfigurationTest.java
   - src/test/java/com/nekyia/heroicmap/FalscherRenderer.java
@@ -36,12 +35,14 @@ kommt mit heroic-map-renderer#146 dazu.
 - **`LaeufeTest`, Prozesse:** mit `FalscherRenderer`, einer Testklasse, die
   der Test direkt über `java` startet, ohne Hülle wie `cmd` oder `sh`
   dazwischen. So trifft ein Abbruch den Prozess selbst. Geprüft:
-  Ausgabe samt stderr und Umlauten im Log, `RAYON_NUM_THREADS=1`,
-  Fehlercode, Abbruch vor und während eines Prozesses, Stoppen, ein Lauf
-  zur Zeit, ein Binär, das fehlt, und verwaiste Prozesse.
-- **Mutationen,** am 05.10.: Jede der zehn Änderungen am Code liess einen
-  Test fallen, etwa ohne `RAYON_NUM_THREADS`, ohne `destroy`, ohne
-  `--resume` oder ohne den Vergleich der ausführbaren Datei.
+  Ausgabe samt stderr und Umlauten im Log, der Fortschritt nur im Status,
+  `RAYON_NUM_THREADS=1`, Fehlercode, Abbruch vor und während eines
+  Prozesses, ein Fehler beim Lesen der Ausgabe, Stoppen, ein Lauf zur Zeit,
+  ein Binär, das fehlt, und verwaiste Prozesse.
+- **Mutationen,** am 05.10.: Jede der vierzehn Änderungen am Code liess
+  einen Test fallen, etwa ohne `RAYON_NUM_THREADS`, ohne `destroy`, ohne
+  `--resume`, ohne den Vergleich der ausführbaren Datei oder ohne das Ende
+  des Prozesses nach einem Lesefehler.
 
 ## Probe mit dem echten Renderer
 
@@ -55,6 +56,6 @@ Server mit dem echten Renderer an der Testwelt: voller Lauf, Abbruch,
 
 - **Gradle** unter Ubuntu und Windows, denn `Process.destroy` wirkt dort
   verschieden.
-- **Doku:** `bash .github/pruefe-doku.sh` prüft Verweise, Links,
-  Frontmatter und `docs/index.md`. Das Skript ist eine Kopie aus dem
-  Renderer.
+- **Doku:** Das Prüfskript des Renderers prüft Verweise, Links,
+  Frontmatter und `docs/index.md`. Die CI lädt es vom Branch `master`, wie
+  in [`AGENTS.md`](../AGENTS.md) beschrieben.

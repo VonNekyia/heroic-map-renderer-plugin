@@ -29,8 +29,9 @@ mit Backend und Frontend ab.
   mit „Siehe docs/…“ meint immer dieses Repo.
 - **Issues:** Plan und Aufträge stehen im Renderer, etwa
   heroic-map-renderer#153. Eine Nummer ohne Repo meint dieses.
-- **Prüfung der Doku:** `bash .github/pruefe-doku.sh`, eine Kopie aus dem
-  Renderer.
+- **Prüfung der Doku:** das Skript des Renderers, vom Branch `master`
+  geladen, damit es es nur einmal gibt:
+  `curl -fsSL https://raw.githubusercontent.com/VonNekyia/heroic-map-renderer/master/.github/pruefe-doku.sh | bash`.
 - **Messungen:** Wer hier baut oder testet, prüft vorher die Sperrdatei
   `messung.lock` im Repo des Renderers (Regel 3), denn beide teilen den
   Rechner.

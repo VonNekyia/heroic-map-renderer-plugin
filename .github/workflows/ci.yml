@@ -18,14 +18,15 @@ jobs:
       run:
         shell: bash
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: 25
 
-      - uses: gradle/actions/setup-gradle@v4
+      # Prüft auch, dass gradle-wrapper.jar ein Wrapper von Gradle ist.
+      - uses: gradle/actions/setup-gradle@v6
 
       - name: Build und Tests
         timeout-minutes: 15
@@ -36,8 +37,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 120
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - name: Verweise und Frontmatter
+      # Die Prüfung des Renderers, damit es sie nur einmal gibt. Mit
+      # shell: bash gilt pipefail, sonst ginge ein Fehler von curl durch.
+      - name: Verweise, Links und Frontmatter
         timeout-minutes: 5
-        run: bash .github/pruefe-doku.sh
+        shell: bash
+        run: curl -fsSL https://raw.githubusercontent.com/VonNekyia/heroic-map-renderer/master/.github/pruefe-doku.sh | bash
