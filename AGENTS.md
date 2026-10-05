@@ -35,3 +35,7 @@ mit Backend und Frontend ab.
 - **Messungen:** Wer hier baut oder testet, prüft vorher die Sperrdatei
   `messung.lock` im Repo des Renderers (Regel 3), denn beide teilen den
   Rechner.
+- **Regel 20, eine Ausnahme:** Die Kontaktadresse in `README.md` und
+  `NOTICE` darf stehen. Die Usage Guidelines von Mojang verlangen bei jeder
+  Nutzung einen Kontakt und den Herausgeber. Sonst steht nirgends ein Welt-
+  oder Servername.

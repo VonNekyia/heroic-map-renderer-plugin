@@ -6,6 +6,10 @@ dem Server rendert, aktuell hält und ausliefert.
 
 **Stand:** im Aufbau, noch kein Release.
 
+## Herausgeber und Kontakt
+
+Herausgeber und verantwortlich: VonNekyia. Kontakt: contact@mcterranova.com.
+
 ## Lizenz
 
 [Apache-2.0](LICENSE), Hinweise in [NOTICE](NOTICE).
