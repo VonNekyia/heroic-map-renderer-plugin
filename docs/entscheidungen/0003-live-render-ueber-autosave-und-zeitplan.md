@@ -77,18 +77,23 @@ Von „Block gesetzt“ bis „Kachel neu“ vergehen so rund 1 bis 3 min.
   - Der grösste Umbau von allen.
 
 C und D lohnen nur, wenn Sekunden gewollt sind. B, C und D kommen erst,
-wenn die Messung sie verlangt.
+wenn eine Messung sie verlangt. Die an der Testwelt verlangt sie nicht,
+siehe [Live-Render, Weg A](../messungen/2026-10-05-live-render-weg-a.md).
 
 ## Folgen
 
 - **Mehr Schreiben am Server:** Er schreibt geänderte und geladene Chunks
-  fünfmal so oft. Was die Kopien im Hauptthread die Tickzeit kosten, wird
-  am Testserver gemessen.
+  fünfmal so oft.
+  - Gemessen an 4096 stets geänderten Chunks steigt die Tickzeit nicht
+    messbar.
+  - Die Kopie im Hauptthread kostet 0,04 bis 0,07 ms je Chunk, höchstens
+    24 je Tick.
+  - Siehe [Live-Render, Weg A](../messungen/2026-10-05-live-render-weg-a.md).
 - **Mehr Lesen am Renderer:** Jeder neu gespeicherte Chunk hat einen neuen
-  Stempel. Das Update liest ihn und rechnet seinen Fingerabdruck, rund
-  0,9 ms je Chunk und Kern, siehe die Messung
-  [Updates, Kosten](https://github.com/VonNekyia/heroic-map-renderer/blob/master/docs/messungen/2026-10-04-updates.md),
-  Teil C. Viele Spieler heissen viele solche Chunks je Update.
+  Stempel. Das Update liest ihn und rechnet seinen Fingerabdruck.
+  - Gemessen: rund 0,35 ms je Chunk mit einem Thread.
+  - Ein Update ohne Änderung braucht unter 1 s.
+  - Viele Spieler heissen viele solche Chunks je Update.
 - **Hängender Autosave:** Mehr geladene Chunks, als in 60 s durchgehen,
   verlängern die Verzögerung.
 - **Das Log schweigt** bei Updates ohne Änderung. Das Plugin erkennt sie an

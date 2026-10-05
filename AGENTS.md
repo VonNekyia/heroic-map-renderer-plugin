@@ -23,7 +23,7 @@ mit Backend und Frontend ab.
 ## Abweichungen
 
 - **Pfade:** `docs/`, `docs/index.md` und `docs/entscheidungen/` meinen die
-  dieses Repos. Messungen und Bilder hat es noch nicht.
+  dieses Repos, ebenso `docs/messungen/`. Bilder hat es noch nicht.
 - **Verweise auf den Renderer** sind volle Links auf GitHub, denn relative
   Links (Regel 16) reichen nicht über das Repo hinaus. Ein Verweis im Code
   mit „Siehe docs/…“ meint immer dieses Repo.
