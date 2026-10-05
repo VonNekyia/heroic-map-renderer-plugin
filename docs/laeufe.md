@@ -25,7 +25,7 @@ ist die Entscheidung des Maintainers in heroic-map-renderer#153.
 |---|---|
 | `render` | voller Lauf über alle Bäume; setzt einen abgebrochenen fort |
 | `update` | Update über alle Bäume, `--update` |
-| `status` | was läuft, seit wann, mit PID und letzter Zeile; sonst, wie der letzte Lauf endete |
+| `status` | was läuft, seit wann, mit PID und letzter Zeile; dazu je Baum Dauer und Ausgang des letzten Aufrufs, siehe „Status“ |
 | `cancel` | bricht den Lauf ab |
 
 Vor einem vollen Lauf warnt das Plugin noch nicht. Die Schätzung und die
@@ -86,13 +86,40 @@ entschieden in [0003](entscheidungen/0003-live-render-ueber-autosave-und-zeitpla
 - **Fehler beim Lesen:** Bricht das Lesen der Ausgabe ohne Abbruch ab,
   beendet das Plugin den Prozess wie bei `cancel` und wartet auf ihn. Ein
   Prozess, dessen Ausgabe niemand liest, bliebe sonst stehen, sobald die
-  Leitung voll ist. Im Status steht „beendet, Ausgabe nicht gelesen“.
-- **Ende:** Code 0 heisst fertig. Jeder andere Code steht im Log und im
-  Status. Der nächste Baum läuft trotzdem.
+  Leitung voll ist. Im Status steht „Fehler, Ausgabe nicht gelesen,
+  beendet“.
+- **Ende:** Code 0 heisst „Kacheln gezeichnet“ oder bei einem leisen Update
+  „nichts zu zeichnen“. Jeder andere Code steht als „Fehler, Code N“ im Log
+  und im Status. Der nächste Baum läuft trotzdem.
 - **Faden:** ein eigener Faden `HeroicMap-Lauf`, nicht einer aus dem Pool
   des Schedulers, denn ein voller Lauf dauert Stunden.
 - **Hangar:** Der Scanner stuft `Runtime.exec` als `HIGHEST` ein,
   `ProcessBuilder` prüft er nicht (heroic-map-renderer#153).
+
+## Status
+
+`/heroicmap status` nennt in der ersten Zeile, was läuft. Darunter steht je
+Baum eine Zeile zu seinem letzten Aufruf seit dem Start des Servers, Update
+wie voller Lauf:
+
+```
+Kein Lauf.
+2x1-se, zuletzt Update vor 42,0 s: 0,7 s, nichts zu zeichnen
+```
+
+- **Wann:** wie lange der Aufruf her ist.
+- **Dauer:** vom Start des Prozesses bis zu seinem Ende, unter einer Minute
+  mit einer Nachkommastelle, sonst in min oder h.
+- **Ausgang:** „nichts zu zeichnen“, „Kacheln gezeichnet“, „abgebrochen“
+  oder „Fehler, …“ mit dem Grund.
+- **Nur im Status:** Die Dauer kommt nicht ins Log. Leise Updates bleiben
+  leise, siehe „Zeitplan“.
+- **Wozu:** Die Dauer eines Updates ohne Änderung kommt so vom echten
+  Server. An der Testwelt waren es 0,6 bis 0,8 s, siehe
+  [Live-Render, Weg A](messungen/2026-10-05-live-render-weg-a.md). Liegt sie
+  auf einem echten Server über rund 10 s, kommen die Wege B und D aus
+  [0003](entscheidungen/0003-live-render-ueber-autosave-und-zeitplan.md)
+  wieder auf den Tisch.
 
 ## Abbruch und Stoppen
 

@@ -7,11 +7,16 @@ import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Duration;
+import java.time.Instant;
 import java.time.LocalTime;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
@@ -30,9 +35,13 @@ final class Laeufe {
     /** Ein Aufruf des Renderers für einen Baum; ein leiser schreibt nichts ins Log, wenn er nichts zeichnet. */
     record Auftrag(String baum, List<String> befehl, boolean leise) {}
 
+    /** Der letzte Aufruf eines Baums, für den Status. */
+    private record Letzter(String name, Instant ende, Duration dauer, String ausgang) {}
+
     private static final byte[] MAGIE = "HMRSTAND".getBytes(StandardCharsets.US_ASCII);
     private static final String ABGEBROCHEN = "abgebrochen";
     private static final String NICHTS = "nichts zu zeichnen";
+    private static final String GEZEICHNET = "Kacheln gezeichnet";
     /** Die Zeile, mit der der Renderer ein Update ohne Änderung meldet. */
     private static final Pattern NICHTS_ZEILE = Pattern.compile("Update:\\s+nichts zu zeichnen");
     /** Die Zeile, mit der der Renderer alle 200 Kacheln den Fortschritt meldet. */
@@ -50,7 +59,7 @@ final class Laeufe {
     private String laeuft;
     private LocalTime seit;
     private boolean abgebrochen;
-    private String zuletzt = "noch keiner";
+    private final Map<String, Letzter> letzte = new LinkedHashMap<>();
 
     private volatile String letzteZeile = "";
 
@@ -160,12 +169,33 @@ final class Laeufe {
         };
     }
 
+    /**
+     * Was läuft, und je Baum Dauer und Ausgang seines letzten Aufrufs.
+     * Siehe docs/laeufe.md, „Status“.
+     */
     synchronized String status() {
+        var text = new StringBuilder();
         if (faden == null) {
-            return "Kein Lauf. Zuletzt: " + zuletzt;
+            text.append(letzte.isEmpty() ? "Kein Lauf seit dem Start." : "Kein Lauf.");
+        } else {
+            String pid = prozess != null ? ", PID " + prozess.pid() : "";
+            text.append("Läuft seit ").append(seit).append(": ").append(laeuft).append(pid)
+                    .append(". Letzte Zeile: ").append(letzteZeile.strip());
         }
-        String pid = prozess != null ? ", PID " + prozess.pid() : "";
-        return "Läuft seit " + seit + ": " + laeuft + pid + ". Letzte Zeile: " + letzteZeile.strip();
+        var jetzt = Instant.now();
+        letzte.forEach((baum, l) -> text.append('\n').append(baum).append(", zuletzt ").append(l.name())
+                .append(" vor ").append(dauer(Duration.between(l.ende(), jetzt))).append(": ")
+                .append(dauer(l.dauer())).append(", ").append(l.ausgang()));
+        return text.toString();
+    }
+
+    /** Eine Dauer für den Status: unter einer Minute mit einer Nachkommastelle, sonst in min oder h. */
+    static String dauer(Duration d) {
+        long s = d.toSeconds();
+        if (s < 60) {
+            return String.format(Locale.GERMAN, "%.1f s", d.toMillis() / 1000.0);
+        }
+        return s < 3600 ? s / 60 + " min " + s % 60 + " s" : s / 3600 + " h " + s % 3600 / 60 + " min";
     }
 
     /** Bricht den Lauf ab; false, wenn keiner läuft. */
@@ -255,7 +285,13 @@ final class Laeufe {
                 }
                 List<String> puffer = a.leise() ? new ArrayList<>() : null;
                 melde(puffer, name + ", Baum " + a.baum() + ": " + String.join(" ", a.befehl()));
-                ergebnisse.add(a.baum() + " " + fuehreAus(a.befehl(), puffer));
+                long beginn = System.nanoTime();
+                String ausgang = fuehreAus(a.befehl(), puffer);
+                var letzter = new Letzter(name, Instant.now(), Duration.ofNanos(System.nanoTime() - beginn), ausgang);
+                synchronized (this) {
+                    letzte.put(a.baum(), letzter);
+                }
+                ergebnisse.add(a.baum() + " " + ausgang);
                 if (istAbgebrochen()) {
                     break;
                 }
@@ -266,7 +302,6 @@ final class Laeufe {
                 faden = null;
                 prozess = null;
                 laeuft = null;
-                zuletzt = ende;
             }
             if (!ergebnisse.stream().allMatch(e -> e.endsWith(" " + NICHTS))) {
                 log.info(ende);
@@ -301,7 +336,7 @@ final class Laeufe {
                 p = pb.start();
             } catch (IOException e) {
                 log.log(Level.SEVERE, "Renderer nicht gestartet", e);
-                return "nicht gestartet: " + e.getMessage();
+                return "Fehler, nicht gestartet: " + e.getMessage();
             }
             prozess = p;
         }
@@ -319,14 +354,14 @@ final class Laeufe {
                 return ABGEBROCHEN;
             }
             still = code == 0 && puffer != null && puffer.stream().anyMatch(z -> NICHTS_ZEILE.matcher(z).matches());
-            return still ? NICHTS : code == 0 ? "fertig" : "mit Code " + code;
+            return still ? NICHTS : code == 0 ? GEZEICHNET : "Fehler, Code " + code;
         } catch (IOException | RuntimeException e) {
             // Ein abgebrochener Prozess kann die Leitung mitten in einer Zeile schliessen.
             if (istAbgebrochen()) {
                 return ABGEBROCHEN;
             }
             log.log(Level.SEVERE, "Ausgabe des Renderers nicht gelesen, er wird beendet", e);
-            return "beendet, Ausgabe nicht gelesen: " + e;
+            return "Fehler, Ausgabe nicht gelesen, beendet: " + e;
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             return ABGEBROCHEN;

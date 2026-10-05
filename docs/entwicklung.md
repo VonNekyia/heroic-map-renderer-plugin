@@ -36,13 +36,15 @@ kommt mit heroic-map-renderer#146 dazu.
   der Test direkt über `java` startet, ohne Hülle wie `cmd` oder `sh`
   dazwischen. So trifft ein Abbruch den Prozess selbst. Geprüft:
   Ausgabe samt stderr und Umlauten im Log, der Fortschritt nur im Status,
+  je Baum Dauer und Ausgang im Status, aber nicht im Log,
   `RAYON_NUM_THREADS=1`, Fehlercode, Abbruch vor und während eines
   Prozesses, ein Fehler beim Lesen der Ausgabe, Stoppen, ein Lauf zur Zeit,
   ein Binär, das fehlt, und verwaiste Prozesse.
-- **Mutationen,** am 05.10.: Jede der vierzehn Änderungen am Code liess
-  einen Test fallen, etwa ohne `RAYON_NUM_THREADS`, ohne `destroy`, ohne
-  `--resume`, ohne den Vergleich der ausführbaren Datei oder ohne das Ende
-  des Prozesses nach einem Lesefehler.
+- **Mutationen,** am 05.10.: Jede der 25 Änderungen am Code liess einen
+  Test fallen, etwa ohne `RAYON_NUM_THREADS`, ohne `destroy`, ohne
+  `--resume`, ohne den Vergleich der ausführbaren Datei, ohne das Ende des
+  Prozesses nach einem Lesefehler, ohne leise Updates oder mit einer Dauer
+  von null im Status.
 
 ## Probe mit dem echten Renderer
 
