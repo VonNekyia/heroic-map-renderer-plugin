@@ -26,7 +26,8 @@ import org.junit.jupiter.api.io.TempDir;
 class LaeufeTest {
 
     private static final Path JAVA = Path.of(ProcessHandle.current().info().command().orElseThrow());
-    private static final Konfiguration.Baum KARTE = new Konfiguration.Baum("2:1", "se", null, false);
+    static final Konfiguration.Download DOWNLOAD = new Konfiguration.Download(10, 5, 20, java.time.LocalTime.MIDNIGHT, 10);
+    private static final Konfiguration.Baum KARTE = new Konfiguration.Baum("2:1", "se", null, false, false);
 
     @TempDir
     Path tmp;
@@ -54,7 +55,7 @@ class LaeufeTest {
 
     private Konfiguration konf(Path renderer, boolean gpu, List<Konfiguration.Baum> baeume) {
         return new Konfiguration(renderer, tmp.resolve("world"), tmp.resolve("tiles"),
-                List.of(tmp.resolve("a1"), tmp.resolve("a2")), List.of(tmp.resolve("d")), gpu, 30, baeume);
+                List.of(tmp.resolve("a1"), tmp.resolve("a2")), List.of(tmp.resolve("d")), gpu, 30, baeume, DOWNLOAD);
     }
 
     private Laeufe laeufe(Konfiguration.Baum... baeume) {
@@ -251,6 +252,44 @@ class LaeufeTest {
     }
 
     @Test
+    void erfolgreich_seit_nur_nach_einem_lauf_ohne_resume_der_fertig_wurde() throws Exception {
+        var l = laeufe();
+        int[] nachLauf = {0};
+        l.nachLauf(() -> nachLauf[0]++);
+        assertTrue(l.erfolgreichSeit("a").isEmpty());
+        var vorher = java.time.Instant.now();
+        l.starte("Update", List.of(new Auftrag("a", falscher("nichts"), true), new Auftrag("b", falscher("exit", "3"), true)));
+        assertTrue(l.warte(30_000));
+        var a = l.erfolgreichSeit("a").orElseThrow();
+        assertFalse(a.isBefore(vorher), a::toString);
+        assertTrue(l.erfolgreichSeit("b").isEmpty(), "Fehler zählt nicht");
+        assertEquals(0, nachLauf[0], "nichts gezeichnet, kein neues Angebot");
+
+        var resume = new ArrayList<>(falscher("exit", "0"));
+        resume.add("--resume");
+        l.starte("Test", List.of(new Auftrag("a", resume, false), new Auftrag("c", falscher("exit", "0"), false)));
+        assertTrue(l.warte(30_000));
+        assertEquals(a, l.erfolgreichSeit("a").orElseThrow(), "--resume zählt nicht");
+        assertTrue(l.erfolgreichSeit("c").isPresent());
+        assertEquals(2, nachLauf[0], "je Baum mit gezeichneten Kacheln");
+    }
+
+    @Test
+    void nach_lauf_gleich_nach_dem_baum_nicht_erst_am_ende() throws Exception {
+        var l = laeufe();
+        var gemeldet = new java.util.concurrent.atomic.AtomicInteger();
+        l.nachLauf(gemeldet::incrementAndGet);
+        l.starte("Voller Lauf", List.of(new Auftrag("a", falscher("exit", "0"), false), new Auftrag("b", falscher("sleep"), false)));
+        for (int i = 0; i < 3000 && !l.status().contains("Baum b, PID"); i++) {
+            Thread.sleep(10);
+        }
+        assertTrue(l.status().contains("Baum b, PID"), l::status);
+        assertEquals(1, gemeldet.get(), "a ist fertig, b läuft noch");
+        l.stoppe();
+        assertEquals(1, gemeldet.get());
+    }
+
+    @Test
     void dauer_fuer_den_status() {
         assertEquals("0,7 s", Laeufe.dauer(java.time.Duration.ofMillis(700)));
         assertEquals("59,9 s", Laeufe.dauer(java.time.Duration.ofMillis(59_940)));
@@ -316,7 +355,7 @@ class LaeufeTest {
 
     @Test
     void scale_cinematic_und_grafikkarte() {
-        var baum = new Konfiguration.Baum("top-north", "s", 4, true);
+        var baum = new Konfiguration.Baum("top-north", "s", 4, true, false);
         var plan = new Laeufe(konf(JAVA, true, List.of(baum)), logger, tmp.resolve("renderer.pid")).plane(Art.VOLL);
         assertEquals("top-north-s-cinematic", plan.getFirst().baum());
         assertEquals(List.of("--camera", "top-north", "--direction", "s", "--scale", "4", "--cinematic", "--gpu", "auto"),

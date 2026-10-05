@@ -1,0 +1,193 @@
+---
+title: Download
+description: Der Kartendownload für den Mod, mit dem Kanal heroicmap:karte und seinen vier Nachrichten. Dazu Angebot und Anfrage, das Manifest, das Token, die Grenzen, der tägliche Abgleich, was die Kacheln abdecken, der Stand je Spieler und was ohne Webserver geschieht.
+code:
+  - src/main/java/com/nekyia/heroicmap/Download.java
+  - src/main/java/com/nekyia/heroicmap/Kanal.java
+  - src/main/java/com/nekyia/heroicmap/Satz.java
+  - src/main/java/com/nekyia/heroicmap/Token.java
+---
+
+# Download
+
+Spieler mit dem Mod (heroic-map-renderer#155) laden die Karte vom Server.
+Das Plugin bietet die Bäume an, prüft die Grenzen und stellt ein Token aus.
+Die Kacheln liefert der Server im Renderer (heroic-map-renderer#151), er
+prüft das Token selbst. Plan und Entscheidungen des Maintainers stehen an
+[#154](https://github.com/VonNekyia/heroic-map-renderer/issues/154). Diese
+Seite ist die Stelle für das Protokoll. Der Code steht in `Download`, ohne
+Bukkit, und in `Kanal`, der den Kanal und den Stand im Spieler bedient.
+
+## Angeboten
+
+- **Nur Bäume mit `download: true`,** und die nur mit `camera: "top-north"`,
+  `scale: 4` und ohne `cinematic`, siehe [Konfiguration](konfiguration.md).
+  Vorgabe: keiner.
+- **Ohne angebotenen Baum** meldet das Plugin den Kanal gar nicht an. Der Mod
+  sieht dann, dass der Server nichts anbietet.
+- **Nur mit Manifest:** Ein Baum steht erst im Angebot, wenn sein Manifest
+  lesbar ist, siehe „Manifest“.
+
+## Kanal
+
+`heroicmap:karte`, in beide Richtungen, UTF-8-JSON. Jede Nachricht trägt
+`v` (1), `typ` und `jetzt`, die Uhr des Servers in Epoch s.
+
+| Richtung | `typ` | Felder | Wann |
+|---|---|---|---|
+| Server → Mod | `angebot` | `baeume`: je Baum `id`, `name`, `dimension`, `stand` (Epoch s), `abdeckt_bis` (Epoch s, falls bekannt), `massstaebe`: je `"1"`, `"2"`, `"4"` `bytes` und `kacheln` | sobald der Mod den Kanal anmeldet, und nach jedem Lauf, der Kacheln gezeichnet hat |
+| Mod → Server | `anfrage` | `baum`, `massstab` (1, 2 oder 4), `art`: `voll` oder `abgleich` | der Spieler wählt |
+| Server → Mod | `freigabe` | `baum`, `massstab`, `art`, `abdeckt_bis` (falls bekannt), `url`, `token`, `ablauf` (Epoch s), `manifest_sha256`, `bytes` | auf eine `anfrage`, oder von selbst beim täglichen Abgleich |
+| Server → Mod | `abgelehnt` | `grund` (Text für den Spieler), `wieder` (Epoch s, falls bekannt) | siehe „Anfrage“ |
+
+- **`dimension`** folgt aus `world` in `config.yml`. Die Weltwurzel ist
+  `minecraft:overworld`, ein Ordner `dimensions/<ns>/<name>` heisst
+  `<ns>:<name>`. `map.json` nennt keine Dimension.
+- **`url`** ist die Adresse des Baums am Server. Darunter liegen
+  `map.json`, `manifest` und `{z}/{x}/{y}.webp`. Den Rest legt #151 fest.
+- **`bytes`** in `freigabe`: bei `voll` die Summe des Satzes, bei `abgleich`
+  der Deckel des Tokens.
+- **Der Mod** schickt `anfrage` nur, wenn `ClientPlayNetworking.canSend`
+  wahr ist. Paper meldet dem Client beim Beitritt die Kanäle, die das Plugin
+  angemeldet hat. Belegt an #154.
+
+## Manifest
+
+Der Renderer schreibt `manifest` neben `map.json` des Baums, gzip, je Kachel
+eine Zeile `z/x/y grösse etag` über alle Stufen. Das ETag ist für Plugin und
+Mod undurchsichtig. Das Format steht mit #151 in `docs/plugin.md` des
+Renderers.
+
+Das Plugin liest daraus nur, was es braucht (`Satz.lies`):
+
+- **SHA-256** über die Datei, wie der Server sie ausliefert, für
+  `manifest_sha256`;
+- **je Stufe** die Summe der Grössen und die Zahl der Kacheln;
+- **dazu aus `map.json`** `minZoom` und `maxZoom`, und als `stand` die
+  Änderungszeit von `map.json`.
+
+Gelesen wird beim Start und gleich nach jedem Baum, dessen Prozess Kacheln
+gezeichnet hat, nicht erst nach allen Bäumen des Laufs. Das läuft
+ausserhalb des Hauptthreads und nacheinander, damit ein älterer Satz nie
+einen neueren überschreibt. Danach schickt das Plugin allen Spielern mit
+Mod ein neues Angebot. Ein unlesbares Manifest steht einmal im Log, sein
+Baum fällt aus dem Angebot, bis es sich ändert.
+
+**Massstab und Stufe:** 4 px ist `maxZoom`, 2 px eine Stufe gröber, 1 px
+zwei. Ein Satz enthält seine Stufe und alle gröberen bis `minZoom`. Liegt
+die Stufe unter `minZoom`, gibt es den Massstab nicht.
+
+## Anfrage
+
+Der Reihe nach, die erste Ablehnung gilt:
+
+1. **Lesbar:** höchstens 1024 Byte, ein JSON-Objekt mit `v` 1, `typ`
+   `anfrage`, `baum`, `massstab` 1, 2 oder 4 und `art` `voll` oder `abgleich`.
+   Sonst: „Die Anfrage ist nicht lesbar.“
+2. **Angeboten:** sonst „Diese Karte wird hier nicht zum Download
+   angeboten.“
+3. **Massstab vorhanden:** sonst „Diesen Massstab gibt es für diese Karte
+   nicht.“
+4. **Webserver an:** sonst „Webserver aus.“ So antwortet das Plugin, bis der
+   Server aus #151 läuft.
+5. **Art:** Ein `abgleich` mit einem anderen Massstab als dem gespeicherten,
+   oder ohne gespeicherten, ist ein voller Download. Ein Spieler hat je
+   Baum nur einen Massstab.
+6. **Noch einmal dasselbe Token,** mit dem aktuellen Manifest, und es zählt
+   nicht:
+   - bei `voll` mit demselben Massstab, solange es noch mindestens 10 min
+     gilt, zum Fortsetzen;
+   - bei `abgleich`, solange es jünger als 10 min ist. So kostet eine
+     Neuanfrage nach einem Fehler der Prüfsumme keinen Abgleich, und ein
+     neues Budget gibt es erst nach 10 min. Entschieden im Review, steht an
+     #154.
+7. **Grenzen,** siehe dort, dann ein neues Token und die `freigabe`.
+
+Eine Ablehnung zählt nicht und ändert den Stand nicht.
+
+## Grenzen
+
+| Grenze | Vorgabe | Fenster | Schlüssel in `config.yml` |
+|---|---|---|---|
+| volle Downloads am Server, alle Spieler | 10 | 10 min, gleitend | `download.voll-je-10-min` |
+| volle Downloads je Spieler | 5 | 7 Tage, gleitend | `download.voll-je-woche` |
+| Abgleiche von Hand je Spieler | 20 | 24 h, gleitend | `download.abgleich-je-tag` |
+
+- **Gezählt** wird beim Ausstellen eines Tokens.
+- **`wieder`** in der Ablehnung: Dann fällt die älteste Zeit aus dem
+  Fenster.
+- **Die Grenze des Servers** liegt im Speicher und beginnt nach einem
+  Neustart leer. Die Grenzen je Spieler liegen in seinem Stand.
+- **Ein Abgleich von Hand** bekommt ein neues Token und zählt, sobald das
+  letzte 10 min alt ist, siehe „Anfrage“.
+- **Der tägliche Abgleich** zählt nicht.
+- **Eine Grenze 0** schaltet die Art ab: „Volle Downloads sind auf diesem
+  Server abgeschaltet.“ oder „Abgleiche von Hand sind auf diesem Server
+  abgeschaltet.“, ohne `wieder`.
+- **`wieder`** nimmt nur Zeiten im Fenster. Senkt der Betreiber eine Grenze,
+  ist es der Zeitpunkt, ab dem weniger als die neue Grenze im Fenster
+  liegen.
+- **Offen beim Maintainer:** 20 Abgleiche zu je 10 % sind bis zu 200 % des
+  Satzes je Spieler und Tag. Die Vorgabe legt er fest.
+
+## Token
+
+Byte für Byte in
+[`docs/plugin.md`, „Token“](https://github.com/VonNekyia/heroic-map-renderer/blob/master/docs/plugin.md#token)
+des Renderers. `TokenTest` prüft gegen dessen Testvektoren. Die Kopie in
+`src/test/resources/token.json` vergleicht die CI mit dem Original.
+
+- **Ablauf:** 24 h nach dem Ausstellen.
+- **Stufe:** die zum Massstab.
+- **Deckel:** bei `voll` das 1,5-Fache der Bytes des Satzes, bei `abgleich`
+  10 %.
+- **Zufall:** 16 Byte aus `SecureRandom`.
+- **Geheimnis:** 32 Byte in `plugins/HeroicMap/token.geheimnis`, beim ersten
+  Start erzeugt. Unter Linux entsteht die Datei gleich nur für den Besitzer
+  lesbar, nicht erst danach. Hat sie eine andere Länge, ersetzt das Plugin
+  sie und warnt im Log; ältere Token gelten dann nicht mehr.
+
+## Täglicher Abgleich
+
+Meldet ein Spieler mit Mod den Kanal an, und bei jedem neuen Angebot an alle
+Spieler mit Mod, schickt das Plugin je Baum eine `freigabe` mit `art`
+`abgleich`, wenn alle drei zutreffen:
+
+- er hat für den Baum einen Massstab gespeichert, hat also schon geladen;
+- sein letzter Abgleich, auch ein voller Download, liegt vor dem letzten
+  Zeitpunkt von `download.abgleich-ab`, heute oder gestern, in der
+  Standardzeitzone der JVM des Servers;
+- der Webserver läuft.
+
+Er zählt gegen keine Grenze und hat den Deckel eines Abgleichs. Wer über
+die Uhrzeit hinaus online bleibt, bekommt ihn mit dem nächsten neuen
+Angebot, also nach dem nächsten Lauf, der Kacheln zeichnet. Wer vor dem
+ersten Lesen der Manifeste beitritt, bekommt ihn mit dem ersten Angebot.
+
+## Was die Kacheln abdecken
+
+`abdeckt_bis` ist der Beginn des Laufs, der das Manifest des Baums
+schrieb, minus `download.reserve-minuten`, Vorgabe 10. Festgehalten wird er,
+wenn das Plugin ein neues Manifest liest. So gehören Manifest und
+`abdeckt_bis` immer zum selben Lauf.
+
+- **Auf dem Stand** ist ein Baum nach „Kacheln gezeichnet“ oder „nichts zu
+  zeichnen“, siehe [Läufe](laeufe.md), „Status“.
+- **`--resume` zählt nicht:** Er behält Kacheln von vor seinem Beginn.
+- **Nach einem Neustart** fehlt das Feld bis zum nächsten solchen Lauf. Der
+  Mod behält dann alle eigenen Einträge.
+- **Die Reserve** muss zum Autosave von Paper passen, siehe
+  [Läufe](laeufe.md), „Zeitplan“. Hängt der Autosave hinterher, kann eine
+  Änderung vor `abdeckt_bis` noch fehlen; der nächste Abgleich bringt sie.
+
+## Stand je Spieler
+
+JSON unter `heroicmap:download` im `PersistentDataContainer` des Spielers:
+
+- die Zeiten der vollen Downloads und der Abgleiche von Hand;
+- je Baum der Massstab, die Zeit des letzten Abgleichs und je Art das
+  zuletzt ausgestellte Token mit Massstab, Ablauf und Deckel.
+
+Ist der Stand unlesbar, beginnt er neu. Die Warnung im Log kommt einmal je
+Spieler und Start, nicht je Anfrage; ein Client kann so das Log nicht
+füllen. `DownloadTest` prüft den Weg hin und zurück über JSON.

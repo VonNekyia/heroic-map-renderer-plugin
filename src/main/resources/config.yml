@@ -21,5 +21,20 @@ tiles: plugins/HeroicMap/tiles
 update-minutes: 2
 
 # Je Eintrag ein Kachelbaum. Die Kamera in Anführungszeichen.
+# download: true bietet einen Baum dem Mod zum Download an,
+# nur mit camera "top-north", scale 4 und ohne cinematic.
 trees:
   - camera: "2:1"
+
+# Kartendownload für den Mod, siehe docs/download.md.
+download:
+  # Volle Downloads, die der Server in 10 Minuten ausgibt, alle Spieler zusammen.
+  voll-je-10-min: 10
+  # Volle Downloads je Spieler in 7 Tagen.
+  voll-je-woche: 5
+  # Abgleiche von Hand je Spieler in 24 Stunden.
+  abgleich-je-tag: 20
+  # Ab dieser Uhrzeit des Servers holt der erste Join eines Tages den Abgleich.
+  abgleich-ab: "00:00"
+  # Was die Kacheln sicher abdecken: Beginn des letzten Laufs minus so viele Minuten.
+  reserve-minuten: 10

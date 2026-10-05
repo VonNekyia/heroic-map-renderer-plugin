@@ -27,6 +27,13 @@ Gelesen und geprüft in `Konfiguration.aus` in
 | `tiles` | `plugins/HeroicMap/tiles` | `--tiles` | die Wurzel der Kachelbäume |
 | `update-minutes` | `2` | – | Abstand der Updates in Minuten, `0` schaltet sie ab; dazu der Autosave von Paper auf 60 s, siehe [Läufe](laeufe.md), „Zeitplan“ |
 | `trees` | ein Baum `"2:1"` | siehe „Bäume“ | je Eintrag ein Kachelbaum |
+| `download.voll-je-10-min` | `10` | – | volle Downloads, die der Server in 10 min ausgibt |
+| `download.voll-je-woche` | `5` | – | volle Downloads je Spieler in 7 Tagen |
+| `download.abgleich-je-tag` | `20` | – | Abgleiche von Hand je Spieler in 24 h |
+| `download.abgleich-ab` | `"00:00"` | – | ab dieser Uhrzeit des Servers holt der erste Join den täglichen Abgleich |
+| `download.reserve-minuten` | `10` | – | Reserve für `abdeckt_bis` |
+
+Was die Schlüssel unter `download` bewirken, steht in [Download](download.md).
 
 - **Binär und Assets** trägt der Betreiber noch von Hand ein. Das Binär
   bringt das Plugin mit heroic-map-renderer#146 mit, die Assets holt der Renderer mit heroic-map-renderer#147
@@ -47,6 +54,7 @@ Jeder Eintrag unter `trees` ist ein Kachelbaum, siehe
 | `direction` | `s` bei `top-north` und `north-45`, sonst `se` | `--direction` |
 | `scale` | die des Renderers | `--scale` |
 | `cinematic` | `false` | `--cinematic` |
+| `download` | `false` | – |
 
 - **Die Kamera steht in Anführungszeichen.** YAML 1.1 liest `2:1` ohne sie
   als Zahl zur Basis 60, also 121. Das Plugin lehnt eine Zahl ab.
@@ -58,6 +66,9 @@ Jeder Eintrag unter `trees` ist ein Kachelbaum, siehe
   `top-north-s`. In diesem Ordner sucht das Plugin `stand.bin` und
   `stand-neu.bin`, siehe [Läufe](laeufe.md), „Fortsetzen“. Benennt der
   Renderer seine Ordner um, muss `Baum.ordner` mit.
+- **`download: true`** bietet den Baum dem Mod zum Download an, nur mit
+  `camera: "top-north"`, `scale: 4` und ohne `cinematic`, siehe
+  [Download](download.md).
 - **Ein bestehender Baum** behält seinen scale. Einen anderen lehnt der
   Renderer beim Lauf ab und sagt es im Log.
 
@@ -71,7 +82,11 @@ schaltet sich ab:
   eine Wurzel;
 - `update-minutes` ist kleiner als 0;
 - eine Kamera ohne Anführungszeichen, ein `scale`, der keine ganze Zahl ist;
-- kein Baum.
+- kein Baum;
+- `download: true` an einem Baum, der nicht `top-north` mit scale 4 ohne
+  Cinematic ist;
+- eine Grenze unter `download` kleiner als 0, oder `abgleich-ab` keine
+  Uhrzeit wie `"00:00"`.
 
 Alles Übrige, etwa eine Kamera, die es nicht gibt, prüft der Renderer beim
 Lauf und sagt es im Log.

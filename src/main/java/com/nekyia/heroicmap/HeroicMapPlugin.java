@@ -1,8 +1,12 @@
 package com.nekyia.heroicmap;
 
+import java.io.IOException;
 import java.nio.file.Path;
+import java.time.ZoneId;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.TimeUnit;
+import java.util.logging.Level;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -40,6 +44,25 @@ public final class HeroicMapPlugin extends JavaPlugin {
             getServer().getAsyncScheduler().runAtFixedRate(this, t -> laeufe.starte(Laeufe.Art.UPDATE),
                     konf.updateMinuten(), konf.updateMinuten(), TimeUnit.MINUTES);
         }
+        if (konf.baeume().stream().anyMatch(Konfiguration.Baum::download)) {
+            starteDownload(konf);
+        }
+    }
+
+    /** Den Kanal zum Mod gibt es nur, wenn ein Baum zum Download angeboten wird. Siehe docs/download.md. */
+    private void starteDownload(Konfiguration konf) {
+        byte[] geheimnis;
+        try {
+            geheimnis = Download.geheimnis(getDataFolder().toPath().resolve("token.geheimnis"), getLogger());
+        } catch (IOException e) {
+            getLogger().log(Level.SEVERE, "Geheimnis für die Token nicht gelesen, kein Download", e);
+            return;
+        }
+        // ponytail: kein Webserver bis heroic-map-renderer#151; dann startet ihn das Plugin und nennt hier seine Adresse.
+        var download = new Download(konf, geheimnis, Optional::empty, laeufe::erfolgreichSeit, ZoneId.systemDefault());
+        var kanal = new Kanal(this, konf, download);
+        kanal.starte();
+        laeufe.nachLauf(kanal::aktualisiere);
     }
 
     @Override

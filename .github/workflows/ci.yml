@@ -45,3 +45,9 @@ jobs:
         timeout-minutes: 5
         shell: bash
         run: curl -fsSL https://raw.githubusercontent.com/VonNekyia/heroic-map-renderer/master/.github/pruefe-doku.sh | bash
+
+      # Die Testvektoren des Tokens sind eine Kopie aus dem Renderer.
+      - name: Testvektoren wie im Renderer
+        timeout-minutes: 5
+        shell: bash
+        run: curl -fsSL https://raw.githubusercontent.com/VonNekyia/heroic-map-renderer/master/renderer/tests/fixtures/token.json | diff - src/test/resources/token.json
