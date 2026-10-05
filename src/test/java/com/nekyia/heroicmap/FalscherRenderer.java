@@ -5,7 +5,7 @@ import java.io.FileOutputStream;
 import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
 
-/** Steht in den Tests für den Renderer: gibt Zeilen wie er aus; `exit N` endet mit Code N, `nichts` meldet ein Update ohne Änderung, `kurz` läuft 1,5 s, `sleep` eine Minute. */
+/** Steht in den Tests für den Renderer: gibt Zeilen wie er aus, den Fortschritt als JSON; `exit N` endet mit Code N, `nichts` meldet ein Update ohne Änderung, `kurz` läuft 1,5 s, `sleep` eine Minute. */
 public final class FalscherRenderer {
 
     public static void main(String[] args) throws InterruptedException {
@@ -13,7 +13,7 @@ public final class FalscherRenderer {
         out.println("RAYON_NUM_THREADS=" + System.getenv("RAYON_NUM_THREADS"));
         out.println("Höhen:      bereit");
         System.err.println("auf stderr");
-        out.println("            200/400 Kacheln");
+        out.println("{\"phase\":\"base\",\"tiles\":200,\"of\":400,\"rate\":12.5,\"eta_s\":16}");
         switch (args[0]) {
             case "exit" -> System.exit(Integer.parseInt(args[1]));
             case "nichts" -> out.println("Update:     nichts zu zeichnen");

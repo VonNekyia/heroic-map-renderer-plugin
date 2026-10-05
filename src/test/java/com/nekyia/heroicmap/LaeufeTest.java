@@ -95,7 +95,7 @@ class LaeufeTest {
         assertTrue(log.contains("RAYON_NUM_THREADS=" + System.getenv("RAYON_NUM_THREADS")), log::toString);
         assertTrue(log.contains("Höhen:      bereit"), log::toString);
         assertTrue(log.contains("auf stderr"), log::toString);
-        assertTrue(log.stream().noneMatch(z -> z.contains("200/400 Kacheln")), log::toString);
+        assertTrue(log.stream().noneMatch(z -> z.startsWith("{")), log::toString);
         assertTrue(l.status().contains("\na, zuletzt Test vor "), l::status);
         assertTrue(l.status().endsWith(", Kacheln gezeichnet"), l::status);
         assertFalse(Files.exists(tmp.resolve("renderer.pid")));
@@ -153,12 +153,12 @@ class LaeufeTest {
         // Je nachdem, wie weit der Faden schon ist, steht der Baum dabei.
         var antwort = l.starte("Zweiter", List.of(new Auftrag("b", falscher("exit", "0"), false)));
         assertTrue(antwort.startsWith("Es läuft schon: Erster"), antwort);
-        for (int i = 0; i < 3000 && !l.status().endsWith("Letzte Zeile: 200/400 Kacheln"); i++) {
+        for (int i = 0; i < 3000 && !l.status().endsWith("Basis: 200/400 Kacheln, 12,5 je s, noch 16,0 s"); i++) {
             Thread.sleep(10);
         }
         assertTrue(l.status().startsWith("Läuft seit "), l::status);
         assertTrue(l.status().contains(": Erster, Baum a, PID "), l::status);
-        assertTrue(l.status().endsWith(". Letzte Zeile: 200/400 Kacheln"), l::status);
+        assertTrue(l.status().endsWith(", PID " + pid() + ". Basis: 200/400 Kacheln, 12,5 je s, noch 16,0 s"), l::status);
         l.stoppe();
     }
 
@@ -290,6 +290,32 @@ class LaeufeTest {
     }
 
     @Test
+    void fortschritt_als_json_fuer_den_status() {
+        assertEquals("Vorlauf: 1/9 Regionen, noch 0,0 s",
+                Laeufe.beschreibe("{\"phase\":\"prepass\",\"regions\":1,\"of\":9,\"rate\":403.2,\"eta_s\":0}"));
+        assertEquals("Vorlauf: 0/383 Regionen",
+                Laeufe.beschreibe("{\"phase\":\"prepass\",\"regions\":0,\"of\":383,\"rate\":0.0,\"eta_s\":null}"));
+        assertEquals("Vorlauf fertig: 2398 Chunks, 324 Kacheln zu zeichnen",
+                Laeufe.beschreibe("{\"phase\":\"prepass\",\"chunks\":2398,\"tiles\":324,\"s\":0.2}"));
+        assertEquals("Basis: 200/324 Kacheln, 311,3 je s, noch 2 min 5 s",
+                Laeufe.beschreibe("{\"phase\":\"base\",\"tiles\":200,\"of\":324,\"rate\":311.3,\"eta_s\":125}"));
+        assertEquals("Stufe 8: 81/81 Kacheln, 96,5 je s, noch 0,0 s",
+                Laeufe.beschreibe("{\"phase\":\"level\",\"level\":8,\"tiles\":81,\"of\":81,\"rate\":96.5,\"eta_s\":0}"));
+        assertEquals("Pyramide: Stufe 7, 25 Kacheln", Laeufe.beschreibe("{\"phase\":\"pyramid\",\"level\":7,\"tiles\":25}"));
+        assertEquals("fertig nach 2,6 s", Laeufe.beschreibe("{\"phase\":\"done\",\"tiles\":324,\"s\":2.6}"));
+        assertEquals("Basis: 1/2 Kacheln, 1,0 je s, noch 1,0 s",
+                Laeufe.beschreibe("{\"phase\":\"base\",\"tiles\":1,\"of\":2,\"rate\":1.0,\"eta_s\":1,\"neu\":true}"),
+                "unbekannte Felder übergeht er");
+        String fremd = "{\"phase\":\"cinematic\",\"tiles\":1}";
+        assertEquals(fremd, Laeufe.beschreibe(fremd), "unbekannte Phase roh");
+        String unvollstaendig = "{\"phase\":\"base\",\"tiles\":1}";
+        assertEquals(unvollstaendig, Laeufe.beschreibe(unvollstaendig), "fehlendes Feld roh");
+        assertNull(Laeufe.beschreibe("{kein json"));
+        assertNull(Laeufe.beschreibe("{\"tiles\":1}"));
+        assertNull(Laeufe.beschreibe("[1, 2]"));
+    }
+
+    @Test
     void dauer_fuer_den_status() {
         assertEquals("0,7 s", Laeufe.dauer(java.time.Duration.ofMillis(700)));
         assertEquals("59,9 s", Laeufe.dauer(java.time.Duration.ofMillis(59_940)));
@@ -350,7 +376,7 @@ class LaeufeTest {
                 "--data", tmp.resolve("d").toString(),
                 "--tiles", tmp.resolve("tiles").toString(),
                 "--camera", "2:1", "--direction", "se",
-                "--gpu", "off", "--threads", "1", "--low-priority"), plan.getFirst().befehl());
+                "--gpu", "off", "--threads", "1", "--low-priority", "--progress", "json"), plan.getFirst().befehl());
     }
 
     @Test
@@ -359,7 +385,7 @@ class LaeufeTest {
         var plan = new Laeufe(konf(JAVA, true, List.of(baum)), logger, tmp.resolve("renderer.pid")).plane(Art.VOLL);
         assertEquals("top-north-s-cinematic", plan.getFirst().baum());
         assertEquals(List.of("--camera", "top-north", "--direction", "s", "--scale", "4", "--cinematic", "--gpu", "auto",
-                "--threads", "1", "--low-priority"), ende(plan, 12));
+                "--threads", "1", "--low-priority", "--progress", "json"), ende(plan, 14));
     }
 
     @Test
@@ -369,7 +395,7 @@ class LaeufeTest {
         assertEquals(List.of(), l.plane(Art.UPDATE));
         assertEquals(List.of("2x1-se: noch kein voller Lauf, erst /heroicmap render"), log);
         Files.createFile(baum().resolve("stand.bin"));
-        assertEquals(List.of("--low-priority", "--update"), ende(laeufe(KARTE).plane(Art.UPDATE), 2));
+        assertEquals(List.of("json", "--update"), ende(laeufe(KARTE).plane(Art.UPDATE), 2));
         assertTrue(laeufe(KARTE).plane(Art.UPDATE).getFirst().leise());
     }
 
@@ -377,7 +403,7 @@ class LaeufeTest {
     void abgebrochener_voller_lauf_geht_nur_mit_render_weiter() throws Exception {
         Files.createFile(baum().resolve("stand.bin"));
         standNeu(1, 0);
-        assertEquals(List.of("--low-priority", "--resume"), ende(laeufe(KARTE).plane(Art.VOLL), 2));
+        assertEquals(List.of("json", "--resume"), ende(laeufe(KARTE).plane(Art.VOLL), 2));
         assertEquals(List.of(), laeufe(KARTE).plane(Art.UPDATE));
         assertTrue(log.contains("2x1-se: ein voller Lauf ist abgebrochen, /heroicmap render setzt ihn fort"),
                 log::toString);
@@ -388,7 +414,7 @@ class LaeufeTest {
         Files.createFile(baum().resolve("stand.bin"));
         standNeu(1, 1);
         assertEquals(List.of("--update", "--resume"), ende(laeufe(KARTE).plane(Art.UPDATE), 2));
-        assertEquals(List.of("--threads", "1", "--low-priority"), ende(laeufe(KARTE).plane(Art.VOLL), 3));
+        assertEquals(List.of("--threads", "1", "--low-priority", "--progress", "json"), ende(laeufe(KARTE).plane(Art.VOLL), 5));
     }
 
     @Test

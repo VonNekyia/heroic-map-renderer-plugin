@@ -1,5 +1,7 @@
 package com.nekyia.heroicmap;
 
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
@@ -45,8 +47,6 @@ final class Laeufe {
     private static final String GEZEICHNET = "Kacheln gezeichnet";
     /** Die Zeile, mit der der Renderer ein Update ohne Änderung meldet. */
     private static final Pattern NICHTS_ZEILE = Pattern.compile("Update:\\s+nichts zu zeichnen");
-    /** Die Zeile, mit der der Renderer alle 200 Kacheln den Fortschritt meldet. */
-    private static final Pattern FORTSCHRITT = Pattern.compile("\\s*\\d+/\\d+ Kacheln");
 
     private final Konfiguration konf;
     private final Logger log;
@@ -67,6 +67,7 @@ final class Laeufe {
     private volatile Runnable nachLauf = () -> {};
 
     private volatile String letzteZeile = "";
+    private volatile String fortschritt = "";
 
     Laeufe(Konfiguration konf, Logger log, Path pidDatei) {
         this.konf = konf;
@@ -143,7 +144,7 @@ final class Laeufe {
         }
         b.addAll(List.of("--gpu", konf.grafikkarte() ? "auto" : "off"));
         // Hinter dem Server: wenige Threads und niedrigste Priorität. Siehe docs/laeufe.md, „Der Kindprozess“.
-        b.addAll(List.of("--threads", Integer.toString(konf.threads()), "--low-priority"));
+        b.addAll(List.of("--threads", Integer.toString(konf.threads()), "--low-priority", "--progress", "json"));
         if (art == Art.UPDATE) {
             b.add("--update");
         }
@@ -186,8 +187,8 @@ final class Laeufe {
             text.append(letzte.isEmpty() ? "Kein Lauf seit dem Start." : "Kein Lauf.");
         } else {
             String pid = prozess != null ? ", PID " + prozess.pid() : "";
-            text.append("Läuft seit ").append(seit).append(": ").append(laeuft).append(pid)
-                    .append(". Letzte Zeile: ").append(letzteZeile.strip());
+            text.append("Läuft seit ").append(seit).append(": ").append(laeuft).append(pid).append(". ")
+                    .append(fortschritt.isEmpty() ? "Letzte Zeile: " + letzteZeile.strip() : fortschritt);
         }
         var jetzt = Instant.now();
         letzte.forEach((baum, l) -> text.append('\n').append(baum).append(", zuletzt ").append(l.name())
@@ -405,18 +406,63 @@ final class Laeufe {
     }
 
     /**
-     * Liest die Ausgabe bis zum Ende: den Fortschritt nur für den Status, alles andere auch ins Log.
-     * Siehe docs/laeufe.md, „Der Kindprozess“.
+     * Liest die Ausgabe bis zum Ende: den Fortschritt als JSON nur für den Status, alles andere auch
+     * ins Log. Siehe docs/laeufe.md, „Der Kindprozess“.
      */
     private void lies(Process p, List<String> puffer) throws IOException {
+        fortschritt = "";
         try (var r = p.inputReader(StandardCharsets.UTF_8)) {
             for (String z; (z = r.readLine()) != null; ) {
-                letzteZeile = z;
-                if (!FORTSCHRITT.matcher(z).matches()) {
+                String f = z.startsWith("{") ? beschreibe(z) : null;
+                if (f != null) {
+                    fortschritt = f;
+                } else {
+                    letzteZeile = z;
                     melde(puffer, z);
                 }
             }
         }
+    }
+
+    /**
+     * Eine Zeile des Fortschritts als Text für den Status; null, wenn sie kein JSON-Objekt mit
+     * {@code phase} ist. Unbekannte Felder und Phasen übergeht sie nicht stumm, sie zeigt sie roh.
+     * Siehe docs/laeufe.md, „Status“.
+     */
+    static String beschreibe(String zeile) {
+        JsonObject j;
+        try {
+            j = JsonParser.parseString(zeile).getAsJsonObject();
+            j.get("phase").getAsString();
+        } catch (RuntimeException e) {
+            return null;
+        }
+        try {
+            String phase = j.get("phase").getAsString();
+            return switch (phase) {
+                case "prepass" -> j.has("regions")
+                        ? "Vorlauf: " + j.get("regions").getAsLong() + "/" + j.get("of").getAsLong() + " Regionen" + rest(j)
+                        : "Vorlauf fertig: " + j.get("chunks").getAsLong() + " Chunks, " + j.get("tiles").getAsLong()
+                                + " Kacheln zu zeichnen";
+                case "base" -> "Basis: " + kacheln(j);
+                case "level" -> "Stufe " + j.get("level").getAsInt() + ": " + kacheln(j);
+                case "pyramid" -> "Pyramide: Stufe " + j.get("level").getAsInt() + ", " + j.get("tiles").getAsLong() + " Kacheln";
+                case "done" -> "fertig nach " + dauer(Duration.ofMillis(Math.round(j.get("s").getAsDouble() * 1000)));
+                default -> zeile;
+            };
+        } catch (RuntimeException e) {
+            return zeile;
+        }
+    }
+
+    private static String kacheln(JsonObject j) {
+        return j.get("tiles").getAsLong() + "/" + j.get("of").getAsLong() + " Kacheln, "
+                + String.format(Locale.GERMAN, "%.1f", j.get("rate").getAsDouble()) + " je s" + rest(j);
+    }
+
+    private static String rest(JsonObject j) {
+        var eta = j.get("eta_s");
+        return eta == null || eta.isJsonNull() ? "" : ", noch " + dauer(Duration.ofSeconds(eta.getAsLong()));
     }
 
     /** Beendet den Prozess, falls er noch läuft, und wartet auf ihn; nach 10 s hart. */
