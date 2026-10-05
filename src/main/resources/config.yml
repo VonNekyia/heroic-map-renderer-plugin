@@ -9,6 +9,9 @@ renderer:
   data: []
   # true: die Grafikkarte darf zeichnen (--gpu auto), sonst nur die CPU.
   gpu: false
+  # So viele Threads bekommt der Renderer (--threads); er läuft immer mit
+  # niedrigster Priorität (--low-priority).
+  threads: 1
 
 # Die Weltwurzel mit level.dat; leer: die Hauptwelt des Servers.
 world: ""

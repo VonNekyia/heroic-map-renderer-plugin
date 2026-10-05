@@ -22,6 +22,7 @@ record Konfiguration(
         List<Path> assets,
         List<Path> daten,
         boolean grafikkarte,
+        int threads,
         int updateMinuten,
         List<Baum> baeume,
         Download download) {
@@ -58,6 +59,11 @@ record Konfiguration(
         List<Path> assets = c.getStringList("renderer.assets").stream().map(server::resolve).toList();
         if (assets.isEmpty()) {
             fehler.add("renderer.assets fehlt");
+        }
+
+        int threads = c.getInt("renderer.threads", 1);
+        if (threads < 1) {
+            fehler.add("renderer.threads: " + threads + " ist kleiner als 1");
         }
 
         String welt = c.getString("world", "");
@@ -117,6 +123,7 @@ record Konfiguration(
                 assets,
                 c.getStringList("renderer.data").stream().map(server::resolve).toList(),
                 c.getBoolean("renderer.gpu"),
+                threads,
                 minuten,
                 List.copyOf(baeume),
                 new Download(grenzen[0], grenzen[1], grenzen[2], ab, grenzen[3]));

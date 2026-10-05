@@ -36,8 +36,8 @@ kommt mit heroic-map-renderer#146 dazu.
   der Test direkt über `java` startet, ohne Hülle wie `cmd` oder `sh`
   dazwischen. So trifft ein Abbruch den Prozess selbst. Geprüft:
   Ausgabe samt stderr und Umlauten im Log, der Fortschritt nur im Status,
-  je Baum Dauer und Ausgang im Status, aber nicht im Log,
-  `RAYON_NUM_THREADS=1`, Fehlercode, Abbruch vor und während eines
+  je Baum Dauer und Ausgang im Status, aber nicht im Log, keine
+  Umgebungsvariable für Threads, Fehlercode, Abbruch vor und während eines
   Prozesses, ein Fehler beim Lesen der Ausgabe, Stoppen, ein Lauf zur Zeit,
   ein Binär, das fehlt, und verwaiste Prozesse.
 - **`TokenTest`:** stellt jedes gültige Token aus den Testvektoren des
@@ -50,7 +50,7 @@ kommt mit heroic-map-renderer#146 dazu.
   Grenzen samt `wieder`, der tägliche Abgleich um die Uhrzeit herum, das
   Geheimnis. Ohne Bukkit; den Webserver gibt der Test als Adresse vor.
 - **Mutationen,** am 05.10.: Jede der 58 Änderungen am Code liess einen
-  Test fallen, etwa ohne `RAYON_NUM_THREADS`, ohne `destroy`, ohne
+  Test fallen, etwa ohne Begrenzung der Threads, ohne `destroy`, ohne
   `--resume`, ohne den Vergleich der ausführbaren Datei, ohne das Ende des
   Prozesses nach einem Lesefehler, ohne leise Updates, mit einer Dauer von
   null im Status, mit falschem Deckel, ohne eine der drei Grenzen, mit

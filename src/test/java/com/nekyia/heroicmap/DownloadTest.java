@@ -47,7 +47,7 @@ class DownloadTest {
     }
 
     private Download download(LocalTime abgleichAb) {
-        var konf = new Konfiguration(tmp.resolve("r"), tmp.resolve("welt"), tmp, List.of(), List.of(), false, 2,
+        var konf = new Konfiguration(tmp.resolve("r"), tmp.resolve("welt"), tmp, List.of(), List.of(), false, 1, 2,
                 List.of(KARTE, OBEN), new Konfiguration.Download(10, 5, 20, abgleichAb, 10));
         var d = new Download(konf, new byte[32], () -> webserver, b -> erfolgreich, ZoneOffset.UTC);
         d.saetze(Map.of("top-north-s", satz));
@@ -291,7 +291,7 @@ class DownloadTest {
 
     @Test
     void abgeschaltete_grenzen() {
-        var konf = new Konfiguration(tmp.resolve("r"), tmp.resolve("welt"), tmp, List.of(), List.of(), false, 2,
+        var konf = new Konfiguration(tmp.resolve("r"), tmp.resolve("welt"), tmp, List.of(), List.of(), false, 1, 2,
                 List.of(OBEN), new Konfiguration.Download(10, 0, 0, LocalTime.MIDNIGHT, 10));
         var d = new Download(konf, new byte[32], () -> webserver, b -> erfolgreich, ZoneOffset.UTC);
         d.saetze(Map.of("top-north-s", satz));

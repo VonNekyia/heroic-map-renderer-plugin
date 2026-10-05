@@ -142,6 +142,8 @@ final class Laeufe {
             b.add("--cinematic");
         }
         b.addAll(List.of("--gpu", konf.grafikkarte() ? "auto" : "off"));
+        // Hinter dem Server: wenige Threads und niedrigste Priorität. Siehe docs/laeufe.md, „Der Kindprozess“.
+        b.addAll(List.of("--threads", Integer.toString(konf.threads()), "--low-priority"));
         if (art == Art.UPDATE) {
             b.add("--update");
         }
@@ -351,8 +353,6 @@ final class Laeufe {
      */
     private String fuehreAus(List<String> befehl, List<String> puffer) {
         var pb = new ProcessBuilder(befehl).redirectErrorStream(true);
-        // ponytail: ein Thread über rayon, bis heroic-map-renderer#148 --threads und die Priorität bringt.
-        pb.environment().put("RAYON_NUM_THREADS", "1");
         Process p;
         synchronized (this) {
             if (abgebrochen) {
