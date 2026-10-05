@@ -75,7 +75,8 @@ Build 129, eine Kopie der Testwelt, das Jar des Plugins unter `plugins/`,
 - **Zeitplan:** 60 s nach dem Laden startet ein Update.
   - Es zeichnet eine Änderung aus `/fill`, die `save-all` auf die Platte
     gebracht hat.
-  - `status` zeigt dabei Faden, PID und den Fortschritt `n/N Kacheln`.
+  - `status` zeigt dabei Faden, PID und den Fortschritt, damals noch als
+    Text `n/N Kacheln`.
   - Die Ausgabe des Updates steht am Ende im Log.
 - **Ein Lauf zur Zeit:** `update` während des Updates antwortet „Es läuft
   schon“.

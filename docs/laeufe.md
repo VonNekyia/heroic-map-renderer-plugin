@@ -89,11 +89,14 @@ entschieden in [0003](entscheidungen/0003-live-render-ueber-autosave-und-zeitpla
   - **Affinität:** Der Renderer erbt die Bindung an Kerne vom Server, wenn
     der Betreiber den Server bindet.
 - **Ausgabe:** stdout und stderr zusammen, Zeile für Zeile als UTF-8 ins
-  Log, bis auf den Fortschritt und leise Updates, siehe „Zeitplan“. Den
-  Fortschritt meldet der Renderer alle 200 Kacheln als
-  `n/N Kacheln`, mit einem Thread rund alle 10 s, bei der grossen Welt rund
-  12 500 Zeilen je vollem Lauf. Er steht nur in `status` als letzte Zeile.
-  Mit heroic-map-renderer#149 kommt er als JSON.
+  Log, bis auf den Fortschritt und leise Updates, siehe „Zeitplan“.
+- **Fortschritt:** Das Plugin gibt `--progress json`. Jede Zeile, die mit
+  `{` beginnt und ein JSON-Objekt mit `phase` ist, geht nur in den Status,
+  siehe „Status“. Den Vertrag hält der Renderer in
+  [`docs/plugin.md`, „Fortschritt als JSON“](https://github.com/VonNekyia/heroic-map-renderer/blob/master/docs/plugin.md#fortschritt-als-json).
+  - Im Vorlauf je Prozent der Regionen, sonst alle 200 Kacheln. Bei der
+    grossen Welt wären das als Text rund 12 500 Zeilen je vollem Lauf.
+  - Was nicht so aussieht, steht als Text im Log.
 - **Fehler beim Lesen:** Bricht das Lesen der Ausgabe ohne Abbruch ab,
   beendet das Plugin den Prozess wie bei `cancel` und wartet auf ihn. Ein
   Prozess, dessen Ausgabe niemand liest, bliebe sonst stehen, sobald die
@@ -117,6 +120,28 @@ wie voller Lauf:
 Kein Lauf.
 2x1-se, zuletzt Update vor 42,0 s: 0,7 s, nichts zu zeichnen
 ```
+
+Während eines Laufs steht in der ersten Zeile die letzte Meldung des
+Fortschritts, etwa:
+
+```
+Läuft seit 01:12:03: Voller Lauf, Baum 2x1-se, PID 4711. Basis: 200/17820 Kacheln, 19,4 je s, noch 15 min 7 s
+```
+
+| `phase` | im Status |
+|---|---|
+| `prepass` mit `regions` | `Vorlauf: 42/383 Regionen, noch …` |
+| `prepass` ohne `regions` | `Vorlauf fertig: … Chunks, … Kacheln zu zeichnen` |
+| `base` | `Basis: tiles/of Kacheln, rate je s, noch …` |
+| `level` | `Stufe level: tiles/of Kacheln, rate je s, noch …` |
+| `pyramid` | `Pyramide: Stufe level, tiles Kacheln` |
+| `done` | `fertig nach s` |
+
+- **Restzeit:** `noch …` fehlt, solange `eta_s` `null` ist. Im Vorlauf ist
+  sie grob, denn Regionen am Rand halten weniger Chunks.
+- **Unbekannt:** Eine unbekannte Phase oder eine Meldung, der ein Feld
+  fehlt, zeigt der Status roh. Unbekannte Felder übergeht er.
+- **Noch keine Meldung:** Dann zeigt der Status die letzte Zeile Text.
 
 - **Wann:** wie lange der Aufruf her ist.
 - **Dauer:** vom Start des Prozesses bis zu seinem Ende, unter einer Minute
