@@ -19,7 +19,7 @@ Gelesen und geprüft in `Konfiguration.aus` in
 
 | Schlüssel | Vorgabe | Schalter | Wirkung |
 |---|---|---|---|
-| `renderer.binary` | leer, Pflicht | – | Pfad zum Binär `terranova-render` |
+| `renderer.binary` | leer, Pflicht | – | Pfad zum Binär des Renderers |
 | `renderer.assets` | leer, Pflicht | `--assets` je Eintrag | Asset-Wurzeln, spätere überschreiben frühere |
 | `renderer.data` | leer | `--data` je Eintrag | Datenwurzeln mit Biomen und Bannermustern |
 | `renderer.gpu` | `false` | `--gpu auto`, sonst `--gpu off` | ob die Grafikkarte zeichnen darf |

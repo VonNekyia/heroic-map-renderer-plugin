@@ -1,7 +1,7 @@
 # Siehe docs/konfiguration.md. Pfade relativ zum Ordner des Servers.
 
 renderer:
-  # Das Binär terranova-render.
+  # Das Binär des Renderers.
   binary: ""
   # --assets, in dieser Reihenfolge; spätere überschreiben frühere.
   assets: []
