@@ -1,0 +1,24 @@
+# Siehe docs/konfiguration.md. Pfade relativ zum Ordner des Servers.
+
+renderer:
+  # Das Binär terranova-render.
+  binary: ""
+  # --assets, in dieser Reihenfolge; spätere überschreiben frühere.
+  assets: []
+  # --data, in dieser Reihenfolge.
+  data: []
+  # true: die Grafikkarte darf zeichnen (--gpu auto), sonst nur die CPU.
+  gpu: false
+
+# Die Weltwurzel mit level.dat; leer: die Hauptwelt des Servers.
+world: ""
+
+# Die Wurzel der Kachelbäume, --tiles.
+tiles: plugins/HeroicMap/tiles
+
+# Alle so viele Minuten ein Update; 0 schaltet den Zeitplan ab.
+update-minutes: 30
+
+# Je Eintrag ein Kachelbaum. Die Kamera in Anführungszeichen.
+trees:
+  - camera: "2:1"

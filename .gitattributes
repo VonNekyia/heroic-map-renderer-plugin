@@ -1,0 +1,6 @@
+* text=auto
+# Skripte laufen in der CI unter Linux
+*.sh text eol=lf
+gradlew text eol=lf
+*.bat text eol=crlf
+*.jar binary
