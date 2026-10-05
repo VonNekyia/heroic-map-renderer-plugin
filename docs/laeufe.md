@@ -78,10 +78,14 @@ entschieden in [0003](entscheidungen/0003-live-render-ueber-autosave-und-zeitpla
   setzt, steht in seiner Zeile `Priorität:` im Log.
   - **Threads:** Alle Phasen des Renderers laufen über einen Pool mit so
     vielen Threads, auch Vorlauf und Pyramide.
-  - **Priorität:** unter Windows die Klasse IDLE und der Hintergrundmodus,
-    der auch Ein- und Ausgabe und Speicher hintanstellt; unter Linux
-    SCHED_IDLE, sonst nice 19, und die I/O-Klasse idle. Gesetzt wird sie
-    vor dem ersten Thread. Einzelheiten stehen in der Doku des Renderers.
+  - **Priorität:** unter Windows die Klasse IDLE, unter Linux SCHED_IDLE,
+    sonst nice 19, und die I/O-Klasse idle. Gesetzt wird sie vor dem ersten
+    Thread. Einzelheiten und warum der Hintergrundmodus unter Windows
+    wegfiel, stehen in der Doku des Renderers.
+  - **Gemessen:** Auf einem Kern mit zwei Hyperthreads kostet der Renderer
+    mit einem Thread den Server rund 1,4 ms je Tick; die Priorität ändert
+    daran nichts Messbares, siehe die Messung „Tickzeit neben dem
+    Renderer“ des Renderers vom 06.10.
   - **Affinität:** Der Renderer erbt die Bindung an Kerne vom Server, wenn
     der Betreiber den Server bindet.
 - **Ausgabe:** stdout und stderr zusammen, Zeile für Zeile als UTF-8 ins
