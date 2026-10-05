@@ -30,6 +30,12 @@ public final class HeroicMapPlugin extends JavaPlugin {
         }
         laeufe = new Laeufe(konf, getLogger(), getDataFolder().toPath().resolve("renderer.pid"));
         laeufe.raeumeAuf();
+        for (var w : getServer().getWorlds()) {
+            if (!w.isAutoSave() && w.getWorldFolder().toPath().toAbsolutePath().normalize().equals(konf.welt().normalize())) {
+                getLogger().warning("Der Autosave der Welt " + w.getName() + " ist aus. Änderungen kommen erst beim "
+                        + "Entladen oder Stoppen auf die Platte und erst dann auf die Karte.");
+            }
+        }
         if (konf.updateMinuten() > 0) {
             getServer().getAsyncScheduler().runAtFixedRate(this, t -> laeufe.starte(Laeufe.Art.UPDATE),
                     konf.updateMinuten(), konf.updateMinuten(), TimeUnit.MINUTES);

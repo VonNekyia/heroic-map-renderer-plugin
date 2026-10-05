@@ -25,7 +25,7 @@ Gelesen und geprüft in `Konfiguration.aus` in
 | `renderer.gpu` | `false` | `--gpu auto`, sonst `--gpu off` | ob die Grafikkarte zeichnen darf |
 | `world` | leer: die Hauptwelt | `--world` | die Weltwurzel mit `level.dat` |
 | `tiles` | `plugins/HeroicMap/tiles` | `--tiles` | die Wurzel der Kachelbäume |
-| `update-minutes` | `30` | – | Abstand der Updates in Minuten, `0` schaltet sie ab |
+| `update-minutes` | `2` | – | Abstand der Updates in Minuten, `0` schaltet sie ab; dazu der Autosave von Paper auf 60 s, siehe [Läufe](laeufe.md), „Zeitplan“ |
 | `trees` | ein Baum `"2:1"` | siehe „Bäume“ | je Eintrag ein Kachelbaum |
 
 - **Binär und Assets** trägt der Betreiber noch von Hand ein. Das Binär

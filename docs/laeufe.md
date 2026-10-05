@@ -33,17 +33,41 @@ Bestätigung kommen mit heroic-map-renderer#149.
 
 ## Zeitplan
 
-Alle `update-minutes` startet ein Update über den `AsyncScheduler`, das
-erste nach einem Abstand, nicht beim Start des Servers. Läuft schon ein
-Lauf, fällt das Update aus.
+Alle `update-minutes` startet ein Update über den `AsyncScheduler`,
+Vorgabe alle 2 min, das erste nach einem Abstand, nicht beim Start des
+Servers. Läuft schon ein Lauf, fällt der Takt aus. Mit dem Autosave von
+Paper auf 60 s zeigt die Webkarte eine Änderung nach rund 1 bis 3 min,
+entschieden in [0003](entscheidungen/0003-live-render-ueber-autosave-und-zeitplan.md).
+
+- **Autosave von Paper auf 60 s:** Der Renderer liest nur, was auf der
+  Platte steht. Empfohlen in `config/paper-world-defaults.yml`:
+
+  ```yaml
+  chunks:
+    auto-save-interval: 1200
+  ```
+
+  - Vorgabe sind 6000 Ticks, also 5 min, aus `ticks-per.autosave` in
+    `bukkit.yml`.
+  - Je Tick speichert der Autosave höchstens
+    `max-auto-save-chunks-per-tick` Chunks, Vorgabe 24. Sind mehr Chunks
+    geladen, als in einem Intervall durchgehen, hängt er hinterher.
+- **Autosave aus:** Ist er für die Welt aus, warnt das Plugin beim Start.
+  Dann kommen Änderungen erst beim Entladen oder Stoppen auf die Platte.
 
 - **Warum ein Zeitplan:** Ein Ereignis „Chunk gespeichert“ gibt es in Paper
   nicht, und `WorldSaveEvent` kommt, bevor die Chunks auf der Platte liegen
   (heroic-map-renderer#153). `--update` findet die Änderungen selbst, siehe
   [Updates](https://github.com/VonNekyia/heroic-map-renderer/blob/master/docs/benutzung/updates.md).
+- **Leise:** Ein Update, das nichts zu zeichnen hat, schreibt nichts ins
+  Log, nur in den Status. Das Plugin erkennt es an der Zeile
+  `Update:     nichts zu zeichnen` des Renderers.
+  - Zeichnet es etwas oder scheitert es, steht seine ganze Ausgabe im Log,
+    am Ende des Updates.
+  - Volle Läufe schreiben ihre Ausgabe wie bisher sofort.
 - **Ohne vollen Lauf:** Ein Update braucht `stand.bin` aus einem vollen
-  Lauf. Fehlt er, lässt das Plugin den Baum aus und schreibt ins Log:
-  „noch kein voller Lauf, erst /heroicmap render“.
+  Lauf. Fehlt er, lässt das Plugin den Baum aus und schreibt einmal je Start
+  ins Log: „noch kein voller Lauf, erst /heroicmap render“.
 
 ## Der Kindprozess
 
@@ -54,7 +78,8 @@ Lauf, fällt das Update aus.
   bis heroic-map-renderer#148 `--threads` und eine niedrige Priorität bringt. Eine Priorität
   setzt das Plugin noch nicht.
 - **Ausgabe:** stdout und stderr zusammen, Zeile für Zeile als UTF-8 ins
-  Log, bis auf den Fortschritt. Den meldet der Renderer alle 200 Kacheln als
+  Log, bis auf den Fortschritt und leise Updates, siehe „Zeitplan“. Den
+  Fortschritt meldet der Renderer alle 200 Kacheln als
   `n/N Kacheln`, mit einem Thread rund alle 10 s, bei der grossen Welt rund
   12 500 Zeilen je vollem Lauf. Er steht nur in `status` als letzte Zeile.
   Mit heroic-map-renderer#149 kommt er als JSON.

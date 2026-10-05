@@ -23,3 +23,4 @@ Wie der Renderer arbeitet und was seine Schalter tun, steht in der
 
 - [0001: Nur die Paper-API](entscheidungen/0001-nur-die-paper-api.md): ohne paperweight-userdev, solange die API reicht.
 - [0002: plugin.yml](entscheidungen/0002-plugin-yml.md): `plugin.yml` statt `paper-plugin.yml`.
+- [0003: Live-Render über Autosave und Zeitplan](entscheidungen/0003-live-render-ueber-autosave-und-zeitplan.md): Autosave von Paper auf 60 s und ein Update alle 2 min, rund 1 bis 3 min Verzögerung; Events, Chunks aus dem Speicher und ein Renderer als Dienst verworfen, solange die Messung sie nicht verlangt.

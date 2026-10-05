@@ -89,7 +89,7 @@ class LaeufeTest {
     @Test
     void ausgabe_landet_im_log_und_rayon_bekommt_einen_thread() throws Exception {
         var l = laeufe();
-        l.starte("Test", List.of(new Auftrag("a", falscher("exit", "0"))));
+        l.starte("Test", List.of(new Auftrag("a", falscher("exit", "0"), false)));
         assertTrue(l.warte(30_000));
         assertTrue(log.contains("RAYON_NUM_THREADS=1"), log::toString);
         assertTrue(log.contains("Höhen:      bereit"), log::toString);
@@ -102,7 +102,7 @@ class LaeufeTest {
     @Test
     void fehlercode_steht_im_status_und_der_naechste_baum_laeuft() throws Exception {
         var l = laeufe();
-        l.starte("Test", List.of(new Auftrag("a", falscher("exit", "3")), new Auftrag("b", falscher("exit", "0"))));
+        l.starte("Test", List.of(new Auftrag("a", falscher("exit", "3"), false), new Auftrag("b", falscher("exit", "0"), false)));
         assertTrue(l.warte(30_000));
         assertTrue(l.status().endsWith(": a mit Code 3, b fertig"), l::status);
     }
@@ -110,7 +110,7 @@ class LaeufeTest {
     @Test
     void abbruch_beendet_den_prozess_und_die_folgenden_baeume() throws Exception {
         var l = laeufe();
-        l.starte("Test", List.of(new Auftrag("a", falscher("sleep")), new Auftrag("b", falscher("exit", "0"))));
+        l.starte("Test", List.of(new Auftrag("a", falscher("sleep"), false), new Auftrag("b", falscher("exit", "0"), false)));
         warteAufZeile("bereit");
         long pid = pid();
         assertTrue(l.brichAb());
@@ -124,7 +124,7 @@ class LaeufeTest {
     void abbruch_vor_dem_ersten_prozess() throws Exception {
         // Meist kommt der Abbruch, bevor der Faden den Prozess startet; dann startet er keinen.
         var l = laeufe();
-        l.starte("Test", List.of(new Auftrag("a", falscher("sleep"))));
+        l.starte("Test", List.of(new Auftrag("a", falscher("sleep"), false)));
         assertTrue(l.brichAb());
         assertTrue(l.warte(10_000));
         assertTrue(l.status().endsWith(": a abgebrochen"), l::status);
@@ -133,7 +133,7 @@ class LaeufeTest {
     @Test
     void stoppen_hinterlaesst_keinen_prozess() throws Exception {
         var l = laeufe();
-        l.starte("Test", List.of(new Auftrag("a", falscher("sleep"))));
+        l.starte("Test", List.of(new Auftrag("a", falscher("sleep"), false)));
         warteAufZeile("bereit");
         long pid = pid();
         l.stoppe();
@@ -144,9 +144,9 @@ class LaeufeTest {
     @Test
     void nur_ein_lauf_zur_zeit() throws Exception {
         var l = laeufe();
-        l.starte("Erster", List.of(new Auftrag("a", falscher("sleep"))));
+        l.starte("Erster", List.of(new Auftrag("a", falscher("sleep"), false)));
         // Je nachdem, wie weit der Faden schon ist, steht der Baum dabei.
-        var antwort = l.starte("Zweiter", List.of(new Auftrag("b", falscher("exit", "0"))));
+        var antwort = l.starte("Zweiter", List.of(new Auftrag("b", falscher("exit", "0"), false)));
         assertTrue(antwort.startsWith("Es läuft schon: Erster"), antwort);
         for (int i = 0; i < 3000 && !l.status().endsWith("Letzte Zeile: 200/400 Kacheln"); i++) {
             Thread.sleep(10);
@@ -160,7 +160,7 @@ class LaeufeTest {
     @Test
     void renderer_der_nicht_startet() throws Exception {
         var l = laeufe();
-        l.starte("Test", List.of(new Auftrag("a", List.of(tmp.resolve("fehlt").toString()))));
+        l.starte("Test", List.of(new Auftrag("a", List.of(tmp.resolve("fehlt").toString()), false)));
         assertTrue(l.warte(10_000));
         assertTrue(l.status().contains(": a nicht gestartet: "), l::status);
     }
@@ -193,13 +193,32 @@ class LaeufeTest {
             public void close() {}
         });
         var l = new Laeufe(konf(JAVA, false, List.of()), kaputt, tmp.resolve("renderer.pid"));
-        l.starte("Test", List.of(new Auftrag("a", falscher("sleep")), new Auftrag("b", falscher("exit", "0"))));
+        l.starte("Test", List.of(new Auftrag("a", falscher("sleep"), false), new Auftrag("b", falscher("exit", "0"), false)));
         assertTrue(l.warte(30_000));
         assertTrue(pid[0] > 0);
         assertFalse(lebt(pid[0]));
         assertTrue(l.status().contains(": a beendet, Ausgabe nicht gelesen: java.lang.IllegalStateException: Log voll, b "),
                 l::status);
         assertFalse(Files.exists(tmp.resolve("renderer.pid")));
+    }
+
+    @Test
+    void leises_update_ohne_aenderung_schreibt_nichts_ins_log() throws Exception {
+        var l = laeufe();
+        l.starte("Update", List.of(new Auftrag("a", falscher("nichts"), true)));
+        assertTrue(l.warte(30_000));
+        assertEquals(List.of(), log);
+        assertTrue(l.status().endsWith(": a nichts zu zeichnen"), l::status);
+    }
+
+    @Test
+    void leises_update_mit_aenderung_oder_fehler_schreibt_alles() throws Exception {
+        var l = laeufe();
+        l.starte("Update", List.of(new Auftrag("a", falscher("exit", "0"), true), new Auftrag("b", falscher("exit", "3"), true)));
+        assertTrue(l.warte(30_000));
+        assertEquals(2, log.stream().filter(z -> z.equals("Höhen:      bereit")).count(), log::toString);
+        assertTrue(log.stream().anyMatch(z -> z.startsWith("Update, Baum a: ")), log::toString);
+        assertTrue(log.stream().anyMatch(z -> z.endsWith(": a fertig, b mit Code 3")), log::toString);
     }
 
     @Test
@@ -247,6 +266,7 @@ class LaeufeTest {
         var plan = laeufe(KARTE).plane(Art.VOLL);
         assertEquals(1, plan.size());
         assertEquals("2x1-se", plan.getFirst().baum());
+        assertFalse(plan.getFirst().leise());
         assertEquals(List.of(JAVA.toString(),
                 "--world", tmp.resolve("world").toString(),
                 "--assets", tmp.resolve("a1").toString(),
@@ -268,10 +288,13 @@ class LaeufeTest {
 
     @Test
     void update_braucht_einen_vollen_lauf() throws Exception {
-        assertEquals(List.of(), laeufe(KARTE).plane(Art.UPDATE));
-        assertTrue(log.contains("2x1-se: noch kein voller Lauf, erst /heroicmap render"), log::toString);
+        var l = laeufe(KARTE);
+        assertEquals(List.of(), l.plane(Art.UPDATE));
+        assertEquals(List.of(), l.plane(Art.UPDATE));
+        assertEquals(List.of("2x1-se: noch kein voller Lauf, erst /heroicmap render"), log);
         Files.createFile(baum().resolve("stand.bin"));
         assertEquals(List.of("off", "--update"), ende(laeufe(KARTE).plane(Art.UPDATE), 2));
+        assertTrue(laeufe(KARTE).plane(Art.UPDATE).getFirst().leise());
     }
 
     @Test
