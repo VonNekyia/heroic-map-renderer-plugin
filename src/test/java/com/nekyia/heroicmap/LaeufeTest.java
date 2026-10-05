@@ -55,7 +55,7 @@ class LaeufeTest {
 
     private Konfiguration konf(Path renderer, boolean gpu, List<Konfiguration.Baum> baeume) {
         return new Konfiguration(renderer, tmp.resolve("world"), tmp.resolve("tiles"),
-                List.of(tmp.resolve("a1"), tmp.resolve("a2")), List.of(tmp.resolve("d")), gpu, 30, baeume, DOWNLOAD);
+                List.of(tmp.resolve("a1"), tmp.resolve("a2")), List.of(tmp.resolve("d")), gpu, 1, 30, baeume, DOWNLOAD);
     }
 
     private Laeufe laeufe(Konfiguration.Baum... baeume) {
@@ -88,11 +88,11 @@ class LaeufeTest {
     // Prozesse
 
     @Test
-    void ausgabe_landet_im_log_und_rayon_bekommt_einen_thread() throws Exception {
+    void ausgabe_landet_im_log_ohne_umgebung_fuer_threads() throws Exception {
         var l = laeufe();
         l.starte("Test", List.of(new Auftrag("a", falscher("exit", "0"), false)));
         assertTrue(l.warte(30_000));
-        assertTrue(log.contains("RAYON_NUM_THREADS=1"), log::toString);
+        assertTrue(log.contains("RAYON_NUM_THREADS=" + System.getenv("RAYON_NUM_THREADS")), log::toString);
         assertTrue(log.contains("Höhen:      bereit"), log::toString);
         assertTrue(log.contains("auf stderr"), log::toString);
         assertTrue(log.stream().noneMatch(z -> z.contains("200/400 Kacheln")), log::toString);
@@ -350,7 +350,7 @@ class LaeufeTest {
                 "--data", tmp.resolve("d").toString(),
                 "--tiles", tmp.resolve("tiles").toString(),
                 "--camera", "2:1", "--direction", "se",
-                "--gpu", "off"), plan.getFirst().befehl());
+                "--gpu", "off", "--threads", "1", "--low-priority"), plan.getFirst().befehl());
     }
 
     @Test
@@ -358,8 +358,8 @@ class LaeufeTest {
         var baum = new Konfiguration.Baum("top-north", "s", 4, true, false);
         var plan = new Laeufe(konf(JAVA, true, List.of(baum)), logger, tmp.resolve("renderer.pid")).plane(Art.VOLL);
         assertEquals("top-north-s-cinematic", plan.getFirst().baum());
-        assertEquals(List.of("--camera", "top-north", "--direction", "s", "--scale", "4", "--cinematic", "--gpu", "auto"),
-                ende(plan, 9));
+        assertEquals(List.of("--camera", "top-north", "--direction", "s", "--scale", "4", "--cinematic", "--gpu", "auto",
+                "--threads", "1", "--low-priority"), ende(plan, 12));
     }
 
     @Test
@@ -369,7 +369,7 @@ class LaeufeTest {
         assertEquals(List.of(), l.plane(Art.UPDATE));
         assertEquals(List.of("2x1-se: noch kein voller Lauf, erst /heroicmap render"), log);
         Files.createFile(baum().resolve("stand.bin"));
-        assertEquals(List.of("off", "--update"), ende(laeufe(KARTE).plane(Art.UPDATE), 2));
+        assertEquals(List.of("--low-priority", "--update"), ende(laeufe(KARTE).plane(Art.UPDATE), 2));
         assertTrue(laeufe(KARTE).plane(Art.UPDATE).getFirst().leise());
     }
 
@@ -377,7 +377,7 @@ class LaeufeTest {
     void abgebrochener_voller_lauf_geht_nur_mit_render_weiter() throws Exception {
         Files.createFile(baum().resolve("stand.bin"));
         standNeu(1, 0);
-        assertEquals(List.of("off", "--resume"), ende(laeufe(KARTE).plane(Art.VOLL), 2));
+        assertEquals(List.of("--low-priority", "--resume"), ende(laeufe(KARTE).plane(Art.VOLL), 2));
         assertEquals(List.of(), laeufe(KARTE).plane(Art.UPDATE));
         assertTrue(log.contains("2x1-se: ein voller Lauf ist abgebrochen, /heroicmap render setzt ihn fort"),
                 log::toString);
@@ -388,7 +388,7 @@ class LaeufeTest {
         Files.createFile(baum().resolve("stand.bin"));
         standNeu(1, 1);
         assertEquals(List.of("--update", "--resume"), ende(laeufe(KARTE).plane(Art.UPDATE), 2));
-        assertEquals(List.of("--gpu", "off"), ende(laeufe(KARTE).plane(Art.VOLL), 2));
+        assertEquals(List.of("--threads", "1", "--low-priority"), ende(laeufe(KARTE).plane(Art.VOLL), 3));
     }
 
     @Test

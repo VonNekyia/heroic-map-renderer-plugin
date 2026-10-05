@@ -23,6 +23,7 @@ Gelesen und geprüft in `Konfiguration.aus` in
 | `renderer.assets` | leer, Pflicht | `--assets` je Eintrag | Asset-Wurzeln, spätere überschreiben frühere |
 | `renderer.data` | leer | `--data` je Eintrag | Datenwurzeln mit Biomen und Bannermustern |
 | `renderer.gpu` | `false` | `--gpu auto`, sonst `--gpu off` | ob die Grafikkarte zeichnen darf |
+| `renderer.threads` | `1` | `--threads` | so viele Threads bekommt der Renderer, ab 1; dazu immer `--low-priority` |
 | `world` | leer: die Hauptwelt | `--world` | die Weltwurzel mit `level.dat` |
 | `tiles` | `plugins/HeroicMap/tiles` | `--tiles` | die Wurzel der Kachelbäume |
 | `update-minutes` | `2` | – | Abstand der Updates in Minuten, `0` schaltet sie ab; dazu der Autosave von Paper auf 60 s, siehe [Läufe](laeufe.md), „Zeitplan“ |
@@ -82,6 +83,7 @@ schaltet sich ab:
   eine Wurzel;
 - `update-minutes` ist kleiner als 0;
 - eine Kamera ohne Anführungszeichen, ein `scale`, der keine ganze Zahl ist;
+- `renderer.threads` kleiner als 1;
 - kein Baum;
 - `download: true` an einem Baum, der nicht `top-north` mit scale 4 ohne
   Cinematic ist;

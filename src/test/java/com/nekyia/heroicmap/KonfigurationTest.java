@@ -46,6 +46,7 @@ class KonfigurationTest {
         assertEquals(List.of(server.resolve("vanilla-assets")), k.assets());
         assertEquals(List.of(), k.daten());
         assertFalse(k.grafikkarte());
+        assertEquals(1, k.threads());
         assertEquals(2, k.updateMinuten());
         assertEquals(List.of(new Baum("2:1", "se", null, false, false)), k.baeume());
         assertEquals("2x1-se", k.baeume().getFirst().ordner());
@@ -138,6 +139,7 @@ class KonfigurationTest {
                 renderer:
                   binary: fehlt
                   assets: [a]
+                  threads: 0
                 update-minutes: -1
                 trees:
                   - camera: 2:1
@@ -146,6 +148,7 @@ class KonfigurationTest {
                 """);
         var e = assertThrows(IllegalArgumentException.class, () -> Konfiguration.aus(c, server, server));
         assertEquals("renderer.binary: " + server.resolve("fehlt") + " gibt es nicht; "
+                + "renderer.threads: 0 ist kleiner als 1; "
                 + "update-minutes: -1 ist kleiner als 0; "
                 + "trees: camera als Text in Anführungszeichen, etwa \"2:1\"; "
                 + "trees: scale gross ist keine ganze Zahl", e.getMessage());

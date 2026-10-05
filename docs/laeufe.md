@@ -73,10 +73,21 @@ entschieden in [0003](entscheidungen/0003-live-render-ueber-autosave-und-zeitpla
 
 - **Aufruf:** die Schalter aus der [Konfiguration](konfiguration.md). Vor
   jedem Baum steht der ganze Aufruf im Log.
-- **Ein Thread:** `RAYON_NUM_THREADS=1`. Der Renderer verteilt seine Arbeit
-  über den globalen Pool von rayon, und der liest diese Variable. Das gilt,
-  bis heroic-map-renderer#148 `--threads` und eine niedrige Priorität bringt. Eine Priorität
-  setzt das Plugin noch nicht.
+- **Hinter dem Server:** `--threads` mit `renderer.threads`, Vorgabe 1, und
+  immer `--low-priority` (heroic-map-renderer#148). Was der Renderer damit
+  setzt, steht in seiner Zeile `Priorität:` im Log.
+  - **Threads:** Alle Phasen des Renderers laufen über einen Pool mit so
+    vielen Threads, auch Vorlauf und Pyramide.
+  - **Priorität:** unter Windows die Klasse IDLE, unter Linux SCHED_IDLE,
+    sonst nice 19, und die I/O-Klasse idle. Gesetzt wird sie vor dem ersten
+    Thread. Einzelheiten und warum der Hintergrundmodus unter Windows
+    wegfiel, stehen in der Doku des Renderers.
+  - **Gemessen:** Auf einem Kern mit zwei Hyperthreads kostet der Renderer
+    mit einem Thread den Server rund 1,4 ms je Tick; die Priorität ändert
+    daran nichts Messbares, siehe die Messung „Tickzeit neben dem
+    Renderer“ des Renderers vom 06.10.
+  - **Affinität:** Der Renderer erbt die Bindung an Kerne vom Server, wenn
+    der Betreiber den Server bindet.
 - **Ausgabe:** stdout und stderr zusammen, Zeile für Zeile als UTF-8 ins
   Log, bis auf den Fortschritt und leise Updates, siehe „Zeitplan“. Den
   Fortschritt meldet der Renderer alle 200 Kacheln als
