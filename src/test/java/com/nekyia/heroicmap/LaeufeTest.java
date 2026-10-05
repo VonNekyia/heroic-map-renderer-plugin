@@ -145,7 +145,9 @@ class LaeufeTest {
     void nur_ein_lauf_zur_zeit() throws Exception {
         var l = laeufe();
         l.starte("Erster", List.of(new Auftrag("a", falscher("sleep"))));
-        assertEquals("Es läuft schon: Erster", l.starte("Zweiter", List.of(new Auftrag("b", falscher("exit", "0")))));
+        // Je nachdem, wie weit der Faden schon ist, steht der Baum dabei.
+        var antwort = l.starte("Zweiter", List.of(new Auftrag("b", falscher("exit", "0"))));
+        assertTrue(antwort.startsWith("Es läuft schon: Erster"), antwort);
         for (int i = 0; i < 3000 && !l.status().endsWith("Letzte Zeile: 200/400 Kacheln"); i++) {
             Thread.sleep(10);
         }
