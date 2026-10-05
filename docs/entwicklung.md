@@ -50,6 +50,28 @@ Einmal von Hand am 05.10., nicht in der CI. Gefahren wurde `Laeufe` ohne
 Server mit dem echten Renderer an der Testwelt: voller Lauf, Abbruch,
 `render` mit `--resume`, dann ein Update. Das Ergebnis steht in der PR.
 
+## Rauchtest am Paper-Server
+
+Einmal von Hand am 05.10., nicht in der CI. Aufbau wie in
+[Live-Render, Weg A](messungen/2026-10-05-live-render-weg-a.md): Paper 26.2
+Build 129, eine Kopie der Testwelt, das Jar des Plugins unter `plugins/`,
+`update-minutes: 1`.
+
+- **Laden:** Das Plugin lädt mit `api-version: '26.2'` und seiner
+  Konfiguration. `status` meldet „Kein Lauf“.
+- **Zeitplan:** 60 s nach dem Laden startet ein Update.
+  - Es zeichnet eine Änderung aus `/fill`, die `save-all` auf die Platte
+    gebracht hat.
+  - `status` zeigt dabei Faden, PID und den Fortschritt `n/N Kacheln`.
+  - Die Ausgabe des Updates steht am Ende im Log.
+- **Ein Lauf zur Zeit:** `update` während des Updates antwortet „Es läuft
+  schon“.
+- **Abbruch:** `render` startet genau einen Renderer, `cancel` beendet ihn.
+- **Stoppen:** Mit laufendem Renderer stoppt der Server in 0,7 s.
+  `onDisable` bricht den Lauf ab, danach läuft kein Renderer mehr.
+- **Nicht geprüft:** die Warnung bei ausgeschaltetem Autosave. Beim Start
+  ist er an; ausschalten müsste ihn ein anderes Plugin vor diesem.
+
 ## CI
 
 [`.github/workflows/ci.yml`](../.github/workflows/ci.yml):

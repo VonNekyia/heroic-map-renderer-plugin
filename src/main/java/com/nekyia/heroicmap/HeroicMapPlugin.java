@@ -18,7 +18,7 @@ public final class HeroicMapPlugin extends JavaPlugin {
     public void onEnable() {
         saveDefaultConfig();
         Path server = Path.of("").toAbsolutePath();
-        Path hauptwelt = getServer().getWorldContainer().toPath().toAbsolutePath()
+        Path hauptwelt = getServer().getWorldContainer().toPath().toAbsolutePath().normalize()
                 .resolve(getServer().getWorlds().getFirst().getName());
         Konfiguration konf;
         try {

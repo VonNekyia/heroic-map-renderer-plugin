@@ -19,6 +19,10 @@ Wie der Renderer arbeitet und was seine Schalter tun, steht in der
 
 - [Entwicklung](entwicklung.md): Bauen und Testen mit Gradle und Java 25, die Tests mit einem falschen Renderer, CI.
 
+## Messungen
+
+- [Live-Render, Weg A](messungen/2026-10-05-live-render-weg-a.md): Autosave 60 s gegen 5 min an 4096 geänderten Chunks, `save-all` je Chunk, Update mit einem Kern mit und ohne Änderungen.
+
 ## Entscheidungen
 
 - [0001: Nur die Paper-API](entscheidungen/0001-nur-die-paper-api.md): ohne paperweight-userdev, solange die API reicht.
