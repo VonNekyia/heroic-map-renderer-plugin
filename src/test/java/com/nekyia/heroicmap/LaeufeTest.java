@@ -216,7 +216,7 @@ class LaeufeTest {
         Process fremd = new ProcessBuilder(falscher("sleep")).start();
         try {
             Files.writeString(tmp.resolve("renderer.pid"), Long.toString(fremd.pid()));
-            Path anderer = Files.createFile(tmp.resolve("terranova-render"));
+            Path anderer = Files.createFile(tmp.resolve("heroic-map-renderer"));
             new Laeufe(konf(anderer, false, List.of()), logger, tmp.resolve("renderer.pid")).raeumeAuf();
             assertTrue(fremd.isAlive());
             assertFalse(Files.exists(tmp.resolve("renderer.pid")));

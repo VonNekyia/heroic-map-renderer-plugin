@@ -35,12 +35,12 @@ class KonfigurationTest {
 
     @Test
     void vorgabe_mit_binaer() throws Exception {
-        Files.createFile(server.resolve("terranova-render"));
+        Files.createFile(server.resolve("heroic-map-renderer"));
         var c = vorgabe();
-        c.set("renderer.binary", "terranova-render");
+        c.set("renderer.binary", "heroic-map-renderer");
         c.set("renderer.assets", List.of("vanilla-assets"));
         var k = Konfiguration.aus(c, server, server.resolve("welt"));
-        assertEquals(server.resolve("terranova-render"), k.renderer());
+        assertEquals(server.resolve("heroic-map-renderer"), k.renderer());
         assertEquals(server.resolve("welt"), k.welt());
         assertEquals(server.resolve("plugins/HeroicMap/tiles"), k.kacheln());
         assertEquals(List.of(server.resolve("vanilla-assets")), k.assets());
