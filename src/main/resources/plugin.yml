@@ -1,0 +1,15 @@
+name: HeroicMap
+version: '${version}'
+main: com.nekyia.heroicmap.HeroicMapPlugin
+api-version: '26.2'
+description: Rendert die Karte des Heroic Map Renderer auf dem Server.
+website: https://github.com/VonNekyia/heroic-map-renderer-plugin
+commands:
+  heroicmap:
+    description: Karte rendern, Update, Status, Abbruch
+    usage: /<command> render|update|status|cancel
+    permission: heroicmap.admin
+permissions:
+  heroicmap.admin:
+    description: Läufe des Renderers starten und abbrechen
+    default: op
