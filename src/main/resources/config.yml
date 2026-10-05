@@ -17,7 +17,8 @@ world: ""
 tiles: plugins/HeroicMap/tiles
 
 # Alle so viele Minuten ein Update; 0 schaltet den Zeitplan ab.
-update-minutes: 30
+# Dazu den Autosave von Paper auf 60 s, siehe docs/laeufe.md.
+update-minutes: 2
 
 # Je Eintrag ein Kachelbaum. Die Kamera in Anführungszeichen.
 trees:

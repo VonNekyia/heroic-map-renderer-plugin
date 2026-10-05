@@ -12,6 +12,8 @@ import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -25,17 +27,22 @@ final class Laeufe {
 
     enum Art { VOLL, UPDATE }
 
-    /** Ein Aufruf des Renderers für einen Baum. */
-    record Auftrag(String baum, List<String> befehl) {}
+    /** Ein Aufruf des Renderers für einen Baum; ein leiser schreibt nichts ins Log, wenn er nichts zeichnet. */
+    record Auftrag(String baum, List<String> befehl, boolean leise) {}
 
     private static final byte[] MAGIE = "HMRSTAND".getBytes(StandardCharsets.US_ASCII);
     private static final String ABGEBROCHEN = "abgebrochen";
+    private static final String NICHTS = "nichts zu zeichnen";
+    /** Die Zeile, mit der der Renderer ein Update ohne Änderung meldet. */
+    private static final Pattern NICHTS_ZEILE = Pattern.compile("Update:\\s+nichts zu zeichnen");
     /** Die Zeile, mit der der Renderer alle 200 Kacheln den Fortschritt meldet. */
     private static final Pattern FORTSCHRITT = Pattern.compile("\\s*\\d+/\\d+ Kacheln");
 
     private final Konfiguration konf;
     private final Logger log;
     private final Path pidDatei;
+    /** Hinweise aus dem Plan, jeder einmal je Start; der Zeitplan fragt alle paar Minuten. */
+    private final Set<String> gemeldet = ConcurrentHashMap.newKeySet();
 
     // Geschützt durch this.
     private Thread faden;
@@ -87,19 +94,25 @@ final class Laeufe {
             if (art == Art.VOLL) {
                 resume = angefangen == Art.VOLL;
             } else if (angefangen == Art.VOLL) {
-                log.info(baum.ordner() + ": ein voller Lauf ist abgebrochen, /heroicmap render setzt ihn fort");
+                hinweis(baum.ordner() + ": ein voller Lauf ist abgebrochen, /heroicmap render setzt ihn fort");
                 continue;
             } else if (angefangen == Art.UPDATE) {
                 resume = true;
             } else if (Files.exists(ordner.resolve("stand.bin"))) {
                 resume = false;
             } else {
-                log.info(baum.ordner() + ": noch kein voller Lauf, erst /heroicmap render");
+                hinweis(baum.ordner() + ": noch kein voller Lauf, erst /heroicmap render");
                 continue;
             }
-            auftraege.add(new Auftrag(baum.ordner(), befehl(baum, art, resume)));
+            auftraege.add(new Auftrag(baum.ordner(), befehl(baum, art, resume), art == Art.UPDATE));
         }
         return auftraege;
+    }
+
+    private void hinweis(String text) {
+        if (gemeldet.add(text)) {
+            log.info(text);
+        }
     }
 
     /** Die Schalter des Renderers für einen Baum. */
@@ -240,8 +253,9 @@ final class Laeufe {
                 synchronized (this) {
                     laeuft = name + ", Baum " + a.baum();
                 }
-                log.info(name + ", Baum " + a.baum() + ": " + String.join(" ", a.befehl()));
-                ergebnisse.add(a.baum() + " " + fuehreAus(a.befehl()));
+                List<String> puffer = a.leise() ? new ArrayList<>() : null;
+                melde(puffer, name + ", Baum " + a.baum() + ": " + String.join(" ", a.befehl()));
+                ergebnisse.add(a.baum() + " " + fuehreAus(a.befehl(), puffer));
                 if (istAbgebrochen()) {
                     break;
                 }
@@ -254,12 +268,27 @@ final class Laeufe {
                 laeuft = null;
                 zuletzt = ende;
             }
-            log.info(ende);
+            if (!ergebnisse.stream().allMatch(e -> e.endsWith(" " + NICHTS))) {
+                log.info(ende);
+            }
         }
     }
 
-    /** Ein Kindprozess bis zu seinem Ende, und was aus ihm wurde. Er endet auf jedem Weg hier. */
-    private String fuehreAus(List<String> befehl) {
+    /** Ins Log, oder in den Puffer eines leisen Auftrags. */
+    private void melde(List<String> puffer, String zeile) {
+        if (puffer != null) {
+            puffer.add(zeile);
+        } else {
+            log.info(zeile);
+        }
+    }
+
+    /**
+     * Ein Kindprozess bis zu seinem Ende, und was aus ihm wurde. Er endet auf jedem Weg hier.
+     * Mit Puffer kommt seine Ausgabe erst am Ende ins Log, und nur, wenn er etwas zeichnete oder
+     * scheiterte. Siehe docs/laeufe.md, „Zeitplan“.
+     */
+    private String fuehreAus(List<String> befehl, List<String> puffer) {
         var pb = new ProcessBuilder(befehl).redirectErrorStream(true);
         // ponytail: ein Thread über rayon, bis heroic-map-renderer#148 --threads und die Priorität bringt.
         pb.environment().put("RAYON_NUM_THREADS", "1");
@@ -282,10 +311,15 @@ final class Laeufe {
         } catch (IOException e) {
             log.log(Level.WARNING, "PID-Datei " + pidDatei + " nicht geschrieben", e);
         }
+        boolean still = false;
         try {
-            lies(p);
+            lies(p, puffer);
             int code = p.waitFor();
-            return istAbgebrochen() ? ABGEBROCHEN : code == 0 ? "fertig" : "mit Code " + code;
+            if (istAbgebrochen()) {
+                return ABGEBROCHEN;
+            }
+            still = code == 0 && puffer != null && puffer.stream().anyMatch(z -> NICHTS_ZEILE.matcher(z).matches());
+            return still ? NICHTS : code == 0 ? "fertig" : "mit Code " + code;
         } catch (IOException | RuntimeException e) {
             // Ein abgebrochener Prozess kann die Leitung mitten in einer Zeile schliessen.
             if (istAbgebrochen()) {
@@ -297,6 +331,9 @@ final class Laeufe {
             Thread.currentThread().interrupt();
             return ABGEBROCHEN;
         } finally {
+            if (puffer != null && !still) {
+                puffer.forEach(log::info);
+            }
             beende(p);
             try {
                 Files.deleteIfExists(pidDatei);
@@ -310,12 +347,12 @@ final class Laeufe {
      * Liest die Ausgabe bis zum Ende: den Fortschritt nur für den Status, alles andere auch ins Log.
      * Siehe docs/laeufe.md, „Der Kindprozess“.
      */
-    private void lies(Process p) throws IOException {
+    private void lies(Process p, List<String> puffer) throws IOException {
         try (var r = p.inputReader(StandardCharsets.UTF_8)) {
             for (String z; (z = r.readLine()) != null; ) {
                 letzteZeile = z;
                 if (!FORTSCHRITT.matcher(z).matches()) {
-                    log.info(z);
+                    melde(puffer, z);
                 }
             }
         }

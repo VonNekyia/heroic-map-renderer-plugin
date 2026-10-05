@@ -46,7 +46,7 @@ class KonfigurationTest {
         assertEquals(List.of(server.resolve("vanilla-assets")), k.assets());
         assertEquals(List.of(), k.daten());
         assertFalse(k.grafikkarte());
-        assertEquals(30, k.updateMinuten());
+        assertEquals(2, k.updateMinuten());
         assertEquals(List.of(new Baum("2:1", "se", null, false)), k.baeume());
         assertEquals("2x1-se", k.baeume().getFirst().ordner());
     }
