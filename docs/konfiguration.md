@@ -30,7 +30,7 @@ Gelesen und geprüft in `Konfiguration.aus` in
 | `trees` | ein Baum `"2:1"` | siehe „Bäume“ | je Eintrag ein Kachelbaum |
 | `download.voll-je-10-min` | `10` | – | volle Downloads, die der Server in 10 min ausgibt |
 | `download.voll-je-woche` | `5` | – | volle Downloads je Spieler in 7 Tagen |
-| `download.abgleich-je-tag` | `20` | – | Abgleiche von Hand je Spieler in 24 h |
+| `download.abgleich-je-tag` | `1` | – | Abgleiche je Spieler in 24 h, von Hand und der tägliche zusammen |
 | `download.abgleich-ab` | `"00:00"` | – | ab dieser Uhrzeit des Servers holt der erste Join den täglichen Abgleich |
 | `download.reserve-minuten` | `10` | – | Reserve für `abdeckt_bis` |
 | `webserver.enabled` | `true` | – | ob das Plugin den Server des Renderers startet |

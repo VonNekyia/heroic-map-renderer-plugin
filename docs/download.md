@@ -38,7 +38,7 @@ Bukkit, und in `Kanal`, der den Kanal und den Stand im Spieler bedient.
 | Server → Mod | `angebot` | `baeume`: je Baum `id`, `name`, `dimension`, `stand` (Epoch s), `abdeckt_bis` (Epoch s, falls bekannt), `massstaebe`: je `"1"`, `"2"`, `"4"` `bytes` und `kacheln` | sobald der Mod den Kanal anmeldet, und nach jedem Lauf, der Kacheln gezeichnet hat |
 | Mod → Server | `anfrage` | `baum`, `massstab` (1, 2 oder 4), `art`: `voll` oder `abgleich` | der Spieler wählt |
 | Server → Mod | `freigabe` | `baum`, `massstab`, `art`, `abdeckt_bis` (falls bekannt), `url`, `token`, `ablauf` (Epoch s), `manifest_sha256`, `bytes` | auf eine `anfrage`, oder von selbst beim täglichen Abgleich |
-| Server → Mod | `abgelehnt` | `grund` (Text für den Spieler), `wieder` (Epoch s, falls bekannt) | siehe „Anfrage“ |
+| Server → Mod | `abgelehnt` | `baum`, `art`, `grund` (Text für den Spieler), `wieder` (Epoch s, falls bekannt) | siehe „Anfrage“ |
 
 - **`dimension`** folgt aus `world` in `config.yml`. Die Weltwurzel ist
   `minecraft:overworld`, ein Ordner `dimensions/<ns>/<name>` heisst
@@ -108,12 +108,14 @@ Der Reihe nach, die erste Ablehnung gilt:
    - bei `voll` mit demselben Massstab, solange es noch mindestens 10 min
      gilt, zum Fortsetzen;
    - bei `abgleich`, solange es jünger als 10 min ist. So kostet eine
-     Neuanfrage nach einem Fehler der Prüfsumme keinen Abgleich, und ein
-     neues Budget gibt es erst nach 10 min. Entschieden im Review, steht an
-     #154.
+     Neuanfrage nach einem Fehler der Prüfsumme keinen Abgleich. Entschieden
+     im Review, steht an #154.
 7. **Grenzen,** siehe dort, dann ein neues Token und die `freigabe`.
 
-Eine Ablehnung zählt nicht und ändert den Stand nicht.
+Eine Ablehnung zählt nicht und ändert den Stand nicht. Sie nennt `baum` und
+`art` der Anfrage, `art` wie in `freigabe` die wirkliche nach Schritt 5. So
+weiss der Mod auch bei zwei offenen Anfragen, welchen Baum ein `wieder`
+sperrt. Nur einer unlesbaren Anfrage fehlen beide.
 
 ## Grenzen
 
@@ -121,24 +123,28 @@ Eine Ablehnung zählt nicht und ändert den Stand nicht.
 |---|---|---|---|
 | volle Downloads am Server, alle Spieler | 10 | 10 min, gleitend | `download.voll-je-10-min` |
 | volle Downloads je Spieler | 5 | 7 Tage, gleitend | `download.voll-je-woche` |
-| Abgleiche von Hand je Spieler | 20 | 24 h, gleitend | `download.abgleich-je-tag` |
+| Abgleiche je Spieler, von Hand und täglich | 1 | 24 h, gleitend | `download.abgleich-je-tag` |
 
 - **Gezählt** wird beim Ausstellen eines Tokens.
 - **`wieder`** in der Ablehnung: Dann fällt die älteste Zeit aus dem
   Fenster.
 - **Die Grenze des Servers** liegt im Speicher und beginnt nach einem
   Neustart leer. Die Grenzen je Spieler liegen in seinem Stand.
-- **Ein Abgleich von Hand** bekommt ein neues Token und zählt, sobald das
-  letzte 10 min alt ist, siehe „Anfrage“.
-- **Der tägliche Abgleich** zählt nicht.
+- **Ein Abgleich je Tag,** von Hand oder der tägliche, im selben Fenster.
+  Wo der Spieler ist, zeichnet der Mod die Karte ohnehin live; mehr
+  braucht es nicht. Entschieden vom Maintainer am 06.10.
+  - Ist er schon gelaufen, lehnt ein zweiter ab: „Dein Abgleich der letzten
+    24 Stunden ist schon gelaufen.“, mit `wieder`. Bei einer höheren Grenze
+    nennt die Ablehnung die Zahl.
+  - Binnen 10 min gibt es dasselbe Token noch einmal, und es zählt nicht,
+    siehe „Anfrage“.
 - **Eine Grenze 0** schaltet die Art ab: „Volle Downloads sind auf diesem
-  Server abgeschaltet.“ oder „Abgleiche von Hand sind auf diesem Server
-  abgeschaltet.“, ohne `wieder`.
+  Server abgeschaltet.“ oder „Abgleiche sind auf diesem Server
+  abgeschaltet.“, ohne `wieder`. Ohne Abgleiche fällt auch der tägliche
+  aus.
 - **`wieder`** nimmt nur Zeiten im Fenster. Senkt der Betreiber eine Grenze,
   ist es der Zeitpunkt, ab dem weniger als die neue Grenze im Fenster
   liegen.
-- **Offen beim Maintainer:** 20 Abgleiche zu je 10 % sind bis zu 200 % des
-  Satzes je Spieler und Tag. Die Vorgabe legt er fest.
 
 ## Token
 
@@ -161,17 +167,20 @@ des Renderers. `TokenTest` prüft gegen dessen Testvektoren. Die Kopie in
 
 Meldet ein Spieler mit Mod den Kanal an, und bei jedem neuen Angebot an alle
 Spieler mit Mod, schickt das Plugin je Baum eine `freigabe` mit `art`
-`abgleich`, wenn alle drei zutreffen:
+`abgleich`, wenn alle vier zutreffen:
 
 - er hat für den Baum einen Massstab gespeichert, hat also schon geladen;
 - sein letzter Abgleich, auch ein voller Download, liegt vor dem letzten
   Zeitpunkt von `download.abgleich-ab`, heute oder gestern, in der
   Standardzeitzone der JVM des Servers;
+- in den letzten 24 h lief noch kein Abgleich, von Hand oder täglich,
+  siehe „Grenzen“;
 - der Webserver ist bereit.
 
-Er zählt gegen keine Grenze und hat den Deckel eines Abgleichs. Wer über
-die Uhrzeit hinaus online bleibt, bekommt ihn mit dem nächsten neuen
-Angebot, also nach dem nächsten Lauf, der Kacheln zeichnet. Wer vor dem
+Er zählt einmal, auch wenn er mehrere Bäume abgleicht, und hat den Deckel
+eines Abgleichs. Wer über die Uhrzeit hinaus online bleibt, bekommt ihn mit
+dem nächsten neuen Angebot, also nach dem nächsten Lauf, der Kacheln
+zeichnet. Wer vor dem
 ersten Lesen der Manifeste beitritt, bekommt ihn mit dem ersten Angebot.
 
 ## Was die Kacheln abdecken
@@ -194,7 +203,7 @@ wenn das Plugin ein neues Manifest liest. So gehören Manifest und
 
 JSON unter `heroicmap:download` im `PersistentDataContainer` des Spielers:
 
-- die Zeiten der vollen Downloads und der Abgleiche von Hand;
+- die Zeiten der vollen Downloads und der Abgleiche, von Hand und täglich;
 - je Baum der Massstab, die Zeit des letzten Abgleichs und je Art das
   zuletzt ausgestellte Token mit Massstab, Ablauf und Deckel.
 
