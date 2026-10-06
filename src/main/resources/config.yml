@@ -4,6 +4,7 @@ renderer:
   # Das Binär des Renderers.
   binary: ""
   # --assets, in dieser Reihenfolge; spätere überschreiben frühere.
+  # Leer nur mit download-client-jar: true, siehe unten.
   assets: []
   # --data, in dieser Reihenfolge.
   data: []
@@ -12,6 +13,14 @@ renderer:
   # So viele Threads bekommt der Renderer (--threads); er läuft immer mit
   # niedrigster Priorität (--low-priority).
   threads: 1
+  # Ohne assets lädt der Renderer das Client-Jar von Minecraft von Mojangs
+  # Servern und nutzt daraus Texturen, Modelle und Biome. Das Jar gehört Mojang
+  # und darf nicht weitergegeben werden. Mit true bestätigst du, dass du
+  # Minecraft: Java Edition besitzt, und nimmst die Minecraft-EULA an:
+  # https://www.minecraft.net/eula. eula=true des Servers zählt nicht.
+  download-client-jar: false
+  # Die Version des Client-Jars, etwa "26.2"; leer: die zur Welt.
+  client-version: ""
 
 # Die Weltwurzel mit level.dat; leer: die Hauptwelt des Servers.
 world: ""

@@ -33,7 +33,7 @@ public final class HeroicMapPlugin extends JavaPlugin {
             getServer().getPluginManager().disablePlugin(this);
             return;
         }
-        laeufe = new Laeufe(konf, getLogger(), getDataFolder().toPath().resolve("renderer.pid"));
+        laeufe = new Laeufe(konf, getLogger(), getDataFolder().toPath());
         laeufe.raeumeAuf();
         laeufe.markiere();
         for (var w : getServer().getWorlds()) {

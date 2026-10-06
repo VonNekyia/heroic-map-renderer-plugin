@@ -55,13 +55,17 @@ class LaeufeTest {
     }
 
     private Konfiguration konf(Path renderer, boolean gpu, List<Konfiguration.Baum> baeume) {
+        return konf(renderer, gpu, baeume, Konfiguration.ClientJar.OHNE);
+    }
+
+    private Konfiguration konf(Path renderer, boolean gpu, List<Konfiguration.Baum> baeume, Konfiguration.ClientJar clientJar) {
         return new Konfiguration(renderer, tmp.resolve("world"), tmp.resolve("tiles"),
                 List.of(tmp.resolve("a1"), tmp.resolve("a2")), List.of(tmp.resolve("d")), gpu, 1, 30, baeume, DOWNLOAD,
-                new Konfiguration.Webserver(false, "", "", null, null, "", "", ""));
+                new Konfiguration.Webserver(false, "", "", null, null, "", "", ""), clientJar);
     }
 
     private Laeufe laeufe(Konfiguration.Baum... baeume) {
-        return new Laeufe(konf(JAVA, false, List.of(baeume)), logger, tmp.resolve("renderer.pid"));
+        return new Laeufe(konf(JAVA, false, List.of(baeume)), logger, tmp);
     }
 
     /** Der falsche Renderer als Kindprozess, direkt über java, ohne Hülle. */
@@ -199,7 +203,7 @@ class LaeufeTest {
             @Override
             public void close() {}
         });
-        var l = new Laeufe(konf(JAVA, false, List.of()), kaputt, tmp.resolve("renderer.pid"));
+        var l = new Laeufe(konf(JAVA, false, List.of()), kaputt, tmp);
         l.starte("Test", List.of(new Auftrag("a", falscher("sleep"), false), new Auftrag("b", falscher("exit", "0"), false)));
         assertTrue(l.warte(30_000));
         assertTrue(pid[0] > 0);
@@ -320,7 +324,7 @@ class LaeufeTest {
     @Test
     void unter_musl_nennt_der_start_den_grund() throws Exception {
         Path renderer = Files.createFile(tmp.resolve("renderer"));
-        var l = new Laeufe(konf(renderer, false, List.of()), logger, tmp.resolve("renderer.pid"));
+        var l = new Laeufe(konf(renderer, false, List.of()), logger, tmp);
         l.musl = Files.createFile(tmp.resolve("ld-musl-x86_64.so.1"));
         // Der Befehl nennt ein fehlendes Binär: Fehler 2 wie unter musl, auf jedem System in seiner Form.
         l.starte("Test", List.of(new Auftrag("a", List.of(tmp.resolve("fehlt").toString()), false)));
@@ -375,7 +379,7 @@ class LaeufeTest {
         try {
             Files.writeString(tmp.resolve("renderer.pid"), Long.toString(fremd.pid()));
             Path anderer = Files.createFile(tmp.resolve("heroic-map-renderer"));
-            new Laeufe(konf(anderer, false, List.of()), logger, tmp.resolve("renderer.pid")).raeumeAuf();
+            new Laeufe(konf(anderer, false, List.of()), logger, tmp).raeumeAuf();
             assertTrue(fremd.isAlive());
             assertFalse(Files.exists(tmp.resolve("renderer.pid")));
         } finally {
@@ -428,6 +432,32 @@ class LaeufeTest {
     }
 
     @Test
+    void client_jar_nur_mit_zustimmung_und_cache_im_datenordner() {
+        var mit = new Laeufe(konf(JAVA, false, List.of(KARTE), new Konfiguration.ClientJar(true, "26.2")), logger, tmp);
+        var befehl = mit.plane(Art.VOLL).getFirst().befehl();
+        int i = befehl.indexOf("--download-client-jar");
+        assertEquals(List.of("--download-client-jar", "--cache-dir", tmp.resolve("client-jar").toString(), "--client-version", "26.2"),
+                befehl.subList(i, i + 5));
+        var ohneVersion = new Laeufe(konf(JAVA, false, List.of(KARTE), new Konfiguration.ClientJar(true, "")), logger, tmp);
+        assertFalse(ohneVersion.plane(Art.VOLL).getFirst().befehl().contains("--client-version"));
+        assertFalse(laeufe(KARTE).plane(Art.VOLL).getFirst().befehl().contains("--download-client-jar"), "ohne Zustimmung");
+    }
+
+    @Test
+    void fehler_des_renderers_steht_im_status() throws Exception {
+        var l = laeufe();
+        l.starte("Test", List.of(new Auftrag("a", falscher("zustimmung"), false), new Auftrag("b", falscher("zustimmung"), false),
+                new Auftrag("c", falscher("exit", "3"), false)));
+        assertTrue(l.warte(30_000));
+        assertTrue(l.status().contains(", Fehler, Code 1: ohne --assets braucht der Lauf das Client-Jar von Mojang. "
+                + "Der Renderer lädt das Client-Jar von Minecraft 26.2 (41,0 MB) von Mojangs Servern"), l::status);
+        assertTrue(l.status().contains("Minecraft-EULA an: https://www.minecraft.net/eula\nc, zuletzt"), l::status);
+        assertTrue(l.status().endsWith(", Fehler, Code 3"), "ohne Error-Zeile nichts vom Prozess davor: " + l.status());
+        assertEquals(1, log.stream().filter(z -> z.startsWith("Zustimmen zum Client-Jar in config.yml")).count(), "einmal je Start");
+        assertTrue(log.stream().anyMatch(z -> z.startsWith("Zustimmen mit --download-client-jar")), "die Ausgabe steht im Log");
+    }
+
+    @Test
     void voller_lauf_nennt_alle_schalter() {
         var plan = laeufe(KARTE).plane(Art.VOLL);
         assertEquals(1, plan.size());
@@ -446,7 +476,7 @@ class LaeufeTest {
     @Test
     void scale_cinematic_und_grafikkarte() {
         var baum = new Konfiguration.Baum("top-north", "s", 4, true, false, true);
-        var plan = new Laeufe(konf(JAVA, true, List.of(baum)), logger, tmp.resolve("renderer.pid")).plane(Art.VOLL);
+        var plan = new Laeufe(konf(JAVA, true, List.of(baum)), logger, tmp).plane(Art.VOLL);
         assertEquals("top-north-s-cinematic", plan.getFirst().baum());
         assertEquals(List.of("--camera", "top-north", "--direction", "s", "--scale", "4", "--cinematic", "--gpu", "auto",
                 "--threads", "1", "--low-priority", "--progress", "json"), ende(plan, 14));

@@ -122,7 +122,10 @@ entschieden in [0003](entscheidungen/0003-live-render-ueber-autosave-und-zeitpla
   beendet“.
 - **Ende:** Code 0 heisst „Kacheln gezeichnet“ oder bei einem leisen Update
   „nichts zu zeichnen“. Jeder andere Code steht als „Fehler, Code N“ im Log
-  und im Status. Der nächste Baum läuft trotzdem.
+  und im Status, im Status mit der Zeile `Error: …` des Renderers dahinter,
+  etwa dem Text der Zustimmung zum Client-Jar, siehe
+  [Konfiguration](konfiguration.md), „Client-Jar“. Der nächste Baum läuft
+  trotzdem.
 - **Faden:** ein eigener Faden `HeroicMap-Lauf`, nicht einer aus dem Pool
   des Schedulers, denn ein voller Lauf dauert Stunden.
 - **Hangar:** Der Scanner stuft `Runtime.exec` als `HIGHEST` ein,
