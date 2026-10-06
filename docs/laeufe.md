@@ -106,9 +106,10 @@ entschieden in [0003](entscheidungen/0003-live-render-ueber-autosave-und-zeitpla
   - Was nicht so aussieht, steht als Text im Log.
 - **Start scheitert:** Startet der Prozess nicht, steht „Fehler, nicht
   gestartet:“ mit dem Grund im Log und im Status.
-  - **musl:** Das Linux-Binär braucht glibc (heroic-map-renderer#150).
-    Unter musl, etwa in einem Image mit Alpine, fehlt ihm der Lader, und
-    Java 25 meldet nur `Exec failed, error: 2 (No such file or directory)`.
+  - **musl:** Das Linux-Binär braucht glibc (heroic-map-renderer#150),
+    auch das aus dem Jar. Unter musl, etwa in einem Image mit Alpine, fehlt
+    ihm der Lader, und Java 25 meldet nur
+    `Exec failed, error: 2 (No such file or directory)`.
     Meldet sie Fehler 2 für ein vorhandenes Binär und gibt es
     `/lib/ld-musl-x86_64.so.1`, nennt das Plugin den Grund: Nötig ist ein
     Image ohne Alpine. Jeder andere Fehler, etwa 13 ohne Ausführrecht,
@@ -227,11 +228,13 @@ Kopf zählt als nicht abgebrochen.
 Solange der Renderer läuft, steht seine PID in
 `plugins/HeroicMap/renderer.pid`. Stirbt die JVM, ohne `onDisable` zu rufen,
 liegt die Datei beim nächsten Start noch. Dann beendet das Plugin den
-Prozess mit dieser PID, aber nur, wenn seine ausführbare Datei
-`renderer.binary` ist. Eine wiederverwendete PID trifft so keinen fremden
-Prozess.
+Prozess mit dieser PID, aber nur, wenn seine ausführbare Datei das Binär
+ist, das das Plugin nutzt: `renderer.binary` oder das aus dem Jar, siehe
+[Konfiguration](konfiguration.md), „Das Binär“. Eine wiederverwendete PID
+trifft so keinen fremden Prozess. Wechselt das Binär zwischen zwei Starts,
+etwa mit einer neuen Version des Plugins, erkennt es den Prozess des alten
+nicht; er läuft dann zu Ende.
 
 ## Was noch fehlt
 
 - Warnung mit Schätzung und Bestätigung: heroic-map-renderer#149.
-- Das Binär im Jar und Assets von Mojang: heroic-map-renderer#146, heroic-map-renderer#147.

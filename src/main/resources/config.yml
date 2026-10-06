@@ -1,7 +1,8 @@
 # Siehe docs/konfiguration.md. Pfade relativ zum Ordner des Servers.
 
 renderer:
-  # Das Binär des Renderers.
+  # Das Binär des Renderers; leer: das aus dem Jar, für Windows und Linux
+  # auf x86_64. Nur für andere Plattformen oder ein eigenes Binär setzen.
   binary: ""
   # --assets, in dieser Reihenfolge; spätere überschreiben frühere.
   # Leer nur mit download-client-jar: true, siehe unten.

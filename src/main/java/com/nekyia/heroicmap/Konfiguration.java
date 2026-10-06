@@ -13,7 +13,7 @@ import java.util.regex.Pattern;
 import org.bukkit.configuration.ConfigurationSection;
 
 /**
- * Die Einstellungen aus config.yml, geprüft, alle Pfade absolut.
+ * Die Einstellungen aus config.yml, geprüft, alle Pfade absolut; {@code renderer} null ohne renderer.binary.
  * Siehe docs/konfiguration.md.
  */
 record Konfiguration(
@@ -104,11 +104,10 @@ record Konfiguration(
     static Konfiguration aus(ConfigurationSection c, Path server, Path hauptwelt, Charset argumente) {
         List<String> fehler = new ArrayList<>();
 
+        // Leer: das Binär aus dem Jar. Siehe docs/konfiguration.md, „Das Binär“.
         String binaer = c.getString("renderer.binary", "");
-        Path renderer = server.resolve(binaer);
-        if (binaer.isBlank()) {
-            fehler.add("renderer.binary fehlt");
-        } else if (!Files.isRegularFile(renderer)) {
+        Path renderer = binaer.isBlank() ? null : server.resolve(binaer);
+        if (renderer != null && !Files.isRegularFile(renderer)) {
             fehler.add("renderer.binary: " + renderer + " gibt es nicht");
         }
 
@@ -249,6 +248,12 @@ record Konfiguration(
                         cert.isBlank() ? null : server.resolve(cert), key.isBlank() ? null : server.resolve(key),
                         titel, beschreibung, bild, oeffentlich),
                 new ClientJar(c.getBoolean("renderer.download-client-jar"), c.getString("renderer.client-version", "").strip()));
+    }
+
+    /** Dieselbe Konfiguration mit diesem Binär. */
+    Konfiguration mitRenderer(Path binaer) {
+        return new Konfiguration(binaer, welt, kacheln, assets, daten, grafikkarte, threads, vollThreads, updateMinuten,
+                baeume, download, webserver, clientJar);
     }
 
     /**

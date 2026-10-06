@@ -21,12 +21,14 @@ Der Code steht in `Webserver` in
 ## Aufruf
 
 ```
-<renderer.binary> --serve <tiles> --web plugins/HeroicMap/web --listen <webserver.listen>
+<binär> --serve <tiles> --web plugins/HeroicMap/web --listen <webserver.listen>
     --exit-with-stdin --threads 1 --low-priority [--tls-cert <datei> --tls-key <datei>]
     [--secret-file plugins/HeroicMap/token.geheimnis]
     [--site-url <url> --site-title <title> --site-description <description> [--site-image <image>]]
 ```
 
+- **`<binär>`** ist `renderer.binary` oder das Binär aus dem Jar, siehe
+  [Konfiguration](konfiguration.md), „Das Binär“.
 - **Ein Thread** für Verbindungen und Dateien, mit niedrigster Priorität,
   unabhängig von `renderer.threads` und `renderer.full-run-threads`. Der Server liest kleine Dateien, das
   Spiel geht vor.
@@ -72,8 +74,8 @@ siehe [Entwicklung](entwicklung.md), „Im Jar“.
   Grund wie bei einem Lauf, siehe [Läufe](laeufe.md), „Der Kindprozess“.
 - **Keine Waise:** Solange er läuft, steht seine PID in
   `plugins/HeroicMap/webserver.pid`. Beim Laden beendet das Plugin einen
-  Prozess unter dieser PID, wenn seine ausführbare Datei
-  `renderer.binary` ist, wie bei den Läufen, siehe [Läufe](laeufe.md),
+  Prozess unter dieser PID, wenn seine ausführbare Datei das Binär ist,
+  wie bei den Läufen, siehe [Läufe](laeufe.md),
   „Keine verwaisten Prozesse“.
 
 ## Status

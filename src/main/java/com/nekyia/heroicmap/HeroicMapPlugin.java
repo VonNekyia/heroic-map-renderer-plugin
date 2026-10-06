@@ -18,6 +18,8 @@ public final class HeroicMapPlugin extends JavaPlugin {
 
     private Laeufe laeufe;
     private volatile Webserver webserver;
+    /** Warum das Plugin ohne Renderer bleibt; null mit Renderer. Jeder Befehl nennt es. */
+    private String ohneRenderer;
 
     @Override
     public void onEnable() {
@@ -31,6 +33,14 @@ public final class HeroicMapPlugin extends JavaPlugin {
         } catch (IllegalArgumentException e) {
             getLogger().severe("config.yml: " + e.getMessage());
             getServer().getPluginManager().disablePlugin(this);
+            return;
+        }
+        try {
+            konf = konf.mitRenderer(Binaer.waehle(konf.renderer(), getFile().toPath(), getDataFolder().toPath().resolve("bin"),
+                    System.getProperty("os.name"), System.getProperty("os.arch")));
+        } catch (IOException e) {
+            ohneRenderer = "Kein Renderer: " + e.getMessage() + ". renderer.binary in config.yml setzen, siehe docs/konfiguration.md.";
+            getLogger().log(Level.SEVERE, ohneRenderer, e);
             return;
         }
         laeufe = new Laeufe(konf, getLogger(), getDataFolder().toPath());
@@ -113,6 +123,10 @@ public final class HeroicMapPlugin extends JavaPlugin {
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         if (args.length != 1) {
             return false;
+        }
+        if (ohneRenderer != null && BEFEHLE.contains(args[0])) {
+            sender.sendMessage(ohneRenderer);
+            return true;
         }
         String antwort = switch (args[0]) {
             case "render" -> laeufe.starte(Laeufe.Art.VOLL);
