@@ -51,7 +51,7 @@ class KonfigurationTest {
         assertEquals(2, k.updateMinuten());
         assertEquals(List.of(new Baum("2:1", "se", null, false, false, true)), k.baeume());
         assertEquals("2x1-se", k.baeume().getFirst().ordner());
-        assertEquals(new Konfiguration.Download(10, 5, 20, java.time.LocalTime.MIDNIGHT, 10), k.download());
+        assertEquals(new Konfiguration.Download(10, 5, 1, java.time.LocalTime.MIDNIGHT, 10), k.download());
         assertEquals("minecraft:overworld", k.dimension());
         assertEquals(new Konfiguration.Webserver(true, "0.0.0.0:8080", "", null, null), k.webserver());
     }

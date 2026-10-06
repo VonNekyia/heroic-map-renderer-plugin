@@ -49,8 +49,8 @@ download:
   voll-je-10-min: 10
   # Volle Downloads je Spieler in 7 Tagen.
   voll-je-woche: 5
-  # Abgleiche von Hand je Spieler in 24 Stunden.
-  abgleich-je-tag: 20
+  # Abgleiche je Spieler in 24 Stunden, von Hand und der tägliche zusammen.
+  abgleich-je-tag: 1
   # Ab dieser Uhrzeit des Servers holt der erste Join eines Tages den Abgleich.
   abgleich-ab: "00:00"
   # Was die Kacheln sicher abdecken: Beginn des letzten Laufs minus so viele Minuten.

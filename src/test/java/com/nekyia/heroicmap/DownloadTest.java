@@ -46,12 +46,17 @@ class DownloadTest {
         satz = Satz.lies(tmp.resolve("top-north-s"));
     }
 
-    private Download download(LocalTime abgleichAb) {
+    private Download download(LocalTime abgleichAb, int abgleichJeTag) {
         var konf = new Konfiguration(tmp.resolve("r"), tmp.resolve("welt"), tmp, List.of(), List.of(), false, 1, 2,
-                List.of(KARTE, OBEN), new Konfiguration.Download(10, 5, 20, abgleichAb, 10), new Konfiguration.Webserver(false, "", "", null, null));
+                List.of(KARTE, OBEN), new Konfiguration.Download(10, 5, abgleichJeTag, abgleichAb, 10),
+                new Konfiguration.Webserver(false, "", "", null, null));
         var d = new Download(konf, new byte[32], () -> webserver, b -> erfolgreich, ZoneOffset.UTC);
         d.saetze(Map.of("top-north-s", satz));
         return d;
+    }
+
+    private Download download(LocalTime abgleichAb) {
+        return download(abgleichAb, 1);
     }
 
     private Download download() {
@@ -107,6 +112,7 @@ class DownloadTest {
             var antwort = d.anfrage(a.getBytes(StandardCharsets.UTF_8), SPIELER, stand, JETZT);
             assertEquals("abgelehnt", antwort.get("typ").getAsString(), a);
             assertEquals("Die Anfrage ist nicht lesbar.", antwort.get("grund").getAsString(), a);
+            assertFalse(antwort.has("baum") || antwort.has("art"), "unlesbar: ohne Baum und Art");
         }
         byte[] gueltig = anfrage("top-north-s", 4, "voll");
         byte[] gross = (new String(gueltig, StandardCharsets.UTF_8) + " ".repeat(Download.GROESSTE_ANFRAGE + 1 - gueltig.length))
@@ -121,8 +127,10 @@ class DownloadTest {
     void nicht_angebotener_baum_und_webserver_aus() {
         var d = download();
         var stand = new Download.Spielerstand();
-        assertEquals("Diese Karte wird hier nicht zum Download angeboten.",
-                d.anfrage(anfrage("2x1-se", 4, "voll"), SPIELER, stand, JETZT).get("grund").getAsString());
+        var fremd = d.anfrage(anfrage("2x1-se", 4, "abgleich"), SPIELER, stand, JETZT);
+        assertEquals("Diese Karte wird hier nicht zum Download angeboten.", fremd.get("grund").getAsString());
+        assertEquals("2x1-se", fremd.get("baum").getAsString());
+        assertEquals("voll", fremd.get("art").getAsString(), "ohne gespeicherten Massstab wäre es ein voller");
         webserver = Optional.empty();
         assertEquals("Webserver aus.", d.anfrage(anfrage("top-north-s", 4, "voll"), SPIELER, stand, JETZT).get("grund").getAsString());
         assertEquals(0, stand.voll.length);
@@ -192,7 +200,7 @@ class DownloadTest {
 
     @Test
     void abgleich_von_hand_hat_einen_kleinen_deckel_und_zaehlt_nach_zehn_minuten_neu() throws Exception {
-        var d = download();
+        var d = download(LocalTime.MIDNIGHT, 2);
         var stand = new Download.Spielerstand();
         d.anfrage(anfrage("top-north-s", 4, "voll"), SPIELER, stand, JETZT);
         var a = d.anfrage(anfrage("top-north-s", 4, "abgleich"), SPIELER, stand, JETZT.plusSeconds(60));
@@ -302,7 +310,37 @@ class DownloadTest {
         stand.baeume.put("top-north-s", new Download.BaumStand());
         stand.baeume.get("top-north-s").massstab = 4;
         var abgleich = d.anfrage(anfrage("top-north-s", 4, "abgleich"), SPIELER, stand, JETZT);
-        assertEquals("Abgleiche von Hand sind auf diesem Server abgeschaltet.", abgleich.get("grund").getAsString());
+        assertEquals("Abgleiche sind auf diesem Server abgeschaltet.", abgleich.get("grund").getAsString());
+        assertEquals(List.of(), d.beimJoin(SPIELER, stand, JETZT.plus(Duration.ofDays(2))), "auch der tägliche nicht");
+    }
+
+    @Test
+    void ein_abgleich_je_tag() {
+        var d = download();
+        var stand = new Download.Spielerstand();
+        d.anfrage(anfrage("top-north-s", 4, "voll"), SPIELER, stand, JETZT);
+        var a = d.anfrage(anfrage("top-north-s", 4, "abgleich"), SPIELER, stand, JETZT.plusSeconds(60));
+        assertEquals("freigabe", a.get("typ").getAsString());
+        var b = d.anfrage(anfrage("top-north-s", 4, "abgleich"), SPIELER, stand, JETZT.plusSeconds(60 + 599));
+        assertEquals(a.get("token").getAsString(), b.get("token").getAsString(), "binnen 10 min dasselbe Token");
+        var nein = d.anfrage(anfrage("top-north-s", 4, "abgleich"), SPIELER, stand, JETZT.plusSeconds(60 + 600));
+        assertEquals("Dein Abgleich der letzten 24 Stunden ist schon gelaufen.", nein.get("grund").getAsString());
+        assertEquals("top-north-s", nein.get("baum").getAsString(), "der Mod sperrt diesen Baum bis wieder");
+        assertEquals("abgleich", nein.get("art").getAsString());
+        long wieder = JETZT.plusSeconds(60 + 86_400).getEpochSecond();
+        assertEquals(wieder, nein.get("wieder").getAsLong());
+        assertEquals("freigabe", d.anfrage(anfrage("top-north-s", 4, "abgleich"), SPIELER, stand,
+                Instant.ofEpochSecond(wieder)).get("typ").getAsString());
+    }
+
+    @Test
+    void taeglicher_abgleich_faellt_aus_nach_einem_von_hand() {
+        var d = download(LocalTime.of(6, 0));
+        var stand = new Download.Spielerstand();
+        d.anfrage(anfrage("top-north-s", 4, "voll"), SPIELER, stand, Instant.parse("2026-10-05T07:00:00Z"));
+        d.anfrage(anfrage("top-north-s", 4, "abgleich"), SPIELER, stand, Instant.parse("2026-10-06T05:00:00Z"));
+        assertEquals(List.of(), d.beimJoin(SPIELER, stand, Instant.parse("2026-10-06T06:00:00Z")), "derselbe Tag");
+        assertEquals(1, d.beimJoin(SPIELER, stand, Instant.parse("2026-10-07T06:00:00Z")).size());
     }
 
     @Test
@@ -345,7 +383,7 @@ class DownloadTest {
 
     @Test
     void zwanzig_abgleiche_je_tag() {
-        var d = download();
+        var d = download(LocalTime.MIDNIGHT, 20);
         var stand = new Download.Spielerstand();
         d.anfrage(anfrage("top-north-s", 4, "voll"), SPIELER, stand, JETZT);
         for (int i = 1; i <= 20; i++) {
@@ -382,8 +420,11 @@ class DownloadTest {
         assertEquals(2, f.get("massstab").getAsInt());
         assertEquals(160, f.get("bytes").getAsLong());
         assertEquals(heute.getEpochSecond(), stand.baeume.get("top-north-s").abgeglichen);
-        assertEquals(0, stand.abgleich.length, "der tägliche zählt nicht");
+        assertEquals(1, stand.abgleich.length, "der tägliche zählt");
         assertEquals(List.of(), d.beimJoin(SPIELER, stand, heute.plusSeconds(3600)), "einmal am Tag");
+        var vonHand = d.anfrage(anfrage("top-north-s", 2, "abgleich"), SPIELER, stand, heute.plusSeconds(600));
+        assertEquals("Dein Abgleich der letzten 24 Stunden ist schon gelaufen.", vonHand.get("grund").getAsString(),
+                "nach dem täglichen keiner von Hand");
     }
 
     @Test

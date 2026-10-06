@@ -182,27 +182,28 @@ final class Download {
                 throw new IllegalArgumentException("art");
             }
         } catch (RuntimeException e) {
-            return abgelehnt(jetzt, "Die Anfrage ist nicht lesbar.", null);
+            return abgelehnt(jetzt, null, null, "Die Anfrage ist nicht lesbar.", null);
         }
 
-        Satz satz = saetze.get(baum);
-        if (satz == null) {
-            return abgelehnt(jetzt, "Diese Karte wird hier nicht zum Download angeboten.", null);
-        }
-        int stufe = satz.stufe(massstab);
-        if (stufe < 0) {
-            return abgelehnt(jetzt, "Diesen Massstab gibt es für diese Karte nicht.", null);
-        }
-        Optional<String> url = webserver.get();
-        if (url.isEmpty()) {
-            return abgelehnt(jetzt, "Webserver aus.", null);
-        }
-
-        long s = jetzt.getEpochSecond();
         var bs = stand.baeume.get(baum);
         // Ein anderer Massstab ist ein neuer Satz, also ein voller Download.
         boolean voll = art.equals("voll") || bs == null || bs.massstab != massstab;
         String wirklich = voll ? "voll" : "abgleich";
+
+        Satz satz = saetze.get(baum);
+        if (satz == null) {
+            return abgelehnt(jetzt, baum, wirklich, "Diese Karte wird hier nicht zum Download angeboten.", null);
+        }
+        int stufe = satz.stufe(massstab);
+        if (stufe < 0) {
+            return abgelehnt(jetzt, baum, wirklich, "Diesen Massstab gibt es für diese Karte nicht.", null);
+        }
+        Optional<String> url = webserver.get();
+        if (url.isEmpty()) {
+            return abgelehnt(jetzt, baum, wirklich, "Webserver aus.", null);
+        }
+
+        long s = jetzt.getEpochSecond();
 
         // Fortsetzen zählt nicht: voll, solange das Token noch 10 min gilt; ein Abgleich, solange es jünger
         // als 10 min ist. Siehe docs/download.md, „Anfrage“.
@@ -216,17 +217,17 @@ final class Download {
         var d = konf.download();
         if (voll) {
             if (d.vollJeWoche() == 0 || d.vollJe10Min() == 0) {
-                return abgelehnt(jetzt, "Volle Downloads sind auf diesem Server abgeschaltet.", null);
+                return abgelehnt(jetzt, baum, wirklich, "Volle Downloads sind auf diesem Server abgeschaltet.", null);
             }
             long[] spielerNeu = mitNeuer(stand.voll, s, WOCHE, d.vollJeWoche());
             if (spielerNeu == null) {
-                return abgelehnt(jetzt, "Du hast in den letzten 7 Tagen schon " + d.vollJeWoche()
+                return abgelehnt(jetzt, baum, wirklich, "Du hast in den letzten 7 Tagen schon " + d.vollJeWoche()
                         + " volle Downloads geholt.", wiederAb(stand.voll, s, WOCHE, d.vollJeWoche()));
             }
             synchronized (this) {
                 long[] serverNeu = mitNeuer(serverVoll, s, ZEHN_MINUTEN, d.vollJe10Min());
                 if (serverNeu == null) {
-                    return abgelehnt(jetzt, "Der Server hat in den letzten 10 Minuten schon " + d.vollJe10Min()
+                    return abgelehnt(jetzt, baum, wirklich, "Der Server hat in den letzten 10 Minuten schon " + d.vollJe10Min()
                             + " volle Downloads ausgegeben.", wiederAb(serverVoll, s, ZEHN_MINUTEN, d.vollJe10Min()));
                 }
                 serverVoll = serverNeu;
@@ -234,12 +235,14 @@ final class Download {
             stand.voll = spielerNeu;
         } else {
             if (d.abgleichJeTag() == 0) {
-                return abgelehnt(jetzt, "Abgleiche von Hand sind auf diesem Server abgeschaltet.", null);
+                return abgelehnt(jetzt, baum, wirklich, "Abgleiche sind auf diesem Server abgeschaltet.", null);
             }
             long[] neu = mitNeuer(stand.abgleich, s, TAG, d.abgleichJeTag());
             if (neu == null) {
-                return abgelehnt(jetzt, "Du hast in den letzten 24 Stunden schon " + d.abgleichJeTag()
-                        + " Abgleiche geholt.", wiederAb(stand.abgleich, s, TAG, d.abgleichJeTag()));
+                return abgelehnt(jetzt, baum, wirklich, d.abgleichJeTag() == 1
+                        ? "Dein Abgleich der letzten 24 Stunden ist schon gelaufen."
+                        : "Du hast in den letzten 24 Stunden schon " + d.abgleichJeTag() + " Abgleiche geholt.",
+                        wiederAb(stand.abgleich, s, TAG, d.abgleichJeTag()));
             }
             stand.abgleich = neu;
         }
@@ -256,15 +259,18 @@ final class Download {
 
     /**
      * Der tägliche Abgleich beim ersten Join nach der Uhrzeit aus der Konfiguration: je Baum, den der
-     * Spieler schon hat, eine Freigabe, ohne Grenze. Siehe docs/download.md, „Täglicher Abgleich“.
+     * Spieler schon hat, eine Freigabe. Er zählt einmal im selben Fenster wie ein Abgleich von Hand.
+     * Siehe docs/download.md, „Täglicher Abgleich“.
      */
     List<JsonObject> beimJoin(UUID spieler, Spielerstand stand, Instant jetzt) {
         Optional<String> url = webserver.get();
-        if (url.isEmpty()) {
+        int hoechstens = konf.download().abgleichJeTag();
+        long s = jetzt.getEpochSecond();
+        long[] gezaehlt = hoechstens == 0 ? null : mitNeuer(stand.abgleich, s, TAG, hoechstens);
+        if (url.isEmpty() || gezaehlt == null) {
             return List.of();
         }
         long grenze = letzteGrenze(jetzt);
-        long s = jetzt.getEpochSecond();
         List<JsonObject> raus = new ArrayList<>();
         for (var b : angeboteneBaeume()) {
             var bs = stand.baeume.get(b.ordner());
@@ -278,6 +284,9 @@ final class Download {
             bs.abgeglichen = s;
             bs.token.put("abgleich", neu);
             raus.add(freigabe(jetzt, b.ordner(), bs.massstab, "abgleich", url.get(), neu, satz, stufe));
+        }
+        if (!raus.isEmpty()) {
+            stand.abgleich = gezaehlt;
         }
         return raus;
     }
@@ -322,8 +331,13 @@ final class Download {
         return abgedeckt.getOrDefault(baum, Optional.empty()).map(i -> i.getEpochSecond() - reserve);
     }
 
-    private static JsonObject abgelehnt(Instant jetzt, String grund, Long wieder) {
+    /** Mit Baum und wirklicher Art der Anfrage, wie in der Freigabe; ohne beides, wenn sie nicht lesbar war. */
+    private static JsonObject abgelehnt(Instant jetzt, String baum, String art, String grund, Long wieder) {
         var a = nachricht("abgelehnt", jetzt);
+        if (baum != null) {
+            a.addProperty("baum", baum);
+            a.addProperty("art", art);
+        }
         a.addProperty("grund", grund);
         if (wieder != null) {
             a.addProperty("wieder", wieder);
