@@ -76,9 +76,13 @@ entschieden in [0003](entscheidungen/0003-live-render-ueber-autosave-und-zeitpla
 - **Manifest:** Ein Baum mit `download: true` bekommt bei jedem Lauf
   `--manifest`, voll wie Update. Ein Lauf ohne den Schalter entfernte das
   Manifest, siehe [Download](download.md), „Manifest“.
-- **Hinter dem Server:** `--threads` mit `renderer.threads`, Vorgabe 1, und
-  immer `--low-priority` (heroic-map-renderer#148). Was der Renderer damit
-  setzt, steht in seiner Zeile `Priorität:` im Log.
+- **Hinter dem Server:** immer `--low-priority` (heroic-map-renderer#148);
+  `--threads` bei Updates mit `renderer.threads`, Vorgabe 1, bei vollen
+  Läufen mit `renderer.full-run-threads`, Vorgabe 0, also alle Kerne, die
+  die JVM sieht (`Runtime.availableProcessors`). Ein voller Lauf kommt
+  selten und soll schnell fertig sein; die Updates alle 2 min laufen
+  dauernd neben dem Spiel. Was der Renderer mit der Priorität setzt, steht
+  in seiner Zeile `Priorität:` im Log.
   - **Threads:** Alle Phasen des Renderers laufen über einen Pool mit so
     vielen Threads, auch Vorlauf und Pyramide.
   - **Priorität:** unter Windows die Klasse IDLE, unter Linux SCHED_IDLE,

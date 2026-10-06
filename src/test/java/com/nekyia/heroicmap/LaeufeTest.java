@@ -60,7 +60,7 @@ class LaeufeTest {
 
     private Konfiguration konf(Path renderer, boolean gpu, List<Konfiguration.Baum> baeume, Konfiguration.ClientJar clientJar) {
         return new Konfiguration(renderer, tmp.resolve("world"), tmp.resolve("tiles"),
-                List.of(tmp.resolve("a1"), tmp.resolve("a2")), List.of(tmp.resolve("d")), gpu, 1, 30, baeume, DOWNLOAD,
+                List.of(tmp.resolve("a1"), tmp.resolve("a2")), List.of(tmp.resolve("d")), gpu, 1, 1, 30, baeume, DOWNLOAD,
                 new Konfiguration.Webserver(false, "", "", null, null, "", "", ""), clientJar);
     }
 
@@ -455,6 +455,23 @@ class LaeufeTest {
         assertTrue(l.status().endsWith(", Fehler, Code 3"), "ohne Error-Zeile nichts vom Prozess davor: " + l.status());
         assertEquals(1, log.stream().filter(z -> z.startsWith("Zustimmen zum Client-Jar in config.yml")).count(), "einmal je Start");
         assertTrue(log.stream().anyMatch(z -> z.startsWith("Zustimmen mit --download-client-jar")), "die Ausgabe steht im Log");
+    }
+
+    @Test
+    void volle_laeufe_mit_eigenen_threads_updates_mit_wenigen() throws Exception {
+        var k = konf(JAVA, false, List.of(KARTE));
+        var mitDrei = new Konfiguration(k.renderer(), k.welt(), k.kacheln(), k.assets(), k.daten(), false, 1, 3, 30,
+                k.baeume(), k.download(), k.webserver(), k.clientJar());
+        assertEquals(List.of("--threads", "3", "--low-priority", "--progress", "json"),
+                ende(new Laeufe(mitDrei, logger, tmp).plane(Art.VOLL), 5));
+        var alle = new Konfiguration(k.renderer(), k.welt(), k.kacheln(), k.assets(), k.daten(), false, 1, 0, 30,
+                k.baeume(), k.download(), k.webserver(), k.clientJar());
+        assertEquals(List.of("--threads", Integer.toString(Runtime.getRuntime().availableProcessors()), "--low-priority",
+                "--progress", "json"), ende(new Laeufe(alle, logger, tmp).plane(Art.VOLL), 5), "0: alle Kerne");
+        Files.createDirectories(tmp.resolve("tiles/2x1-se"));
+        Files.createFile(tmp.resolve("tiles/2x1-se/stand.bin"));
+        assertEquals(List.of("--threads", "1", "--low-priority", "--progress", "json", "--update"),
+                ende(new Laeufe(alle, logger, tmp).plane(Art.UPDATE), 6), "Updates bleiben bei renderer.threads");
     }
 
     @Test
