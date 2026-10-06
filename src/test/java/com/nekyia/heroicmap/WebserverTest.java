@@ -109,6 +109,17 @@ class WebserverTest {
     }
 
     @Test
+    void warnung_ohne_url_nur_auf_dem_eigenen_rechner() {
+        for (String lokal : List.of("127.0.0.1:8080", "[::1]:8080", "localhost:8080")) {
+            var w = new Konfiguration.Webserver(true, lokal, "", null, null, "", "", "");
+            assertTrue(Webserver.warnung(w).orElseThrow().endsWith("Spieler erreichen ihn so nicht."), lokal);
+        }
+        assertTrue(Webserver.warnung(new Konfiguration.Webserver(true, "0.0.0.0:8080", "", null, null, "", "", "")).isEmpty());
+        assertTrue(Webserver.warnung(new Konfiguration.Webserver(true, "127.0.0.1:8080", "https://karte.example.org", null,
+                null, "", "", "")).isEmpty(), "mit url steht ein Proxy davor");
+    }
+
+    @Test
     void karte_aus_dem_jar() throws Exception {
         Path jar = tmp.resolve("plugin.jar");
         try (var fs = FileSystems.newFileSystem(jar, Map.of("create", "true"))) {

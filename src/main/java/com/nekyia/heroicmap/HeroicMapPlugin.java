@@ -57,6 +57,7 @@ public final class HeroicMapPlugin extends JavaPlugin {
 
     /** Packt die Karte aus dem Jar aus und startet den Server des Renderers. Siehe docs/webserver.md. */
     private void starteWebserver(Konfiguration konf, Path geheimnis) {
+        Webserver.warnung(konf.webserver()).ifPresent(getLogger()::warning);
         Path web = getDataFolder().toPath().resolve("web");
         try {
             if (!Webserver.packeKarteAus(getFile().toPath(), web)) {
@@ -87,9 +88,10 @@ public final class HeroicMapPlugin extends JavaPlugin {
             return null;
         }
         // Token gibt es erst, wenn der Webserver lauscht; er startet nach dem Kanal.
-        String url = konf.webserver().url() + "/download";
+        var w = konf.webserver();
+        var ziel = w.url().isEmpty() ? new Download.Ziel(null, w.port()) : new Download.Ziel(w.url() + "/download", 0);
         var download = new Download(konf, geheimnis,
-                () -> webserver != null && webserver.bereit() ? Optional.of(url) : Optional.empty(),
+                () -> webserver != null && webserver.bereit() ? Optional.of(ziel) : Optional.empty(),
                 laeufe::erfolgreichSeit, ZoneId.systemDefault());
         var kanal = new Kanal(this, konf, download);
         kanal.starte();

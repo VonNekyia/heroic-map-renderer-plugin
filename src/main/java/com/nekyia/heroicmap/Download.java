@@ -59,6 +59,12 @@ final class Download {
 
     record Ausgestellt(int massstab, long ablauf, long deckel, String token) {}
 
+    /**
+     * Wo der Mod lädt: {@code url} mit /download, oder ohne url nur der Port; dann baut der Mod die Adresse
+     * aus der Verbindung zum Spielserver. Siehe docs/download.md, „Kanal“.
+     */
+    record Ziel(String url, int port) {}
+
     private static final Gson GSON = new Gson();
 
     static String alsJson(Spielerstand s) {
@@ -81,7 +87,7 @@ final class Download {
 
     private final Konfiguration konf;
     private final byte[] geheimnis;
-    private final Supplier<Optional<String>> webserver;
+    private final Supplier<Optional<Ziel>> webserver;
     private final Function<String, Optional<Instant>> erfolgreichSeit;
     private final ZoneId zone;
     private final SecureRandom zufall = new SecureRandom();
@@ -90,10 +96,10 @@ final class Download {
     private long[] serverVoll = {};
 
     /**
-     * @param webserver die Adresse des Servers, an dem der Mod lädt; leer, solange keiner läuft
+     * @param webserver wo der Mod lädt; leer, solange der Webserver nicht lauscht
      * @param erfolgreichSeit je Baum der Beginn des letzten Laufs, der ihn auf den Stand brachte
      */
-    Download(Konfiguration konf, byte[] geheimnis, Supplier<Optional<String>> webserver,
+    Download(Konfiguration konf, byte[] geheimnis, Supplier<Optional<Ziel>> webserver,
             Function<String, Optional<Instant>> erfolgreichSeit, ZoneId zone) {
         this.konf = konf;
         this.geheimnis = geheimnis.clone();
@@ -208,7 +214,7 @@ final class Download {
         if (stufe < 0) {
             return abgelehnt(jetzt, baum, wirklich, "Diesen Massstab gibt es für diese Karte nicht.", null);
         }
-        Optional<String> url = webserver.get();
+        Optional<Ziel> url = webserver.get();
         if (url.isEmpty()) {
             return abgelehnt(jetzt, baum, wirklich, "Webserver aus.", null);
         }
@@ -273,7 +279,7 @@ final class Download {
      * Siehe docs/download.md, „Täglicher Abgleich“.
      */
     List<JsonObject> beimJoin(UUID spieler, Spielerstand stand, Instant jetzt) {
-        Optional<String> url = webserver.get();
+        Optional<Ziel> url = webserver.get();
         int hoechstens = konf.download().abgleichJeTag();
         long s = jetzt.getEpochSecond();
         long[] gezaehlt = hoechstens == 0 ? null : mitNeuer(stand.abgleich, s, TAG, hoechstens);
@@ -321,14 +327,18 @@ final class Download {
         return new Ausgestellt(massstab, ablauf, deckel, Token.stelleAus(geheimnis, spieler, ablauf, deckel, stufe, z, baum));
     }
 
-    private JsonObject freigabe(Instant jetzt, String baum, int massstab, String art, String url, Ausgestellt t,
+    private JsonObject freigabe(Instant jetzt, String baum, int massstab, String art, Ziel ziel, Ausgestellt t,
             Satz satz, int stufe) {
         var f = nachricht("freigabe", jetzt);
         f.addProperty("baum", baum);
         f.addProperty("massstab", massstab);
         f.addProperty("art", art);
         abdecktBis(baum).ifPresent(a -> f.addProperty("abdeckt_bis", a));
-        f.addProperty("url", url + "/" + baum);
+        if (ziel.url() != null) {
+            f.addProperty("url", ziel.url() + "/" + baum);
+        } else {
+            f.addProperty("port", ziel.port());
+        }
         f.addProperty("token", t.token());
         f.addProperty("ablauf", t.ablauf());
         f.addProperty("manifest_sha256", satz.sha256());
