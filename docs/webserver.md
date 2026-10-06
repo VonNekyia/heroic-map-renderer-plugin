@@ -28,7 +28,7 @@ Der Code steht in `Webserver` in
 ```
 
 - **Ein Thread** für Verbindungen und Dateien, mit niedrigster Priorität,
-  unabhängig von `renderer.threads`. Der Server liest kleine Dateien, das
+  unabhängig von `renderer.threads` und `renderer.full-run-threads`. Der Server liest kleine Dateien, das
   Spiel geht vor.
 - **`--listen`** aus `webserver.listen`, Vorgabe `0.0.0.0:8080`, also
   alle Netze. Die Schlüssel stehen in der

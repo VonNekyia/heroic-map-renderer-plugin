@@ -183,8 +183,11 @@ final class Laeufe {
             b.add("--cinematic");
         }
         b.addAll(List.of("--gpu", konf.grafikkarte() ? "auto" : "off"));
-        // Hinter dem Server: wenige Threads und niedrigste Priorität. Siehe docs/laeufe.md, „Der Kindprozess“.
-        b.addAll(List.of("--threads", Integer.toString(konf.threads()), "--low-priority", "--progress", "json"));
+        // Hinter dem Server: niedrigste Priorität; Updates mit wenigen Threads, volle Läufe mit eigenen, 0 = alle
+        // Kerne. Siehe docs/laeufe.md, „Der Kindprozess“.
+        int threads = art == Art.UPDATE ? konf.threads()
+                : konf.vollThreads() == 0 ? Runtime.getRuntime().availableProcessors() : konf.vollThreads();
+        b.addAll(List.of("--threads", Integer.toString(threads), "--low-priority", "--progress", "json"));
         // Bei jedem Lauf, sonst entfernt der Renderer das Manifest. Siehe docs/laeufe.md, „Der Kindprozess“.
         if (baum.download()) {
             b.add("--manifest");

@@ -12,6 +12,7 @@ Wie der Renderer arbeitet und was seine Schalter tun, steht in der
 
 ## Benutzung
 
+- [Alpha einrichten](alpha.md): ohne Release auf einen Server: Jar mit Karte, Renderer-Binär, Konfiguration mit Webkarte und Baum zum Download, Webserver, Assets oder Zustimmung, Schätzung, erster Lauf.
 - [Konfiguration](konfiguration.md): `config.yml`, jeder Schlüssel mit seinem Schalter, die Bäume und ihr Ordner, Fehler beim Start.
 - [Läufe](laeufe.md): Befehle, Zeitplan der Updates, der Kindprozess, Abbruch und Stoppen, Fortsetzen, verwaiste Prozesse.
 - [Webserver](webserver.md): der Server des Renderers als zweiter Kindprozess, die Karte aus dem Jar, Ende mit stdin, Neustart, Status, HTTPS.

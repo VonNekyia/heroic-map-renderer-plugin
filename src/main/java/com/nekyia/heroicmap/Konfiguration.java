@@ -24,6 +24,7 @@ record Konfiguration(
         List<Path> daten,
         boolean grafikkarte,
         int threads,
+        int vollThreads,
         int updateMinuten,
         List<Baum> baeume,
         Download download,
@@ -104,6 +105,10 @@ record Konfiguration(
         int threads = c.getInt("renderer.threads", 1);
         if (threads < 1) {
             fehler.add("renderer.threads: " + threads + " ist kleiner als 1");
+        }
+        int vollThreads = c.getInt("renderer.full-run-threads", 0);
+        if (vollThreads < 0) {
+            fehler.add("renderer.full-run-threads: " + vollThreads + " ist kleiner als 0");
         }
 
         String welt = c.getString("world", "");
@@ -207,6 +212,7 @@ record Konfiguration(
                 c.getStringList("renderer.data").stream().map(server::resolve).toList(),
                 c.getBoolean("renderer.gpu"),
                 threads,
+                vollThreads,
                 minuten,
                 List.copyOf(baeume),
                 new Download(grenzen[0], grenzen[1], grenzen[2], ab, grenzen[3]),

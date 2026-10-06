@@ -23,7 +23,8 @@ Gelesen und geprüft in `Konfiguration.aus` in
 | `renderer.assets` | leer | `--assets` je Eintrag | Asset-Wurzeln, spätere überschreiben frühere; leer nur mit Zustimmung zum Client-Jar, siehe „Client-Jar“ |
 | `renderer.data` | leer | `--data` je Eintrag | Datenwurzeln mit Biomen und Bannermustern |
 | `renderer.gpu` | `false` | `--gpu auto`, sonst `--gpu off` | ob die Grafikkarte zeichnen darf |
-| `renderer.threads` | `1` | `--threads` | so viele Threads bekommt der Renderer, ab 1; dazu immer `--low-priority` |
+| `renderer.threads` | `1` | `--threads` bei Updates | so viele Threads bekommt ein Update, ab 1; dazu immer `--low-priority` |
+| `renderer.full-run-threads` | `0` | `--threads` bei vollen Läufen | so viele Threads bekommt ein voller Lauf, auch fortgesetzt; `0`: alle Kerne, die die JVM sieht |
 | `renderer.download-client-jar` | `false` | `--download-client-jar`, `--cache-dir` | die Zustimmung, das Client-Jar von Mojang zu laden, siehe „Client-Jar“ |
 | `renderer.client-version` | leer: die zur Welt | `--client-version` | die Version des Client-Jars, etwa `"26.2"` |
 | `world` | leer: die Hauptwelt | `--world` | die Weltwurzel mit `level.dat` |
@@ -122,7 +123,7 @@ schaltet sich ab:
 - `renderer.binary` fehlt oder ist keine Datei;
 - `update-minutes` ist kleiner als 0;
 - eine Kamera ohne Anführungszeichen, ein `scale`, der keine ganze Zahl ist;
-- `renderer.threads` kleiner als 1;
+- `renderer.threads` kleiner als 1, `renderer.full-run-threads` kleiner als 0;
 - kein Baum;
 - `download: true` an einem Baum, der nicht `top-north` mit scale 4 ohne
   Cinematic ist;

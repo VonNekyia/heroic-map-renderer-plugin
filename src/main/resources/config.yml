@@ -10,9 +10,11 @@ renderer:
   data: []
   # true: die Grafikkarte darf zeichnen (--gpu auto), sonst nur die CPU.
   gpu: false
-  # So viele Threads bekommt der Renderer (--threads); er läuft immer mit
-  # niedrigster Priorität (--low-priority).
+  # So viele Threads bekommt der Renderer für Updates (--threads); er läuft
+  # immer mit niedrigster Priorität (--low-priority).
   threads: 1
+  # Threads für volle Läufe; 0: alle Kerne.
+  full-run-threads: 0
   # Ohne assets lädt der Renderer das Client-Jar von Minecraft von Mojangs
   # Servern und nutzt daraus Texturen, Modelle und Biome. Das Jar gehört Mojang
   # und darf nicht weitergegeben werden. Mit true bestätigst du, dass du
