@@ -1,9 +1,10 @@
 ---
 title: Konfiguration
-description: Jeder Schlüssel in config.yml mit Vorgabe und Schalter des Renderers, wie das Plugin den Ordner eines Baums bestimmt und welche Fehler es beim Start meldet.
+description: Jeder Schlüssel in config.yml mit Vorgabe und Schalter des Renderers, das Binär aus dem Jar und wann es ausgepackt wird, wie das Plugin den Ordner eines Baums bestimmt und welche Fehler es beim Start meldet.
 code:
   - src/main/resources/config.yml
   - src/main/java/com/nekyia/heroicmap/Konfiguration.java
+  - src/main/java/com/nekyia/heroicmap/Binaer.java
 ---
 
 # Konfiguration
@@ -19,7 +20,7 @@ Gelesen und geprüft in `Konfiguration.aus` in
 
 | Schlüssel | Vorgabe | Schalter | Wirkung |
 |---|---|---|---|
-| `renderer.binary` | leer, Pflicht | – | Pfad zum Binär des Renderers |
+| `renderer.binary` | leer: das aus dem Jar | – | Pfad zu einem eigenen Binär des Renderers, siehe „Das Binär“ |
 | `renderer.assets` | leer | `--assets` je Eintrag | Asset-Wurzeln, spätere überschreiben frühere; leer nur mit Zustimmung zum Client-Jar, siehe „Client-Jar“ |
 | `renderer.data` | leer | `--data` je Eintrag | Datenwurzeln mit Biomen und Bannermustern |
 | `renderer.gpu` | `false` | `--gpu auto`, sonst `--gpu off` | ob die Grafikkarte zeichnen darf |
@@ -48,14 +49,53 @@ Gelesen und geprüft in `Konfiguration.aus` in
 Was die Schlüssel unter `download` bewirken, steht in [Download](download.md),
 was der Webserver tut, in [Webserver](webserver.md).
 
-- **Das Binär** trägt der Betreiber noch von Hand ein; das Plugin bringt es
-  mit heroic-map-renderer#146 mit. Die Assets kommen von Hand über
-  `renderer.assets` oder mit Zustimmung aus dem Client-Jar, siehe
-  „Client-Jar“.
+- **Das Binär** bringt das Jar für Windows und Linux auf x86_64 mit, siehe
+  „Das Binär“. Die Assets kommen von Hand über `renderer.assets` oder mit
+  Zustimmung aus dem Client-Jar, siehe „Client-Jar“.
 - **Die Hauptwelt** ist der Ordner der ersten Welt des Servers unter dem
   Weltcontainer, also `level-name` aus `server.properties`.
 - **Die Grafikkarte** zeichnet nur, wenn der Betreiber es einschaltet. Der
   Renderer allein nähme sie, wenn er eine findet.
+
+## Das Binär
+
+Ist `renderer.binary` leer, nimmt das Plugin beim Start das Binär des
+Renderers aus dem Jar. Welche Version darin steckt und wie sie hineinkommt,
+steht in [Entwicklung](entwicklung.md), „Der Renderer im Jar“; warum so, in
+[0004](entscheidungen/0004-renderer-im-jar.md). Der Code steht in `Binaer`
+in [`Binaer.java`](../src/main/java/com/nekyia/heroicmap/Binaer.java).
+
+| `os.name` | `os.arch` | Binär im Jar |
+|---|---|---|
+| beginnt mit `Windows` | `amd64` oder `x86_64` | `renderer/windows-x64/heroic-map-renderer.exe` |
+| `Linux` | `amd64` oder `x86_64` | `renderer/linux-x64/heroic-map-renderer` |
+
+- **Auspacken:** nach `plugins/HeroicMap/bin/<version>/`, etwa
+  `bin/0.2.0/heroic-map-renderer`, nur wenn die Datei dort fehlt oder ihre
+  SHA-256 nicht die aus dem Build ist. Sonst bleibt sie, wie sie ist; die
+  Prüfung liest sie einmal je Start.
+  - Erst in eine Datei daneben, `<name>.neu`, dann umbenannt. So liegt nie
+    ein halbes Binär unter dem Namen.
+  - Hat das Ausgepackte nicht die SHA-256 aus dem Build, wird es nicht
+    umbenannt, und die Datei daneben fällt weg.
+  - Ausführbar gesetzt wird es vor dem Umbenennen; unter Windows ändert
+    das nichts.
+- **Alte Ordner** unter `bin/` bleiben liegen. Ein Lauf, der noch ein altes
+  Binär nutzt, verliert es so nicht.
+- **Kein Binär:** Auf anderen Plattformen, etwa ARM oder macOS, mit einem
+  Jar, das ohne Netz gebaut wurde, oder wenn das Auspacken scheitert, lädt
+  das Plugin, startet aber weder Läufe noch Webserver noch den Download.
+  Log und jeder Befehl, auch `status`, nennen den Grund, etwa:
+
+  ```
+  Kein Renderer: das Jar hat kein Binär für Mac OS X aarch64. renderer.binary in config.yml setzen, siehe docs/konfiguration.md.
+  ```
+
+- **musl:** Unter Linux mit musl, etwa in einem Image mit Alpine, nimmt das
+  Plugin das Binär für Linux. Es startet nicht, und der Status nennt den
+  Grund wie bisher, siehe [Läufe](laeufe.md), „Der Kindprozess“.
+- **Mit `renderer.binary`** gilt nur dieser Pfad, und das Plugin packt
+  nichts aus.
 
 ## Client-Jar
 
@@ -120,7 +160,7 @@ Jeder Eintrag unter `trees` ist ein Kachelbaum, siehe
 Das Plugin prüft beim Start, nennt alle Fehler in einer Zeile im Log und
 schaltet sich ab:
 
-- `renderer.binary` fehlt oder ist keine Datei;
+- `renderer.binary` ist gesetzt, aber keine Datei;
 - `update-minutes` ist kleiner als 0;
 - eine Kamera ohne Anführungszeichen, ein `scale`, der keine ganze Zahl ist;
 - `renderer.threads` kleiner als 1, `renderer.full-run-threads` kleiner als 0;

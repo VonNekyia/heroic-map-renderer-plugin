@@ -1,23 +1,25 @@
 ---
 title: Alpha einrichten
-description: Schritt für Schritt das Plugin als Alpha auf einen Paper-Server bringen, ohne Release: Jar mit Karte, Renderer-Binär, die Konfiguration mit Webkarte und Baum zum Download, Webserver mit url und HTTPS, Assets oder Zustimmung zum Client-Jar, die Schätzung vor dem ersten vollen Lauf und der erste Lauf.
+description: Schritt für Schritt das Plugin als Alpha auf einen Paper-Server bringen, ohne Release: Jar mit Karte und Renderer, die Konfiguration mit Webkarte und Baum zum Download, Webserver mit url und HTTPS, Assets oder Zustimmung zum Client-Jar, die Schätzung vor dem ersten vollen Lauf und der erste Lauf.
 code:
   - src/main/resources/config.yml
 ---
 
 # Alpha einrichten
 
-Solange es kein Release gibt, kommt das Plugin aus `main`, das Binär des
-Renderers aus seinem `master`. Diese Seite nennt die Schritte in ihrer
-Reihenfolge. Was jeder Schlüssel tut, steht in [Konfiguration](konfiguration.md),
-der Webserver in [Webserver](webserver.md), die Läufe in [Läufe](laeufe.md).
+Solange es kein Release gibt, kommt das Plugin aus `main`. Das Binär des
+Renderers bringt das Jar für Windows und Linux mit, siehe
+[Konfiguration](konfiguration.md), „Das Binär“. Diese Seite nennt die
+Schritte in ihrer Reihenfolge. Was jeder Schlüssel tut, steht in
+[Konfiguration](konfiguration.md), der Webserver in [Webserver](webserver.md),
+die Läufe in [Läufe](laeufe.md).
 
 ## Was auf den Server kommt
 
 | Teil | Woher | Wohin |
 |---|---|---|
-| Plugin mit Karte | `./gradlew build -Pweb=<renderer>/web/dist` auf `main`, siehe [Entwicklung](entwicklung.md), „Im Jar“ | `plugins/` des Servers |
-| Renderer | `cargo build --release --locked` in `renderer/` auf `master` des Renderers, für das Betriebssystem des Servers | ein Ordner neben dem Server, Pfad in `renderer.binary` |
+| Plugin mit Karte und Renderer | `./gradlew build -Pweb=<renderer>/web/dist` auf `main`, mit Netz, siehe [Entwicklung](entwicklung.md), „Im Jar“ | `plugins/` des Servers |
+| Renderer, nur ohne Binär im Jar | `cargo build --release --locked` in `renderer/` des Renderers, für das Betriebssystem des Servers | ein Ordner neben dem Server, Pfad in `renderer.binary` |
 | Kacheln | entstehen beim ersten Lauf | `tiles`, auf einer Platte mit genug Platz, siehe „Schätzung“ |
 
 - **Paper** 26.2 oder 26.3, Java 25.
@@ -37,7 +39,7 @@ Cinematic und einem Baum nur für den Mod:
 
 ```yaml
 renderer:
-  binary: /pfad/zum/heroic-map-renderer
+  binary: ""             # leer: das Binär aus dem Jar
   assets: []
   data: []
   gpu: false
@@ -97,9 +99,11 @@ heroic-map-renderer --world <welt> --assets <assets> --tiles <kacheln> --camera 
 heroic-map-renderer --world <welt> --assets <assets> --tiles <kacheln> --camera top-north --scale 4 --threads <kerne> --low-priority --estimate
 ```
 
-Statt `--assets` geht `--download-client-jar`, wenn der Betreiber zugestimmt
-hat. Sie nennt je Zahl eine Spanne; für die Planung zählt der obere Rand. Reicht
-der Platz nicht, sagt sie es. Siehe in der Doku des Renderers
+Das Binär liegt nach dem ersten Start des Plugins in
+`plugins/HeroicMap/bin/<version>/`. Statt `--assets` geht
+`--download-client-jar`, wenn der Betreiber zugestimmt hat. Die Schätzung
+nennt je Zahl eine Spanne; für die Planung zählt der obere Rand. Reicht der
+Platz nicht, sagt sie es. Siehe in der Doku des Renderers
 [Kosten](https://github.com/VonNekyia/heroic-map-renderer/blob/master/docs/benutzung/kosten.md),
 „Schätzen: `--estimate`“.
 

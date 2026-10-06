@@ -2,6 +2,7 @@ package com.nekyia.heroicmap;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -284,9 +285,10 @@ class KonfigurationTest {
 
     @Test
     void vorgabe_ohne_binaer() throws Exception {
-        var c = vorgabe();
-        var e = assertThrows(IllegalArgumentException.class, () -> Konfiguration.aus(c, server, server));
-        assertEquals("renderer.binary fehlt", e.getMessage(), "ohne Assets bricht erst der Lauf ab, mit dem Text der Zustimmung");
+        var k = Konfiguration.aus(vorgabe(), server, server);
+        assertNull(k.renderer(), "das Binär aus dem Jar; ohne Assets bricht erst der Lauf ab, mit dem Text der Zustimmung");
+        assertEquals(server.resolve("r"), k.mitRenderer(server.resolve("r")).renderer());
+        assertEquals(k, k.mitRenderer(server.resolve("r")).mitRenderer(null), "sonst bleibt alles");
     }
 
     @Test
