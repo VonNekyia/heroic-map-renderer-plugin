@@ -173,7 +173,8 @@ schaltet sich ab:
 - `web: false` an einem Baum ohne `download: true`;
 - mit eingeschaltetem Webserver: `webserver.listen` ohne Port, mit einem
   Port über 65535, oder mit Port 0 und einem Baum zum Download ohne `url`
-  und ohne `public-port`; `public-port` unter 0 oder über 65535;
+  und ohne `public-port`; `public-port` keine Zahl, etwa in
+  Anführungszeichen, unter 0 oder über 65535;
   eine `url` ohne `http://` oder `https://`; HTTPS mit einem Baum zum
   Download, aber ohne `url`; nur eins von `tls-cert` und `tls-key`, oder eine der
   Dateien fehlt; `title` und `description` nicht zusammen oder ohne `url`,
