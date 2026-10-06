@@ -4,5 +4,9 @@ Copyright 2026 VonNekyia
 Publisher and responsible: VonNekyia
 Contact: contact@mcterranova.com
 
+A jar built with the map contains, under web/, the built map of Heroic Map
+Renderer (Apache-2.0, same publisher). Its NOTICE, LICENSE and the licenses
+of the third-party code in it are in web/lizenzen.txt.
+
 NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH MOJANG
 OR MICROSOFT.

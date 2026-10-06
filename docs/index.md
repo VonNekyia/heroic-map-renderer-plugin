@@ -14,6 +14,7 @@ Wie der Renderer arbeitet und was seine Schalter tun, steht in der
 
 - [Konfiguration](konfiguration.md): `config.yml`, jeder Schlüssel mit seinem Schalter, die Bäume und ihr Ordner, Fehler beim Start.
 - [Läufe](laeufe.md): Befehle, Zeitplan der Updates, der Kindprozess, Abbruch und Stoppen, Fortsetzen, verwaiste Prozesse.
+- [Webserver](webserver.md): der Server des Renderers als zweiter Kindprozess, die Karte aus dem Jar, Ende mit stdin, Neustart, Status, HTTPS.
 - [Download](download.md): der Kanal `heroicmap:karte` zum Mod, Angebot, Anfrage, Manifest, Grenzen, Token, täglicher Abgleich, `abdeckt_bis`, Stand je Spieler.
 
 ## Entwicklung

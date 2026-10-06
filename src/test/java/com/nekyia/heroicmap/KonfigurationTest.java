@@ -3,6 +3,7 @@ package com.nekyia.heroicmap;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.nekyia.heroicmap.Konfiguration.Baum;
 import java.io.InputStreamReader;
@@ -52,6 +53,93 @@ class KonfigurationTest {
         assertEquals("2x1-se", k.baeume().getFirst().ordner());
         assertEquals(new Konfiguration.Download(10, 5, 20, java.time.LocalTime.MIDNIGHT, 10), k.download());
         assertEquals("minecraft:overworld", k.dimension());
+        assertEquals(new Konfiguration.Webserver(true, "0.0.0.0:8080", "", null, null), k.webserver());
+    }
+
+    @Test
+    void webserver_mit_https() throws Exception {
+        Files.createFile(server.resolve("r"));
+        Files.createFile(server.resolve("kette.pem"));
+        Files.createFile(server.resolve("schluessel.pem"));
+        var k = Konfiguration.aus(yaml("""
+                renderer:
+                  binary: r
+                  assets: [a]
+                trees:
+                  - camera: "2:1"
+                webserver:
+                  enabled: true
+                  listen: 0.0.0.0:8443
+                  tls-cert: kette.pem
+                  tls-key: schluessel.pem
+                """), server, server);
+        assertEquals(new Konfiguration.Webserver(true, "0.0.0.0:8443", "", server.resolve("kette.pem"),
+                server.resolve("schluessel.pem")), k.webserver());
+
+        var e = assertThrows(IllegalArgumentException.class, () -> Konfiguration.aus(yaml("""
+                renderer:
+                  binary: r
+                  assets: [a]
+                trees:
+                  - camera: "2:1"
+                webserver:
+                  enabled: true
+                  tls-cert: kette.pem
+                """), server, server));
+        assertEquals("webserver.listen fehlt, etwa \"0.0.0.0:8080\"; webserver: tls-cert und tls-key nur zusammen",
+                e.getMessage());
+
+        e = assertThrows(IllegalArgumentException.class, () -> Konfiguration.aus(yaml("""
+                renderer:
+                  binary: r
+                  assets: [a]
+                trees:
+                  - camera: "2:1"
+                webserver:
+                  enabled: true
+                  listen: 0.0.0.0:8443
+                  tls-cert: fehlt.pem
+                  tls-key: schluessel.pem
+                """), server, server));
+        assertEquals("webserver: " + server.resolve("fehlt.pem") + " gibt es nicht", e.getMessage());
+
+        var aus = Konfiguration.aus(yaml("""
+                renderer:
+                  binary: r
+                  assets: [a]
+                trees:
+                  - camera: "2:1"
+                webserver:
+                  enabled: false
+                  tls-cert: fehlt.pem
+                """), server, server);
+        assertFalse(aus.webserver().an(), "aus prüft nichts");
+    }
+
+    @Test
+    void download_braucht_die_url_des_webservers() throws Exception {
+        Files.createFile(server.resolve("r"));
+        String baum = """
+                renderer:
+                  binary: r
+                  assets: [a]
+                trees:
+                  - camera: top-north
+                    scale: 4
+                    download: true
+                webserver:
+                  enabled: true
+                  listen: 0.0.0.0:8080
+                """;
+        var e = assertThrows(IllegalArgumentException.class, () -> Konfiguration.aus(yaml(baum), server, server));
+        assertTrue(e.getMessage().startsWith("webserver.url: der Download braucht"), e.getMessage());
+        assertThrows(IllegalArgumentException.class,
+                () -> Konfiguration.aus(yaml(baum + "  url: karte.example.org\n"), server, server), "ohne http");
+        assertEquals("https://karte.example.org:8443/karte",
+                Konfiguration.aus(yaml(baum + "  url: https://karte.example.org:8443/karte/\n"), server, server).webserver().url(),
+                "ohne / am Ende");
+        assertEquals("", Konfiguration.aus(yaml(baum.replace("enabled: true", "enabled: false")), server, server)
+                .webserver().url(), "ohne Webserver prüft er nichts");
     }
 
     @Test

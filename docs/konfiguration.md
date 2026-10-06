@@ -33,8 +33,14 @@ Gelesen und geprüft in `Konfiguration.aus` in
 | `download.abgleich-je-tag` | `20` | – | Abgleiche von Hand je Spieler in 24 h |
 | `download.abgleich-ab` | `"00:00"` | – | ab dieser Uhrzeit des Servers holt der erste Join den täglichen Abgleich |
 | `download.reserve-minuten` | `10` | – | Reserve für `abdeckt_bis` |
+| `webserver.enabled` | `true` | – | ob das Plugin den Server des Renderers startet |
+| `webserver.listen` | `"0.0.0.0:8080"` | `--listen` | Adresse und Port; Pflicht, wenn der Webserver an ist |
+| `webserver.url` | leer | – | wie Spieler den Webserver erreichen, `http://` oder `https://`, ohne `/` am Ende; Pflicht mit einem Baum zum Download, siehe [Webserver](webserver.md), „Download“ |
+| `webserver.tls-cert` | leer | `--tls-cert` | HTTPS: die Kette der Zertifikate als PEM; nur mit `tls-key` |
+| `webserver.tls-key` | leer | `--tls-key` | der Schlüssel dazu als PEM; nur mit `tls-cert` |
 
-Was die Schlüssel unter `download` bewirken, steht in [Download](download.md).
+Was die Schlüssel unter `download` bewirken, steht in [Download](download.md),
+was der Webserver tut, in [Webserver](webserver.md).
 
 - **Binär und Assets** trägt der Betreiber noch von Hand ein. Das Binär
   bringt das Plugin mit heroic-map-renderer#146 mit, die Assets holt der Renderer mit heroic-map-renderer#147

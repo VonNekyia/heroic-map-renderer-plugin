@@ -7,6 +7,7 @@ code:
   - src/test/java/com/nekyia/heroicmap/LaeufeTest.java
   - src/test/java/com/nekyia/heroicmap/KonfigurationTest.java
   - src/test/java/com/nekyia/heroicmap/FalscherRenderer.java
+  - src/test/java/com/nekyia/heroicmap/WebserverTest.java
 ---
 
 # Entwicklung
@@ -20,10 +21,22 @@ nur zum Übersetzen, ohne paperweight-userdev, siehe
 ## Im Jar
 
 - der eigene Code, `plugin.yml` und `config.yml`;
-- `LICENSE` und `NOTICE` unter `META-INF/`.
+- `LICENSE` und `NOTICE` unter `META-INF/`;
+- mit `-Pweb=<ordner>` die gebaute Karte unter `web/`, siehe
+  [Webserver](webserver.md), „Die Karte im Jar“.
 
-Keine fremde Bibliothek, kein Binär und keine Datei von Mojang. Das Binär
-kommt mit heroic-map-renderer#146 dazu.
+Die Karte ist `web/dist` des Renderers, gebaut so:
+
+```bash
+cd heroic-map-renderer/web && npm ci && npm run build
+./gradlew build -Pweb=<pfad>/heroic-map-renderer/web/dist
+```
+
+Ihre fremden Lizenzen, etwa von Leaflet, stehen in `web/lizenzen.txt`
+neben ihr, mit `NOTICE` und `LICENSE` des Renderers. Ohne `-Pweb` enthält
+das Jar keine Karte, und der Webserver liefert nur `/tiles/`. Kein Binär
+und keine Datei von Mojang; das Binär kommt mit heroic-map-renderer#146
+dazu.
 
 ## Tests
 
@@ -44,7 +57,18 @@ kommt mit heroic-map-renderer#146 dazu.
   Renderers Zeichen für Zeichen gleich aus, lehnt ab, was kein gültiges
   ergäbe.
 - **`SatzTest`:** ein Manifest von Hand im Format aus #154: Summen je
-  Massstab, Prüfsumme, kaputte Zeilen.
+  Massstab, Prüfsumme, kaputte Zeilen. Dazu der Testvektor des Renderers,
+  `src/test/resources/manifest.json`, eine Kopie von
+  `renderer/tests/fixtures/manifest.json`: dieselben Summen je Stufe.
+- **`WebserverTest`:** die Schalter mit und ohne Karte, HTTPS und
+  Geheimnis, die Karte aus einem Jar, das der Test baut, die Pause bis zum
+  Deckel. Mit `FalscherRenderer` als Server:
+  er läuft, bis stdin schliesst, und endet dann von selbst; bereit ist er
+  nur zwischen Startzeile und Ende, und eine spätere Zeile `Server:` ändert
+  die Adresse im Status nicht; ein Server,
+  der stirbt, startet mit wachsender Pause neu, nach einem langen Lauf
+  wieder mit der ersten; ein Binär, das fehlt, steht im Status, und
+  `stoppe` weckt die Pause.
 - **`DownloadTest`:** Angebot, unlesbare Anfragen, „Webserver aus“, Token mit
   Stufe, Deckel und Ablauf, Fortsetzen, Wechsel des Massstabs, alle drei
   Grenzen samt `wieder`, der tägliche Abgleich um die Uhrzeit herum, das
@@ -92,9 +116,13 @@ Build 129, eine Kopie der Testwelt, das Jar des Plugins unter `plugins/`,
 
 - **Gradle** unter Ubuntu und Windows, denn `Process.destroy` wirkt dort
   verschieden.
-- **Testvektoren:** `src/test/resources/token.json` ist eine Kopie von
-  `renderer/tests/fixtures/token.json` aus dem Renderer. Der Job „Doku“
-  vergleicht sie mit `master` und fällt, wenn sie abweicht.
+- **Testvektoren:** `src/test/resources/token.json` und
+  `src/test/resources/manifest.json` sind Kopien aus
+  `renderer/tests/fixtures/` des Renderers. Der Job „Doku“ vergleicht sie
+  mit `master` und fällt, wenn eine abweicht.
+- **Jar mit Karte:** baut die Karte aus `web/` des Renderers, Stand
+  `master`, packt sie mit `-Pweb` ins Jar und prüft, dass `web/index.html`
+  und `web/lizenzen.txt` darin stehen.
 - **Doku:** Das Prüfskript des Renderers prüft Verweise, Links,
   Frontmatter und `docs/index.md`. Die CI lädt es vom Branch `master`, wie
   in [`AGENTS.md`](../AGENTS.md) beschrieben.

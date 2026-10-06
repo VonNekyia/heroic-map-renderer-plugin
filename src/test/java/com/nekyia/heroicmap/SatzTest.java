@@ -1,15 +1,19 @@
 package com.nekyia.heroicmap;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import com.google.gson.JsonParser;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.util.HexFormat;
+import java.util.Objects;
 import java.util.zip.GZIPOutputStream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -18,6 +22,31 @@ class SatzTest {
 
     @TempDir
     Path tmp;
+
+    /** Gegen den Testvektor des Renderers, eine Kopie von renderer/tests/fixtures/manifest.json; die CI vergleicht sie. */
+    @Test
+    void wie_der_testvektor_des_renderers() throws Exception {
+        var datei = Objects.requireNonNull(SatzTest.class.getResourceAsStream("/manifest.json"));
+        var vektor = JsonParser.parseReader(new InputStreamReader(datei, StandardCharsets.UTF_8)).getAsJsonObject();
+        var gepackt = new ByteArrayOutputStream();
+        try (var gz = new GZIPOutputStream(gepackt)) {
+            gz.write(vektor.get("manifest").getAsString().getBytes(StandardCharsets.UTF_8));
+        }
+        Files.write(tmp.resolve("manifest"), gepackt.toByteArray());
+        Files.writeString(tmp.resolve("map.json"), "{\"minZoom\": 0, \"maxZoom\": 10}");
+        var s = Satz.lies(tmp);
+        long[] bytes = new long[11];
+        int[] kacheln = new int[11];
+        for (var stufe : vektor.getAsJsonArray("stufen")) {
+            int z = stufe.getAsJsonObject().get("z").getAsInt();
+            bytes[z] = stufe.getAsJsonObject().get("bytes").getAsLong();
+            kacheln[z] = stufe.getAsJsonObject().get("kacheln").getAsInt();
+        }
+        assertArrayEquals(bytes, s.bytes());
+        assertArrayEquals(kacheln, s.kacheln());
+        assertEquals(HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(gepackt.toByteArray())), s.sha256(),
+                "über das gzip, wie es auf der Platte liegt");
+    }
 
     /** Ein Baum von Hand: map.json und ein Manifest im Format aus #154; gibt die Bytes des Manifests. */
     static byte[] baum(Path ordner, int min, int max, String... zeilen) throws IOException {

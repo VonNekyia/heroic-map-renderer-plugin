@@ -51,3 +51,55 @@ jobs:
         timeout-minutes: 5
         shell: bash
         run: curl -fsSL https://raw.githubusercontent.com/VonNekyia/heroic-map-renderer/master/renderer/tests/fixtures/token.json | diff - src/test/resources/token.json
+
+      # Der Testvektor des Manifests ebenso.
+      - name: Manifest wie im Renderer
+        timeout-minutes: 5
+        shell: bash
+        run: curl -fsSL https://raw.githubusercontent.com/VonNekyia/heroic-map-renderer/master/renderer/tests/fixtures/manifest.json | diff - src/test/resources/manifest.json
+
+  karte:
+    name: Jar mit Karte
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v7
+
+      # Die Karte aus web/ des Renderers, Stand master. Siehe docs/webserver.md, „Die Karte im Jar“.
+      - uses: actions/checkout@v7
+        with:
+          repository: VonNekyia/heroic-map-renderer
+          path: renderer
+          sparse-checkout: web
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: renderer/web/package-lock.json
+
+      - name: Karte bauen
+        timeout-minutes: 10
+        working-directory: renderer/web
+        run: npm ci && npm run build
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 25
+
+      - uses: gradle/actions/setup-gradle@v6
+
+      - name: Jar mit Karte
+        timeout-minutes: 15
+        run: ./gradlew jar -Pweb="$GITHUB_WORKSPACE/renderer/web/dist" --console=plain
+
+      - name: Karte im Jar
+        run: |
+          inhalt=$(unzip -Z1 build/libs/*.jar)
+          for datei in web/index.html web/lizenzen.txt; do
+            grep -qx "$datei" <<< "$inhalt" || { echo "::error::$datei fehlt im Jar"; exit 1; }
+          done

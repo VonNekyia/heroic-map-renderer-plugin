@@ -63,14 +63,17 @@ final class Laeufe {
     private final Map<String, Letzter> letzte = new LinkedHashMap<>();
     private final Map<String, Instant> erfolgreich = new LinkedHashMap<>();
 
-    /** Läuft nach jedem Baum, dessen Prozess Kacheln gezeichnet hat, im Faden des Laufs. */
+    /** Läuft nach jedem Baum, dessen Prozess fertig wurde, auch ohne Änderung, im Faden des Laufs. */
     private volatile Runnable nachLauf = () -> {};
 
     private volatile String letzteZeile = "";
     private volatile String fortschritt = "";
 
-    /** Der Lader von musl; das Linux-Binär braucht glibc. Tests setzen einen eigenen. */
-    Path musl = Path.of("/lib/ld-musl-x86_64.so.1");
+    /** Der Lader von musl; das Linux-Binär braucht glibc. */
+    static final Path MUSL = Path.of("/lib/ld-musl-x86_64.so.1");
+
+    /** Tests setzen einen eigenen. */
+    Path musl = MUSL;
 
     Laeufe(Konfiguration konf, Logger log, Path pidDatei) {
         this.konf = konf;
@@ -148,6 +151,10 @@ final class Laeufe {
         b.addAll(List.of("--gpu", konf.grafikkarte() ? "auto" : "off"));
         // Hinter dem Server: wenige Threads und niedrigste Priorität. Siehe docs/laeufe.md, „Der Kindprozess“.
         b.addAll(List.of("--threads", Integer.toString(konf.threads()), "--low-priority", "--progress", "json"));
+        // Bei jedem Lauf, sonst entfernt der Renderer das Manifest. Siehe docs/laeufe.md, „Der Kindprozess“.
+        if (baum.download()) {
+            b.add("--manifest");
+        }
         if (art == Art.UPDATE) {
             b.add("--update");
         }
@@ -270,12 +277,17 @@ final class Laeufe {
      * Siehe docs/laeufe.md, „Keine verwaisten Prozesse“.
      */
     void raeumeAuf() {
+        raeumeAuf(pidDatei, konf.renderer(), log);
+    }
+
+    /** Beendet den Prozess aus {@code pidDatei}, wenn er {@code renderer} ist, und löscht die Datei. */
+    static void raeumeAuf(Path pidDatei, Path renderer, Logger log) {
         try {
             if (!Files.exists(pidDatei)) {
                 return;
             }
             long pid = Long.parseLong(Files.readString(pidDatei).strip());
-            var h = ProcessHandle.of(pid).filter(this::istRenderer);
+            var h = ProcessHandle.of(pid).filter(p -> istRenderer(p, renderer));
             if (h.isPresent()) {
                 log.warning("Beende den Renderer eines früheren Starts, PID " + pid);
                 h.get().destroyForcibly();
@@ -289,10 +301,10 @@ final class Laeufe {
         }
     }
 
-    private boolean istRenderer(ProcessHandle h) {
+    private static boolean istRenderer(ProcessHandle h, Path renderer) {
         return h.info().command().filter(c -> {
             try {
-                return Files.isSameFile(Path.of(c), konf.renderer());
+                return Files.isSameFile(Path.of(c), renderer);
             } catch (IOException e) {
                 return false;
             }
@@ -319,8 +331,9 @@ final class Laeufe {
                         erfolgreich.put(a.baum(), start);
                     }
                 }
-                // Gleich nach dem Baum, nicht nach allen: sein Manifest ist jetzt neu.
-                if (ausgang.equals(GEZEICHNET)) {
+                // Gleich nach dem Baum, nicht nach allen: sein Manifest kann neu sein, auch nach einem
+                // Update ohne Änderung, das ein fehlendes schrieb.
+                if (ausgang.equals(GEZEICHNET) || ausgang.equals(NICHTS)) {
                     nachLauf.run();
                 }
                 ergebnisse.add(a.baum() + " " + ausgang);

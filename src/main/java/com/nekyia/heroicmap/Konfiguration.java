@@ -25,7 +25,8 @@ record Konfiguration(
         int threads,
         int updateMinuten,
         List<Baum> baeume,
-        Download download) {
+        Download download,
+        Webserver webserver) {
 
     private static final Pattern SCHRAEG = Pattern.compile("(\\d+):(\\d+)");
 
@@ -40,6 +41,9 @@ record Konfiguration(
 
     /** Die Grenzen und Zeiten des Kartendownloads. Siehe docs/download.md, „Grenzen“. */
     record Download(int vollJe10Min, int vollJeWoche, int abgleichJeTag, LocalTime abgleichAb, int reserveMinuten) {}
+
+    /** Der Server des Renderers; ohne Zertifikat HTTP; {@code url} die Adresse für Spieler. Siehe docs/webserver.md. */
+    record Webserver(boolean an, String adresse, String url, Path zertifikat, Path schluessel) {}
 
     /**
      * Liest die Einstellungen; relative Pfade gelten ab {@code server}, ohne Welt gilt
@@ -113,6 +117,28 @@ record Konfiguration(
             fehler.add("download.abgleich-ab: " + c.getString("download.abgleich-ab") + " ist keine Uhrzeit wie \"00:00\"");
         }
 
+        boolean webserver = c.getBoolean("webserver.enabled");
+        String adresse = c.getString("webserver.listen", "");
+        String url = c.getString("webserver.url", "").strip().replaceAll("/+$", "");
+        String cert = c.getString("webserver.tls-cert", "");
+        String key = c.getString("webserver.tls-key", "");
+        if (webserver && adresse.isBlank()) {
+            fehler.add("webserver.listen fehlt, etwa \"0.0.0.0:8080\"");
+        }
+        if (webserver && baeume.stream().anyMatch(Baum::download) && !url.matches("https?://[^/\\s]+(/\\S*)?")) {
+            fehler.add("webserver.url: der Download braucht die Adresse, unter der Spieler den Webserver erreichen, "
+                    + "etwa \"https://karte.example.org\"");
+        }
+        if (webserver && cert.isBlank() != key.isBlank()) {
+            fehler.add("webserver: tls-cert und tls-key nur zusammen");
+        } else if (webserver && !cert.isBlank()) {
+            for (String datei : List.of(cert, key)) {
+                if (!Files.isRegularFile(server.resolve(datei))) {
+                    fehler.add("webserver: " + server.resolve(datei) + " gibt es nicht");
+                }
+            }
+        }
+
         if (!fehler.isEmpty()) {
             throw new IllegalArgumentException(String.join("; ", fehler));
         }
@@ -126,7 +152,9 @@ record Konfiguration(
                 threads,
                 minuten,
                 List.copyOf(baeume),
-                new Download(grenzen[0], grenzen[1], grenzen[2], ab, grenzen[3]));
+                new Download(grenzen[0], grenzen[1], grenzen[2], ab, grenzen[3]),
+                new Webserver(webserver, adresse, url,
+                        cert.isBlank() ? null : server.resolve(cert), key.isBlank() ? null : server.resolve(key)));
     }
 
     /**
