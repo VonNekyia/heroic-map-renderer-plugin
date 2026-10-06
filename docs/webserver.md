@@ -1,6 +1,6 @@
 ---
 title: Webserver
-description: Wie das Plugin den Server des Renderers als zweiten Kindprozess startet, mit welchen Schaltern, woher die Karte kommt, wie er mit der Pipe auf stdin endet, nach einem Tod neu startet und im Status steht, dazu der Download unter /download/, Bäume nur zum Download und HTTPS.
+description: Wie das Plugin den Server des Renderers als zweiten Kindprozess startet, mit welchen Schaltern, woher die Karte kommt, wie er mit der Pipe auf stdin endet, nach einem Tod neu startet und im Status steht, dazu der Download unter /download/, die Angaben der Seite, Bäume nur zum Download und HTTPS.
 code:
   - src/main/java/com/nekyia/heroicmap/Webserver.java
   - src/main/java/com/nekyia/heroicmap/HeroicMapPlugin.java
@@ -24,6 +24,7 @@ Der Code steht in `Webserver` in
 <renderer.binary> --serve <tiles> --web plugins/HeroicMap/web --listen <webserver.listen>
     --exit-with-stdin --threads 1 --low-priority [--tls-cert <datei> --tls-key <datei>]
     [--secret-file plugins/HeroicMap/token.geheimnis]
+    [--site-url <url> --site-title <title> --site-description <description> [--site-image <image>]]
 ```
 
 - **Ein Thread** für Verbindungen und Dateien, mit niedrigster Priorität,
@@ -51,9 +52,9 @@ siehe [Entwicklung](entwicklung.md), „Im Jar“.
 - **Kacheln und Karte** liegen nebeneinander, nicht ineinander. Liegt
   `tiles` woanders als direkt unter der Karte, nimmt der Server das hin;
   jede andere Lage ineinander lehnt er beim Start ab.
-- **Seitenangaben** wie Titel und Adresse stehen heute fest in der
-  gebauten Karte, mit den Vorgaben des Renderers. Zur Laufzeit kommen sie
-  mit heroic-map-renderer#151, Teil 5.
+- **Titel und Beschreibung** der gebauten Karte sind die Vorgaben des
+  Renderers. Eigene setzt der Server zur Laufzeit, siehe „Angaben der
+  Seite“.
 
 ## Ende und Neustart
 
@@ -108,6 +109,25 @@ auch unter `/download/` aus, nur gegen ein Token, siehe
 - **Das Geheimnis** liegt in `plugins/HeroicMap/token.geheimnis`, genau 32
   Byte; der Server liest es beim Start. Ohne Baum zum Download fehlt
   `--secret-file`, und `/download/` gibt `404`.
+
+## Angaben der Seite
+
+Mit `webserver.title` und `webserver.description` setzt der Server Adresse,
+Titel und Beschreibung zur Laufzeit in die Karte, ohne eigenen Build:
+`--site-url` aus `webserver.url`, `--site-title`, `--site-description`, dazu
+`--site-image` aus `webserver.image`. Wie er sie einsetzt, steht in der Doku
+des Renderers,
+[Server](https://github.com/VonNekyia/heroic-map-renderer/blob/master/docs/benutzung/server.md),
+„Angaben der Seite“.
+
+- **Nur zusammen:** `title` und `description` beide und mit `url`, `image`
+  nur mit ihnen. Sonst meldet das Plugin einen Fehler in der
+  Konfiguration, statt dass der Server beim Start scheitert. Ohne alle
+  liefert er die Karte, wie sie gebaut wurde.
+- **Nur mit Karte im Jar:** Ohne `--web` gibt das Plugin keine Angaben.
+- **Die Karte** braucht dafür `seite.html` und `robots.vorlage.txt`. Fehlen
+  sie, etwa in einem älteren Jar, startet der Server mit Angaben nicht und
+  sagt es im Log.
 
 ## HTTPS
 

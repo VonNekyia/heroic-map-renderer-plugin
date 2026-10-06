@@ -46,7 +46,17 @@ record Konfiguration(
     record Download(int vollJe10Min, int vollJeWoche, int abgleichJeTag, LocalTime abgleichAb, int reserveMinuten) {}
 
     /** Der Server des Renderers; ohne Zertifikat HTTP; {@code url} die Adresse für Spieler. Siehe docs/webserver.md. */
-    record Webserver(boolean an, String adresse, String url, Path zertifikat, Path schluessel) {}
+    record Webserver(boolean an, String adresse, String url, Path zertifikat, Path schluessel, String titel,
+            String beschreibung, String bild) {
+
+        /** Ob der Server Adresse, Titel und Beschreibung in die Seite setzt; die Konfiguration prüft, dass alle drei da sind. */
+        boolean seite() {
+            return !titel.isBlank();
+        }
+    }
+
+    /** Eine Adresse mit http:// oder https:// und Host, ohne / am Ende. */
+    private static final Pattern ADRESSE = Pattern.compile("https?://[^/\\s]+(/\\S*)?");
 
     /**
      * Liest die Einstellungen; relative Pfade gelten ab {@code server}, ohne Welt gilt
@@ -128,12 +138,19 @@ record Konfiguration(
         boolean webserver = c.getBoolean("webserver.enabled");
         String adresse = c.getString("webserver.listen", "");
         String url = c.getString("webserver.url", "").strip().replaceAll("/+$", "");
+        String titel = c.getString("webserver.title", "").strip();
+        String beschreibung = c.getString("webserver.description", "").strip();
+        String bild = c.getString("webserver.image", "").strip();
+        boolean seite = !(titel.isEmpty() && beschreibung.isEmpty() && bild.isEmpty());
+        if (webserver && seite && (titel.isEmpty() || beschreibung.isEmpty() || !ADRESSE.matcher(url).matches())) {
+            fehler.add("webserver: title und description nur zusammen und mit url, image nur mit ihnen");
+        }
         String cert = c.getString("webserver.tls-cert", "");
         String key = c.getString("webserver.tls-key", "");
         if (webserver && adresse.isBlank()) {
             fehler.add("webserver.listen fehlt, etwa \"0.0.0.0:8080\"");
         }
-        if (webserver && baeume.stream().anyMatch(Baum::download) && !url.matches("https?://[^/\\s]+(/\\S*)?")) {
+        if (webserver && baeume.stream().anyMatch(Baum::download) && !ADRESSE.matcher(url).matches()) {
             fehler.add("webserver.url: der Download braucht die Adresse, unter der Spieler den Webserver erreichen, "
                     + "etwa \"https://karte.example.org\"");
         }
@@ -162,7 +179,8 @@ record Konfiguration(
                 List.copyOf(baeume),
                 new Download(grenzen[0], grenzen[1], grenzen[2], ab, grenzen[3]),
                 new Webserver(webserver, adresse, url,
-                        cert.isBlank() ? null : server.resolve(cert), key.isBlank() ? null : server.resolve(key)));
+                        cert.isBlank() ? null : server.resolve(cert), key.isBlank() ? null : server.resolve(key),
+                        titel, beschreibung, bild));
     }
 
     /**

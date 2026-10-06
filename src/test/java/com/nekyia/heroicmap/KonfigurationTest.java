@@ -53,7 +53,7 @@ class KonfigurationTest {
         assertEquals("2x1-se", k.baeume().getFirst().ordner());
         assertEquals(new Konfiguration.Download(10, 5, 1, java.time.LocalTime.MIDNIGHT, 10), k.download());
         assertEquals("minecraft:overworld", k.dimension());
-        assertEquals(new Konfiguration.Webserver(true, "0.0.0.0:8080", "", null, null), k.webserver());
+        assertEquals(new Konfiguration.Webserver(true, "0.0.0.0:8080", "", null, null, "", "", ""), k.webserver());
     }
 
     @Test
@@ -74,7 +74,7 @@ class KonfigurationTest {
                   tls-key: schluessel.pem
                 """), server, server);
         assertEquals(new Konfiguration.Webserver(true, "0.0.0.0:8443", "", server.resolve("kette.pem"),
-                server.resolve("schluessel.pem")), k.webserver());
+                server.resolve("schluessel.pem"), "", "", ""), k.webserver());
 
         var e = assertThrows(IllegalArgumentException.class, () -> Konfiguration.aus(yaml("""
                 renderer:
@@ -140,6 +140,39 @@ class KonfigurationTest {
                 "ohne / am Ende");
         assertEquals("", Konfiguration.aus(yaml(baum.replace("enabled: true", "enabled: false")), server, server)
                 .webserver().url(), "ohne Webserver prüft er nichts");
+    }
+
+    @Test
+    void angaben_der_seite_nur_zusammen() throws Exception {
+        Files.createFile(server.resolve("r"));
+        String kopf = """
+                renderer:
+                  binary: r
+                  assets: [a]
+                trees:
+                  - camera: "2:1"
+                webserver:
+                  enabled: true
+                  listen: 0.0.0.0:8080
+                """;
+        var k = Konfiguration.aus(yaml(kopf + """
+                  url: https://karte.example.org/
+                  title: " Unsere Welt "
+                  description: Die Karte.
+                  image: vorschau.jpg
+                """), server, server).webserver();
+        assertEquals(List.of("https://karte.example.org", "Unsere Welt", "Die Karte.", "vorschau.jpg"),
+                List.of(k.url(), k.titel(), k.beschreibung(), k.bild()));
+        assertTrue(k.seite());
+        assertFalse(Konfiguration.aus(yaml(kopf), server, server).webserver().seite(), "ohne Angaben die des Builds");
+        String fehler = "webserver: title und description nur zusammen und mit url, image nur mit ihnen";
+        for (String teil : List.of("  url: https://karte.example.org\n  title: Unsere Welt\n",
+                "  title: Unsere Welt\n  description: Die Karte.\n",
+                "  url: https://karte.example.org\n  image: vorschau.jpg\n",
+                "  url: karte.example.org\n  title: Unsere Welt\n  description: Die Karte.\n")) {
+            var e = assertThrows(IllegalArgumentException.class, () -> Konfiguration.aus(yaml(kopf + teil), server, server), teil);
+            assertEquals(fehler, e.getMessage(), teil);
+        }
     }
 
     @Test

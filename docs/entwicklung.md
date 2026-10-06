@@ -121,8 +121,9 @@ Build 129, eine Kopie der Testwelt, das Jar des Plugins unter `plugins/`,
   `renderer/tests/fixtures/` des Renderers. Der Job „Doku“ vergleicht sie
   mit `master` und fällt, wenn eine abweicht.
 - **Jar mit Karte:** baut die Karte aus `web/` des Renderers, Stand
-  `master`, packt sie mit `-Pweb` ins Jar und prüft, dass `web/index.html`
-  und `web/lizenzen.txt` darin stehen.
+  `master`, packt sie mit `-Pweb` ins Jar und prüft, dass `web/index.html`,
+  `web/lizenzen.txt` und die Vorlagen `web/seite.html` und
+  `web/robots.vorlage.txt` darin stehen.
 - **Doku:** Das Prüfskript des Renderers prüft Verweise, Links,
   Frontmatter und `docs/index.md`. Die CI lädt es vom Branch `master`, wie
   in [`AGENTS.md`](../AGENTS.md) beschrieben, und nimmt

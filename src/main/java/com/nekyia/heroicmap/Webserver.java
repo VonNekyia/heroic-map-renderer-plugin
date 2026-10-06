@@ -70,6 +70,13 @@ final class Webserver {
         if (geheimnis != null) {
             b.addAll(List.of("--secret-file", geheimnis.toString()));
         }
+        // Die Angaben der Seite setzt der Server nur in eine Karte aus --web.
+        if (web != null && w.seite()) {
+            b.addAll(List.of("--site-url", w.url(), "--site-title", w.titel(), "--site-description", w.beschreibung()));
+            if (!w.bild().isBlank()) {
+                b.addAll(List.of("--site-image", w.bild()));
+            }
+        }
         return b;
     }
 

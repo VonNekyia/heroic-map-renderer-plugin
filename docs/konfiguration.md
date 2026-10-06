@@ -36,6 +36,9 @@ Gelesen und geprüft in `Konfiguration.aus` in
 | `webserver.enabled` | `true` | – | ob das Plugin den Server des Renderers startet |
 | `webserver.listen` | `"0.0.0.0:8080"` | `--listen` | Adresse und Port; Pflicht, wenn der Webserver an ist |
 | `webserver.url` | leer | – | wie Spieler den Webserver erreichen, `http://` oder `https://`, ohne `/` am Ende; Pflicht mit einem Baum zum Download, siehe [Webserver](webserver.md), „Download“ |
+| `webserver.title` | leer | `--site-title` | Titel der Seite; nur mit `description` und `url`, siehe [Webserver](webserver.md), „Angaben der Seite“ |
+| `webserver.description` | leer | `--site-description` | Beschreibung der Seite; nur mit `title` und `url` |
+| `webserver.image` | leer | `--site-image` | Vorschaubild, relativ zu `url` oder eine Adresse; nur mit `title` und `description` |
 | `webserver.tls-cert` | leer | `--tls-cert` | HTTPS: die Kette der Zertifikate als PEM; nur mit `tls-key` |
 | `webserver.tls-key` | leer | `--tls-key` | der Schlüssel dazu als PEM; nur mit `tls-cert` |
 
