@@ -321,7 +321,7 @@ class LaeufeTest {
         Path renderer = Files.createFile(tmp.resolve("renderer"));
         var l = new Laeufe(konf(renderer, false, List.of()), logger, tmp.resolve("renderer.pid"));
         l.musl = Files.createFile(tmp.resolve("ld-musl-x86_64.so.1"));
-        // Der Befehl nennt ein fehlendes Binär: error=2 wie unter musl, auf jedem System.
+        // Der Befehl nennt ein fehlendes Binär: Fehler 2 wie unter musl, auf jedem System in seiner Form.
         l.starte("Test", List.of(new Auftrag("a", List.of(tmp.resolve("fehlt").toString()), false)));
         assertTrue(l.warte(10_000));
         assertTrue(l.status().endsWith(", Fehler, nicht gestartet: das Linux-Binär braucht glibc, dieses System hat musl ("
@@ -331,18 +331,22 @@ class LaeufeTest {
     }
 
     @Test
-    void musl_nur_bei_error_2_mit_binaer_und_lader() throws IOException {
-        var e = new IOException("Cannot run program \"renderer\": error=2, No such file or directory");
+    void musl_nur_bei_fehler_2_mit_binaer_und_lader() throws IOException {
+        var e = new IOException("Cannot run program \"renderer\": Exec failed, error: 2 (No such file or directory) ");
         Path renderer = Files.createFile(tmp.resolve("renderer"));
         Path musl = tmp.resolve("ld-musl-x86_64.so.1");
         assertEquals(e.getMessage(), Laeufe.nichtGestartet(e, renderer, musl), "ohne musl die Meldung der JVM");
         Files.createFile(musl);
         assertTrue(Laeufe.nichtGestartet(e, renderer, musl).endsWith("nötig ist ein Image ohne Alpine"));
         assertEquals(e.getMessage(), Laeufe.nichtGestartet(e, tmp.resolve("fehlt"), musl), "fehlt das Binär, sagt das die JVM");
-        var ohneRecht = new IOException("Cannot run program \"renderer\": error=13, Permission denied");
+        var ohneRecht = new IOException("Cannot run program \"renderer\": Exec failed, error: 13 (Permission denied) ");
         assertEquals(ohneRecht.getMessage(), Laeufe.nichtGestartet(ohneRecht, renderer, musl), "ein anderer Fehler bleibt");
-        var keinOrdner = new IOException("Cannot run program \"renderer\": error=20, Not a directory");
-        assertEquals(keinOrdner.getMessage(), Laeufe.nichtGestartet(keinOrdner, renderer, musl), "error=20 ist nicht error=2");
+        var keinOrdner = new IOException("Cannot run program \"renderer\": Exec failed, error: 20 (Not a directory) ");
+        assertEquals(keinOrdner.getMessage(), Laeufe.nichtGestartet(keinOrdner, renderer, musl), "20 ist nicht 2");
+        var alt = new IOException("Cannot run program \"renderer\": error=2, No such file or directory");
+        assertTrue(Laeufe.nichtGestartet(alt, renderer, musl).endsWith("nötig ist ein Image ohne Alpine"), "die Form vor Java 25");
+        var alt20 = new IOException("Cannot run program \"renderer\": error=20, Not a directory");
+        assertEquals(alt20.getMessage(), Laeufe.nichtGestartet(alt20, renderer, musl), "error=20 ist nicht error=2");
         assertNull(Laeufe.nichtGestartet(new IOException(), renderer, musl), "ohne Meldung keine Ausnahme");
         assertEquals("/lib/ld-musl-x86_64.so.1", laeufe().musl.toString().replace('\\', '/'));
     }

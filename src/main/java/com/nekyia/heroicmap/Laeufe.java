@@ -411,10 +411,13 @@ final class Laeufe {
 
     /**
      * Warum der Prozess nicht startete. Unter musl meldet die JVM für ein vorhandenes Binär nur
-     * error=2. Siehe docs/laeufe.md, „Der Kindprozess“.
+     * Fehler 2. Siehe docs/laeufe.md, „Der Kindprozess“.
      */
     static String nichtGestartet(IOException e, Path renderer, Path musl) {
-        return String.valueOf(e.getMessage()).contains("error=2,") && Files.exists(renderer) && Files.exists(musl)
+        String m = String.valueOf(e.getMessage());
+        // Java 25 schreibt ihn unter Linux „error: 2 (“, unter Windows „error=2,“.
+        boolean fehler2 = m.contains("error: 2 (") || m.contains("error=2,");
+        return fehler2 && Files.exists(renderer) && Files.exists(musl)
                 ? "das Linux-Binär braucht glibc, dieses System hat musl (" + musl + "), nötig ist ein Image ohne Alpine"
                 : e.getMessage();
     }
