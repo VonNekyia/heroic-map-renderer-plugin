@@ -69,6 +69,9 @@ final class Laeufe {
     private volatile String letzteZeile = "";
     private volatile String fortschritt = "";
 
+    /** Der Lader von musl; das Linux-Binär braucht glibc. Tests setzen einen eigenen. */
+    Path musl = Path.of("/lib/ld-musl-x86_64.so.1");
+
     Laeufe(Konfiguration konf, Logger log, Path pidDatei) {
         this.konf = konf;
         this.log = log;
@@ -362,8 +365,9 @@ final class Laeufe {
             try {
                 p = pb.start();
             } catch (IOException e) {
-                log.log(Level.SEVERE, "Renderer nicht gestartet", e);
-                return "Fehler, nicht gestartet: " + e.getMessage();
+                String grund = nichtGestartet(e, konf.renderer(), musl);
+                log.log(Level.SEVERE, "Renderer nicht gestartet: " + grund, e);
+                return "Fehler, nicht gestartet: " + grund;
             }
             prozess = p;
         }
@@ -403,6 +407,16 @@ final class Laeufe {
                 log.log(Level.WARNING, "PID-Datei " + pidDatei + " nicht entfernt", e);
             }
         }
+    }
+
+    /**
+     * Warum der Prozess nicht startete. Unter musl meldet die JVM für ein vorhandenes Binär nur
+     * error=2. Siehe docs/laeufe.md, „Der Kindprozess“.
+     */
+    static String nichtGestartet(IOException e, Path renderer, Path musl) {
+        return Files.exists(renderer) && Files.exists(musl)
+                ? "das Linux-Binär braucht glibc, dieses System hat musl (" + musl + "), nötig ist ein Image ohne Alpine"
+                : e.getMessage();
     }
 
     /**

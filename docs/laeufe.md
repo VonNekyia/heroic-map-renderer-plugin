@@ -97,6 +97,15 @@ entschieden in [0003](entscheidungen/0003-live-render-ueber-autosave-und-zeitpla
   - Im Vorlauf je Prozent der Regionen, sonst alle 200 Kacheln. Bei der
     grossen Welt wären das als Text rund 12 500 Zeilen je vollem Lauf.
   - Was nicht so aussieht, steht als Text im Log.
+- **Start scheitert:** Startet der Prozess nicht, steht „Fehler, nicht
+  gestartet:“ mit dem Grund im Log und im Status.
+  - **musl:** Das Linux-Binär braucht glibc (heroic-map-renderer#150).
+    Unter musl, etwa in einem Image mit Alpine, fehlt ihm der Lader, und die
+    JVM meldet nur `error=2, No such file or directory`. Gibt es dann
+    `/lib/ld-musl-x86_64.so.1`, nennt das Plugin den Grund: Nötig ist ein
+    Image ohne Alpine.
+  - Geprüft wird erst, wenn der Start scheitert. Ein System kann musl
+    neben glibc haben, dann läuft der Renderer.
 - **Fehler beim Lesen:** Bricht das Lesen der Ausgabe ohne Abbruch ab,
   beendet das Plugin den Prozess wie bei `cancel` und wartet auf ihn. Ein
   Prozess, dessen Ausgabe niemand liest, bliebe sonst stehen, sobald die
