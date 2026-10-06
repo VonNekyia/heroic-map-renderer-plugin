@@ -121,9 +121,20 @@ des Renderers,
 „Angaben der Seite“.
 
 - **Nur zusammen:** `title` und `description` beide und mit `url`, `image`
-  nur mit ihnen. Sonst meldet das Plugin einen Fehler in der
-  Konfiguration, statt dass der Server beim Start scheitert. Ohne alle
-  liefert er die Karte, wie sie gebaut wurde.
+  nur mit ihnen. Das prüft das Plugin und meldet sonst einen Fehler in der
+  Konfiguration. Ohne alle liefert der Server die Karte, wie sie gebaut
+  wurde.
+- **Welche Zeichen** in `url` und `image` stehen dürfen, prüft erst der
+  Server beim Start. Seine Meldung steht im Log, und das Plugin startet ihn
+  nach der Pause neu, siehe „Ende und Neustart“.
+- **Zeichensatz:** Unter Linux kodiert die JVM die Argumente eines
+  Kindprozesses im Zeichensatz der Umgebung, `sun.jnu.encoding`. Ohne
+  UTF-8, etwa mit `LANG=C`, würden Umlaute still zu „?“. Das Plugin prüft
+  `url`, `title`, `description` und `image` darum gegen diesen Zeichensatz
+  und meldet sonst einen Fehler; `LANG=C.UTF-8` vor dem Start des Servers
+  lässt jedes Zeichen zu. Unter Windows gehen die Argumente als UTF-16, ohne
+  Prüfung. Belegt im OpenJDK 25: `ProcessImpl.toCString` mit `JNU_CHARSET`
+  unter Unix, `CreateProcessW` unter Windows.
 - **Nur mit Karte im Jar:** Ohne `--web` gibt das Plugin keine Angaben.
 - **Die Karte** braucht dafür `seite.html` und `robots.vorlage.txt`. Fehlen
   sie, etwa in einem älteren Jar, startet der Server mit Angaben nicht und

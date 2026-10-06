@@ -1,6 +1,7 @@
 package com.nekyia.heroicmap;
 
 import java.math.BigInteger;
+import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalTime;
@@ -63,6 +64,21 @@ record Konfiguration(
      * {@code hauptwelt}. Wirft mit allen Fehlern auf einmal.
      */
     static Konfiguration aus(ConfigurationSection c, Path server, Path hauptwelt) {
+        return aus(c, server, hauptwelt, argumente());
+    }
+
+    /**
+     * Der Zeichensatz, in dem die JVM die Argumente eines Kindprozesses kodiert; null unter Windows,
+     * dort gehen sie als UTF-16. Siehe docs/webserver.md, „Angaben der Seite“.
+     */
+    static Charset argumente() {
+        String name = System.getProperty("sun.jnu.encoding", "");
+        return System.getProperty("os.name", "").startsWith("Windows") || !Charset.isSupported(name)
+                ? null : Charset.forName(name);
+    }
+
+    /** Wie oben; {@code argumente} prüft, ob die Angaben der Seite den Kindprozess unverändert erreichen. */
+    static Konfiguration aus(ConfigurationSection c, Path server, Path hauptwelt, Charset argumente) {
         List<String> fehler = new ArrayList<>();
 
         String binaer = c.getString("renderer.binary", "");
@@ -144,6 +160,15 @@ record Konfiguration(
         boolean seite = !(titel.isEmpty() && beschreibung.isEmpty() && bild.isEmpty());
         if (webserver && seite && (titel.isEmpty() || beschreibung.isEmpty() || !ADRESSE.matcher(url).matches())) {
             fehler.add("webserver: title und description nur zusammen und mit url, image nur mit ihnen");
+        } else if (webserver && seite && argumente != null) {
+            // Ein Zeichen, das der Zeichensatz nicht kann, würde still zu „?“.
+            var kodierer = argumente.newEncoder();
+            for (String wert : List.of(url, titel, beschreibung, bild)) {
+                if (!kodierer.canEncode(wert)) {
+                    fehler.add("webserver: „" + wert + "“ geht in " + argumente
+                            + " nicht an den Server; mit LANG=C.UTF-8 vor dem Start des Servers geht jedes Zeichen");
+                }
+            }
         }
         String cert = c.getString("webserver.tls-cert", "");
         String key = c.getString("webserver.tls-key", "");

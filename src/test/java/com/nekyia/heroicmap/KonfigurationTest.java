@@ -176,6 +176,33 @@ class KonfigurationTest {
     }
 
     @Test
+    void angaben_der_seite_nur_im_zeichensatz_der_argumente() throws Exception {
+        Files.createFile(server.resolve("r"));
+        var c = yaml("""
+                renderer:
+                  binary: r
+                  assets: [a]
+                trees:
+                  - camera: "2:1"
+                webserver:
+                  enabled: true
+                  listen: 0.0.0.0:8080
+                  url: https://karte.example.org
+                  title: Grüße aus Köln
+                  description: Die Karte.
+                """);
+        var e = assertThrows(IllegalArgumentException.class,
+                () -> Konfiguration.aus(c, server, server, java.nio.charset.StandardCharsets.US_ASCII));
+        assertEquals("webserver: „Grüße aus Köln“ geht in US-ASCII nicht an den Server; "
+                + "mit LANG=C.UTF-8 vor dem Start des Servers geht jedes Zeichen", e.getMessage());
+        assertEquals("Grüße aus Köln",
+                Konfiguration.aus(c, server, server, java.nio.charset.StandardCharsets.UTF_8).webserver().titel());
+        assertEquals("Grüße aus Köln", Konfiguration.aus(c, server, server, null).webserver().titel(), "Windows: UTF-16");
+        assertEquals(System.getProperty("os.name").startsWith("Windows"), Konfiguration.argumente() == null,
+                "geprüft wird nur ausserhalb von Windows");
+    }
+
+    @Test
     void download_nur_fuer_genordete_baeume_mit_scale_4() throws Exception {
         Files.createFile(server.resolve("r"));
         var k = Konfiguration.aus(yaml("""

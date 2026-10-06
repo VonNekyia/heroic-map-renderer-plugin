@@ -102,7 +102,14 @@ schaltet sich ab:
 - `download: true` an einem Baum, der nicht `top-north` mit scale 4 ohne
   Cinematic ist;
 - eine Grenze unter `download` kleiner als 0, oder `abgleich-ab` keine
-  Uhrzeit wie `"00:00"`.
+  Uhrzeit wie `"00:00"`;
+- `web: false` an einem Baum ohne `download: true`;
+- mit eingeschaltetem Webserver: `webserver.listen` leer; nur eins von
+  `tls-cert` und `tls-key`, oder eine der Dateien fehlt; ein Baum zum
+  Download ohne gültige `webserver.url`; `title` und `description` nicht
+  zusammen oder ohne `url`, `image` ohne sie; unter Linux ein Zeichen in
+  diesen Angaben, das der Zeichensatz der Umgebung nicht kann, siehe
+  [Webserver](webserver.md), „Angaben der Seite“.
 
 Alles Übrige, etwa eine Kamera, die es nicht gibt, prüft der Renderer beim
 Lauf und sagt es im Log.
