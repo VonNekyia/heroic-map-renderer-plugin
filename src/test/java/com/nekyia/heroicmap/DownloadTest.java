@@ -68,6 +68,11 @@ class DownloadTest {
                 .getBytes(StandardCharsets.UTF_8);
     }
 
+    private static byte[] anfrageNeu(String baum, int massstab, String art) {
+        String a = new String(anfrage(baum, massstab, art), StandardCharsets.UTF_8);
+        return (a.substring(0, a.length() - 1) + ",\"neu\":true}").getBytes(StandardCharsets.UTF_8);
+    }
+
     /** Ablauf, Deckel, Stufe und Baum aus dem Inhalt eines Tokens, nach docs/plugin.md des Renderers. */
     private static ByteBuffer inhalt(String token) {
         return ByteBuffer.wrap(Base64.getUrlDecoder().decode(token.substring(0, token.indexOf('.'))));
@@ -108,7 +113,10 @@ class DownloadTest {
                 "{\"v\":1,\"typ\":\"freigabe\",\"baum\":\"top-north-s\",\"massstab\":4,\"art\":\"voll\"}",
                 "{\"v\":1,\"typ\":\"anfrage\",\"baum\":\"top-north-s\",\"massstab\":3,\"art\":\"voll\"}",
                 "{\"v\":1,\"typ\":\"anfrage\",\"baum\":\"top-north-s\",\"massstab\":4.5,\"art\":\"voll\"}",
-                "{\"v\":1,\"typ\":\"anfrage\",\"baum\":\"top-north-s\",\"massstab\":4,\"art\":\"alles\"}")) {
+                "{\"v\":1,\"typ\":\"anfrage\",\"baum\":\"top-north-s\",\"massstab\":4,\"art\":\"alles\"}",
+                "{\"v\":1,\"typ\":\"anfrage\",\"baum\":\"top-north-s\",\"massstab\":4,\"art\":\"voll\",\"neu\":\"true\"}",
+                "{\"v\":1,\"typ\":\"anfrage\",\"baum\":\"top-north-s\",\"massstab\":4,\"art\":\"voll\",\"neu\":1}",
+                "{\"v\":1,\"typ\":\"anfrage\",\"baum\":\"top-north-s\",\"massstab\":4,\"art\":\"voll\",\"neu\":null}")) {
             var antwort = d.anfrage(a.getBytes(StandardCharsets.UTF_8), SPIELER, stand, JETZT);
             assertEquals("abgelehnt", antwort.get("typ").getAsString(), a);
             assertEquals("Die Anfrage ist nicht lesbar.", antwort.get("grund").getAsString(), a);
@@ -229,6 +237,25 @@ class DownloadTest {
         SatzTest.baum(tmp.resolve("top-north-s"), 2, 5, "2/0/0 100 \"a\"", "3/0/0 200 \"b\"", "3/-1/0 300 \"c\"",
                 "4/0/0 1000 \"d\"", "5/0/0 4000 \"e\"", "5/-1/-1 6000 \"f\"", "5/1/1 10 \"g\"");
         return Satz.lies(tmp.resolve("top-north-s"));
+    }
+
+    @Test
+    void neuer_voller_download_mit_neu_bekommt_ein_neues_token_und_zaehlt() {
+        var d = download();
+        var stand = new Download.Spielerstand();
+        var a = d.anfrage(anfrage("top-north-s", 4, "voll"), SPIELER, stand, JETZT);
+        var fortsetzen = d.anfrage(anfrage("top-north-s", 4, "voll"), SPIELER, stand, JETZT.plusSeconds(90));
+        assertEquals(a.get("token").getAsString(), fortsetzen.get("token").getAsString(), "ohne neu: Fortsetzen");
+        assertEquals(1, stand.voll.length);
+
+        var neu = d.anfrage(anfrageNeu("top-north-s", 4, "voll"), SPIELER, stand, JETZT.plusSeconds(180));
+        assertEquals("freigabe", neu.get("typ").getAsString());
+        assertNotEquals(a.get("token").getAsString(), neu.get("token").getAsString(), "mit neu: ein neues Token");
+        assertEquals(2, stand.voll.length, "es zählt gegen voll-je-woche");
+
+        var b = d.anfrage(anfrage("top-north-s", 4, "abgleich"), SPIELER, stand, JETZT.plusSeconds(240));
+        var bNeu = d.anfrage(anfrageNeu("top-north-s", 4, "abgleich"), SPIELER, stand, JETZT.plusSeconds(300));
+        assertEquals(b.get("token").getAsString(), bNeu.get("token").getAsString(), "neu gilt nur für voll");
     }
 
     @Test

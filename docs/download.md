@@ -36,7 +36,7 @@ Bukkit, und in `Kanal`, der den Kanal und den Stand im Spieler bedient.
 | Richtung | `typ` | Felder | Wann |
 |---|---|---|---|
 | Server → Mod | `angebot` | `baeume`: je Baum `id`, `name`, `dimension`, `stand` (Epoch s), `abdeckt_bis` (Epoch s, falls bekannt), `massstaebe`: je `"1"`, `"2"`, `"4"` `bytes` und `kacheln` | sobald der Mod den Kanal anmeldet, und nach jedem Lauf, der Kacheln gezeichnet hat |
-| Mod → Server | `anfrage` | `baum`, `massstab` (1, 2 oder 4), `art`: `voll` oder `abgleich` | der Spieler wählt |
+| Mod → Server | `anfrage` | `baum`, `massstab` (1, 2 oder 4), `art`: `voll` oder `abgleich`, `neu` (optional, `true`: ein voller Download ohne Stand zum Fortsetzen) | der Spieler wählt |
 | Server → Mod | `freigabe` | `baum`, `massstab`, `art`, `abdeckt_bis` (falls bekannt), `url`, `token`, `ablauf` (Epoch s), `manifest_sha256`, `bytes` | auf eine `anfrage`, oder von selbst beim täglichen Abgleich |
 | Server → Mod | `abgelehnt` | `baum`, `art`, `grund` (Text für den Spieler), `wieder` (Epoch s, falls bekannt) | siehe „Anfrage“ |
 
@@ -52,6 +52,13 @@ Bukkit, und in `Kanal`, der den Kanal und den Stand im Spieler bedient.
 - **Der Mod** schickt `anfrage` nur, wenn `ClientPlayNetworking.canSend`
   wahr ist. Paper meldet dem Client beim Beitritt die Kanäle, die das Plugin
   angemeldet hat. Belegt an #154.
+- **Im Hauptthread** laufen das Anmelden des Kanals, jede Anfrage und das
+  Angebot an alle nach einem Lauf. Jeder Handler misst seine Dauer: die
+  Zeile `Kanal: … im Hauptthread in … µs` steht auf FINE, ab 1 ms auf INFO.
+  Ohne Bukkit, also ohne PDC und Senden, braucht nach dem Aufwärmen das
+  Angebot rund 2 µs, eine Anfrage `voll` 5 µs, der tägliche Abgleich mit
+  HMAC 4 µs und der Stand als JSON 5 µs (06.10., einmal gemessen). Darum
+  bleibt die Arbeit im Hauptthread.
 
 ## Manifest
 
@@ -92,7 +99,8 @@ die Stufe unter `minZoom`, gibt es den Massstab nicht.
 Der Reihe nach, die erste Ablehnung gilt:
 
 1. **Lesbar:** höchstens 1024 Byte, ein JSON-Objekt mit `v` 1, `typ`
-   `anfrage`, `baum`, `massstab` 1, 2 oder 4 und `art` `voll` oder `abgleich`.
+   `anfrage`, `baum`, `massstab` 1, 2 oder 4 und `art` `voll` oder `abgleich`, dazu
+   wahlweise `neu` als `true` oder `false`.
    Sonst: „Die Anfrage ist nicht lesbar.“
 2. **Angeboten:** sonst „Diese Karte wird hier nicht zum Download
    angeboten.“
@@ -106,7 +114,9 @@ Der Reihe nach, die erste Ablehnung gilt:
 6. **Noch einmal dasselbe Token,** mit dem aktuellen Manifest, und es zählt
    nicht:
    - bei `voll` mit demselben Massstab, solange es noch mindestens 10 min
-     gilt, zum Fortsetzen;
+     gilt, zum Fortsetzen. Nicht mit `neu: true`: Dann hat der Mod keinen
+     Stand, und das Token von vorhin hat sein Budget beim Server womöglich
+     schon verbraucht. Es gibt ein neues, das gegen die Grenzen zählt;
    - bei `abgleich`, solange es jünger als 10 min ist. So kostet eine
      Neuanfrage nach einem Fehler der Prüfsumme keinen Abgleich. Entschieden
      im Review, steht an #154.
