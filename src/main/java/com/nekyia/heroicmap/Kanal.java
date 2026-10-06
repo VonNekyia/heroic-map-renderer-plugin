@@ -89,14 +89,16 @@ final class Kanal implements Listener, PluginMessageListener {
 
     /** Nach neuen Sätzen: allen mit Mod das Angebot, und der tägliche Abgleich, wo er fällig ist. */
     private void angebotAnAlle() {
-        var jetzt = Instant.now();
-        var angebot = download.angebot(jetzt);
-        for (Player p : plugin.getServer().getOnlinePlayers()) {
-            if (p.getListeningPluginChannels().contains(Download.KANAL)) {
-                sende(p, angebot);
-                taeglich(p, jetzt);
+        gemessen("Angebot an alle", () -> {
+            var jetzt = Instant.now();
+            var angebot = download.angebot(jetzt);
+            for (Player p : plugin.getServer().getOnlinePlayers()) {
+                if (p.getListeningPluginChannels().contains(Download.KANAL)) {
+                    sende(p, angebot);
+                    taeglich(p, jetzt);
+                }
             }
-        }
+        });
     }
 
     private void taeglich(Player p, Instant jetzt) {
@@ -115,9 +117,11 @@ final class Kanal implements Listener, PluginMessageListener {
             return;
         }
         var p = e.getPlayer();
-        var jetzt = Instant.now();
-        sende(p, download.angebot(jetzt));
-        taeglich(p, jetzt);
+        gemessen("Anmelden von " + p.getName(), () -> {
+            var jetzt = Instant.now();
+            sende(p, download.angebot(jetzt));
+            taeglich(p, jetzt);
+        });
     }
 
     @Override
@@ -125,10 +129,24 @@ final class Kanal implements Listener, PluginMessageListener {
         if (!channel.equals(Download.KANAL)) {
             return;
         }
-        var stand = lies(player);
-        var antwort = download.anfrage(message, player.getUniqueId(), stand, Instant.now());
-        schreibe(player, stand);
-        sende(player, antwort);
+        gemessen("Anfrage von " + player.getName(), () -> {
+            var stand = lies(player);
+            var antwort = download.anfrage(message, player.getUniqueId(), stand, Instant.now());
+            schreibe(player, stand);
+            sende(player, antwort);
+        });
+    }
+
+    /**
+     * Ein Handler im Hauptthread, gemessen: die Dauer auf FINE, ab 1 ms auf INFO. Siehe
+     * docs/download.md, „Kanal“.
+     */
+    private void gemessen(String was, Runnable r) {
+        long beginn = System.nanoTime();
+        r.run();
+        long mikro = (System.nanoTime() - beginn) / 1000;
+        plugin.getLogger().log(mikro >= 1000 ? Level.INFO : Level.FINE,
+                () -> "Kanal: " + was + " im Hauptthread in " + mikro + " µs");
     }
 
     /** Ein unlesbarer Stand beginnt neu; die Warnung kommt einmal je Spieler und Start, nicht je Anfrage. */

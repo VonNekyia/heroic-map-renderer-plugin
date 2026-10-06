@@ -162,6 +162,7 @@ final class Download {
         String baum;
         String art;
         int massstab;
+        boolean neuerDownload;
         try {
             if (daten.length > GROESSTE_ANFRAGE) {
                 throw new IllegalArgumentException("zu gross");
@@ -180,6 +181,15 @@ final class Download {
             };
             if (!art.equals("voll") && !art.equals("abgleich")) {
                 throw new IllegalArgumentException("art");
+            }
+            // Optional, nur true oder false.
+            neuerDownload = false;
+            if (a.has("neu")) {
+                var n = a.getAsJsonPrimitive("neu");
+                if (!n.isBoolean()) {
+                    throw new IllegalArgumentException("neu");
+                }
+                neuerDownload = n.getAsBoolean();
             }
         } catch (RuntimeException e) {
             return abgelehnt(jetzt, null, null, "Die Anfrage ist nicht lesbar.", null);
@@ -206,8 +216,8 @@ final class Download {
         long s = jetzt.getEpochSecond();
 
         // Fortsetzen zählt nicht: voll, solange das Token noch 10 min gilt; ein Abgleich, solange es jünger
-        // als 10 min ist. Siehe docs/download.md, „Anfrage“.
-        var alt = bs == null ? null : bs.token.get(wirklich);
+        // als 10 min ist. Ein voller mit neu ist kein Fortsetzen. Siehe docs/download.md, „Anfrage“.
+        var alt = bs == null || voll && neuerDownload ? null : bs.token.get(wirklich);
         if (alt != null && alt.massstab() == massstab && (voll
                 ? alt.ablauf() - s >= NOCH_GUELTIG.toSeconds()
                 : s - (alt.ablauf() - GUELTIG.toSeconds()) < NOCH_GUELTIG.toSeconds())) {
