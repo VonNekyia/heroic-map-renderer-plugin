@@ -99,10 +99,11 @@ auch unter `/download/` aus, nur gegen ein Token, siehe
 „Download“.
 
 - **Ohne `webserver.url`** nennt die `freigabe` nur `port`: den aus
-  `webserver.public-port`, sonst den aus `webserver.listen`. Der Mod baut die Adresse dann selbst: `http://`, die
-  IP-Adresse seiner Verbindung zum Spielserver, IPv6 in `[…]`, dieser Port
-  und `/download/<baum>`. Das reicht, wenn Spielserver und Webserver auf
-  demselben Rechner laufen und der Port offen ist.
+  `webserver.public-port`, sonst den aus `webserver.listen`. Der Mod baut
+  die Adresse dann selbst: `http://`, die IP-Adresse seiner Verbindung zum
+  Spielserver, IPv6 in `[…]`, dieser Port und `/download/<baum>`. Das
+  reicht, wenn Spielserver und Webserver auf demselben Rechner laufen und
+  der Port offen ist.
 - **Mit `webserver.url`** nennt sie `url`, also `webserver.url` mit
   `/download/<baum>`. Die braucht es nur für einen anderen Host, für HTTPS
   oder für einen Proxy davor. `webserver.listen` taugt dafür nicht:
@@ -114,9 +115,9 @@ auch unter `/download/` aus, nur gegen ein Token, siehe
   auf `127.0.0.1:8082`, und leitet ein Proxy auf dem Spielrechner
   `/download/` von Port 8080 dorthin weiter, nennt `public-port: 8080` dem
   Mod den Port des Proxys. Eine Adresse braucht es so nicht.
-- **Warnung:** Lauscht der Webserver ohne `url` und ohne `public-port` nur auf `127.0.0.1`,
-  `[::1]` oder `localhost`, steht beim Start im Log, dass Spieler ihn so
-  nicht erreichen.
+- **Warnung:** Lauscht der Webserver ohne `url` und ohne `public-port`
+  nur auf `127.0.0.1`, `[::1]` oder `localhost`, steht beim Start im Log,
+  dass Spieler ihn so nicht erreichen.
 - **Token** gibt es erst, wenn der Server bereit ist: zwischen seiner
   Startzeile und seinem Ende. Sonst antwortet der Download „Webserver
   aus.“

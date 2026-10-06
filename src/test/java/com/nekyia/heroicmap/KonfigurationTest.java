@@ -170,6 +170,10 @@ class KonfigurationTest {
         var falsch = assertThrows(IllegalArgumentException.class,
                 () -> Konfiguration.aus(yaml(baum + "  listen: 0.0.0.0:8080\n  public-port: 70000\n"), server, server));
         assertEquals("webserver.public-port: 0 oder ein Port bis 65535", falsch.getMessage());
+        var text = assertThrows(IllegalArgumentException.class,
+                () -> Konfiguration.aus(yaml(baum + "  listen: 0.0.0.0:8080\n  public-port: \"8080\"\n"), server, server));
+        assertEquals("webserver.public-port: eine Zahl, 0 oder ein Port bis 65535", text.getMessage(),
+                "in Anführungszeichen nicht still 0");
         assertEquals("", Konfiguration.aus(yaml(baum.replace("enabled: true", "enabled: false")), server, server)
                 .webserver().url(), "ohne Webserver prüft er nichts");
     }

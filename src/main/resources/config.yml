@@ -49,7 +49,7 @@ webserver:
   listen: "0.0.0.0:8080"
   # Wie Spieler den Webserver erreichen, etwa "https://karte.example.org";
   # nur für einen anderen Host, HTTPS oder einen Proxy. Leer: Der Mod nimmt
-  # den Host des Spielservers und den Port aus listen.
+  # den Host des Spielservers und den Port aus listen oder public-port.
   url: ""
   # Steht ein Proxy davor, der Port, unter dem Spieler ihn erreichen; den
   # nennt die Freigabe ohne url dem Mod. 0: der Port aus listen.

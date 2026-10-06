@@ -199,7 +199,10 @@ record Konfiguration(
         String key = c.getString("webserver.tls-key", "");
         boolean download = baeume.stream().anyMatch(Baum::download);
         int oeffentlich = c.getInt("webserver.public-port", 0);
-        if (webserver && (oeffentlich < 0 || oeffentlich > 65535)) {
+        // getInt gäbe für "8080" in Anführungszeichen still 0.
+        if (webserver && c.isSet("webserver.public-port") && !c.isInt("webserver.public-port")) {
+            fehler.add("webserver.public-port: eine Zahl, 0 oder ein Port bis 65535");
+        } else if (webserver && (oeffentlich < 0 || oeffentlich > 65535)) {
             fehler.add("webserver.public-port: 0 oder ein Port bis 65535");
         }
         if (webserver && !LISTEN.matcher(adresse).matches()) {
