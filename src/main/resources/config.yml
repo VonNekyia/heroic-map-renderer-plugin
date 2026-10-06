@@ -39,6 +39,11 @@ webserver:
   # Wie Spieler den Webserver erreichen, etwa "https://karte.example.org".
   # Pflicht für den Download, siehe docs/download.md.
   url: ""
+  # Titel und Beschreibung der Seite, nur zusammen und mit url; leer: die des Builds.
+  title: ""
+  description: ""
+  # Vorschaubild, relativ zu url oder eine Adresse; leer: keins.
+  image: ""
   # HTTPS: Kette und Schlüssel als PEM, beide oder keins. Leer: HTTP.
   tls-cert: ""
   tls-key: ""

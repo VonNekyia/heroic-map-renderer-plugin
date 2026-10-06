@@ -57,7 +57,7 @@ class LaeufeTest {
     private Konfiguration konf(Path renderer, boolean gpu, List<Konfiguration.Baum> baeume) {
         return new Konfiguration(renderer, tmp.resolve("world"), tmp.resolve("tiles"),
                 List.of(tmp.resolve("a1"), tmp.resolve("a2")), List.of(tmp.resolve("d")), gpu, 1, 30, baeume, DOWNLOAD,
-                new Konfiguration.Webserver(false, "", "", null, null));
+                new Konfiguration.Webserver(false, "", "", null, null, "", "", ""));
     }
 
     private Laeufe laeufe(Konfiguration.Baum... baeume) {

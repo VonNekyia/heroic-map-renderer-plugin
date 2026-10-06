@@ -1,6 +1,7 @@
 package com.nekyia.heroicmap;
 
 import java.math.BigInteger;
+import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalTime;
@@ -46,13 +47,38 @@ record Konfiguration(
     record Download(int vollJe10Min, int vollJeWoche, int abgleichJeTag, LocalTime abgleichAb, int reserveMinuten) {}
 
     /** Der Server des Renderers; ohne Zertifikat HTTP; {@code url} die Adresse für Spieler. Siehe docs/webserver.md. */
-    record Webserver(boolean an, String adresse, String url, Path zertifikat, Path schluessel) {}
+    record Webserver(boolean an, String adresse, String url, Path zertifikat, Path schluessel, String titel,
+            String beschreibung, String bild) {
+
+        /** Ob der Server Adresse, Titel und Beschreibung in die Seite setzt; die Konfiguration prüft, dass alle drei da sind. */
+        boolean seite() {
+            return !titel.isBlank();
+        }
+    }
+
+    /** Eine Adresse mit http:// oder https:// und Host, ohne / am Ende. */
+    private static final Pattern ADRESSE = Pattern.compile("https?://[^/\\s]+(/\\S*)?");
 
     /**
      * Liest die Einstellungen; relative Pfade gelten ab {@code server}, ohne Welt gilt
      * {@code hauptwelt}. Wirft mit allen Fehlern auf einmal.
      */
     static Konfiguration aus(ConfigurationSection c, Path server, Path hauptwelt) {
+        return aus(c, server, hauptwelt, argumente());
+    }
+
+    /**
+     * Der Zeichensatz, in dem die JVM die Argumente eines Kindprozesses kodiert; null unter Windows,
+     * dort gehen sie als UTF-16. Siehe docs/webserver.md, „Angaben der Seite“.
+     */
+    static Charset argumente() {
+        String name = System.getProperty("sun.jnu.encoding", "");
+        return System.getProperty("os.name", "").startsWith("Windows") || !Charset.isSupported(name)
+                ? null : Charset.forName(name);
+    }
+
+    /** Wie oben; {@code argumente} prüft, ob die Angaben der Seite den Kindprozess unverändert erreichen. */
+    static Konfiguration aus(ConfigurationSection c, Path server, Path hauptwelt, Charset argumente) {
         List<String> fehler = new ArrayList<>();
 
         String binaer = c.getString("renderer.binary", "");
@@ -128,12 +154,28 @@ record Konfiguration(
         boolean webserver = c.getBoolean("webserver.enabled");
         String adresse = c.getString("webserver.listen", "");
         String url = c.getString("webserver.url", "").strip().replaceAll("/+$", "");
+        String titel = c.getString("webserver.title", "").strip();
+        String beschreibung = c.getString("webserver.description", "").strip();
+        String bild = c.getString("webserver.image", "").strip();
+        boolean seite = !(titel.isEmpty() && beschreibung.isEmpty() && bild.isEmpty());
+        if (webserver && seite && (titel.isEmpty() || beschreibung.isEmpty() || !ADRESSE.matcher(url).matches())) {
+            fehler.add("webserver: title und description nur zusammen und mit url, image nur mit ihnen");
+        } else if (webserver && seite && argumente != null) {
+            // Ein Zeichen, das der Zeichensatz nicht kann, würde still zu „?“.
+            var kodierer = argumente.newEncoder();
+            for (String wert : List.of(url, titel, beschreibung, bild)) {
+                if (!kodierer.canEncode(wert)) {
+                    fehler.add("webserver: „" + wert + "“ geht in " + argumente
+                            + " nicht an den Server; mit LANG=C.UTF-8 vor dem Start des Servers geht jedes Zeichen");
+                }
+            }
+        }
         String cert = c.getString("webserver.tls-cert", "");
         String key = c.getString("webserver.tls-key", "");
         if (webserver && adresse.isBlank()) {
             fehler.add("webserver.listen fehlt, etwa \"0.0.0.0:8080\"");
         }
-        if (webserver && baeume.stream().anyMatch(Baum::download) && !url.matches("https?://[^/\\s]+(/\\S*)?")) {
+        if (webserver && baeume.stream().anyMatch(Baum::download) && !ADRESSE.matcher(url).matches()) {
             fehler.add("webserver.url: der Download braucht die Adresse, unter der Spieler den Webserver erreichen, "
                     + "etwa \"https://karte.example.org\"");
         }
@@ -162,7 +204,8 @@ record Konfiguration(
                 List.copyOf(baeume),
                 new Download(grenzen[0], grenzen[1], grenzen[2], ab, grenzen[3]),
                 new Webserver(webserver, adresse, url,
-                        cert.isBlank() ? null : server.resolve(cert), key.isBlank() ? null : server.resolve(key)));
+                        cert.isBlank() ? null : server.resolve(cert), key.isBlank() ? null : server.resolve(key),
+                        titel, beschreibung, bild));
     }
 
     /**

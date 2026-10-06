@@ -74,7 +74,7 @@ class WebserverTest {
     @Test
     void befehl_mit_karte_und_https() {
         var w = new Konfiguration.Webserver(true, "0.0.0.0:8443", "https://karte.example.org", tmp.resolve("kette.pem"),
-                tmp.resolve("schluessel.pem"));
+                tmp.resolve("schluessel.pem"), "", "", "");
         assertEquals(List.of(tmp.resolve("r").toString(), "--serve", tmp.resolve("tiles").toString(),
                 "--web", tmp.resolve("web").toString(), "--listen", "0.0.0.0:8443", "--exit-with-stdin",
                 "--threads", "1", "--low-priority",
@@ -84,8 +84,25 @@ class WebserverTest {
     }
 
     @Test
+    void angaben_der_seite_nur_mit_karte() {
+        var w = new Konfiguration.Webserver(true, "0.0.0.0:8080", "https://karte.example.org/welt", null, null,
+                "Unsere Welt", "Die Karte unseres Servers.", "vorschau.jpg");
+        assertEquals(List.of("--site-url", "https://karte.example.org/welt", "--site-title", "Unsere Welt",
+                "--site-description", "Die Karte unseres Servers.", "--site-image", "vorschau.jpg"),
+                ende(Webserver.befehl(konf(w), tmp.resolve("web"), null), 8));
+        var ohneBild = new Konfiguration.Webserver(true, "0.0.0.0:8080", "https://karte.example.org", null, null,
+                "Unsere Welt", "Die Karte.", "");
+        assertEquals(List.of("--site-description", "Die Karte."), ende(Webserver.befehl(konf(ohneBild), tmp.resolve("web"), null), 2));
+        assertFalse(Webserver.befehl(konf(w), null, null).contains("--site-url"), "ohne Karte keine Angaben");
+    }
+
+    private static List<String> ende(List<String> b, int n) {
+        return b.subList(b.size() - n, b.size());
+    }
+
+    @Test
     void befehl_ohne_karte_und_mit_http() {
-        var w = new Konfiguration.Webserver(true, "127.0.0.1:8080", "", null, null);
+        var w = new Konfiguration.Webserver(true, "127.0.0.1:8080", "", null, null, "", "", "");
         assertEquals(List.of(tmp.resolve("r").toString(), "--serve", tmp.resolve("tiles").toString(),
                 "--listen", "127.0.0.1:8080", "--exit-with-stdin", "--threads", "1", "--low-priority"),
                 Webserver.befehl(konf(w), null, null), "ein Thread, nicht renderer.threads; ohne Geheimnis kein Download");
