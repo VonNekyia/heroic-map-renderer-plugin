@@ -99,7 +99,7 @@ public final class HeroicMapPlugin extends JavaPlugin {
         }
         // Token gibt es erst, wenn der Webserver lauscht; er startet nach dem Kanal.
         var w = konf.webserver();
-        var ziel = w.url().isEmpty() ? new Download.Ziel(null, w.port()) : new Download.Ziel(w.url() + "/download", 0);
+        var ziel = w.url().isEmpty() ? new Download.Ziel(null, w.portFuerMod()) : new Download.Ziel(w.url() + "/download", 0);
         var download = new Download(konf, geheimnis,
                 () -> webserver != null && webserver.bereit() ? Optional.of(ziel) : Optional.empty(),
                 laeufe::erfolgreichSeit, ZoneId.systemDefault());

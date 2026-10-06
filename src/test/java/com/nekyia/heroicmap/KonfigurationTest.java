@@ -55,7 +55,7 @@ class KonfigurationTest {
         assertEquals("2x1-se", k.baeume().getFirst().ordner());
         assertEquals(new Konfiguration.Download(10, 5, 1, java.time.LocalTime.MIDNIGHT, 10), k.download());
         assertEquals("minecraft:overworld", k.dimension());
-        assertEquals(new Konfiguration.Webserver(true, "0.0.0.0:8080", "", null, null, "", "", ""), k.webserver());
+        assertEquals(new Konfiguration.Webserver(true, "0.0.0.0:8080", "", null, null, "", "", "", 0), k.webserver());
         assertEquals(Konfiguration.ClientJar.OHNE, k.clientJar(), "ohne Zustimmung");
     }
 
@@ -77,7 +77,7 @@ class KonfigurationTest {
                   tls-key: schluessel.pem
                 """), server, server);
         assertEquals(new Konfiguration.Webserver(true, "0.0.0.0:8443", "", server.resolve("kette.pem"),
-                server.resolve("schluessel.pem"), "", "", ""), k.webserver());
+                server.resolve("schluessel.pem"), "", "", "", 0), k.webserver());
 
         var e = assertThrows(IllegalArgumentException.class, () -> Konfiguration.aus(yaml("""
                 renderer:
@@ -133,9 +133,9 @@ class KonfigurationTest {
                 webserver:
                   enabled: true
                 """;
-        var w = Konfiguration.aus(yaml(baum + "  listen: 0.0.0.0:8080\n"), server, server).webserver();
+        var w = Konfiguration.aus(yaml(baum + "  listen: 0.0.0.0:8082\n"), server, server).webserver();
         assertEquals("", w.url(), "ohne url kein Fehler");
-        assertEquals(8080, w.port());
+        assertEquals(8082, w.port());
         assertEquals(8443, Konfiguration.aus(yaml(baum + "  listen: \"[::]:8443\"\n"), server, server).webserver().port());
         assertEquals("https://karte.example.org:8443/karte",
                 Konfiguration.aus(yaml(baum + "  listen: 0.0.0.0:8080\n  url: https://karte.example.org:8443/karte/\n"),
@@ -159,7 +159,22 @@ class KonfigurationTest {
                 server, server).webserver().url(), "mit url geht HTTPS");
         var nullPort = assertThrows(IllegalArgumentException.class,
                 () -> Konfiguration.aus(yaml(baum + "  listen: 127.0.0.1:0\n"), server, server));
-        assertEquals("webserver.listen: mit Port 0 braucht der Download webserver.url", nullPort.getMessage());
+        assertEquals("webserver.listen: mit Port 0 braucht der Download webserver.url oder webserver.public-port",
+                nullPort.getMessage());
+        var hinterProxy = Konfiguration.aus(yaml(baum + "  listen: 127.0.0.1:8082\n  public-port: 8080\n"), server, server)
+                .webserver();
+        assertEquals(8082, hinterProxy.port());
+        assertEquals(8080, hinterProxy.portFuerMod(), "der Port vor dem Proxy");
+        assertEquals(8082, w.portFuerMod(), "ohne public-port der aus listen");
+        assertEquals(8080, Konfiguration.aus(yaml(baum + "  listen: 127.0.0.1:0\n  public-port: 8080\n"), server, server)
+                .webserver().portFuerMod(), "Port 0 geht mit public-port");
+        var falsch = assertThrows(IllegalArgumentException.class,
+                () -> Konfiguration.aus(yaml(baum + "  listen: 0.0.0.0:8080\n  public-port: 70000\n"), server, server));
+        assertEquals("webserver.public-port: 0 oder ein Port bis 65535", falsch.getMessage());
+        var text = assertThrows(IllegalArgumentException.class,
+                () -> Konfiguration.aus(yaml(baum + "  listen: 0.0.0.0:8080\n  public-port: \"8080\"\n"), server, server));
+        assertEquals("webserver.public-port: eine Zahl, 0 oder ein Port bis 65535", text.getMessage(),
+                "in Anführungszeichen nicht still 0");
         assertEquals("", Konfiguration.aus(yaml(baum.replace("enabled: true", "enabled: false")), server, server)
                 .webserver().url(), "ohne Webserver prüft er nichts");
     }

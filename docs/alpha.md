@@ -61,7 +61,8 @@ trees:
 webserver:
   enabled: true
   listen: "0.0.0.0:8080"
-  url: ""                # nur für anderen Host, HTTPS oder Proxy
+  url: ""                # nur für anderen Host, HTTPS oder Proxy mit Adresse
+  public-port: 0         # Proxy davor ohne Adresse: dessen Port
   title: "Name der Welt"
   description: "Die Karte des Servers."
   image: ""
