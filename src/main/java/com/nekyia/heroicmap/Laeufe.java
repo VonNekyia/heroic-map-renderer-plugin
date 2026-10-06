@@ -414,7 +414,7 @@ final class Laeufe {
      * error=2. Siehe docs/laeufe.md, „Der Kindprozess“.
      */
     static String nichtGestartet(IOException e, Path renderer, Path musl) {
-        return Files.exists(renderer) && Files.exists(musl)
+        return String.valueOf(e.getMessage()).contains("error=2,") && Files.exists(renderer) && Files.exists(musl)
                 ? "das Linux-Binär braucht glibc, dieses System hat musl (" + musl + "), nötig ist ein Image ohne Alpine"
                 : e.getMessage();
     }
