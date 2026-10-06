@@ -3,6 +3,7 @@ package com.nekyia.heroicmap;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.nekyia.heroicmap.Konfiguration.Baum;
 import java.io.InputStreamReader;
@@ -48,10 +49,97 @@ class KonfigurationTest {
         assertFalse(k.grafikkarte());
         assertEquals(1, k.threads());
         assertEquals(2, k.updateMinuten());
-        assertEquals(List.of(new Baum("2:1", "se", null, false, false)), k.baeume());
+        assertEquals(List.of(new Baum("2:1", "se", null, false, false, true)), k.baeume());
         assertEquals("2x1-se", k.baeume().getFirst().ordner());
         assertEquals(new Konfiguration.Download(10, 5, 20, java.time.LocalTime.MIDNIGHT, 10), k.download());
         assertEquals("minecraft:overworld", k.dimension());
+        assertEquals(new Konfiguration.Webserver(true, "0.0.0.0:8080", "", null, null), k.webserver());
+    }
+
+    @Test
+    void webserver_mit_https() throws Exception {
+        Files.createFile(server.resolve("r"));
+        Files.createFile(server.resolve("kette.pem"));
+        Files.createFile(server.resolve("schluessel.pem"));
+        var k = Konfiguration.aus(yaml("""
+                renderer:
+                  binary: r
+                  assets: [a]
+                trees:
+                  - camera: "2:1"
+                webserver:
+                  enabled: true
+                  listen: 0.0.0.0:8443
+                  tls-cert: kette.pem
+                  tls-key: schluessel.pem
+                """), server, server);
+        assertEquals(new Konfiguration.Webserver(true, "0.0.0.0:8443", "", server.resolve("kette.pem"),
+                server.resolve("schluessel.pem")), k.webserver());
+
+        var e = assertThrows(IllegalArgumentException.class, () -> Konfiguration.aus(yaml("""
+                renderer:
+                  binary: r
+                  assets: [a]
+                trees:
+                  - camera: "2:1"
+                webserver:
+                  enabled: true
+                  tls-cert: kette.pem
+                """), server, server));
+        assertEquals("webserver.listen fehlt, etwa \"0.0.0.0:8080\"; webserver: tls-cert und tls-key nur zusammen",
+                e.getMessage());
+
+        e = assertThrows(IllegalArgumentException.class, () -> Konfiguration.aus(yaml("""
+                renderer:
+                  binary: r
+                  assets: [a]
+                trees:
+                  - camera: "2:1"
+                webserver:
+                  enabled: true
+                  listen: 0.0.0.0:8443
+                  tls-cert: fehlt.pem
+                  tls-key: schluessel.pem
+                """), server, server));
+        assertEquals("webserver: " + server.resolve("fehlt.pem") + " gibt es nicht", e.getMessage());
+
+        var aus = Konfiguration.aus(yaml("""
+                renderer:
+                  binary: r
+                  assets: [a]
+                trees:
+                  - camera: "2:1"
+                webserver:
+                  enabled: false
+                  tls-cert: fehlt.pem
+                """), server, server);
+        assertFalse(aus.webserver().an(), "aus prüft nichts");
+    }
+
+    @Test
+    void download_braucht_die_url_des_webservers() throws Exception {
+        Files.createFile(server.resolve("r"));
+        String baum = """
+                renderer:
+                  binary: r
+                  assets: [a]
+                trees:
+                  - camera: top-north
+                    scale: 4
+                    download: true
+                webserver:
+                  enabled: true
+                  listen: 0.0.0.0:8080
+                """;
+        var e = assertThrows(IllegalArgumentException.class, () -> Konfiguration.aus(yaml(baum), server, server));
+        assertTrue(e.getMessage().startsWith("webserver.url: der Download braucht"), e.getMessage());
+        assertThrows(IllegalArgumentException.class,
+                () -> Konfiguration.aus(yaml(baum + "  url: karte.example.org\n"), server, server), "ohne http");
+        assertEquals("https://karte.example.org:8443/karte",
+                Konfiguration.aus(yaml(baum + "  url: https://karte.example.org:8443/karte/\n"), server, server).webserver().url(),
+                "ohne / am Ende");
+        assertEquals("", Konfiguration.aus(yaml(baum.replace("enabled: true", "enabled: false")), server, server)
+                .webserver().url(), "ohne Webserver prüft er nichts");
     }
 
     @Test
@@ -69,7 +157,7 @@ class KonfigurationTest {
                 download:
                   abgleich-ab: "06:30"
                 """), server, server);
-        assertEquals(List.of(new Baum("top-north", "s", 4, false, true)), k.baeume());
+        assertEquals(List.of(new Baum("top-north", "s", 4, false, true, true)), k.baeume());
         assertEquals(java.time.LocalTime.of(6, 30), k.download().abgleichAb());
         assertEquals("minecraft:the_nether", k.dimension());
 
@@ -86,12 +174,15 @@ class KonfigurationTest {
                     scale: 4
                     cinematic: true
                     download: true
+                  - camera: "2:1"
+                    web: false
                 download:
                   voll-je-woche: -1
                   abgleich-ab: "halb sieben"
                 """), server, server));
         String nur = "trees: download nur mit camera \"top-north\", scale 4 und ohne cinematic";
-        assertEquals(nur + "; " + nur + "; " + nur + "; download.voll-je-woche: -1 ist kleiner als 0; "
+        assertEquals(nur + "; " + nur + "; " + nur + "; trees: web: false nur mit download: true, sonst zeigt den Baum niemand; "
+                + "download.voll-je-woche: -1 ist kleiner als 0; "
                 + "download.abgleich-ab: halb sieben ist keine Uhrzeit wie \"00:00\"", e.getMessage());
     }
 
@@ -126,9 +217,9 @@ class KonfigurationTest {
         assertEquals(List.of(server.resolve("vanilla-assets"), server.resolve("assets")), k.assets());
         assertEquals(List.of(server.resolve("vanilla-data")), k.daten());
         assertEquals(List.of(
-                new Baum("8:5", "se", null, false, false),
-                new Baum("top-north", "s", 4, false, false),
-                new Baum("2:1", "nw", null, true, false)), k.baeume());
+                new Baum("8:5", "se", null, false, false, true),
+                new Baum("top-north", "s", 4, false, false, true),
+                new Baum("2:1", "nw", null, true, false, true)), k.baeume());
         assertEquals(List.of("8x5-se", "top-north-s", "2x1-nw-cinematic"),
                 k.baeume().stream().map(Baum::ordner).toList());
     }

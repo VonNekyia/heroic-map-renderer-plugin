@@ -28,8 +28,8 @@ import org.junit.jupiter.api.io.TempDir;
 
 class DownloadTest {
 
-    private static final Konfiguration.Baum OBEN = new Konfiguration.Baum("top-north", "s", 4, false, true);
-    private static final Konfiguration.Baum KARTE = new Konfiguration.Baum("2:1", "se", null, false, false);
+    private static final Konfiguration.Baum OBEN = new Konfiguration.Baum("top-north", "s", 4, false, true, true);
+    private static final Konfiguration.Baum KARTE = new Konfiguration.Baum("2:1", "se", null, false, false, true);
     private static final Instant JETZT = Instant.parse("2026-10-06T12:00:00Z");
     private static final UUID SPIELER = UUID.fromString("8f3c2b6e-0d4a-4c1e-9b7a-2e5f6a1d3c90");
 
@@ -48,7 +48,7 @@ class DownloadTest {
 
     private Download download(LocalTime abgleichAb) {
         var konf = new Konfiguration(tmp.resolve("r"), tmp.resolve("welt"), tmp, List.of(), List.of(), false, 1, 2,
-                List.of(KARTE, OBEN), new Konfiguration.Download(10, 5, 20, abgleichAb, 10));
+                List.of(KARTE, OBEN), new Konfiguration.Download(10, 5, 20, abgleichAb, 10), new Konfiguration.Webserver(false, "", "", null, null));
         var d = new Download(konf, new byte[32], () -> webserver, b -> erfolgreich, ZoneOffset.UTC);
         d.saetze(Map.of("top-north-s", satz));
         return d;
@@ -292,7 +292,7 @@ class DownloadTest {
     @Test
     void abgeschaltete_grenzen() {
         var konf = new Konfiguration(tmp.resolve("r"), tmp.resolve("welt"), tmp, List.of(), List.of(), false, 1, 2,
-                List.of(OBEN), new Konfiguration.Download(10, 0, 0, LocalTime.MIDNIGHT, 10));
+                List.of(OBEN), new Konfiguration.Download(10, 0, 0, LocalTime.MIDNIGHT, 10), new Konfiguration.Webserver(false, "", "", null, null));
         var d = new Download(konf, new byte[32], () -> webserver, b -> erfolgreich, ZoneOffset.UTC);
         d.saetze(Map.of("top-north-s", satz));
         var stand = new Download.Spielerstand();

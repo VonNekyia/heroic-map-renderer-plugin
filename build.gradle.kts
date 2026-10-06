@@ -32,10 +32,16 @@ tasks.test {
     useJUnitPlatform()
 }
 
+// Die gebaute Karte, web/dist des Renderers, mit -Pweb=<ordner>. Siehe docs/webserver.md, „Die Karte im Jar“.
+val web = providers.gradleProperty("web")
+
 tasks.processResources {
     val props = mapOf("version" to version)
     inputs.properties(props)
     filesMatching("plugin.yml") { expand(props) }
+    if (web.isPresent) {
+        from(web.get()) { into("web") }
+    }
 }
 
 tasks.jar {

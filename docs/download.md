@@ -43,8 +43,10 @@ Bukkit, und in `Kanal`, der den Kanal und den Stand im Spieler bedient.
 - **`dimension`** folgt aus `world` in `config.yml`. Die Weltwurzel ist
   `minecraft:overworld`, ein Ordner `dimensions/<ns>/<name>` heisst
   `<ns>:<name>`. `map.json` nennt keine Dimension.
-- **`url`** ist die Adresse des Baums am Server. Darunter liegen
-  `map.json`, `manifest` und `{z}/{x}/{y}.webp`. Den Rest legt #151 fest.
+- **`url`** ist die Adresse des Baums am Server, `webserver.url` mit
+  `/download/<baum>`. Darunter liegen `map.json`, `manifest` und
+  `{z}/{x}/{y}.webp`, nur mit dem Token im Header, siehe
+  [Webserver](webserver.md), „Download“.
 - **`bytes`** in `freigabe`: bei `voll` die Summe des Satzes, bei `abgleich`
   der Deckel des Tokens.
 - **Der Mod** schickt `anfrage` nur, wenn `ClientPlayNetworking.canSend`
@@ -55,8 +57,15 @@ Bukkit, und in `Kanal`, der den Kanal und den Stand im Spieler bedient.
 
 Der Renderer schreibt `manifest` neben `map.json` des Baums, gzip, je Kachel
 eine Zeile `z/x/y grösse etag` über alle Stufen. Das ETag ist für Plugin und
-Mod undurchsichtig. Das Format steht mit #151 in `docs/plugin.md` des
-Renderers.
+Mod undurchsichtig. Das Format steht in
+[`docs/plugin.md`, „Manifest“](https://github.com/VonNekyia/heroic-map-renderer/blob/master/docs/plugin.md#manifest)
+des Renderers.
+
+- **Nur mit `--manifest`:** Das Plugin gibt den Schalter bei jedem Lauf
+  eines Baums mit `download: true`, siehe [Läufe](laeufe.md), „Der
+  Kindprozess“.
+- **Fehlt das Manifest,** etwa weil `download: true` neu ist, schreibt es
+  schon das nächste Update, auch wenn es nichts zu zeichnen hat.
 
 Das Plugin liest daraus nur, was es braucht (`Satz.lies`):
 
@@ -66,11 +75,12 @@ Das Plugin liest daraus nur, was es braucht (`Satz.lies`):
 - **dazu aus `map.json`** `minZoom` und `maxZoom`, und als `stand` die
   Änderungszeit von `map.json`.
 
-Gelesen wird beim Start und gleich nach jedem Baum, dessen Prozess Kacheln
-gezeichnet hat, nicht erst nach allen Bäumen des Laufs. Das läuft
+Gelesen wird beim Start und gleich nach jedem Baum, dessen Prozess fertig
+wurde, auch ohne Änderung, nicht erst nach allen Bäumen des Laufs. Ein
+unverändertes Manifest kostet dabei nur einen Blick auf seine Zeit. Das läuft
 ausserhalb des Hauptthreads und nacheinander, damit ein älterer Satz nie
-einen neueren überschreibt. Danach schickt das Plugin allen Spielern mit
-Mod ein neues Angebot. Ein unlesbares Manifest steht einmal im Log, sein
+einen neueren überschreibt. Hat sich ein Manifest geändert, schickt das
+Plugin danach allen Spielern mit Mod ein neues Angebot. Ein unlesbares Manifest steht einmal im Log, sein
 Baum fällt aus dem Angebot, bis es sich ändert.
 
 **Massstab und Stufe:** 4 px ist `maxZoom`, 2 px eine Stufe gröber, 1 px
@@ -88,8 +98,8 @@ Der Reihe nach, die erste Ablehnung gilt:
    angeboten.“
 3. **Massstab vorhanden:** sonst „Diesen Massstab gibt es für diese Karte
    nicht.“
-4. **Webserver an:** sonst „Webserver aus.“ So antwortet das Plugin, bis der
-   Server aus #151 läuft.
+4. **Webserver bereit:** Er läuft und hat seine Startzeile gemeldet, siehe
+   [Webserver](webserver.md), „Download“. Sonst „Webserver aus.“
 5. **Art:** Ein `abgleich` mit einem anderen Massstab als dem gespeicherten,
    oder ohne gespeicherten, ist ein voller Download. Ein Spieler hat je
    Baum nur einen Massstab.
@@ -157,7 +167,7 @@ Spieler mit Mod, schickt das Plugin je Baum eine `freigabe` mit `art`
 - sein letzter Abgleich, auch ein voller Download, liegt vor dem letzten
   Zeitpunkt von `download.abgleich-ab`, heute oder gestern, in der
   Standardzeitzone der JVM des Servers;
-- der Webserver läuft.
+- der Webserver ist bereit.
 
 Er zählt gegen keine Grenze und hat den Deckel eines Abgleichs. Wer über
 die Uhrzeit hinaus online bleibt, bekommt ihn mit dem nächsten neuen

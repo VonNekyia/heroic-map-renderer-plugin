@@ -28,7 +28,7 @@ class LaeufeTest {
 
     private static final Path JAVA = Path.of(ProcessHandle.current().info().command().orElseThrow());
     static final Konfiguration.Download DOWNLOAD = new Konfiguration.Download(10, 5, 20, java.time.LocalTime.MIDNIGHT, 10);
-    private static final Konfiguration.Baum KARTE = new Konfiguration.Baum("2:1", "se", null, false, false);
+    private static final Konfiguration.Baum KARTE = new Konfiguration.Baum("2:1", "se", null, false, false, true);
 
     @TempDir
     Path tmp;
@@ -56,7 +56,8 @@ class LaeufeTest {
 
     private Konfiguration konf(Path renderer, boolean gpu, List<Konfiguration.Baum> baeume) {
         return new Konfiguration(renderer, tmp.resolve("world"), tmp.resolve("tiles"),
-                List.of(tmp.resolve("a1"), tmp.resolve("a2")), List.of(tmp.resolve("d")), gpu, 1, 30, baeume, DOWNLOAD);
+                List.of(tmp.resolve("a1"), tmp.resolve("a2")), List.of(tmp.resolve("d")), gpu, 1, 30, baeume, DOWNLOAD,
+                new Konfiguration.Webserver(false, "", "", null, null));
     }
 
     private Laeufe laeufe(Konfiguration.Baum... baeume) {
@@ -264,7 +265,7 @@ class LaeufeTest {
         var a = l.erfolgreichSeit("a").orElseThrow();
         assertFalse(a.isBefore(vorher), a::toString);
         assertTrue(l.erfolgreichSeit("b").isEmpty(), "Fehler zählt nicht");
-        assertEquals(0, nachLauf[0], "nichts gezeichnet, kein neues Angebot");
+        assertEquals(1, nachLauf[0], "nach a, das ein fehlendes Manifest schreiben kann, nicht nach dem Fehler von b");
 
         var resume = new ArrayList<>(falscher("exit", "0"));
         resume.add("--resume");
@@ -272,7 +273,7 @@ class LaeufeTest {
         assertTrue(l.warte(30_000));
         assertEquals(a, l.erfolgreichSeit("a").orElseThrow(), "--resume zählt nicht");
         assertTrue(l.erfolgreichSeit("c").isPresent());
-        assertEquals(2, nachLauf[0], "je Baum mit gezeichneten Kacheln");
+        assertEquals(3, nachLauf[0], "je Baum, der fertig wurde");
     }
 
     @Test
@@ -400,6 +401,33 @@ class LaeufeTest {
     }
 
     @Test
+    void baum_zum_download_mit_manifest() throws Exception {
+        var oben = new Konfiguration.Baum("top-north", "s", 4, false, true, true);
+        assertEquals(List.of("json", "--manifest"), ende(laeufe(oben).plane(Art.VOLL), 2));
+        Files.createDirectories(tmp.resolve("tiles/top-north-s"));
+        Files.createFile(tmp.resolve("tiles/top-north-s/stand.bin"));
+        assertEquals(List.of("--manifest", "--update"), ende(laeufe(oben).plane(Art.UPDATE), 2));
+        assertFalse(laeufe(KARTE).plane(Art.VOLL).getFirst().befehl().contains("--manifest"));
+    }
+
+    @Test
+    void marke_nur_download_folgt_der_konfiguration() throws Exception {
+        var nurDownload = new Konfiguration.Baum("top-north", "s", 4, false, true, false);
+        Path marke = tmp.resolve("tiles/top-north-s/nur-download");
+        laeufe(nurDownload).markiere();
+        assertTrue(Files.isRegularFile(marke), "vor dem ersten Lauf, samt Ordner");
+        assertEquals(0, Files.size(marke));
+        laeufe(nurDownload).markiere();
+        assertTrue(Files.exists(marke), "eine vorhandene bleibt");
+
+        laeufe(new Konfiguration.Baum("top-north", "s", 4, false, true, true)).markiere();
+        assertFalse(Files.exists(marke), "web: true entfernt sie");
+
+        assertEquals("Kein Baum zu rendern, Gründe im Log.", laeufe(nurDownload).starte(Art.UPDATE));
+        assertTrue(Files.exists(marke), "auch ein Lauf setzt sie, bevor er plant");
+    }
+
+    @Test
     void voller_lauf_nennt_alle_schalter() {
         var plan = laeufe(KARTE).plane(Art.VOLL);
         assertEquals(1, plan.size());
@@ -417,7 +445,7 @@ class LaeufeTest {
 
     @Test
     void scale_cinematic_und_grafikkarte() {
-        var baum = new Konfiguration.Baum("top-north", "s", 4, true, false);
+        var baum = new Konfiguration.Baum("top-north", "s", 4, true, false, true);
         var plan = new Laeufe(konf(JAVA, true, List.of(baum)), logger, tmp.resolve("renderer.pid")).plane(Art.VOLL);
         assertEquals("top-north-s-cinematic", plan.getFirst().baum());
         assertEquals(List.of("--camera", "top-north", "--direction", "s", "--scale", "4", "--cinematic", "--gpu", "auto",

@@ -73,6 +73,9 @@ entschieden in [0003](entscheidungen/0003-live-render-ueber-autosave-und-zeitpla
 
 - **Aufruf:** die Schalter aus der [Konfiguration](konfiguration.md). Vor
   jedem Baum steht der ganze Aufruf im Log.
+- **Manifest:** Ein Baum mit `download: true` bekommt bei jedem Lauf
+  `--manifest`, voll wie Update. Ein Lauf ohne den Schalter entfernte das
+  Manifest, siehe [Download](download.md), „Manifest“.
 - **Hinter dem Server:** `--threads` mit `renderer.threads`, Vorgabe 1, und
   immer `--low-priority` (heroic-map-renderer#148). Was der Renderer damit
   setzt, steht in seiner Zeile `Priorität:` im Log.
@@ -224,6 +227,4 @@ Prozess.
 ## Was noch fehlt
 
 - Warnung mit Schätzung und Bestätigung: heroic-map-renderer#149.
-- Threads und niedrige Priorität: heroic-map-renderer#148.
 - Das Binär im Jar und Assets von Mojang: heroic-map-renderer#146, heroic-map-renderer#147.
-- Der Webserver: heroic-map-renderer#151.

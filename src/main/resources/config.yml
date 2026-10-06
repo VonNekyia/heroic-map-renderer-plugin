@@ -26,8 +26,22 @@ update-minutes: 2
 # Je Eintrag ein Kachelbaum. Die Kamera in Anführungszeichen.
 # download: true bietet einen Baum dem Mod zum Download an,
 # nur mit camera "top-north", scale 4 und ohne cinematic.
+# web: false nimmt einen Baum zum Download von der Webkarte.
 trees:
   - camera: "2:1"
+
+# Die Webkarte: Der Renderer liefert Karte und Kacheln selbst aus,
+# siehe docs/webserver.md.
+webserver:
+  enabled: true
+  # Adresse und Port; 0.0.0.0 für alle Netze.
+  listen: "0.0.0.0:8080"
+  # Wie Spieler den Webserver erreichen, etwa "https://karte.example.org".
+  # Pflicht für den Download, siehe docs/download.md.
+  url: ""
+  # HTTPS: Kette und Schlüssel als PEM, beide oder keins. Leer: HTTP.
+  tls-cert: ""
+  tls-key: ""
 
 # Kartendownload für den Mod, siehe docs/download.md.
 download:
