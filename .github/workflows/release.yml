@@ -88,17 +88,18 @@ jobs:
         run: cd dist && sha256sum *.jar > SHA256SUMS && cat SHA256SUMS
 
       # Nur ein Entwurf: Veröffentlichen ist Sache des Maintainers. Die Notizen
-      # nennen den Renderer im Jar, die Konfiguration und, aus NOTICE, den
-      # Hinweis zu Mojang; der Text steht nur dort.
+      # nennen den Renderer im Jar, die Konfiguration und, aus NOTICE,
+      # Herausgeber, Kontakt und den Hinweis zu Mojang; der Text steht nur dort.
       - name: Entwurf anlegen
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           renderer=$(unzip -p dist/*.jar renderer/renderer.properties | sed -n 's/^version=//p')
+          herausgeber=$(sed -n '/^Publisher/,/^Contact/p' NOTICE)
           hinweis=$(sed -n '/^NOT AN OFFICIAL/,$p' NOTICE)
-          test -n "$renderer" && test -n "$hinweis"
+          test -n "$renderer" && test -n "$herausgeber" && test -n "$hinweis"
           konfiguration="https://github.com/$GITHUB_REPOSITORY/blob/$GITHUB_REF_NAME/docs/konfiguration.md"
-          printf 'Mit der Karte und dem Renderer v%s für Windows und Linux auf x86_64.\nKonfiguration: %s\n\n%s\n' \
-            "$renderer" "$konfiguration" "$hinweis" > notizen.md
+          printf 'Mit der Karte und dem Renderer v%s für Windows und Linux auf x86_64.\nKonfiguration: %s\n\n%s\n\n%s\n' \
+            "$renderer" "$konfiguration" "$herausgeber" "$hinweis" > notizen.md
           gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --draft \
             --title "$GITHUB_REF_NAME" --notes-file notizen.md dist/*.jar dist/SHA256SUMS
