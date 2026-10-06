@@ -30,8 +30,11 @@ record Konfiguration(
 
     private static final Pattern SCHRAEG = Pattern.compile("(\\d+):(\\d+)");
 
-    /** Ein Kachelbaum, mit Kamera und Richtung, wie der Renderer sie schreibt; mit {@code download} für den Mod angeboten. */
-    record Baum(String kamera, String richtung, Integer scale, boolean cinematic, boolean download) {
+    /**
+     * Ein Kachelbaum, mit Kamera und Richtung, wie der Renderer sie schreibt; mit {@code download} für
+     * den Mod angeboten, ohne {@code web} nicht auf der Webkarte.
+     */
+    record Baum(String kamera, String richtung, Integer scale, boolean cinematic, boolean download, boolean web) {
 
         /** Der Ordner unter der Wurzel, wie `baum_name` im Renderer. Siehe docs/konfiguration.md, „Bäume“. */
         String ordner() {
@@ -92,11 +95,16 @@ record Konfiguration(
             }
             boolean cinematic = Boolean.TRUE.equals(m.get("cinematic"));
             boolean download = Boolean.TRUE.equals(m.get("download"));
+            boolean web = !Boolean.FALSE.equals(m.get("web"));
+            if (!web && !download) {
+                fehler.add("trees: web: false nur mit download: true, sonst zeigt den Baum niemand");
+                continue;
+            }
             if (download && !(kamera.equals("top-north") && Integer.valueOf(4).equals(scale) && !cinematic)) {
                 fehler.add("trees: download nur mit camera \"top-north\", scale 4 und ohne cinematic");
                 continue;
             }
-            baeume.add(new Baum(kamera, richtung, (Integer) scale, cinematic, download));
+            baeume.add(new Baum(kamera, richtung, (Integer) scale, cinematic, download, web));
         }
         if (baeume.isEmpty() && fehler.isEmpty()) {
             fehler.add("trees: kein Baum");

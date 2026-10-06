@@ -1,6 +1,6 @@
 ---
 title: Webserver
-description: Wie das Plugin den Server des Renderers als zweiten Kindprozess startet, mit welchen Schaltern, woher die Karte kommt, wie er mit der Pipe auf stdin endet, nach einem Tod neu startet und im Status steht, dazu der Download unter /download/, HTTPS und was noch fehlt.
+description: Wie das Plugin den Server des Renderers als zweiten Kindprozess startet, mit welchen Schaltern, woher die Karte kommt, wie er mit der Pipe auf stdin endet, nach einem Tod neu startet und im Status steht, dazu der Download unter /download/, Bäume nur zum Download und HTTPS.
 code:
   - src/main/java/com/nekyia/heroicmap/Webserver.java
   - src/main/java/com/nekyia/heroicmap/HeroicMapPlugin.java
@@ -116,9 +116,18 @@ HTTPS. Das Zertifikat stammt vom Betreiber; der Server lädt es neu, wenn
 sich die Dateien ändern, ohne Neustart. Ohne HTTPS geht das Token des
 Downloads im Klartext, siehe [Download](download.md).
 
-## Was noch fehlt
+## Nur zum Download
 
-- **Ein Baum nur zum Download,** nicht auf der Webkarte:
-  heroic-map-renderer#184. Heute steht jeder Baum unter `tiles` in
-  `trees.json`, die der Renderer aus der Platte schreibt, und so auf der
-  Webkarte.
+Ein Baum mit `web: false` steht nicht auf der Webkarte, nur im Download.
+Erlaubt ist das nur mit `download: true`, siehe
+[Konfiguration](konfiguration.md), „Bäume“.
+
+- **Die Marke:** Das Plugin legt die leere Datei `nur-download` in den
+  Ordner des Baums, beim Laden und vor jedem Lauf, samt Ordner vor dem
+  ersten Lauf. Bei `web: true` entfernt es sie. So folgt die Platte der
+  Konfiguration, auch nach einer Änderung.
+- **Der Renderer** lässt einen markierten Baum aus `trees.json`, und der
+  Server liefert ihn nur unter `/download/`. Neue Marken sieht der Server
+  binnen einer Sekunde, siehe
+  [Server](https://github.com/VonNekyia/heroic-map-renderer/blob/master/docs/benutzung/server.md),
+  „Was er ausliefert“.

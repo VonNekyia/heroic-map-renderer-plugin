@@ -28,8 +28,8 @@ import org.junit.jupiter.api.io.TempDir;
 
 class DownloadTest {
 
-    private static final Konfiguration.Baum OBEN = new Konfiguration.Baum("top-north", "s", 4, false, true);
-    private static final Konfiguration.Baum KARTE = new Konfiguration.Baum("2:1", "se", null, false, false);
+    private static final Konfiguration.Baum OBEN = new Konfiguration.Baum("top-north", "s", 4, false, true, true);
+    private static final Konfiguration.Baum KARTE = new Konfiguration.Baum("2:1", "se", null, false, false, true);
     private static final Instant JETZT = Instant.parse("2026-10-06T12:00:00Z");
     private static final UUID SPIELER = UUID.fromString("8f3c2b6e-0d4a-4c1e-9b7a-2e5f6a1d3c90");
 

@@ -35,6 +35,7 @@ public final class HeroicMapPlugin extends JavaPlugin {
         }
         laeufe = new Laeufe(konf, getLogger(), getDataFolder().toPath().resolve("renderer.pid"));
         laeufe.raeumeAuf();
+        laeufe.markiere();
         for (var w : getServer().getWorlds()) {
             if (!w.isAutoSave() && w.getWorldFolder().toPath().toAbsolutePath().normalize().equals(konf.welt().normalize())) {
                 getLogger().warning("Der Autosave der Welt " + w.getName() + " ist aus. Änderungen kommen erst beim "

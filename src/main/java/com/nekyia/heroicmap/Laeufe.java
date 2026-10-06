@@ -86,6 +86,7 @@ final class Laeufe {
         if (faden != null) {
             return "Es läuft schon: " + laeuft;
         }
+        markiere();
         List<Auftrag> auftraege = plane(art);
         if (auftraege.isEmpty()) {
             return "Kein Baum zu rendern, Gründe im Log.";
@@ -128,6 +129,26 @@ final class Laeufe {
             auftraege.add(new Auftrag(baum.ordner(), befehl(baum, art, resume), art == Art.UPDATE));
         }
         return auftraege;
+    }
+
+    /**
+     * Legt die leere Datei nur-download in den Ordner jedes Baums mit {@code web: false} und entfernt
+     * sie bei den übrigen; so folgt die Platte der Konfiguration. Siehe docs/webserver.md, „Nur zum Download“.
+     */
+    void markiere() {
+        for (Konfiguration.Baum baum : konf.baeume()) {
+            Path marke = konf.kacheln().resolve(baum.ordner()).resolve("nur-download");
+            try {
+                if (baum.web()) {
+                    Files.deleteIfExists(marke);
+                } else if (!Files.exists(marke)) {
+                    Files.createDirectories(marke.getParent());
+                    Files.createFile(marke);
+                }
+            } catch (IOException e) {
+                log.log(Level.WARNING, "Marke " + marke + " nicht gesetzt oder entfernt", e);
+            }
+        }
     }
 
     private void hinweis(String text) {

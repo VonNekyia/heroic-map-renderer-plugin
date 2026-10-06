@@ -62,6 +62,7 @@ Jeder Eintrag unter `trees` ist ein Kachelbaum, siehe
 | `scale` | die des Renderers | `--scale` |
 | `cinematic` | `false` | `--cinematic` |
 | `download` | `false` | – |
+| `web` | `true` | – |
 
 - **Die Kamera steht in Anführungszeichen.** YAML 1.1 liest `2:1` ohne sie
   als Zahl zur Basis 60, also 121. Das Plugin lehnt eine Zahl ab.
@@ -76,6 +77,10 @@ Jeder Eintrag unter `trees` ist ein Kachelbaum, siehe
 - **`download: true`** bietet den Baum dem Mod zum Download an, nur mit
   `camera: "top-north"`, `scale: 4` und ohne `cinematic`, siehe
   [Download](download.md).
+- **`web: false`** nimmt einen Baum zum Download von der Webkarte, nur mit
+  `download: true`; sonst zeigte ihn niemand, und das Plugin meldet einen
+  Fehler. Es legt dafür die Marke `nur-download` in seinen Ordner, siehe
+  [Webserver](webserver.md), „Nur zum Download“.
 - **Ein bestehender Baum** behält seinen scale. Einen anderen lehnt der
   Renderer beim Lauf ab und sagt es im Log.
 

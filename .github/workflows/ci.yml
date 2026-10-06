@@ -44,7 +44,8 @@ jobs:
       - name: Verweise, Links und Frontmatter
         timeout-minutes: 5
         shell: bash
-        run: curl -fsSL https://raw.githubusercontent.com/VonNekyia/heroic-map-renderer/master/.github/pruefe-doku.sh | bash
+        # Ohne die wörtlichen Kopien der Testvektoren: Ihre Beschreibung zeigt auf docs/plugin.md des Renderers.
+        run: curl -fsSL https://raw.githubusercontent.com/VonNekyia/heroic-map-renderer/master/.github/pruefe-doku.sh | bash -s -- ':!src/test/resources/*.json'
 
       # Die Testvektoren des Tokens sind eine Kopie aus dem Renderer.
       - name: Testvektoren wie im Renderer

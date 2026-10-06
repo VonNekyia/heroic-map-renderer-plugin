@@ -44,7 +44,7 @@ dazu.
   ihre Ordner wie im Renderer, alle Fehler auf einmal.
 - **`LaeufeTest`, Planen:** die Schalter je Baum, wann ein Lauf `--resume`
   bekommt, wann ein Update einen Baum auslässt, der Kopf von
-  `stand-neu.bin`. Ohne Prozess.
+  `stand-neu.bin`, die Marke `nur-download`. Ohne Prozess.
 - **`LaeufeTest`, Prozesse:** mit `FalscherRenderer`, einer Testklasse, die
   der Test direkt über `java` startet, ohne Hülle wie `cmd` oder `sh`
   dazwischen. So trifft ein Abbruch den Prozess selbst. Geprüft:
@@ -125,4 +125,6 @@ Build 129, eine Kopie der Testwelt, das Jar des Plugins unter `plugins/`,
   und `web/lizenzen.txt` darin stehen.
 - **Doku:** Das Prüfskript des Renderers prüft Verweise, Links,
   Frontmatter und `docs/index.md`. Die CI lädt es vom Branch `master`, wie
-  in [`AGENTS.md`](../AGENTS.md) beschrieben.
+  in [`AGENTS.md`](../AGENTS.md) beschrieben, und nimmt
+  `src/test/resources/*.json` aus: Die Kopien der Testvektoren sind
+  wörtlich und zeigen auf `docs/plugin.md` des Renderers.
