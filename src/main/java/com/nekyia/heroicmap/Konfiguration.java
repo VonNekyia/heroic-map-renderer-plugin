@@ -56,6 +56,11 @@ record Konfiguration(
         boolean seite() {
             return !titel.isBlank();
         }
+
+        /** Der Port aus {@code adresse}; die Konfiguration prüft, dass es einen gibt. */
+        int port() {
+            return Integer.parseInt(adresse.substring(adresse.lastIndexOf(':') + 1));
+        }
     }
 
     /**
@@ -65,6 +70,9 @@ record Konfiguration(
     record ClientJar(boolean zugestimmt, String version) {
         static final ClientJar OHNE = new ClientJar(false, "");
     }
+
+    /** Adresse und Port für --listen: Host, IPv4 oder [IPv6], dann :Port. */
+    private static final Pattern LISTEN = Pattern.compile("(\\[[0-9A-Fa-f:.]+\\]|[^:\\s\\[\\]]+):\\d{1,5}");
 
     /** Eine Adresse mit http:// oder https:// und Host, ohne / am Ende. */
     private static final Pattern ADRESSE = Pattern.compile("https?://[^/\\s]+(/\\S*)?");
@@ -184,12 +192,21 @@ record Konfiguration(
         }
         String cert = c.getString("webserver.tls-cert", "");
         String key = c.getString("webserver.tls-key", "");
-        if (webserver && adresse.isBlank()) {
-            fehler.add("webserver.listen fehlt, etwa \"0.0.0.0:8080\"");
+        boolean download = baeume.stream().anyMatch(Baum::download);
+        if (webserver && !LISTEN.matcher(adresse).matches()) {
+            fehler.add("webserver.listen: Adresse und Port, etwa \"0.0.0.0:8080\"");
+        } else if (webserver && Integer.parseInt(adresse.substring(adresse.lastIndexOf(':') + 1)) > 65535) {
+            fehler.add("webserver.listen: Port höchstens 65535");
+        } else if (webserver && url.isEmpty() && adresse.endsWith(":0") && download) {
+            fehler.add("webserver.listen: mit Port 0 braucht der Download webserver.url");
         }
-        if (webserver && baeume.stream().anyMatch(Baum::download) && !ADRESSE.matcher(url).matches()) {
-            fehler.add("webserver.url: der Download braucht die Adresse, unter der Spieler den Webserver erreichen, "
-                    + "etwa \"https://karte.example.org\"");
+        // Ohne url baut der Mod die Adresse aus der Verbindung zum Spielserver und dem Port.
+        // Ohne url nimmt der Mod http und die IP der Verbindung; ein Zertifikat gilt aber für einen Namen.
+        if (webserver && url.isEmpty() && !cert.isBlank() && download) {
+            fehler.add("webserver: mit HTTPS braucht der Download webserver.url mit dem Namen aus dem Zertifikat");
+        }
+        if (webserver && !url.isEmpty() && !ADRESSE.matcher(url).matches()) {
+            fehler.add("webserver.url: mit http:// oder https:// und Host, etwa \"https://karte.example.org\"");
         }
         if (webserver && cert.isBlank() != key.isBlank()) {
             fehler.add("webserver: tls-cert und tls-key nur zusammen");

@@ -88,7 +88,7 @@ class KonfigurationTest {
                   enabled: true
                   tls-cert: kette.pem
                 """), server, server));
-        assertEquals("webserver.listen fehlt, etwa \"0.0.0.0:8080\"; webserver: tls-cert und tls-key nur zusammen",
+        assertEquals("webserver.listen: Adresse und Port, etwa \"0.0.0.0:8080\"; webserver: tls-cert und tls-key nur zusammen",
                 e.getMessage());
 
         e = assertThrows(IllegalArgumentException.class, () -> Konfiguration.aus(yaml("""
@@ -119,7 +119,7 @@ class KonfigurationTest {
     }
 
     @Test
-    void download_braucht_die_url_des_webservers() throws Exception {
+    void download_ohne_url_mit_port_aus_listen() throws Exception {
         Files.createFile(server.resolve("r"));
         String baum = """
                 renderer:
@@ -131,15 +131,34 @@ class KonfigurationTest {
                     download: true
                 webserver:
                   enabled: true
-                  listen: 0.0.0.0:8080
                 """;
-        var e = assertThrows(IllegalArgumentException.class, () -> Konfiguration.aus(yaml(baum), server, server));
-        assertTrue(e.getMessage().startsWith("webserver.url: der Download braucht"), e.getMessage());
-        assertThrows(IllegalArgumentException.class,
-                () -> Konfiguration.aus(yaml(baum + "  url: karte.example.org\n"), server, server), "ohne http");
+        var w = Konfiguration.aus(yaml(baum + "  listen: 0.0.0.0:8080\n"), server, server).webserver();
+        assertEquals("", w.url(), "ohne url kein Fehler");
+        assertEquals(8080, w.port());
+        assertEquals(8443, Konfiguration.aus(yaml(baum + "  listen: \"[::]:8443\"\n"), server, server).webserver().port());
         assertEquals("https://karte.example.org:8443/karte",
-                Konfiguration.aus(yaml(baum + "  url: https://karte.example.org:8443/karte/\n"), server, server).webserver().url(),
-                "ohne / am Ende");
+                Konfiguration.aus(yaml(baum + "  listen: 0.0.0.0:8080\n  url: https://karte.example.org:8443/karte/\n"),
+                        server, server).webserver().url(), "ohne / am Ende");
+        var ohneHttp = assertThrows(IllegalArgumentException.class,
+                () -> Konfiguration.aus(yaml(baum + "  listen: 0.0.0.0:8080\n  url: karte.example.org\n"), server, server));
+        assertTrue(ohneHttp.getMessage().startsWith("webserver.url: mit http:// oder https://"), ohneHttp.getMessage());
+        var ohnePort = assertThrows(IllegalArgumentException.class,
+                () -> Konfiguration.aus(yaml(baum + "  listen: 0.0.0.0\n"), server, server));
+        assertEquals("webserver.listen: Adresse und Port, etwa \"0.0.0.0:8080\"", ohnePort.getMessage());
+        var grosserPort = assertThrows(IllegalArgumentException.class,
+                () -> Konfiguration.aus(yaml(baum + "  listen: 0.0.0.0:70000\n"), server, server));
+        assertEquals("webserver.listen: Port höchstens 65535", grosserPort.getMessage());
+        Files.createFile(server.resolve("kette.pem"));
+        Files.createFile(server.resolve("schluessel.pem"));
+        String tls = "  listen: 0.0.0.0:8443\n  tls-cert: kette.pem\n  tls-key: schluessel.pem\n";
+        var tlsOhneUrl = assertThrows(IllegalArgumentException.class, () -> Konfiguration.aus(yaml(baum + tls), server, server));
+        assertEquals("webserver: mit HTTPS braucht der Download webserver.url mit dem Namen aus dem Zertifikat",
+                tlsOhneUrl.getMessage());
+        assertEquals("https://karte.example.org", Konfiguration.aus(yaml(baum + tls + "  url: https://karte.example.org\n"),
+                server, server).webserver().url(), "mit url geht HTTPS");
+        var nullPort = assertThrows(IllegalArgumentException.class,
+                () -> Konfiguration.aus(yaml(baum + "  listen: 127.0.0.1:0\n"), server, server));
+        assertEquals("webserver.listen: mit Port 0 braucht der Download webserver.url", nullPort.getMessage());
         assertEquals("", Konfiguration.aus(yaml(baum.replace("enabled: true", "enabled: false")), server, server)
                 .webserver().url(), "ohne Webserver prüft er nichts");
     }
@@ -173,7 +192,7 @@ class KonfigurationTest {
                 "  url: https://karte.example.org\n  image: vorschau.jpg\n",
                 "  url: karte.example.org\n  title: Unsere Welt\n  description: Die Karte.\n")) {
             var e = assertThrows(IllegalArgumentException.class, () -> Konfiguration.aus(yaml(kopf + teil), server, server), teil);
-            assertEquals(fehler, e.getMessage(), teil);
+            assertTrue(e.getMessage().startsWith(fehler), teil + e.getMessage());
         }
     }
 

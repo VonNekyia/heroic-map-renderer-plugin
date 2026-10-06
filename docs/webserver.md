@@ -98,11 +98,21 @@ auch unter `/download/` aus, nur gegen ein Token, siehe
 [Server](https://github.com/VonNekyia/heroic-map-renderer/blob/master/docs/benutzung/server.md),
 „Download“.
 
-- **`url`** in der `freigabe` ist `webserver.url` mit `/download/<baum>`.
-  `webserver.listen` taugt dafür nicht: `0.0.0.0` erreicht kein Spieler,
-  und vor dem Server kann ein Proxy stehen. Fehlt `webserver.url` bei einem
-  Baum zum Download, meldet das Plugin einen Fehler in der Konfiguration
-  und startet nicht, siehe [Konfiguration](konfiguration.md).
+- **Ohne `webserver.url`** nennt die `freigabe` nur `port`, den Port aus
+  `webserver.listen`. Der Mod baut die Adresse dann selbst: `http://`, die
+  IP-Adresse seiner Verbindung zum Spielserver, IPv6 in `[…]`, dieser Port
+  und `/download/<baum>`. Das reicht, wenn Spielserver und Webserver auf
+  demselben Rechner laufen und der Port offen ist.
+- **Mit `webserver.url`** nennt sie `url`, also `webserver.url` mit
+  `/download/<baum>`. Die braucht es nur für einen anderen Host, für HTTPS
+  oder für einen Proxy davor. `webserver.listen` taugt dafür nicht:
+  `0.0.0.0` erreicht kein Spieler.
+- **HTTPS braucht `url`:** Mit `tls-cert` spricht der Server nur HTTPS, und
+  das Zertifikat gilt für einen Namen, nicht für die IP. Ein Baum zum
+  Download mit HTTPS ohne `url` ist darum ein Fehler der Konfiguration.
+- **Warnung:** Lauscht der Webserver ohne `url` nur auf `127.0.0.1`,
+  `[::1]` oder `localhost`, steht beim Start im Log, dass Spieler ihn so
+  nicht erreichen.
 - **Token** gibt es erst, wenn der Server bereit ist: zwischen seiner
   Startzeile und seinem Ende. Sonst antwortet der Download „Webserver
   aus.“

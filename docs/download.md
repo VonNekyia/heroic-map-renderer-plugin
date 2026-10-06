@@ -37,7 +37,7 @@ Bukkit, und in `Kanal`, der den Kanal und den Stand im Spieler bedient.
 |---|---|---|---|
 | Server → Mod | `angebot` | `baeume`: je Baum `id`, `name`, `dimension`, `stand` (Epoch s), `abdeckt_bis` (Epoch s, falls bekannt), `massstaebe`: je `"1"`, `"2"`, `"4"` `bytes` und `kacheln` | sobald der Mod den Kanal anmeldet, und nach jedem Lauf, der Kacheln gezeichnet hat |
 | Mod → Server | `anfrage` | `baum`, `massstab` (1, 2 oder 4), `art`: `voll` oder `abgleich`, `neu` (optional, `true`: ein voller Download ohne Stand zum Fortsetzen) | der Spieler wählt |
-| Server → Mod | `freigabe` | `baum`, `massstab`, `art`, `abdeckt_bis` (falls bekannt), `url`, `token`, `ablauf` (Epoch s), `manifest_sha256`, `bytes` | auf eine `anfrage`, oder von selbst beim täglichen Abgleich |
+| Server → Mod | `freigabe` | `baum`, `massstab`, `art`, `abdeckt_bis` (falls bekannt), `url` oder `port`, `token`, `ablauf` (Epoch s), `manifest_sha256`, `bytes` | auf eine `anfrage`, oder von selbst beim täglichen Abgleich |
 | Server → Mod | `abgelehnt` | `baum`, `art`, `grund` (Text für den Spieler), `wieder` (Epoch s, falls bekannt) | siehe „Anfrage“ |
 
 - **`dimension`** folgt aus `world` in `config.yml`. Die Weltwurzel ist
@@ -47,6 +47,9 @@ Bukkit, und in `Kanal`, der den Kanal und den Stand im Spieler bedient.
   `/download/<baum>`. Darunter liegen `map.json`, `manifest` und
   `{z}/{x}/{y}.webp`, nur mit dem Token im Header, siehe
   [Webserver](webserver.md), „Download“.
+- **`port`** steht statt `url`, wenn `webserver.url` leer ist: der Port des
+  Webservers, 1 bis 65535. Der Mod baut daraus
+  `http://<IP der Verbindung>:<port>/download/<baum>`, IPv6 in `[…]`.
 - **`bytes`** in `freigabe`: bei `voll` die Summe des Satzes, bei `abgleich`
   der Deckel des Tokens.
 - **Der Mod** schickt `anfrage` nur, wenn `ClientPlayNetworking.canSend`

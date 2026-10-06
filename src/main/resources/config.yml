@@ -47,8 +47,9 @@ webserver:
   enabled: true
   # Adresse und Port; 0.0.0.0 für alle Netze.
   listen: "0.0.0.0:8080"
-  # Wie Spieler den Webserver erreichen, etwa "https://karte.example.org".
-  # Pflicht für den Download, siehe docs/download.md.
+  # Wie Spieler den Webserver erreichen, etwa "https://karte.example.org";
+  # nur für einen anderen Host, HTTPS oder einen Proxy. Leer: Der Mod nimmt
+  # den Host des Spielservers und den Port aus listen.
   url: ""
   # Titel und Beschreibung der Seite, nur zusammen und mit url; leer: die des Builds.
   title: ""

@@ -59,7 +59,7 @@ trees:
 webserver:
   enabled: true
   listen: "0.0.0.0:8080"
-  url: "https://karte.example.org"
+  url: ""                # nur für anderen Host, HTTPS oder Proxy
   title: "Name der Welt"
   description: "Die Karte des Servers."
   image: ""
@@ -76,10 +76,12 @@ webserver:
   Zustimmung setzt der Betreiber selbst; sie bestätigt den Besitz von
   Minecraft: Java Edition und nimmt die Minecraft-EULA an, siehe
   [Konfiguration](konfiguration.md), „Client-Jar“.
-- **Webserver:** `url` ist die Adresse, unter der Spieler die Karte
-  erreichen, Pflicht mit einem Baum zum Download. Hinter einem Proxy mit
-  HTTPS bleibt `tls-*` leer; ohne Proxy gehören Kette und Schlüssel als PEM
-  dorthin. Ohne HTTPS geht das Token des Downloads im Klartext.
+- **Webserver:** Ohne `url` erreicht der Mod den Download über den Host,
+  mit dem er zum Spielserver verbunden ist, und den Port aus `listen`.
+  `url` braucht es nur für einen anderen Host, für HTTPS oder einen Proxy
+  davor; hinter einem Proxy mit HTTPS bleibt `tls-*` leer, ohne Proxy
+  gehören Kette und Schlüssel als PEM dorthin. Ohne HTTPS geht das Token
+  des Downloads im Klartext.
 - **Port:** `listen` darf keinen Port nehmen, den der Server oder ein
   anderes Plugin schon belegt.
 

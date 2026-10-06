@@ -36,7 +36,7 @@ class DownloadTest {
     @TempDir
     Path tmp;
 
-    private Optional<String> webserver = Optional.of("http://karte.test:8100");
+    private Optional<Download.Ziel> webserver = Optional.of(new Download.Ziel("http://karte.test:8100", 0));
     private Optional<Instant> erfolgreich = Optional.empty();
     private Satz satz;
 
@@ -154,6 +154,7 @@ class DownloadTest {
         assertEquals("voll", f.get("art").getAsString());
         assertEquals(2, f.get("massstab").getAsInt());
         assertEquals("http://karte.test:8100/top-north-s", f.get("url").getAsString());
+        assertFalse(f.has("port"), "mit url kein Port");
         assertEquals(satz.sha256(), f.get("manifest_sha256").getAsString());
         assertEquals(1_600, f.get("bytes").getAsLong());
         assertEquals(JETZT.getEpochSecond() - 30 - 600, f.get("abdeckt_bis").getAsLong());
@@ -256,6 +257,15 @@ class DownloadTest {
         var b = d.anfrage(anfrage("top-north-s", 4, "abgleich"), SPIELER, stand, JETZT.plusSeconds(240));
         var bNeu = d.anfrage(anfrageNeu("top-north-s", 4, "abgleich"), SPIELER, stand, JETZT.plusSeconds(300));
         assertEquals(b.get("token").getAsString(), bNeu.get("token").getAsString(), "neu gilt nur für voll");
+    }
+
+    @Test
+    void ohne_url_nennt_die_freigabe_den_port() {
+        webserver = Optional.of(new Download.Ziel(null, 8080));
+        var f = download().anfrage(anfrage("top-north-s", 4, "voll"), SPIELER, new Download.Spielerstand(), JETZT);
+        assertEquals("freigabe", f.get("typ").getAsString());
+        assertEquals(8080, f.get("port").getAsInt());
+        assertFalse(f.has("url"), "der Mod baut die Adresse aus der Verbindung");
     }
 
     @Test
