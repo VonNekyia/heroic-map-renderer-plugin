@@ -1,0 +1,104 @@
+name: Release
+
+# Auf einem Tag vX.Y.Z das Jar mit Karte und Renderer bauen und als Entwurf
+# eines GitHub-Releases ablegen. Ändert eine PR diese Datei, das Prüfskript
+# oder den Build, baut sie das Jar ohne Entwurf.
+# Siehe docs/entwicklung.md, „Release“.
+on:
+  push:
+    tags: ["v*"]
+  pull_request:
+    paths: [".github/workflows/release.yml", ".github/pruefe-jar.sh", "build.gradle.kts"]
+
+# Nur der Job, der den Entwurf anlegt, darf schreiben.
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  jar:
+    name: Jar
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 25
+
+      - uses: gradle/actions/setup-gradle@v6
+
+      # Auf einem Tag die Version aus dem Tag, in einer PR eine zur Probe.
+      - name: Version
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then version=${GITHUB_REF_NAME#v}; else version=0.0.0-probe; fi
+          [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]] \
+            || { echo "::error::$GITHUB_REF_NAME ist keine Version wie v1.2.3"; exit 1; }
+          echo "VERSION=$version" >> "$GITHUB_ENV"
+
+      # Binärs und Karte aus demselben Release des Renderers: holeRenderer lädt
+      # und prüft die Archive, die Karte ist web/ im Archiv für Linux.
+      - name: Renderer und Karte
+        timeout-minutes: 15
+        run: |
+          ./gradlew holeRenderer --console=plain
+          mkdir -p build/karte
+          tar -xzf build/renderer/archive/*/heroic-map-renderer-linux-x64.tar.gz -C build/karte \
+            --strip-components 1 heroic-map-renderer-linux-x64/web
+
+      - name: Bauen und Tests
+        timeout-minutes: 15
+        run: ./gradlew build -Pversion="$VERSION" -Pweb="$PWD/build/karte/web" --console=plain
+
+      - name: Prüfen
+        run: |
+          jar=build/libs/heroic-map-renderer-plugin-$VERSION.jar
+          bash .github/pruefe-jar.sh "$jar"
+          unzip -p "$jar" plugin.yml | grep -qx "version: '$VERSION'" \
+            || { echo "::error::plugin.yml nennt nicht die Version $VERSION"; exit 1; }
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: jar
+          path: build/libs/heroic-map-renderer-plugin-${{ env.VERSION }}.jar
+          if-no-files-found: error
+
+  release:
+    name: Release-Entwurf
+    needs: jar
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: jar
+          path: dist
+
+      - name: Prüfsummen
+        run: cd dist && sha256sum *.jar > SHA256SUMS && cat SHA256SUMS
+
+      # Nur ein Entwurf: Veröffentlichen ist Sache des Maintainers. Die Notizen
+      # nennen den Renderer im Jar, die Konfiguration und, aus NOTICE, den
+      # Hinweis zu Mojang; der Text steht nur dort.
+      - name: Entwurf anlegen
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          renderer=$(unzip -p dist/*.jar renderer/renderer.properties | sed -n 's/^version=//p')
+          hinweis=$(sed -n '/^NOT AN OFFICIAL/,$p' NOTICE)
+          test -n "$renderer" && test -n "$hinweis"
+          konfiguration="https://github.com/$GITHUB_REPOSITORY/blob/$GITHUB_REF_NAME/docs/konfiguration.md"
+          printf 'Mit der Karte und dem Renderer v%s für Windows und Linux auf x86_64.\nKonfiguration: %s\n\n%s\n' \
+            "$renderer" "$konfiguration" "$hinweis" > notizen.md
+          gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --draft \
+            --title "$GITHUB_REF_NAME" --notes-file notizen.md dist/*.jar dist/SHA256SUMS

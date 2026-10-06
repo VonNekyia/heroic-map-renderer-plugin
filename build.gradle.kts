@@ -12,7 +12,8 @@ plugins {
 }
 
 group = "com.nekyia"
-version = "0.1.0-SNAPSHOT"
+// Mit -Pversion die Version aus dem Tag, siehe docs/entwicklung.md, „Release“.
+version = providers.gradleProperty("version").getOrElse("0.1.0-SNAPSHOT")
 
 repositories {
     mavenCentral()

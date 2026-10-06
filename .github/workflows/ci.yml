@@ -98,20 +98,6 @@ jobs:
         timeout-minutes: 15
         run: ./gradlew jar -Pweb="$GITHUB_WORKSPACE/renderer/web/dist" --console=plain
 
-      # Ohne Netz baute der Build still ohne Binärs; hier müssen sie darin stehen.
-      # Siehe docs/entwicklung.md, „Der Renderer im Jar“.
-      - name: Karte und Renderer im Jar
-        run: |
-          inhalt=$(unzip -Z1 build/libs/*.jar)
-          for datei in web/index.html web/lizenzen.txt web/seite.html web/robots.vorlage.txt \
-              renderer/renderer.properties renderer/windows-x64/heroic-map-renderer.exe renderer/linux-x64/heroic-map-renderer \
-              renderer/LICENSE renderer/NOTICE renderer/THIRD-PARTY-NOTICES renderer/COPYRIGHT-library.html; do
-            grep -qx "$datei" <<< "$inhalt" || { echo "::error::$datei fehlt im Jar"; exit 1; }
-          done
-
-      # Hangar nimmt höchstens 10 000 000 Byte je Datei. Siehe docs/entscheidungen/0004-renderer-im-jar.md.
-      - name: Grösse des Jars
-        run: |
-          groesse=$(stat -c %s build/libs/*.jar)
-          echo "Jar: $groesse Byte"
-          [ "$groesse" -lt 10000000 ] || { echo "::error::Das Jar hat $groesse Byte, es muss unter 10 000 000 bleiben"; exit 1; }
+      # Dateien im Jar und Grösse, wie beim Release.
+      - name: Karte und Renderer im Jar, Grösse
+        run: bash .github/pruefe-jar.sh build/libs/*.jar

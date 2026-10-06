@@ -1,9 +1,11 @@
 ---
 title: Entwicklung
-description: Bauen und Testen mit Gradle 9.7.1 und Java 25, was im Jar steckt, der Renderer im Jar mit Version und SHA-256, die Tests mit einem falschen Renderer, die Probe mit dem echten und die CI.
+description: Bauen und Testen mit Gradle 9.7.1 und Java 25, was im Jar steckt, der Renderer im Jar mit Version und SHA-256, die Tests mit einem falschen Renderer, die Probe mit dem echten, die CI und das Release.
 code:
   - build.gradle.kts
   - .github/workflows/ci.yml
+  - .github/workflows/release.yml
+  - .github/pruefe-jar.sh
   - src/test/java/com/nekyia/heroicmap/LaeufeTest.java
   - src/test/java/com/nekyia/heroicmap/KonfigurationTest.java
   - src/test/java/com/nekyia/heroicmap/FalscherRenderer.java
@@ -198,9 +200,35 @@ Build 129, eine Kopie der Testwelt, das Jar des Plugins unter `plugins/`,
   `web/lizenzen.txt` und die Vorlagen `web/seite.html` und
   `web/robots.vorlage.txt` darin stehen, ebenso alles unter `renderer/`,
   siehe „Der Renderer im Jar“. Das Jar muss unter 10 000 000 Byte bleiben;
-  mehr nimmt Hangar je Datei nicht.
+  mehr nimmt Hangar je Datei nicht. Beides prüft
+  [`.github/pruefe-jar.sh`](../.github/pruefe-jar.sh), auch beim Release.
 - **Doku:** Das Prüfskript des Renderers prüft Verweise, Links,
   Frontmatter und `docs/index.md`. Die CI lädt es vom Branch `master`, wie
   in [`AGENTS.md`](../AGENTS.md) beschrieben, und nimmt
   `src/test/resources/*.json` aus: Die Kopien der Testvektoren sind
   wörtlich und zeigen auf `docs/plugin.md` des Renderers.
+
+## Release
+
+[`.github/workflows/release.yml`](../.github/workflows/release.yml) baut
+auf einem Tag `v<version>` das Jar und legt einen Entwurf eines Releases
+auf GitHub an. Den Tag, das Veröffentlichen und Hangar übernimmt der
+Maintainer.
+
+- **Version** aus dem Tag ohne `v`, an Gradle mit `-Pversion`: im Namen
+  `heroic-map-renderer-plugin-<version>.jar` und in `plugin.yml`. Ohne
+  `-Pversion` bleibt `0.1.0-SNAPSHOT`. Ein Tag, der keine Version wie
+  `v1.2.3` ist, lässt den Lauf fallen.
+- **Renderer und Karte aus demselben Release:** `holeRenderer` lädt und
+  prüft die Archive wie in „Der Renderer im Jar“. Die Karte ist `web/` aus
+  dem Archiv für Linux, nicht `master` wie im Job „Jar mit Karte“. Eine
+  neue Version des Renderers in `build.gradle.kts` bringt so beide.
+- **Prüfen:** `./gradlew build` mit den Tests, dann
+  `.github/pruefe-jar.sh` wie in der CI; `plugin.yml` im Jar muss die
+  Version nennen.
+- **Entwurf:** das Jar und `SHA256SUMS`. Die Notizen nennen die Version
+  des Renderers, die [Konfiguration](konfiguration.md) am Tag und den
+  Hinweis zu Mojang aus `NOTICE`. Nur dieser Job darf schreiben.
+- **In einer PR,** die den Workflow, das Prüfskript oder
+  `build.gradle.kts` ändert, läuft alles ausser dem Entwurf, mit der
+  Version `0.0.0-probe`.

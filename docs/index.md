@@ -20,7 +20,7 @@ Wie der Renderer arbeitet und was seine Schalter tun, steht in der
 
 ## Entwicklung
 
-- [Entwicklung](entwicklung.md): Bauen und Testen mit Gradle und Java 25, der Renderer im Jar mit Version und SHA-256, die Tests mit einem falschen Renderer, CI.
+- [Entwicklung](entwicklung.md): Bauen und Testen mit Gradle und Java 25, der Renderer im Jar mit Version und SHA-256, die Tests mit einem falschen Renderer, CI, Release.
 
 ## Messungen
 
