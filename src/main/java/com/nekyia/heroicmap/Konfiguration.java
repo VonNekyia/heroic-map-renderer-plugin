@@ -50,7 +50,7 @@ record Konfiguration(
 
     /** Der Server des Renderers; ohne Zertifikat HTTP; {@code url} die Adresse für Spieler. Siehe docs/webserver.md. */
     record Webserver(boolean an, String adresse, String url, Path zertifikat, Path schluessel, String titel,
-            String beschreibung, String bild) {
+            String beschreibung, String bild, int oeffentlicherPort) {
 
         /** Ob der Server Adresse, Titel und Beschreibung in die Seite setzt; die Konfiguration prüft, dass alle drei da sind. */
         boolean seite() {
@@ -60,6 +60,11 @@ record Konfiguration(
         /** Der Port aus {@code adresse}; die Konfiguration prüft, dass es einen gibt. */
         int port() {
             return Integer.parseInt(adresse.substring(adresse.lastIndexOf(':') + 1));
+        }
+
+        /** Der Port, den die freigabe ohne url nennt: der vor einem Proxy, sonst der aus listen. */
+        int portFuerMod() {
+            return oeffentlicherPort > 0 ? oeffentlicherPort : port();
         }
     }
 
@@ -193,12 +198,19 @@ record Konfiguration(
         String cert = c.getString("webserver.tls-cert", "");
         String key = c.getString("webserver.tls-key", "");
         boolean download = baeume.stream().anyMatch(Baum::download);
+        int oeffentlich = c.getInt("webserver.public-port", 0);
+        // getInt gäbe für "8080" in Anführungszeichen still 0.
+        if (webserver && c.isSet("webserver.public-port") && !c.isInt("webserver.public-port")) {
+            fehler.add("webserver.public-port: eine Zahl, 0 oder ein Port bis 65535");
+        } else if (webserver && (oeffentlich < 0 || oeffentlich > 65535)) {
+            fehler.add("webserver.public-port: 0 oder ein Port bis 65535");
+        }
         if (webserver && !LISTEN.matcher(adresse).matches()) {
             fehler.add("webserver.listen: Adresse und Port, etwa \"0.0.0.0:8080\"");
         } else if (webserver && Integer.parseInt(adresse.substring(adresse.lastIndexOf(':') + 1)) > 65535) {
             fehler.add("webserver.listen: Port höchstens 65535");
-        } else if (webserver && url.isEmpty() && adresse.endsWith(":0") && download) {
-            fehler.add("webserver.listen: mit Port 0 braucht der Download webserver.url");
+        } else if (webserver && url.isEmpty() && adresse.endsWith(":0") && download && oeffentlich == 0) {
+            fehler.add("webserver.listen: mit Port 0 braucht der Download webserver.url oder webserver.public-port");
         }
         // Ohne url baut der Mod die Adresse aus der Verbindung zum Spielserver und dem Port.
         // Ohne url nimmt der Mod http und die IP der Verbindung; ein Zertifikat gilt aber für einen Namen.
@@ -235,7 +247,7 @@ record Konfiguration(
                 new Download(grenzen[0], grenzen[1], grenzen[2], ab, grenzen[3]),
                 new Webserver(webserver, adresse, url,
                         cert.isBlank() ? null : server.resolve(cert), key.isBlank() ? null : server.resolve(key),
-                        titel, beschreibung, bild),
+                        titel, beschreibung, bild, oeffentlich),
                 new ClientJar(c.getBoolean("renderer.download-client-jar"), c.getString("renderer.client-version", "").strip()));
     }
 

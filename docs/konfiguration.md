@@ -39,6 +39,7 @@ Gelesen und geprüft in `Konfiguration.aus` in
 | `webserver.enabled` | `true` | – | ob das Plugin den Server des Renderers startet |
 | `webserver.listen` | `"0.0.0.0:8080"` | `--listen` | Adresse und Port, IPv6 in `[…]`; Pflicht, wenn der Webserver an ist |
 | `webserver.url` | leer | – | optional: wie Spieler den Webserver erreichen, `http://` oder `https://`, ohne `/` am Ende; nur für einen anderen Host, HTTPS oder einen Proxy davor; mit HTTPS und einem Baum zum Download Pflicht. Ohne sie baut der Mod die Adresse selbst, siehe [Webserver](webserver.md), „Download“ |
+| `webserver.public-port` | `0` | – | steht ein Proxy davor: der Port, unter dem Spieler ihn erreichen; die `freigabe` ohne `url` nennt ihn statt des Ports aus `listen`. `0`: der aus `listen` |
 | `webserver.title` | leer | `--site-title` | Titel der Seite; nur mit `description` und `url`, siehe [Webserver](webserver.md), „Angaben der Seite“ |
 | `webserver.description` | leer | `--site-description` | Beschreibung der Seite; nur mit `title` und `url` |
 | `webserver.image` | leer | `--site-image` | Vorschaubild, relativ zu `url` oder eine Adresse; nur mit `title` und `description` |
@@ -131,7 +132,8 @@ schaltet sich ab:
   Uhrzeit wie `"00:00"`;
 - `web: false` an einem Baum ohne `download: true`;
 - mit eingeschaltetem Webserver: `webserver.listen` ohne Port, mit einem
-  Port über 65535, oder mit Port 0 und einem Baum zum Download ohne `url`;
+  Port über 65535, oder mit Port 0 und einem Baum zum Download ohne `url`
+  und ohne `public-port`; `public-port` unter 0 oder über 65535;
   eine `url` ohne `http://` oder `https://`; HTTPS mit einem Baum zum
   Download, aber ohne `url`; nur eins von `tls-cert` und `tls-key`, oder eine der
   Dateien fehlt; `title` und `description` nicht zusammen oder ohne `url`,
