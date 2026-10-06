@@ -141,11 +141,24 @@ Einmal von Hand am 05.10., nicht in der CI. Gefahren wurde `Laeufe` ohne
 Server mit dem echten Renderer an der Testwelt: voller Lauf, Abbruch,
 `render` mit `--resume`, dann ein Update. Das Ergebnis steht in der PR.
 
-Das Binär aus dem Jar, am 06.10. unter Windows: `Binaer.waehle` ohne
-`renderer.binary` packte es aus dem gebauten Jar aus, in 146 ms; der zweite
-Aufruf prüfte nur, in 15 ms, und schrieb nichts. `--version` meldete
-`heroic-map-renderer 0.2.0`. Ein Lauf an der Testwelt mit diesem Binär
-steht aus.
+Am 06.10. dieselbe Probe mit dem Binär aus dem Jar: unter Windows, ohne
+`renderer.binary`, mit `full-run-threads: 0`, an der Testwelt, Baum
+`top-north` mit scale 4.
+
+| Schritt | Ergebnis |
+|---|---|
+| `Binaer.waehle` | packt v0.2.0 aus dem gebauten Jar nach `bin/0.2.0/` aus, in 130 ms; ein zweiter Aufruf prüft nur, in 19 ms |
+| voller Lauf | startet das ausgepackte Binär |
+| Abbruch | beim Zeichnen, 21 s nach dem Start; `stand-neu.bin` bleibt, `angefangen` gibt `VOLL`, ein Update plant nichts |
+| `render` | setzt mit `--resume` fort: 16 127 Kacheln, fertig nach 109 s; danach `stand.bin` ohne `stand-neu.bin` |
+| Update | nichts zu zeichnen, 0,7 s |
+
+`--resume` übersprang keine Kachel. Der Renderer zeichnet die Kacheln der
+letzten zwei Minuten neu, und der Abbruch kam wenige Sekunden nach den
+ersten, siehe
+[Pyramide und Fortsetzen](https://github.com/VonNekyia/heroic-map-renderer/blob/master/docs/benutzung/pyramide-und-resume.md)
+in der Doku des Renderers. Unter Linux ist das Auspacken nur in der CI
+geprüft.
 
 ## Rauchtest am Paper-Server
 
