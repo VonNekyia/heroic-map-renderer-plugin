@@ -51,6 +51,9 @@ webserver:
   # nur für einen anderen Host, HTTPS oder einen Proxy. Leer: Der Mod nimmt
   # den Host des Spielservers und den Port aus listen.
   url: ""
+  # Steht ein Proxy davor, der Port, unter dem Spieler ihn erreichen; den
+  # nennt die Freigabe ohne url dem Mod. 0: der Port aus listen.
+  public-port: 0
   # Titel und Beschreibung der Seite, nur zusammen und mit url; leer: die des Builds.
   title: ""
   description: ""

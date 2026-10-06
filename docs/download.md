@@ -48,7 +48,7 @@ Bukkit, und in `Kanal`, der den Kanal und den Stand im Spieler bedient.
   `{z}/{x}/{y}.webp`, nur mit dem Token im Header, siehe
   [Webserver](webserver.md), „Download“.
 - **`port`** steht statt `url`, wenn `webserver.url` leer ist: der Port des
-  Webservers, 1 bis 65535. Der Mod baut daraus
+  Webservers oder, mit `webserver.public-port`, der eines Proxys davor, 1 bis 65535. Der Mod baut daraus
   `http://<IP der Verbindung>:<port>/download/<baum>`, IPv6 in `[…]`.
 - **`bytes`** in `freigabe`: bei `voll` die Summe des Satzes, bei `abgleich`
   der Deckel des Tokens.

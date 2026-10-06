@@ -81,11 +81,11 @@ final class Webserver {
         return b;
     }
 
-    /** Eine Warnung, wenn Spieler den Webserver nicht erreichen: ohne url und nur auf dem eigenen Rechner. */
+    /** Eine Warnung, wenn Spieler den Webserver nicht erreichen: ohne url und Proxy nur auf dem eigenen Rechner. */
     static Optional<String> warnung(Konfiguration.Webserver w) {
         String host = w.adresse().substring(0, w.adresse().lastIndexOf(':'));
         boolean lokal = host.equals("127.0.0.1") || host.equals("[::1]") || host.equalsIgnoreCase("localhost");
-        return w.url().isEmpty() && lokal
+        return w.url().isEmpty() && w.oeffentlicherPort() == 0 && lokal
                 ? Optional.of("Webserver lauscht nur auf " + host + " und hat keine webserver.url: Spieler erreichen ihn so nicht.")
                 : Optional.empty();
     }

@@ -98,8 +98,8 @@ auch unter `/download/` aus, nur gegen ein Token, siehe
 [Server](https://github.com/VonNekyia/heroic-map-renderer/blob/master/docs/benutzung/server.md),
 „Download“.
 
-- **Ohne `webserver.url`** nennt die `freigabe` nur `port`, den Port aus
-  `webserver.listen`. Der Mod baut die Adresse dann selbst: `http://`, die
+- **Ohne `webserver.url`** nennt die `freigabe` nur `port`: den aus
+  `webserver.public-port`, sonst den aus `webserver.listen`. Der Mod baut die Adresse dann selbst: `http://`, die
   IP-Adresse seiner Verbindung zum Spielserver, IPv6 in `[…]`, dieser Port
   und `/download/<baum>`. Das reicht, wenn Spielserver und Webserver auf
   demselben Rechner laufen und der Port offen ist.
@@ -110,7 +110,11 @@ auch unter `/download/` aus, nur gegen ein Token, siehe
 - **HTTPS braucht `url`:** Mit `tls-cert` spricht der Server nur HTTPS, und
   das Zertifikat gilt für einen Namen, nicht für die IP. Ein Baum zum
   Download mit HTTPS ohne `url` ist darum ein Fehler der Konfiguration.
-- **Warnung:** Lauscht der Webserver ohne `url` nur auf `127.0.0.1`,
+- **Hinter einem Proxy ohne Adresse:** Lauscht der Webserver intern, etwa
+  auf `127.0.0.1:8082`, und leitet ein Proxy auf dem Spielrechner
+  `/download/` von Port 8080 dorthin weiter, nennt `public-port: 8080` dem
+  Mod den Port des Proxys. Eine Adresse braucht es so nicht.
+- **Warnung:** Lauscht der Webserver ohne `url` und ohne `public-port` nur auf `127.0.0.1`,
   `[::1]` oder `localhost`, steht beim Start im Log, dass Spieler ihn so
   nicht erreichen.
 - **Token** gibt es erst, wenn der Server bereit ist: zwischen seiner
