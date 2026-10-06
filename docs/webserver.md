@@ -99,14 +99,17 @@ auch unter `/download/` aus, nur gegen ein Token, siehe
 „Download“.
 
 - **Ohne `webserver.url`** nennt die `freigabe` nur `port`, den Port aus
-  `webserver.listen`. Der Mod baut die Adresse dann selbst: `http://`, der
-  Host, mit dem er zum Spielserver verbunden ist, dieser Port und
-  `/download/<baum>`. Das reicht, wenn Spielserver und Webserver auf
+  `webserver.listen`. Der Mod baut die Adresse dann selbst: `http://`, die
+  IP-Adresse seiner Verbindung zum Spielserver, IPv6 in `[…]`, dieser Port
+  und `/download/<baum>`. Das reicht, wenn Spielserver und Webserver auf
   demselben Rechner laufen und der Port offen ist.
 - **Mit `webserver.url`** nennt sie `url`, also `webserver.url` mit
   `/download/<baum>`. Die braucht es nur für einen anderen Host, für HTTPS
   oder für einen Proxy davor. `webserver.listen` taugt dafür nicht:
   `0.0.0.0` erreicht kein Spieler.
+- **HTTPS braucht `url`:** Mit `tls-cert` spricht der Server nur HTTPS, und
+  das Zertifikat gilt für einen Namen, nicht für die IP. Ein Baum zum
+  Download mit HTTPS ohne `url` ist darum ein Fehler der Konfiguration.
 - **Warnung:** Lauscht der Webserver ohne `url` nur auf `127.0.0.1`,
   `[::1]` oder `localhost`, steht beim Start im Log, dass Spieler ihn so
   nicht erreichen.

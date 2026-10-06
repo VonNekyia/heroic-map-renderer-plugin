@@ -145,6 +145,17 @@ class KonfigurationTest {
         var ohnePort = assertThrows(IllegalArgumentException.class,
                 () -> Konfiguration.aus(yaml(baum + "  listen: 0.0.0.0\n"), server, server));
         assertEquals("webserver.listen: Adresse und Port, etwa \"0.0.0.0:8080\"", ohnePort.getMessage());
+        var grosserPort = assertThrows(IllegalArgumentException.class,
+                () -> Konfiguration.aus(yaml(baum + "  listen: 0.0.0.0:70000\n"), server, server));
+        assertEquals("webserver.listen: Port höchstens 65535", grosserPort.getMessage());
+        Files.createFile(server.resolve("kette.pem"));
+        Files.createFile(server.resolve("schluessel.pem"));
+        String tls = "  listen: 0.0.0.0:8443\n  tls-cert: kette.pem\n  tls-key: schluessel.pem\n";
+        var tlsOhneUrl = assertThrows(IllegalArgumentException.class, () -> Konfiguration.aus(yaml(baum + tls), server, server));
+        assertEquals("webserver: mit HTTPS braucht der Download webserver.url mit dem Namen aus dem Zertifikat",
+                tlsOhneUrl.getMessage());
+        assertEquals("https://karte.example.org", Konfiguration.aus(yaml(baum + tls + "  url: https://karte.example.org\n"),
+                server, server).webserver().url(), "mit url geht HTTPS");
         var nullPort = assertThrows(IllegalArgumentException.class,
                 () -> Konfiguration.aus(yaml(baum + "  listen: 127.0.0.1:0\n"), server, server));
         assertEquals("webserver.listen: mit Port 0 braucht der Download webserver.url", nullPort.getMessage());

@@ -192,12 +192,19 @@ record Konfiguration(
         }
         String cert = c.getString("webserver.tls-cert", "");
         String key = c.getString("webserver.tls-key", "");
+        boolean download = baeume.stream().anyMatch(Baum::download);
         if (webserver && !LISTEN.matcher(adresse).matches()) {
             fehler.add("webserver.listen: Adresse und Port, etwa \"0.0.0.0:8080\"");
-        } else if (webserver && url.isEmpty() && adresse.endsWith(":0") && baeume.stream().anyMatch(Baum::download)) {
+        } else if (webserver && Integer.parseInt(adresse.substring(adresse.lastIndexOf(':') + 1)) > 65535) {
+            fehler.add("webserver.listen: Port höchstens 65535");
+        } else if (webserver && url.isEmpty() && adresse.endsWith(":0") && download) {
             fehler.add("webserver.listen: mit Port 0 braucht der Download webserver.url");
         }
         // Ohne url baut der Mod die Adresse aus der Verbindung zum Spielserver und dem Port.
+        // Ohne url nimmt der Mod http und die IP der Verbindung; ein Zertifikat gilt aber für einen Namen.
+        if (webserver && url.isEmpty() && !cert.isBlank() && download) {
+            fehler.add("webserver: mit HTTPS braucht der Download webserver.url mit dem Namen aus dem Zertifikat");
+        }
         if (webserver && !url.isEmpty() && !ADRESSE.matcher(url).matches()) {
             fehler.add("webserver.url: mit http:// oder https:// und Host, etwa \"https://karte.example.org\"");
         }
