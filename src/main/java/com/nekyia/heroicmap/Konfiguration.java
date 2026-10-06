@@ -27,7 +27,8 @@ record Konfiguration(
         int updateMinuten,
         List<Baum> baeume,
         Download download,
-        Webserver webserver) {
+        Webserver webserver,
+        ClientJar clientJar) {
 
     private static final Pattern SCHRAEG = Pattern.compile("(\\d+):(\\d+)");
 
@@ -54,6 +55,14 @@ record Konfiguration(
         boolean seite() {
             return !titel.isBlank();
         }
+    }
+
+    /**
+     * Ob der Betreiber dem Laden des Client-Jars von Mojang zugestimmt hat, und welche Version; leer:
+     * die zur Welt. Siehe docs/konfiguration.md, „Client-Jar“.
+     */
+    record ClientJar(boolean zugestimmt, String version) {
+        static final ClientJar OHNE = new ClientJar(false, "");
     }
 
     /** Eine Adresse mit http:// oder https:// und Host, ohne / am Ende. */
@@ -89,10 +98,8 @@ record Konfiguration(
             fehler.add("renderer.binary: " + renderer + " gibt es nicht");
         }
 
+        // Ohne Assets und ohne Zustimmung bricht der Renderer mit dem Text der Zustimmung ab.
         List<Path> assets = c.getStringList("renderer.assets").stream().map(server::resolve).toList();
-        if (assets.isEmpty()) {
-            fehler.add("renderer.assets fehlt");
-        }
 
         int threads = c.getInt("renderer.threads", 1);
         if (threads < 1) {
@@ -205,7 +212,8 @@ record Konfiguration(
                 new Download(grenzen[0], grenzen[1], grenzen[2], ab, grenzen[3]),
                 new Webserver(webserver, adresse, url,
                         cert.isBlank() ? null : server.resolve(cert), key.isBlank() ? null : server.resolve(key),
-                        titel, beschreibung, bild));
+                        titel, beschreibung, bild),
+                new ClientJar(c.getBoolean("renderer.download-client-jar"), c.getString("renderer.client-version", "").strip()));
     }
 
     /**

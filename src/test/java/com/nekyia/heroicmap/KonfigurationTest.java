@@ -54,6 +54,7 @@ class KonfigurationTest {
         assertEquals(new Konfiguration.Download(10, 5, 1, java.time.LocalTime.MIDNIGHT, 10), k.download());
         assertEquals("minecraft:overworld", k.dimension());
         assertEquals(new Konfiguration.Webserver(true, "0.0.0.0:8080", "", null, null, "", "", ""), k.webserver());
+        assertEquals(Konfiguration.ClientJar.OHNE, k.clientJar(), "ohne Zustimmung");
     }
 
     @Test
@@ -203,6 +204,21 @@ class KonfigurationTest {
     }
 
     @Test
+    void client_jar_mit_zustimmung_ohne_assets() throws Exception {
+        Files.createFile(server.resolve("r"));
+        var k = Konfiguration.aus(yaml("""
+                renderer:
+                  binary: r
+                  download-client-jar: true
+                  client-version: " 26.2 "
+                trees:
+                  - camera: "2:1"
+                """), server, server);
+        assertEquals(new Konfiguration.ClientJar(true, "26.2"), k.clientJar());
+        assertEquals(List.of(), k.assets());
+    }
+
+    @Test
     void download_nur_fuer_genordete_baeume_mit_scale_4() throws Exception {
         Files.createFile(server.resolve("r"));
         var k = Konfiguration.aus(yaml("""
@@ -250,7 +266,7 @@ class KonfigurationTest {
     void vorgabe_ohne_binaer() throws Exception {
         var c = vorgabe();
         var e = assertThrows(IllegalArgumentException.class, () -> Konfiguration.aus(c, server, server));
-        assertEquals("renderer.binary fehlt; renderer.assets fehlt", e.getMessage());
+        assertEquals("renderer.binary fehlt", e.getMessage(), "ohne Assets bricht erst der Lauf ab, mit dem Text der Zustimmung");
     }
 
     @Test

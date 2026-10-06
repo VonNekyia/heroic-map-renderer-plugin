@@ -20,10 +20,12 @@ Gelesen und geprüft in `Konfiguration.aus` in
 | Schlüssel | Vorgabe | Schalter | Wirkung |
 |---|---|---|---|
 | `renderer.binary` | leer, Pflicht | – | Pfad zum Binär des Renderers |
-| `renderer.assets` | leer, Pflicht | `--assets` je Eintrag | Asset-Wurzeln, spätere überschreiben frühere |
+| `renderer.assets` | leer | `--assets` je Eintrag | Asset-Wurzeln, spätere überschreiben frühere; leer nur mit Zustimmung zum Client-Jar, siehe „Client-Jar“ |
 | `renderer.data` | leer | `--data` je Eintrag | Datenwurzeln mit Biomen und Bannermustern |
 | `renderer.gpu` | `false` | `--gpu auto`, sonst `--gpu off` | ob die Grafikkarte zeichnen darf |
 | `renderer.threads` | `1` | `--threads` | so viele Threads bekommt der Renderer, ab 1; dazu immer `--low-priority` |
+| `renderer.download-client-jar` | `false` | `--download-client-jar`, `--cache-dir` | die Zustimmung, das Client-Jar von Mojang zu laden, siehe „Client-Jar“ |
+| `renderer.client-version` | leer: die zur Welt | `--client-version` | die Version des Client-Jars, etwa `"26.2"` |
 | `world` | leer: die Hauptwelt | `--world` | die Weltwurzel mit `level.dat` |
 | `tiles` | `plugins/HeroicMap/tiles` | `--tiles` | die Wurzel der Kachelbäume |
 | `update-minutes` | `2` | – | Abstand der Updates in Minuten, `0` schaltet sie ab; dazu der Autosave von Paper auf 60 s, siehe [Läufe](laeufe.md), „Zeitplan“ |
@@ -45,13 +47,38 @@ Gelesen und geprüft in `Konfiguration.aus` in
 Was die Schlüssel unter `download` bewirken, steht in [Download](download.md),
 was der Webserver tut, in [Webserver](webserver.md).
 
-- **Binär und Assets** trägt der Betreiber noch von Hand ein. Das Binär
-  bringt das Plugin mit heroic-map-renderer#146 mit, die Assets holt der Renderer mit heroic-map-renderer#147
-  selbst.
+- **Das Binär** trägt der Betreiber noch von Hand ein; das Plugin bringt es
+  mit heroic-map-renderer#146 mit. Die Assets kommen von Hand über
+  `renderer.assets` oder mit Zustimmung aus dem Client-Jar, siehe
+  „Client-Jar“.
 - **Die Hauptwelt** ist der Ordner der ersten Welt des Servers unter dem
   Weltcontainer, also `level-name` aus `server.properties`.
 - **Die Grafikkarte** zeichnet nur, wenn der Betreiber es einschaltet. Der
   Renderer allein nähme sie, wenn er eine findet.
+
+## Client-Jar
+
+Ohne `renderer.assets` lädt der Renderer Texturen, Modelle und Biome aus dem
+Client-Jar von Minecraft, von Mojangs Servern, aber nur mit Zustimmung des
+Betreibers: `renderer.download-client-jar: true`. Wie der Renderer lädt und
+was er prüft, steht in der Doku des Renderers,
+[Assets](https://github.com/VonNekyia/heroic-map-renderer/blob/master/docs/benutzung/assets.md),
+„Von Mojang laden“; warum so, in seiner Entscheidung 0086.
+
+- **Die Zustimmung:** Das Jar gehört Mojang und darf nicht weitergegeben
+  werden. Mit `true` bestätigt der Betreiber, dass er Minecraft: Java
+  Edition besitzt, und nimmt die Minecraft-EULA an. `eula=true` des Servers
+  zählt nicht: Es gilt dem Server-Programm, nicht dem gekauften Spiel.
+  Sinngemäss steht der Text auch in `config.yml`.
+- **Ohne Zustimmung und ohne Assets** bricht jeder Lauf ab. Der Renderer
+  nennt den Text mit Version und Grösse des Jars; er steht im Log und im
+  Status, siehe [Läufe](laeufe.md), „Der Kindprozess“, und das Log sagt
+  einmal je Start, wo man zustimmt.
+- **Der Cache** liegt in `plugins/HeroicMap/client-jar`, `--cache-dir`,
+  neben den Kacheln und der Karte, nie darunter. Unter `tiles` bräche der
+  Renderer ab, und der Server lieferte das Jar sonst aus.
+- **Mit Assets** dazu legt der Renderer `renderer.assets` und
+  `renderer.data` über die Basis aus dem Jar.
 
 ## Bäume
 
@@ -93,8 +120,6 @@ Das Plugin prüft beim Start, nennt alle Fehler in einer Zeile im Log und
 schaltet sich ab:
 
 - `renderer.binary` fehlt oder ist keine Datei;
-- `renderer.assets` ist leer: Der Renderer braucht für `--tiles` mindestens
-  eine Wurzel;
 - `update-minutes` ist kleiner als 0;
 - eine Kamera ohne Anführungszeichen, ein `scale`, der keine ganze Zahl ist;
 - `renderer.threads` kleiner als 1;

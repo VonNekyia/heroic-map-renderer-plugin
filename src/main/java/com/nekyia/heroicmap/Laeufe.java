@@ -51,6 +51,8 @@ final class Laeufe {
     private final Konfiguration konf;
     private final Logger log;
     private final Path pidDatei;
+    /** Der Cache des Client-Jars im Datenordner, nie unter tiles: Der Server lieferte ihn sonst aus. */
+    private final Path cache;
     /** Hinweise aus dem Plan, jeder einmal je Start; der Zeitplan fragt alle paar Minuten. */
     private final Set<String> gemeldet = ConcurrentHashMap.newKeySet();
 
@@ -68,6 +70,8 @@ final class Laeufe {
 
     private volatile String letzteZeile = "";
     private volatile String fortschritt = "";
+    /** Die Zeile „Error: …“ des laufenden Prozesses ohne das Wort davor; null ohne. */
+    private volatile String fehler;
 
     /** Der Lader von musl; das Linux-Binär braucht glibc. */
     static final Path MUSL = Path.of("/lib/ld-musl-x86_64.so.1");
@@ -75,10 +79,12 @@ final class Laeufe {
     /** Tests setzen einen eigenen. */
     Path musl = MUSL;
 
-    Laeufe(Konfiguration konf, Logger log, Path pidDatei) {
+    /** {@code daten} ist der Datenordner des Plugins, mit der PID-Datei und dem Cache des Client-Jars. */
+    Laeufe(Konfiguration konf, Logger log, Path daten) {
         this.konf = konf;
         this.log = log;
-        this.pidDatei = pidDatei;
+        this.pidDatei = daten.resolve("renderer.pid");
+        this.cache = daten.resolve("client-jar");
     }
 
     /** Startet einen Lauf über alle Bäume und sagt, was geschah. */
@@ -162,6 +168,13 @@ final class Laeufe {
         List<String> b = new ArrayList<>(List.of(konf.renderer().toString(), "--world", konf.welt().toString()));
         konf.assets().forEach(p -> b.addAll(List.of("--assets", p.toString())));
         konf.daten().forEach(p -> b.addAll(List.of("--data", p.toString())));
+        // Nur mit Zustimmung des Betreibers. Siehe docs/konfiguration.md, „Client-Jar“.
+        if (konf.clientJar().zugestimmt()) {
+            b.addAll(List.of("--download-client-jar", "--cache-dir", cache.toString()));
+            if (!konf.clientJar().version().isEmpty()) {
+                b.addAll(List.of("--client-version", konf.clientJar().version()));
+            }
+        }
         b.addAll(List.of("--tiles", konf.kacheln().toString(), "--camera", baum.kamera(), "--direction", baum.richtung()));
         if (baum.scale() != null) {
             b.addAll(List.of("--scale", baum.scale().toString()));
@@ -419,7 +432,11 @@ final class Laeufe {
                 return ABGEBROCHEN;
             }
             still = code == 0 && puffer != null && puffer.stream().anyMatch(z -> NICHTS_ZEILE.matcher(z).matches());
-            return still ? NICHTS : code == 0 ? GEZEICHNET : "Fehler, Code " + code;
+            // Der Renderer nennt den Schalter in der Zeile nach dem Text der Zustimmung.
+            if (code != 0 && letzteZeile.contains("--download-client-jar")) {
+                hinweis("Zustimmen zum Client-Jar in config.yml: renderer.download-client-jar: true, siehe docs/konfiguration.md");
+            }
+            return still ? NICHTS : code == 0 ? GEZEICHNET : "Fehler, Code " + code + (fehler == null ? "" : ": " + fehler);
         } catch (IOException | RuntimeException e) {
             // Ein abgebrochener Prozess kann die Leitung mitten in einer Zeile schliessen.
             if (istAbgebrochen()) {
@@ -462,12 +479,16 @@ final class Laeufe {
      */
     private void lies(Process p, List<String> puffer) throws IOException {
         fortschritt = "";
+        fehler = null;
         try (var r = p.inputReader(StandardCharsets.UTF_8)) {
             for (String z; (z = r.readLine()) != null; ) {
                 String f = z.startsWith("{") ? beschreibe(z) : null;
                 if (f != null) {
                     fortschritt = f;
                 } else {
+                    if (z.startsWith("Error: ")) {
+                        fehler = z.substring("Error: ".length()).strip();
+                    }
                     letzteZeile = z;
                     melde(puffer, z);
                 }
