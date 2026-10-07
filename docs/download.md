@@ -1,6 +1,6 @@
 ---
 title: Download
-description: Der Kartendownload für den Mod, mit dem Kanal heroicmap:karte und seinen vier Nachrichten. Dazu Angebot und Anfrage, das Manifest, das Token, die Grenzen, der tägliche Abgleich, was die Kacheln abdecken, der Stand je Spieler und was ohne Webserver geschieht.
+description: Der Kartendownload für den Mod, mit dem Kanal heroicmap:karte und seinen fünf Nachrichten, darunter spieler für autogroup. Dazu Angebot und Anfrage, das Manifest, das Token, die Grenzen, der tägliche Abgleich, was die Kacheln abdecken, der Stand je Spieler und was ohne Webserver geschieht.
 code:
   - src/main/java/com/nekyia/heroicmap/Download.java
   - src/main/java/com/nekyia/heroicmap/Kanal.java
@@ -23,8 +23,11 @@ Bukkit, und in `Kanal`, der den Kanal und den Stand im Spieler bedient.
 - **Nur Bäume mit `download: true`,** und die nur mit `camera: "top-north"`,
   `scale: 4` und ohne `cinematic`, siehe [Konfiguration](konfiguration.md).
   Vorgabe: keiner.
-- **Ohne angebotenen Baum** meldet das Plugin den Kanal gar nicht an. Der Mod
-  sieht dann, dass der Server nichts anbietet.
+- **Ohne angebotenen Baum** meldet das Plugin den Kanal nicht zum Empfangen
+  an, mit `autogroup: simplevoicechat` nur zum Senden, siehe
+  [Mitspieler](mitspieler.md). Paper nennt dem Client beim Beitritt nur die
+  Kanäle zum Empfangen (`CraftPlayer.sendSupportedChannels`). Der Mod sieht
+  dann, dass der Server nichts anbietet, und schickt keine `anfrage`.
 - **Nur mit Manifest:** Ein Baum steht erst im Angebot, wenn sein Manifest
   lesbar ist, siehe „Manifest“.
 
@@ -39,10 +42,19 @@ Bukkit, und in `Kanal`, der den Kanal und den Stand im Spieler bedient.
 | Mod → Server | `anfrage` | `baum`, `massstab` (1, 2 oder 4), `art`: `voll` oder `abgleich`, `neu` (optional, `true`: ein voller Download ohne Stand zum Fortsetzen) | der Spieler wählt |
 | Server → Mod | `freigabe` | `baum`, `massstab`, `art`, `abdeckt_bis` (falls bekannt), `url` oder `port`, `token`, `ablauf` (Epoch s), `manifest_sha256`, `bytes` | auf eine `anfrage`, oder von selbst beim täglichen Abgleich |
 | Server → Mod | `abgelehnt` | `baum`, `art`, `grund` (Text für den Spieler), `wieder` (Epoch s, falls bekannt) | siehe „Anfrage“ |
+| Server → Mod | `spieler` | `spieler`: je Spieler, der den Empfänger in Simple Voice Chat hört, `uuid`, `name`, `dimension`, `x`, `z` | mit `autogroup: simplevoicechat` etwa jede Sekunde, solange jemand zu sehen ist; endet die Sicht, einmal mit leerer Liste, siehe [Mitspieler](mitspieler.md) |
 
-- **`dimension`** folgt aus `world` in `config.yml`. Die Weltwurzel ist
-  `minecraft:overworld`, ein Ordner `dimensions/<ns>/<name>` heisst
-  `<ns>:<name>`. `map.json` nennt keine Dimension.
+- **`spieler`** etwa so, `jetzt` wie in jeder Nachricht in Epoch s:
+
+  ```json
+  {"v":1,"typ":"spieler","jetzt":1760000000,"spieler":[{"uuid":"…","name":"…","dimension":"minecraft:overworld","x":12.5,"z":-40.2}]}
+  ```
+
+  `dimension` ist dort die Welt des genannten Spielers, `x` und `z` seine
+  Lage in Blöcken. Ein Feld für die Blickrichtung gibt es nicht.
+- **`dimension`** im `angebot` folgt aus `world` in `config.yml`. Die
+  Weltwurzel ist `minecraft:overworld`, ein Ordner `dimensions/<ns>/<name>`
+  heisst `<ns>:<name>`. `map.json` nennt keine Dimension.
 - **`url`** ist die Adresse des Baums am Server, `webserver.url` mit
   `/download/<baum>`. Darunter liegen `map.json`, `manifest` und
   `{z}/{x}/{y}.webp`, nur mit dem Token im Header, siehe

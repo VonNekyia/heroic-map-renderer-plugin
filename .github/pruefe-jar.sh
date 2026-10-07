@@ -13,6 +13,12 @@ for datei in web/index.html web/lizenzen.txt web/seite.html web/robots.vorlage.t
   grep -qx "$datei" <<< "$inhalt" || { echo "::error::$datei fehlt im Jar"; exit 1; }
 done
 
+# Die API von Simple Voice Chat nur zum Übersetzen, nie im Jar.
+# Siehe docs/entscheidungen/0005-simple-voice-chat-api.md.
+if grep -q '^de/maxhenkel/' <<< "$inhalt"; then
+  echo "::error::Klassen von Simple Voice Chat im Jar"; exit 1
+fi
+
 # Hangar nimmt höchstens 10 000 000 Byte je Datei. Siehe docs/entscheidungen/0004-renderer-im-jar.md.
 groesse=$(stat -c %s "$jar")
 echo "Jar: $groesse Byte"

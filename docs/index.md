@@ -16,7 +16,8 @@ Wie der Renderer arbeitet und was seine Schalter tun, steht in der
 - [Konfiguration](konfiguration.md): `config.yml`, jeder Schlüssel mit seinem Schalter, das Binär aus dem Jar, die Bäume und ihr Ordner, Fehler beim Start.
 - [Läufe](laeufe.md): Befehle, Zeitplan der Updates, der Kindprozess, Abbruch und Stoppen, Fortsetzen, verwaiste Prozesse.
 - [Webserver](webserver.md): der Server des Renderers als zweiter Kindprozess, die Karte aus dem Jar, Ende mit stdin, Neustart, Status, HTTPS.
-- [Download](download.md): der Kanal `heroicmap:karte` zum Mod, Angebot, Anfrage, Manifest, Grenzen, Token, täglicher Abgleich, `abdeckt_bis`, Stand je Spieler.
+- [Download](download.md): der Kanal `heroicmap:karte` zum Mod, Angebot, Anfrage, Manifest, Grenzen, Token, täglicher Abgleich, `abdeckt_bis`, Stand je Spieler, die Nachricht `spieler`.
+- [Mitspieler](mitspieler.md): `autogroup`, wer wen in Simple Voice Chat hört, mit Beleg, der Takt je Sekunde, die Brücke zu Simple Voice Chat und was ohne ihn geschieht.
 
 ## Entwicklung
 
@@ -32,3 +33,4 @@ Wie der Renderer arbeitet und was seine Schalter tun, steht in der
 - [0002: plugin.yml](entscheidungen/0002-plugin-yml.md): `plugin.yml` statt `paper-plugin.yml`.
 - [0003: Live-Render über Autosave und Zeitplan](entscheidungen/0003-live-render-ueber-autosave-und-zeitplan.md): Autosave von Paper auf 60 s und ein Update alle 2 min, rund 1 bis 3 min Verzögerung; Events, Chunks aus dem Speicher und ein Renderer als Dienst verworfen, solange die Messung sie nicht verlangt.
 - [0004: Renderer im Jar](entscheidungen/0004-renderer-im-jar.md): beide Binärs aus einem Release mit fester SHA-256 im Build, zur Laufzeit nach `bin/<version>/` ausgepackt; `renderer.binary` überschreibt nur noch.
+- [0005: API von Simple Voice Chat](entscheidungen/0005-simple-voice-chat-api.md): für `autogroup` nur `compileOnly` und `softdepend`, nicht im Jar, Sprechweite und Gruppen aus der API; entschieden vom Maintainer.

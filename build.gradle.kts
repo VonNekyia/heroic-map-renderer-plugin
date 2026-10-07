@@ -18,6 +18,7 @@ version = providers.gradleProperty("version").getOrElse("0.1.0-SNAPSHOT")
 repositories {
     mavenCentral()
     maven("https://repo.papermc.io/repository/maven-public/")
+    maven("https://maven.maxhenkel.de/repository/public/") { content { includeGroup("de.maxhenkel.voicechat") } }
 }
 
 // Nur die API, ohne paperweight-userdev. Siehe docs/entscheidungen/0001-nur-die-paper-api.md.
@@ -25,6 +26,8 @@ val paperApi = "io.papermc.paper:paper-api:26.2.build.129-stable"
 
 dependencies {
     compileOnly(paperApi)
+    // Nur zum Übersetzen, nicht im Jar und nicht in den Tests. Siehe docs/entscheidungen/0005-simple-voice-chat-api.md.
+    compileOnly("de.maxhenkel.voicechat:voicechat-api:2.6.24")
     testImplementation(paperApi)
     testImplementation(platform("org.junit:junit-bom:6.1.3"))
     testImplementation("org.junit.jupiter:junit-jupiter")
