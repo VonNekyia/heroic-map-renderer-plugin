@@ -2,6 +2,7 @@ package com.nekyia.heroicmap;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.nio.charset.StandardCharsets;
@@ -9,6 +10,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Objects;
+import org.bukkit.configuration.InvalidConfigurationException;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -39,9 +41,12 @@ class VorlageTest {
             webserver:
               enabled: true
               listen: "0.0.0.0:8123"
+              port: 8080
               url: ""
               # bleibt leer
               title: ""
+            alt:
+              a: 1
             alt-schluessel: 1
             """;
 
@@ -81,7 +86,7 @@ class VorlageTest {
                 "webserver.public-port", "webserver.tls-key", "download")), e.neu().toString());
         assertFalse(e.neu().contains("download.voll-je-woche"), "nur der oberste Schlüssel eines neuen Abschnitts");
         assertEquals(List.of(), e.fehlen());
-        assertEquals(List.of("alt-schluessel"), e.unbekannt());
+        assertEquals(List.of("webserver.port", "alt", "alt-schluessel"), e.unbekannt(), "je der oberste");
 
         var vorgabe = yaml(v);
         var neu = yaml(e.text());
@@ -103,6 +108,7 @@ class VorlageTest {
         int port = zeilen.indexOf("  public-port: 0");
         assertTrue(port > zeilen.indexOf("webserver:") && zeilen.get(port - 1).startsWith("  # "), e.text());
         assertTrue(zeilen.indexOf("download:") > zeilen.indexOf("alt-schluessel: 1"), "Neues oben steht am Ende");
+        assertEquals("", zeilen.get(zeilen.indexOf("alt-schluessel: 1") + 1), "mit Leerzeile davor");
 
         // Liest sich wie eine Konfiguration des Plugins.
         var k = Konfiguration.aus(neu, tmp, tmp);
@@ -145,6 +151,17 @@ class VorlageTest {
         assertFalse(yaml(e.text()).isConfigurationSection("webserver"));
         assertTrue(e.fehlen().contains("webserver.enabled"), e.fehlen().toString());
         assertFalse(e.neu().stream().anyMatch(n -> n.startsWith("webserver")));
+    }
+
+    @Test
+    void schreibt_nichts_wenn_das_ergebnis_kein_gueltiges_yaml_waere() throws Exception {
+        // Unter einer Zeile wie {…} kann kein Schlüssel stehen; die Prüfung danach fängt das ab.
+        var datei = tmp.resolve("config.yml");
+        String alt = "trees:\n  - camera: \"2:1\"\nwebserver: {enabled: true, listen: \"0.0.0.0:8080\"}\n";
+        Files.writeString(datei, alt);
+        assertThrows(InvalidConfigurationException.class, () -> Vorlage.ergaenze(datei, vorlage()));
+        assertEquals(alt, Files.readString(datei));
+        assertFalse(Files.exists(tmp.resolve("config.yml.neu")));
     }
 
     @Test

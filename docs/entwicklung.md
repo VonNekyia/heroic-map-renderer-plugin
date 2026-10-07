@@ -98,11 +98,13 @@ Laufzeit packt das Plugin das passende aus, siehe
   `renderer.binary`, Pfade, Bäume und ihre Ordner wie im Renderer, alle
   Fehler auf einmal.
 - **`VorlageTest`:** eine alte `config.yml` mit eigenen Werten und
-  Kommentaren, auch in `trees`, und einem unbekannten Schlüssel: Jede ihrer
+  Kommentaren, auch in `trees`, und unbekannten Schlüsseln: Jede ihrer
   Zeilen bleibt, jeder Schlüssel der Vorlage ist danach da, mit Vorgabe und
-  Kommentar, und ein zweiter Durchgang ändert nichts. Dazu vier Leerzeichen
-  Einrückung mit CRLF, ein Abschnitt, der keiner ist, und dass die Datei
-  nur geschrieben wird, wenn etwas fehlte.
+  Kommentar, die Unbekannten stehen je mit dem obersten Schlüssel im
+  Ergebnis, und ein zweiter Durchgang ändert nichts. Dazu vier Leerzeichen
+  Einrückung mit CRLF, ein Abschnitt, der keiner ist, ein Ergebnis, das
+  kein gültiges YAML wäre, und dass die Datei nur geschrieben wird, wenn
+  etwas fehlte. Jede von 11 Mutationen an `Vorlage` fiel darin (07.10.).
 - **`BinaerTest`:** an einem Jar, das der Test baut: die Wahl nach
   `os.name` und `os.arch`, das Auspacken mit passender SHA-256, kein neues
   Schreiben, solange sie passt, neues, wenn die Datei sich änderte, eine

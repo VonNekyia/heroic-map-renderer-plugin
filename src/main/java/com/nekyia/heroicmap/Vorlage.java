@@ -119,27 +119,21 @@ final class Vorlage {
         return oben.stream().anyMatch(o -> k.startsWith(o + "."));
     }
 
-    /** Jeder Schlüssel mit Pfad, Zeile und Einrückung; was in einer Liste steht, zählt nicht. */
+    /**
+     * Jeder Schlüssel mit Pfad, Zeile und Einrückung. Schlüssel in Einträgen einer Liste bekommen einen Pfad,
+     * den es in YAML nicht gibt; das schadet nicht, denn eingefügt wird nur in Abschnitte.
+     */
     private static Map<String, Stelle> stellen(List<String> zeilen) {
         var raus = new LinkedHashMap<String, Stelle>();
         var einzuege = new ArrayList<Integer>();
         var namen = new ArrayList<String>();
-        int liste = -1;
         for (int i = 0; i < zeilen.size(); i++) {
             String z = zeilen.get(i);
-            String s = z.strip();
-            if (s.isEmpty() || s.startsWith("#")) {
+            var m = SCHLUESSEL.matcher(z);
+            if (!m.matches()) {
                 continue;
             }
             int einzug = einzug(z);
-            if (liste >= 0 && (einzug > liste || einzug == liste && s.startsWith("-"))) {
-                continue;
-            }
-            liste = s.startsWith("-") ? einzug : -1;
-            var m = SCHLUESSEL.matcher(z);
-            if (liste >= 0 || !m.matches()) {
-                continue;
-            }
             while (!einzuege.isEmpty() && einzuege.getLast() >= einzug) {
                 einzuege.removeLast();
                 namen.removeLast();
@@ -151,7 +145,7 @@ final class Vorlage {
         return raus;
     }
 
-    /** Die letzte Zeile mit Inhalt, die zum Schlüssel gehört: tiefer eingerückt oder ein Eintrag seiner Liste. */
+    /** Die letzte Zeile mit Inhalt, die zum Schlüssel gehört, also tiefer eingerückt ist. */
     private static int ende(List<String> zeilen, Stelle s) {
         int ende = s.zeile();
         for (int i = s.zeile() + 1; i < zeilen.size(); i++) {
@@ -160,7 +154,7 @@ final class Vorlage {
                 continue;
             }
             int e = einzug(zeilen.get(i));
-            if (e < s.einzug() || e == s.einzug() && !t.startsWith("-")) {
+            if (e <= s.einzug()) {
                 break;
             }
             ende = i;
