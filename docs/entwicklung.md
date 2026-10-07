@@ -55,8 +55,8 @@ Laufzeit packt das Plugin das passende aus, siehe
 
 | Version | Archiv | SHA-256 |
 |---|---|---|
-| `0.2.0` | `heroic-map-renderer-windows-x64.zip` | `c842b1fc84ff49bf901be81933e5bd993a7a702ab491be651d04843c34c1f2bd` |
-| `0.2.0` | `heroic-map-renderer-linux-x64.tar.gz` | `a6bb2bf38f7b1eaac777206c9a8afd509bfdcef9464c72c943868320d919b795` |
+| `0.2.1` | `heroic-map-renderer-windows-x64.zip` | `3e091de956ee8a45a23a133fe61a5c160a720cc09d7906c190a5364111b0360d` |
+| `0.2.1` | `heroic-map-renderer-linux-x64.tar.gz` | `caca936cb26bc44a497c23626747ba7f8c0dfc6af1ccbf012f984db4a7bc0004` |
 
 - **Laden:** von
   `https://github.com/VonNekyia/heroic-map-renderer/releases/download/v<version>/`
@@ -66,7 +66,7 @@ Laufzeit packt das Plugin das passende aus, siehe
 - **Prüfen:** Hat ein geladenes Archiv eine andere SHA-256 als in
   `build.gradle.kts`, oder antwortet GitHub nicht mit 200, scheitert der
   Build. `SHA256SUMS` aus dem Release liest er nicht.
-- **Ohne Netz,** auch mit `--offline`, warnt er „Renderer 0.2.0 nicht
+- **Ohne Netz,** auch mit `--offline`, warnt er „Renderer 0.2.1 nicht
   geladen, das Jar bleibt ohne Binärs“ und baut weiter. Der nächste Build
   versucht es wieder.
 - **Im Jar:**
@@ -79,12 +79,13 @@ Laufzeit packt das Plugin das passende aus, siehe
   | `renderer/LICENSE`, `renderer/NOTICE`, `renderer/THIRD-PARTY-NOTICES`, `renderer/COPYRIGHT-library.html` | die Hinweise, die jeder Weitergabe des Binärs beiliegen, siehe im Renderer [Drittlizenzen](https://github.com/VonNekyia/heroic-map-renderer/blob/master/docs/entwicklung/drittlizenzen.md) |
 
 - **Die Hinweise aus dem tar.gz:** Beide Archive haben dieselben vier
-  Dateien, im Zip mit CRLF. In `THIRD-PARTY-NOTICES` des Zips von v0.2.0
-  ist ein Name doppelt als UTF-8 kodiert, im tar.gz nicht. `lizenzen.txt`
+  Dateien, im Zip mit CRLF. Bei v0.2.0 war in `THIRD-PARTY-NOTICES` des
+  Zips ein Name doppelt als UTF-8 kodiert; bei v0.2.1 gleichen sich beide bis
+  auf die Zeilenenden (07.10. verglichen). `lizenzen.txt`
   im Archiv gehört zur Karte unter `web/` und kommt mit `-Pweb`.
-- **Grösse,** am 06.10. mit v0.2.0: das Jar ohne Karte 9 245 984 Byte, mit
-  der Karte aus dem Archiv 9 519 547 Byte. Gepackt im Jar hat das Binär für
-  Windows 4 674 275 Byte, das für Linux 4 434 167. Die Grenze prüft die CI,
+- **Grösse,** am 07.10. mit v0.2.1: das Jar ohne Karte 9 256 517 Byte, mit
+  der Karte aus dem Archiv 9 530 080 Byte. Gepackt im Jar hat das Binär für
+  Windows 4 674 691 Byte, das für Linux 4 434 304. Die Grenze prüft die CI,
   siehe „CI“.
 - **Neue Version:** `renderer` und beide SHA-256 in `build.gradle.kts`
   ändern, dann die Tabelle hier. Die SHA-256 selbst rechnen:
