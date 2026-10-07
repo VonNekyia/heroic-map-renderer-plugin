@@ -12,6 +12,7 @@ code:
   - src/test/java/com/nekyia/heroicmap/WebserverTest.java
   - src/test/java/com/nekyia/heroicmap/BinaerTest.java
   - src/test/java/com/nekyia/heroicmap/MitspielerTest.java
+  - src/test/java/com/nekyia/heroicmap/VorlageTest.java
 ---
 
 # Entwicklung
@@ -97,6 +98,14 @@ Laufzeit packt das Plugin das passende aus, siehe
 - **`KonfigurationTest`:** die mitgelieferte `config.yml`, auch ohne
   `renderer.binary`, Pfade, Bäume und ihre Ordner wie im Renderer, alle
   Fehler auf einmal.
+- **`VorlageTest`:** eine alte `config.yml` mit eigenen Werten und
+  Kommentaren, auch in `trees`, und unbekannten Schlüsseln: Jede ihrer
+  Zeilen bleibt, jeder Schlüssel der Vorlage ist danach da, mit Vorgabe und
+  Kommentar, die Unbekannten stehen je mit dem obersten Schlüssel im
+  Ergebnis, und ein zweiter Durchgang ändert nichts. Dazu vier Leerzeichen
+  Einrückung mit CRLF, ein Abschnitt, der keiner ist, ein Ergebnis, das
+  kein gültiges YAML wäre, und dass die Datei nur geschrieben wird, wenn
+  etwas fehlte. Jede von 11 Mutationen an `Vorlage` fiel darin (07.10.).
 - **`BinaerTest`:** an einem Jar, das der Test baut: die Wahl nach
   `os.name` und `os.arch`, das Auspacken mit passender SHA-256, kein neues
   Schreiben, solange sie passt, neues, wenn die Datei sich änderte, eine
