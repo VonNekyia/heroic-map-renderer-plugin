@@ -13,8 +13,8 @@ import java.util.regex.Pattern;
 import org.bukkit.configuration.ConfigurationSection;
 
 /**
- * Die Einstellungen aus config.yml, geprüft, alle Pfade absolut; {@code renderer} null ohne renderer.binary;
- * {@code show} wahr mit simplevoicechat. Siehe docs/konfiguration.md.
+ * Die Einstellungen aus config.yml, geprüft, alle Pfade absolut; {@code renderer} null ohne renderer.binary.
+ * Siehe docs/konfiguration.md.
  */
 record Konfiguration(
         Path renderer,
@@ -29,8 +29,7 @@ record Konfiguration(
         List<Baum> baeume,
         Download download,
         Webserver webserver,
-        ClientJar clientJar,
-        boolean show) {
+        ClientJar clientJar) {
 
     private static final Pattern SCHRAEG = Pattern.compile("(\\d+):(\\d+)");
 
@@ -230,11 +229,6 @@ record Konfiguration(
             }
         }
 
-        String show = c.getString("show", "hidden");
-        if (!show.equals("hidden") && !show.equals("simplevoicechat")) {
-            fehler.add("show: hidden oder simplevoicechat, nicht " + show);
-        }
-
         if (!fehler.isEmpty()) {
             throw new IllegalArgumentException(String.join("; ", fehler));
         }
@@ -253,14 +247,13 @@ record Konfiguration(
                 new Webserver(webserver, adresse, url,
                         cert.isBlank() ? null : server.resolve(cert), key.isBlank() ? null : server.resolve(key),
                         titel, beschreibung, bild, oeffentlich),
-                new ClientJar(c.getBoolean("renderer.download-client-jar"), c.getString("renderer.client-version", "").strip()),
-                show.equals("simplevoicechat"));
+                new ClientJar(c.getBoolean("renderer.download-client-jar"), c.getString("renderer.client-version", "").strip()));
     }
 
     /** Dieselbe Konfiguration mit diesem Binär. */
     Konfiguration mitRenderer(Path binaer) {
         return new Konfiguration(binaer, welt, kacheln, assets, daten, grafikkarte, threads, vollThreads, updateMinuten,
-                baeume, download, webserver, clientJar, show);
+                baeume, download, webserver, clientJar);
     }
 
     /**

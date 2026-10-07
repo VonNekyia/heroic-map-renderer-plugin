@@ -3,6 +3,7 @@ package com.nekyia.heroicmap;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
+import java.time.Instant;
 import java.time.ZoneId;
 import java.util.List;
 import java.util.Optional;
@@ -11,15 +12,26 @@ import java.util.logging.Level;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.InvalidConfigurationException;
+import org.bukkit.entity.Player;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.Listener;
+import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.bukkit.plugin.messaging.PluginMessageListener;
 
 /**
- * Startet den Renderer nach Zeitplan und per Befehl, dazu seinen Server und show. Siehe docs/laeufe.md,
- * docs/webserver.md, docs/mitspieler.md.
+ * Startet den Renderer nach Zeitplan und per Befehl, dazu seinen Server und die Mitspieler auf der Karte;
+ * beantwortet show vom Mod. Siehe docs/laeufe.md, docs/webserver.md, docs/mitspieler.md.
  */
-public final class HeroicMapPlugin extends JavaPlugin {
+public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageListener, Listener {
 
     private static final List<String> BEFEHLE = List.of("render", "update", "status", "cancel");
+    /** Wer sie hat, sieht Mitspieler und wird gesehen. Siehe docs/mitspieler.md, „Wer wen sieht“. */
+    static final String SHOW = "heroicmap.show";
+
+    private final Mitspieler mitspieler = new Mitspieler();
+    /** Ob die Brücke zu Simple Voice Chat läuft. */
+    private boolean simpleVoiceChat;
 
     private Laeufe laeufe;
     private volatile Webserver webserver;
@@ -42,8 +54,12 @@ public final class HeroicMapPlugin extends JavaPlugin {
             return;
         }
         // Sprachchat lädt Klassen von Simple Voice Chat und läuft darum nur mit ihm. Siehe docs/mitspieler.md, „Simple Voice Chat“.
-        Mitspieler.starte(konf.show(), getServer().getPluginManager().isPluginEnabled("voicechat"), getLogger(),
-                () -> Sprachchat.starte(this));
+        simpleVoiceChat = Mitspieler.starte(getServer().getPluginManager().isPluginEnabled("voicechat"), getLogger(),
+                () -> Sprachchat.starte(this, mitspieler));
+        // Zum Empfangen auch ohne Simple Voice Chat, damit show eine Antwort mit Grund bekommt.
+        getServer().getMessenger().registerOutgoingPluginChannel(this, Download.KANAL);
+        getServer().getMessenger().registerIncomingPluginChannel(this, Download.KANAL, this);
+        getServer().getPluginManager().registerEvents(this, this);
         try {
             konf = konf.mitRenderer(Binaer.waehle(konf.renderer(), getFile().toPath(), getDataFolder().toPath().resolve("bin"),
                     System.getProperty("os.name"), System.getProperty("os.arch")));
@@ -72,6 +88,20 @@ public final class HeroicMapPlugin extends JavaPlugin {
         if (konf.webserver().an()) {
             starteWebserver(konf, geheimnis);
         }
+    }
+
+    /** Die Wahl show des Mods, im Hauptthread; die Antwort sagt, ob die Mitspieler hier gehen. */
+    @Override
+    public void onPluginMessageReceived(String channel, Player player, byte[] message) {
+        var antwort = mitspieler.show(message, player.getUniqueId(), player.hasPermission(SHOW), simpleVoiceChat, Instant.now());
+        if (antwort != null) {
+            player.sendPluginMessage(this, Download.KANAL, antwort.toString().getBytes(StandardCharsets.UTF_8));
+        }
+    }
+
+    @EventHandler
+    public void beimVerlassen(PlayerQuitEvent e) {
+        mitspieler.vergiss(e.getPlayer().getUniqueId());
     }
 
     /** Neue Schlüssel aus der Vorlage im Jar, nach einem Update. Siehe docs/konfiguration.md, „Nach einem Update“. */

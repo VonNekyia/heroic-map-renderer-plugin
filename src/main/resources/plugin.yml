@@ -4,7 +4,7 @@ main: com.nekyia.heroicmap.HeroicMapPlugin
 api-version: '26.2'
 description: Rendert die Karte des Heroic Map Renderer auf dem Server.
 website: https://github.com/VonNekyia/heroic-map-renderer-plugin
-# Simple Voice Chat vor diesem Plugin, falls da; für show, siehe docs/mitspieler.md.
+# Simple Voice Chat vor diesem Plugin, falls da; für die Mitspieler, siehe docs/mitspieler.md.
 softdepend: [voicechat]
 commands:
   heroicmap:
@@ -15,3 +15,6 @@ permissions:
   heroicmap.admin:
     description: Läufe des Renderers starten und abbrechen
     default: op
+  heroicmap.show:
+    description: Mitspieler auf der Karte im Mod sehen und gesehen werden, siehe docs/mitspieler.md
+    default: true
