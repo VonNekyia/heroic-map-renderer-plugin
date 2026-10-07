@@ -21,27 +21,28 @@ import org.bukkit.plugin.java.JavaPlugin;
 final class Sprachchat implements VoicechatPlugin {
 
     private final JavaPlugin plugin;
-    private final Mitspieler mitspieler = new Mitspieler();
+    private final Mitspieler mitspieler;
     private volatile VoicechatServerApi api;
 
-    private Sprachchat(JavaPlugin plugin) {
+    private Sprachchat(JavaPlugin plugin, Mitspieler mitspieler) {
         this.plugin = plugin;
+        this.mitspieler = mitspieler;
     }
 
     /**
-     * Meldet sich bei Simple Voice Chat an und startet den Takt. Nur aus onEnable: Simple Voice Chat nimmt
-     * Plugins bis zu seinem Start im ersten Tick an. Siehe docs/mitspieler.md, „Simple Voice Chat“.
+     * Meldet sich bei Simple Voice Chat an und startet den Takt; gibt, ob das ging. Nur aus onEnable: Simple
+     * Voice Chat nimmt Plugins bis zu seinem Start im ersten Tick an. Siehe docs/mitspieler.md, „Simple Voice Chat“.
      */
-    static void starte(JavaPlugin plugin) {
+    static boolean starte(JavaPlugin plugin, Mitspieler mitspieler) {
         var dienst = plugin.getServer().getServicesManager().load(BukkitVoicechatService.class);
         if (dienst == null) {
-            plugin.getLogger().warning("show: Simple Voice Chat bietet seine API nicht an; niemand sieht andere Spieler.");
-            return;
+            plugin.getLogger().warning("Simple Voice Chat bietet seine API nicht an; auf der Karte sieht niemand andere Spieler.");
+            return false;
         }
-        var s = new Sprachchat(plugin);
+        var s = new Sprachchat(plugin, mitspieler);
         dienst.registerPlugin(s);
-        plugin.getServer().getMessenger().registerOutgoingPluginChannel(plugin, Download.KANAL);
         plugin.getServer().getGlobalRegionScheduler().runAtFixedRate(plugin, t -> s.takt(), 20, 20);
+        return true;
     }
 
     @Override
@@ -66,7 +67,7 @@ final class Sprachchat implements VoicechatPlugin {
         for (Player p : plugin.getServer().getOnlinePlayers()) {
             var l = p.getLocation();
             alle.add(new Mitspieler.Spieler(p.getUniqueId(), p.getName(), p.getWorld().getKey().toString(),
-                    l.getX(), l.getY(), l.getZ(), stimme(a, p)));
+                    l.getX(), l.getY(), l.getZ(), stimme(a, p), p.hasPermission(HeroicMapPlugin.SHOW)));
             if (p.getListeningPluginChannels().contains(Download.KANAL)) {
                 mitKanal.add(p.getUniqueId());
             }

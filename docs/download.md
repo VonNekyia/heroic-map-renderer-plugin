@@ -1,6 +1,6 @@
 ---
 title: Download
-description: Der Kartendownload für den Mod, mit dem Kanal heroicmap:karte und seinen fünf Nachrichten, darunter spieler für show. Dazu Angebot und Anfrage, das Manifest, das Token, die Grenzen, der tägliche Abgleich, was die Kacheln abdecken, der Stand je Spieler und was ohne Webserver geschieht.
+description: Der Kartendownload für den Mod, mit dem Kanal heroicmap:karte und seinen Nachrichten, darunter show und spieler für die Mitspieler. Dazu Angebot und Anfrage, das Manifest, das Token, die Grenzen, der tägliche Abgleich, was die Kacheln abdecken, der Stand je Spieler und was ohne Webserver geschieht.
 code:
   - src/main/java/com/nekyia/heroicmap/Download.java
   - src/main/java/com/nekyia/heroicmap/Kanal.java
@@ -23,18 +23,19 @@ Bukkit, und in `Kanal`, der den Kanal und den Stand im Spieler bedient.
 - **Nur Bäume mit `download: true`,** und die nur mit `camera: "top-north"`,
   `scale: 4` und ohne `cinematic`, siehe [Konfiguration](konfiguration.md).
   Vorgabe: keiner.
-- **Ohne angebotenen Baum** meldet das Plugin den Kanal nicht zum Empfangen
-  an, mit `show: simplevoicechat` nur zum Senden, siehe
-  [Mitspieler](mitspieler.md). Paper nennt dem Client beim Beitritt nur die
-  Kanäle zum Empfangen (`CraftPlayer.sendSupportedChannels`). Der Mod sieht
-  dann, dass der Server nichts anbietet, und schickt keine `anfrage`.
+- **Ohne angebotenen Baum** ist der Kanal trotzdem angemeldet, zum Senden
+  und zum Empfangen, damit `show` ankommt, siehe
+  [Mitspieler](mitspieler.md). Paper nennt dem Client beim Beitritt die
+  Kanäle zum Empfangen (`CraftPlayer.sendSupportedChannels`). Ein `angebot`
+  schickt das Plugin dann nicht. Der Mod fragt nur Bäume aus einem
+  `angebot` an, ohne es also nichts.
 - **Nur mit Manifest:** Ein Baum steht erst im Angebot, wenn sein Manifest
   lesbar ist, siehe „Manifest“.
 
 ## Kanal
 
 `heroicmap:karte`, in beide Richtungen, UTF-8-JSON. Jede Nachricht trägt
-`v` (1), `typ` und `jetzt`, die Uhr des Servers in Epoch s.
+`v` (1) und `typ`, jede des Servers dazu `jetzt`, seine Uhr in Epoch s.
 
 | Richtung | `typ` | Felder | Wann |
 |---|---|---|---|
@@ -42,7 +43,9 @@ Bukkit, und in `Kanal`, der den Kanal und den Stand im Spieler bedient.
 | Mod → Server | `anfrage` | `baum`, `massstab` (1, 2 oder 4), `art`: `voll` oder `abgleich`, `neu` (optional, `true`: ein voller Download ohne Stand zum Fortsetzen) | der Spieler wählt |
 | Server → Mod | `freigabe` | `baum`, `massstab`, `art`, `abdeckt_bis` (falls bekannt), `url` oder `port`, `token`, `ablauf` (Epoch s), `manifest_sha256`, `bytes` | auf eine `anfrage`, oder von selbst beim täglichen Abgleich |
 | Server → Mod | `abgelehnt` | `baum`, `art`, `grund` (Text für den Spieler), `wieder` (Epoch s, falls bekannt) | siehe „Anfrage“ |
-| Server → Mod | `spieler` | `spieler`: je Spieler, der den Empfänger in Simple Voice Chat hört, `uuid`, `name`, `dimension`, `x`, `z` | mit `show: simplevoicechat` etwa jede Sekunde, solange jemand zu sehen ist; endet die Sicht, einmal mit leerer Liste, siehe [Mitspieler](mitspieler.md) |
+| Server → Mod | `spieler` | `spieler`: je Spieler, den der Empfänger sieht, `uuid`, `name`, `dimension`, `x`, `z` | etwa jede Sekunde, solange jemand zu sehen ist; endet die Sicht, einmal mit leerer Liste, siehe [Mitspieler](mitspieler.md), „Wer wen sieht“ |
+| Mod → Server | `show` | `show`: `hidden` oder `simplevoicechat` | sobald der Kanal geht, und nach jeder Änderung der Wahl |
+| Server → Mod | `show` | `erlaubt`: `true` oder `false`; bei `false` `grund`: `permission` oder `simplevoicechat` | auf jede lesbare `show`, siehe [Mitspieler](mitspieler.md), „Die Wahl show“ |
 
 - **`spieler`** etwa so, `jetzt` wie in jeder Nachricht in Epoch s:
 
@@ -52,6 +55,15 @@ Bukkit, und in `Kanal`, der den Kanal und den Stand im Spieler bedient.
 
   `dimension` ist dort die Welt des genannten Spielers, `x` und `z` seine
   Lage in Blöcken. Ein Feld für die Blickrichtung gibt es nicht.
+- **`show`** vom Mod und die Antwort, etwa ohne Permission:
+
+  ```json
+  {"v":1,"typ":"show","show":"simplevoicechat"}
+  {"v":1,"typ":"show","jetzt":1760000000,"erlaubt":false,"grund":"permission"}
+  ```
+
+  `Kanal` lässt `show` aus, sonst wäre es eine unlesbare `anfrage`; die
+  Antwort gibt `HeroicMapPlugin`.
 - **`dimension`** im `angebot` folgt aus `world` in `config.yml`. Die
   Weltwurzel ist `minecraft:overworld`, ein Ordner `dimensions/<ns>/<name>`
   heisst `<ns>:<name>`. `map.json` nennt keine Dimension.

@@ -2,6 +2,8 @@ package com.nekyia.heroicmap;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -9,11 +11,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.BooleanSupplier;
 import java.util.logging.Logger;
 
 /**
- * show: wer wen in Simple Voice Chat hört, und die Nachricht spieler an den Mod. Ohne Bukkit und ohne
- * Simple Voice Chat; dessen Stand liefert {@link Sprachchat}. Siehe docs/mitspieler.md.
+ * Mitspieler auf der Karte: wer wen in Simple Voice Chat hört, die Wahl show jedes Spielers und die Nachrichten
+ * spieler und show. Ohne Bukkit und ohne Simple Voice Chat; dessen Stand liefert {@link Sprachchat}. Nur im
+ * Hauptthread. Siehe docs/mitspieler.md.
  */
 final class Mitspieler {
 
@@ -28,26 +32,85 @@ final class Mitspieler {
         static final Stimme STUMM = new Stimme(null, null, false, false);
     }
 
-    /** Ein Spieler online, mit Lage und Stimme. */
-    record Spieler(UUID uuid, String name, String dimension, double x, double y, double z, Stimme stimme) {}
+    /** Ein Spieler online, mit Lage und Stimme; {@code darf}: mit der Permission heroicmap.show. */
+    record Spieler(UUID uuid, String name, String dimension, double x, double y, double z, Stimme stimme, boolean darf) {}
+
+    /** Wer im Mod hidden gewählt hat; wer fehlt, hat simplevoicechat, auch ein Spieler ohne Mod. */
+    private final Set<UUID> verborgen = new HashSet<>();
 
     /** Wem zuletzt eine Liste mit Spielern ging; endet seine Sicht, bekommt er einmal eine leere. */
     private final Set<UUID> sahen = new HashSet<>();
 
     /**
-     * Startet die Sicht mit show: simplevoicechat, wenn Simple Voice Chat auf dem Server liegt; sonst sagt das
-     * Log einmal, warum nicht. {@code bruecke} lädt die Klassen von Simple Voice Chat und läuft nur mit ihm.
+     * Startet die Brücke zu Simple Voice Chat, wenn er auf dem Server liegt; sonst sagt das Log einmal, dass
+     * niemand andere Spieler sieht. Gibt, ob die Brücke läuft. {@code bruecke} lädt seine Klassen und läuft nur
+     * mit ihm.
      */
-    static void starte(boolean an, boolean simpleVoiceChat, Logger log, Runnable bruecke) {
-        if (!an) {
-            return;
-        }
+    static boolean starte(boolean simpleVoiceChat, Logger log, BooleanSupplier bruecke) {
         if (!simpleVoiceChat) {
-            log.warning("show: simplevoicechat, aber Simple Voice Chat ist nicht auf dem Server; "
-                    + "niemand sieht andere Spieler.");
-            return;
+            log.info("Simple Voice Chat ist nicht auf dem Server; auf der Karte sieht niemand andere Spieler.");
+            return false;
         }
-        bruecke.run();
+        return bruecke.getAsBoolean();
+    }
+
+    /** Ob die Nachricht vom Mod typ show trägt; der Kanal des Downloads lässt sie dann aus. */
+    static boolean istShow(byte[] nachricht) {
+        return alsShow(nachricht) != null;
+    }
+
+    private static JsonObject alsShow(byte[] nachricht) {
+        if (nachricht.length > Download.GROESSTE_ANFRAGE) {
+            return null;
+        }
+        try {
+            var o = JsonParser.parseString(new String(nachricht, StandardCharsets.UTF_8)).getAsJsonObject();
+            return o.has("typ") && o.get("typ").getAsString().equals("show") ? o : null;
+        } catch (RuntimeException e) {
+            return null;
+        }
+    }
+
+    /**
+     * Merkt sich die Wahl aus der Nachricht show und gibt die Antwort darauf; null, wenn es keine lesbare
+     * Nachricht show ist. Siehe docs/download.md, „Kanal“.
+     */
+    JsonObject show(byte[] nachricht, UUID spieler, boolean darf, boolean simpleVoiceChat, Instant jetzt) {
+        var o = alsShow(nachricht);
+        String wahl;
+        try {
+            if (o == null || !o.get("v").getAsString().equals("1")) {
+                return null;
+            }
+            wahl = o.get("show").getAsString();
+        } catch (RuntimeException e) {
+            return null;
+        }
+        switch (wahl) {
+            case "hidden" -> verborgen.add(spieler);
+            case "simplevoicechat" -> verborgen.remove(spieler);
+            default -> {
+                return null;
+            }
+        }
+        var a = Download.nachricht("show", jetzt);
+        a.addProperty("erlaubt", darf && simpleVoiceChat);
+        if (!darf) {
+            a.addProperty("grund", "permission");
+        } else if (!simpleVoiceChat) {
+            a.addProperty("grund", "simplevoicechat");
+        }
+        return a;
+    }
+
+    /** Ein Spieler geht; bis zu seiner nächsten Nachricht show gilt für ihn wieder simplevoicechat. */
+    void vergiss(UUID spieler) {
+        verborgen.remove(spieler);
+    }
+
+    /** Mit Permission und simplevoicechat; nur dann sieht man andere und wird gesehen. */
+    private boolean zeigt(Spieler p) {
+        return p.darf() && !verborgen.contains(p.uuid());
     }
 
     /**
@@ -74,8 +137,9 @@ final class Mitspieler {
     }
 
     /**
-     * Ein Takt: je Spieler mit offenem Kanal die Nachricht spieler mit allen, die ihn hören; die leere Liste
-     * nur einmal, wenn seine Sicht endet. Spieler ohne Nachricht fehlen in der Antwort.
+     * Ein Takt: je Spieler mit offenem Kanal die Nachricht spieler mit allen, die ihn hören, wenn beide
+     * Permission und simplevoicechat haben; die leere Liste nur einmal, wenn seine Sicht endet. Spieler ohne
+     * Nachricht fehlen in der Antwort. Siehe docs/mitspieler.md, „Wer wen sieht“.
      */
     Map<UUID, JsonObject> takt(List<Spieler> alle, Set<UUID> mitKanal, double weite, Instant jetzt) {
         // Jeder gegen jeden, n² je Takt. Siehe docs/mitspieler.md, „Takt“.
@@ -86,8 +150,8 @@ final class Mitspieler {
                 continue;
             }
             var liste = new JsonArray();
-            for (var p : alle) {
-                if (!p.uuid().equals(empfaenger.uuid()) && hoert(p, empfaenger, weite)) {
+            for (var p : zeigt(empfaenger) ? alle : List.<Spieler>of()) {
+                if (!p.uuid().equals(empfaenger.uuid()) && zeigt(p) && hoert(p, empfaenger, weite)) {
                     var o = new JsonObject();
                     o.addProperty("uuid", p.uuid().toString());
                     o.addProperty("name", p.name());

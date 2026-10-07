@@ -1,6 +1,6 @@
 ---
 title: Mitspieler
-description: Mit show sieht ein Spieler mit dem Mod die Spieler, die ihn in Simple Voice Chat hören. Wer wen hört, mit Beleg aus Javadoc und Code von Simple Voice Chat; der Takt im Hauptthread; die Brücke zu Simple Voice Chat als weiche Abhängigkeit und was ohne ihn geschieht.
+description: Ein Spieler mit dem Mod sieht auf der Karte die Spieler, die ihn in Simple Voice Chat hören, wenn beide es im Mod gewählt haben und die Permission heroicmap.show haben. Die Wahl show je Spieler, wer wen hört, mit Beleg aus Javadoc und Code von Simple Voice Chat, wer wen sieht, der Takt im Hauptthread, die Brücke zu Simple Voice Chat als weiche Abhängigkeit und was ohne ihn geschieht.
 code:
   - src/main/java/com/nekyia/heroicmap/Mitspieler.java
   - src/main/java/com/nekyia/heroicmap/Sprachchat.java
@@ -11,17 +11,42 @@ code:
 
 # Mitspieler
 
-Mit `show: simplevoicechat` in `config.yml` sieht ein Spieler mit dem
-Mod auf seiner Karte die Spieler, die ihn in Simple Voice Chat hören. Eigene
-Gruppen hat das Plugin nicht. Nur der Server entscheidet, wer zu sehen ist;
-der Mod zeigt, was kommt. Wunsch des Maintainers, #23; die Seite des Mods
-ist heroic-map-renderer-mod#17. Der Schlüssel steht in
-[Konfiguration](konfiguration.md), die Nachricht `spieler` in
-[Download](download.md), „Kanal“.
+Ein Spieler mit dem Mod sieht auf seiner Karte die Spieler, die ihn in
+Simple Voice Chat hören. Ob er mitmacht, wählt er im Mod mit `show`; ob er
+darf, regelt der Server mit der Permission `heroicmap.show`. Eigene Gruppen
+hat das Plugin nicht, und einen Schlüssel in `config.yml` gibt es dafür
+nicht. Nur der Server entscheidet, wer zu sehen ist; der Mod zeigt, was
+kommt. Wunsch des Maintainers, #23; warum so, steht in
+[0006](entscheidungen/0006-show-im-mod.md). Die Nachrichten `show` und
+`spieler` stehen in [Download](download.md), „Kanal“.
 
-Bis zum 07.10. hiess der Schlüssel `autogroup` mit `disabled`. Das Plugin
-liest ihn nicht mehr, ohne Übergang, denn es gab dafür noch kein Release.
-Entschieden vom Maintainer.
+Bis zum 07.10. regelte das ein Schlüssel in `config.yml`, erst `autogroup`,
+dann `show`. Das Plugin liest ihn nicht mehr; ein Release mit ihm gab es
+nicht. Steht er noch in einer `config.yml`, nennt das Log ihn als
+unbekannt, siehe [Konfiguration](konfiguration.md), „Nach einem Update“.
+
+## Die Wahl show
+
+- **Im Mod:** `show: hidden | simplevoicechat`, Vorgabe `simplevoicechat`.
+  `simplevoicechat`: Wer mich hört, sieht mich, und ich sehe ihn. `hidden`:
+  Niemand sieht mich, und ich sehe niemanden. Der Mod schickt seine Wahl,
+  sobald der Kanal geht, und nach jeder Änderung.
+- **Im Plugin:** je Spieler im Speicher, nicht auf der Platte. Ohne
+  Nachricht gilt `simplevoicechat`, also für Spieler ohne Mod und vor der
+  ersten Nachricht. Verlässt ein Spieler den Server, vergisst das Plugin
+  seine Wahl (`Mitspieler.vergiss`).
+- **Die Antwort** auf jede lesbare Nachricht `show` sagt, ob die
+  Mitspieler hier gehen: `erlaubt`, sonst mit `grund` `permission` oder
+  `simplevoicechat`. Fehlt beides, nennt sie die Permission. Der Mod zeigt
+  das im Menü. Eine Nachricht `show` mit einem anderen Wert, mit einem
+  anderen `v` als 1 oder über 1024 Byte bleibt ohne Antwort und ändert
+  nichts.
+- **Die Permission** `heroicmap.show` steht in `plugin.yml` mit
+  `default: true`, also für alle (Maintainer). Entziehen lässt sie sich
+  mit einem Permission-Plugin. Der Takt fragt sie jede Sekunde ab; die
+  Antwort auf `show` nennt den Stand beim Empfang.
+- **Im Hauptthread** laufen Empfang, Antwort und Takt, in
+  `HeroicMapPlugin.onPluginMessageReceived` und `Sprachchat.takt`.
 
 ## Simple Voice Chat
 
@@ -34,9 +59,9 @@ Entschieden vom Maintainer.
   Warum, steht in [0005](entscheidungen/0005-simple-voice-chat-api.md).
 - **Die Brücke:** `Sprachchat` ist die einzige Klasse, die die API berührt.
   `HeroicMapPlugin.onEnable` gibt sie als Lambda an `Mitspieler.starte`,
-  und das ruft sie nur, wenn `show: simplevoicechat` gilt und Simple
-  Voice Chat an ist (`isPluginEnabled("voicechat")`). Ohne ihn lädt so
-  keine seiner Klassen. `MitspielerTest` prüft das ohne die API.
+  und das ruft sie nur, wenn Simple Voice Chat an ist
+  (`isPluginEnabled("voicechat")`). Ohne ihn lädt so keine seiner Klassen.
+  `MitspielerTest` prüft das ohne die API.
 - **Anmelden:** `Sprachchat.starte` holt `BukkitVoicechatService` vom
   `ServicesManager` und meldet sich mit `registerPlugin` an, in `onEnable`.
   Simple Voice Chat gibt seinen Plugins die Server-API im ersten Tick nach
@@ -44,28 +69,30 @@ Entschieden vom Maintainer.
   sind; siehe `Voicechat.onEnable` und `PluginManager.init` in seinem
   [Code](https://github.com/henkelmax/simple-voice-chat/tree/f8d8146e59630e9f70dc82e20eb2f81285353b39/bukkit/src/main/java/de/maxhenkel/voicechat).
   Bis dahin läuft der Takt leer.
-- **Ohne Simple Voice Chat** sieht niemand andere Spieler. Das Log sagt es
-  einmal beim Start:
+- **Ohne Simple Voice Chat** sieht niemand andere Spieler, und die Antwort
+  auf `show` nennt den Grund `simplevoicechat`. Das Log sagt es einmal beim
+  Start, auf INFO:
 
   ```
-  show: simplevoicechat, aber Simple Voice Chat ist nicht auf dem Server; niemand sieht andere Spieler.
+  Simple Voice Chat ist nicht auf dem Server; auf der Karte sieht niemand andere Spieler.
   ```
 
-  Ist er an, bietet aber keinen `BukkitVoicechatService`, sagt das Log
-  „show: Simple Voice Chat bietet seine API nicht an; niemand sieht
-  andere Spieler.“
-- **Ohne Renderer** läuft die Sicht trotzdem. Sie startet vor der Wahl des
+  Ist er an, bietet aber keinen `BukkitVoicechatService`, warnt das Log
+  „Simple Voice Chat bietet seine API nicht an; auf der Karte sieht
+  niemand andere Spieler.“, und es gilt dasselbe.
+- **Ohne Renderer** läuft das alles trotzdem. Es startet vor der Wahl des
   Binärs, siehe [Konfiguration](konfiguration.md), „Das Binär“.
-- **Der Kanal:** `Sprachchat` meldet `heroicmap:karte` zum Senden an. Ohne
-  Baum zum Download bleibt er beim Empfangen aus, siehe
+- **Der Kanal:** `HeroicMapPlugin` meldet `heroicmap:karte` immer an, zum
+  Senden und zum Empfangen, damit `show` ankommt und eine Antwort bekommt,
+  auch ohne Simple Voice Chat und ohne Baum zum Download, siehe
   [Download](download.md), „Angeboten“.
 
 ## Wer wen hört
 
-Für einen Spieler E mit offenem Kanal nennt die Nachricht jeden Spieler H,
-der E hört, nach den Regeln von Simple Voice Chat. Geprüft am 07.10. an
-der API 2.6.24 und an seinem Code für Paper, Commit `f8d8146`. Im Plugin
-steht es in `Mitspieler.hoert`.
+Ob ein Spieler H einen Spieler E hört, folgt den Regeln von Simple Voice
+Chat; wer davon auf der Karte erscheint, steht in „Wer wen sieht“.
+Geprüft am 07.10. an der API 2.6.24 und an seinem Code für Paper, Commit
+`f8d8146`. Im Plugin steht es in `Mitspieler.hoert`.
 
 1. **E spricht:** verbunden (`VoicechatConnection.isConnected`) und mit dem
    Recht `voicechat.speak`.
@@ -119,12 +146,28 @@ steht es in `Mitspieler.hoert`.
   ändert (`VoiceDistanceEvent`), und Zuschauer, die einen Spieler
   übernehmen. Die Sicht folgt der normalen Sprechweite.
 
+## Wer wen sieht
+
+E sieht H, wenn H E hört, siehe „Wer wen hört“, und wenn beide die
+Permission `heroicmap.show` haben und beide `simplevoicechat` gewählt
+haben, ob mit Nachricht oder als Vorgabe. Der Code steht in
+`Mitspieler.takt`.
+
+- **Ohne Permission oder mit `hidden`** sieht man niemanden und wird von
+  niemandem gesehen.
+- **Ein Spieler ohne Mod** hat keine Wahl geschickt, also gilt für ihn
+  `simplevoicechat`. Mit Permission erscheint er bei anderen, bekommt
+  selbst aber keine Nachricht.
+- **Die Nachricht `spieler`** geht nur an E mit offenem Kanal. Ohne
+  Permission oder mit `hidden` ist seine Liste leer, und eine leere Liste
+  kommt nur einmal, wenn vorher jemand zu sehen war, siehe „Takt“.
+
 ## Takt
 
 - **Einmal je Sekunde,** alle 20 Ticks, über
   `GlobalRegionScheduler.runAtFixedRate`. Unter Paper läuft das im
-  Hauptthread; dort liest `Sprachchat.takt` je Spieler Lage, Welt und
-  Stimme.
+  Hauptthread; dort liest `Sprachchat.takt` je Spieler Lage, Welt, Stimme
+  und die Permission.
 - **Nur Spieler mit offenem Kanal** bekommen eine Nachricht, also mit
   `heroicmap:karte` in `getListeningPluginChannels`. Gezeigt werden auch
   Spieler ohne Mod.

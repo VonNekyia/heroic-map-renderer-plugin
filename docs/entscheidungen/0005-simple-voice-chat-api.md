@@ -62,3 +62,10 @@ Herausgeber trägt der Maintainer.
   die Regeln in [Mitspieler](../mitspieler.md), „Wer wen hört“, neu prüfen.
 - Ändert Simple Voice Chat, wer wen hört, zeigt die Karte das Alte, bis
   `Mitspieler.hoert` nachzieht.
+
+## Nachtrag, 07.10.
+
+Einen Schlüssel `show` in `config.yml` gibt es nicht mehr. Jeder Spieler
+wählt im Mod, der Server regelt nur die Permission `heroicmap.show`, siehe
+[0006](0006-show-im-mod.md). Die Mitspieler laufen, wenn Simple Voice Chat
+auf dem Server ist. Für die API gilt diese Entscheidung weiter.

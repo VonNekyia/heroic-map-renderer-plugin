@@ -140,11 +140,14 @@ Laufzeit packt das Plugin das passende aus, siehe
   `stoppe` weckt die Pause.
 - **`MitspielerTest`:** wer wen hört: dieselbe Gruppe über Welten,
   Sprechweite im Raum mit Grenze, andere Welt, normale, offene und
-  isolierte Gruppe, ohne Verbindung, Ton oder Recht. Der Takt: nur Spieler
+  isolierte Gruppe, ohne Verbindung, Ton oder Recht. Wer wen sieht: ohne
+  `heroicmap.show`, `hidden` auf einer Seite und zurück, ein Spieler ohne
+  Mod, Vergessen beim Verlassen. Die Antwort auf `show` Zeichen für Zeichen
+  mit und ohne Grund, unlesbare und zu grosse `show`. Der Takt: nur Spieler
   mit offenem Kanal, die Nachricht Zeichen für Zeichen, die leere Liste
-  einmal beim Ende der Sicht. Der Start mit `hidden` und ohne Simple
-  Voice Chat. Die Tests laufen ohne die API; so prüft der Test auch, dass
-  `HeroicMapPlugin` ohne sie lädt und nur `Sprachchat` sie braucht.
+  einmal beim Ende der Sicht. Der Start ohne Simple Voice Chat. Die Tests
+  laufen ohne die API; so prüft der Test auch, dass `HeroicMapPlugin` ohne
+  sie lädt und nur `Sprachchat` sie braucht.
 - **`DownloadTest`:** Angebot, unlesbare Anfragen, „Webserver aus“, Token mit
   Stufe, Deckel und Ablauf, Fortsetzen, Wechsel des Massstabs, alle drei
   Grenzen samt `wieder`, der tägliche Abgleich um die Uhrzeit herum, das
@@ -161,7 +164,13 @@ Laufzeit packt das Plugin das passende aus, siehe
   isolierte, die draussen hört, ohne Welt, ohne y, `<` statt `<=` an der
   Sprechweite, ohne Sprechen oder Hören, ohne Kanal, die leere Liste immer
   oder nie, ohne Vergessen geschlossener Kanäle, mit sich selbst in der
-  Liste, `starte` ohne Prüfung auf Simple Voice Chat oder auf `hidden`.
+  Liste, `starte` ohne Prüfung auf Simple Voice Chat oder auf den Schlüssel
+  von damals. Später am 07.10. 15 an der Wahl `show`, jede fiel ebenso:
+  ohne Permission oder mit `hidden` gezeigt, Empfänger oder Genannte ohne
+  Prüfung, `hidden` oder `simplevoicechat` nicht gemerkt, `vergiss` ohne
+  Wirkung, `erlaubt` ohne Permission, Grund vertauscht, ein falscher Wert,
+  `v` oder Grösse ungeprüft, die Brücke immer da, `starte` ohne Prüfung,
+  `istShow` für jede Nachricht.
 
 ## Probe mit dem echten Renderer
 

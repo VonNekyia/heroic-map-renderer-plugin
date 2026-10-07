@@ -68,7 +68,7 @@ class WebserverTest {
 
     private Konfiguration konf(Konfiguration.Webserver w) {
         return new Konfiguration(tmp.resolve("r"), tmp.resolve("welt"), tmp.resolve("tiles"), List.of(), List.of(), false,
-                4, 4, 2, List.of(), LaeufeTest.DOWNLOAD, w, Konfiguration.ClientJar.OHNE, false);
+                4, 4, 2, List.of(), LaeufeTest.DOWNLOAD, w, Konfiguration.ClientJar.OHNE);
     }
 
     @Test
