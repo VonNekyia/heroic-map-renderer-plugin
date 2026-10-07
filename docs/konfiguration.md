@@ -5,12 +5,14 @@ code:
   - src/main/resources/config.yml
   - src/main/java/com/nekyia/heroicmap/Konfiguration.java
   - src/main/java/com/nekyia/heroicmap/Binaer.java
+  - src/main/java/com/nekyia/heroicmap/Vorlage.java
 ---
 
 # Konfiguration
 
 Das Plugin liest `plugins/HeroicMap/config.yml` beim Start des Servers. Wer
-sie ändert, startet den Server neu. Relative Pfade gelten ab dem Ordner des
+sie ändert, startet den Server neu. Fehlt ihr nach einem Update ein neuer
+Schlüssel, ergänzt das Plugin ihn, siehe „Nach einem Update“. Relative Pfade gelten ab dem Ordner des
 Servers. Fast jeder Schlüssel wird ein Schalter des Renderers, siehe
 [Schalter des Renderers](https://github.com/VonNekyia/heroic-map-renderer/blob/master/docs/benutzung/schalter.md).
 Gelesen und geprüft in `Konfiguration.aus` in
@@ -157,6 +159,39 @@ Jeder Eintrag unter `trees` ist ein Kachelbaum, siehe
   [Webserver](webserver.md), „Nur zum Download“.
 - **Ein bestehender Baum** behält seinen scale. Einen anderen lehnt der
   Renderer beim Lauf ab und sagt es im Log.
+
+## Nach einem Update
+
+Die Vorlage im Jar schreibt das Plugin nur, wenn es noch keine `config.yml`
+gibt. Danach ergänzt es beim Start, was der Datei fehlt
+(`Vorlage.ergaenze`, aus `HeroicMapPlugin.onEnable`):
+
+- **Fehlende Schlüssel** kommen mit Vorgabe und Kommentar aus der Vorlage
+  dazu. Ein neuer Schlüssel oben steht am Ende der Datei, einer in einem
+  Abschnitt am Ende des Abschnitts, in dessen Einrückung. Fehlt ein ganzer
+  Abschnitt, etwa `download`, kommt er ganz.
+- **Die Zeilen des Betreibers** bleiben, wie sie sind: Werte, Kommentare,
+  auch die in Listen wie `trees`, Anführungszeichen und Zeilenenden. Das
+  Plugin fügt nur Zeilen ein; es schreibt die Datei nicht aus YAML neu,
+  denn so gingen Kommentare in Listen verloren.
+- **Geschrieben** wird nur, wenn etwas fehlte, erst nach `config.yml.neu`,
+  dann umbenannt. Das Log nennt die ergänzten Schlüssel:
+
+  ```
+  config.yml: aus der Vorlage ergänzt: webserver.public-port, download
+  ```
+
+- **Vorher geprüft:** Das Plugin liest das Ergebnis als YAML. Liest sich
+  ein Wert des Betreibers anders oder ein neuer anders als in der Vorlage,
+  schreibt es nichts und warnt „config.yml nicht ergänzt“; dann gelten für
+  fehlende Schlüssel die Vorgaben aus dem Jar.
+- **Ein Abschnitt, der keiner ist,** etwa `webserver: false`, bleibt. Seine
+  Schlüssel nennt das Log als „nicht ergänzt, es gilt die Vorgabe“.
+- **Unbekannte Schlüssel,** die die Vorlage nicht mehr kennt, bleiben stehen.
+  Das Log nennt sie einmal je Start: „config.yml: unbekannt, das Plugin
+  liest sie nicht: …“.
+- **Unlesbar,** etwa kein gültiges YAML oder kein UTF-8: Das Plugin ändert
+  nichts und warnt.
 
 ## Fehler beim Start
 

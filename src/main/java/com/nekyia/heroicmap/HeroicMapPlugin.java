@@ -1,6 +1,7 @@
 package com.nekyia.heroicmap;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.time.ZoneId;
 import java.util.List;
@@ -9,6 +10,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
+import org.bukkit.configuration.InvalidConfigurationException;
 import org.bukkit.plugin.java.JavaPlugin;
 
 /**
@@ -27,6 +29,7 @@ public final class HeroicMapPlugin extends JavaPlugin {
     @Override
     public void onEnable() {
         saveDefaultConfig();
+        ergaenzeKonfiguration();
         Path server = Path.of("").toAbsolutePath();
         Path hauptwelt = getServer().getWorldContainer().toPath().toAbsolutePath().normalize()
                 .resolve(getServer().getWorlds().getFirst().getName());
@@ -68,6 +71,25 @@ public final class HeroicMapPlugin extends JavaPlugin {
         }
         if (konf.webserver().an()) {
             starteWebserver(konf, geheimnis);
+        }
+    }
+
+    /** Neue Schlüssel aus der Vorlage im Jar, nach einem Update. Siehe docs/konfiguration.md, „Nach einem Update“. */
+    private void ergaenzeKonfiguration() {
+        try (var ein = getResource("config.yml")) {
+            var e = Vorlage.ergaenze(getDataFolder().toPath().resolve("config.yml"),
+                    new String(ein.readAllBytes(), StandardCharsets.UTF_8));
+            if (!e.neu().isEmpty()) {
+                getLogger().info("config.yml: aus der Vorlage ergänzt: " + String.join(", ", e.neu()));
+            }
+            if (!e.fehlen().isEmpty()) {
+                getLogger().warning("config.yml: nicht ergänzt, es gilt die Vorgabe: " + String.join(", ", e.fehlen()));
+            }
+            if (!e.unbekannt().isEmpty()) {
+                getLogger().warning("config.yml: unbekannt, das Plugin liest sie nicht: " + String.join(", ", e.unbekannt()));
+            }
+        } catch (IOException | InvalidConfigurationException | IllegalStateException e) {
+            getLogger().log(Level.WARNING, "config.yml nicht ergänzt, es gelten die Vorgaben für fehlende Schlüssel", e);
         }
     }
 
