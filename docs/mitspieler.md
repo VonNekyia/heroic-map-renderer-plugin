@@ -1,6 +1,6 @@
 ---
 title: Mitspieler
-description: Mit autogroup sieht ein Spieler mit dem Mod die Spieler, die ihn in Simple Voice Chat hören. Wer wen hört, mit Beleg aus Javadoc und Code von Simple Voice Chat; der Takt im Hauptthread; die Brücke zu Simple Voice Chat als weiche Abhängigkeit und was ohne ihn geschieht.
+description: Mit show sieht ein Spieler mit dem Mod die Spieler, die ihn in Simple Voice Chat hören. Wer wen hört, mit Beleg aus Javadoc und Code von Simple Voice Chat; der Takt im Hauptthread; die Brücke zu Simple Voice Chat als weiche Abhängigkeit und was ohne ihn geschieht.
 code:
   - src/main/java/com/nekyia/heroicmap/Mitspieler.java
   - src/main/java/com/nekyia/heroicmap/Sprachchat.java
@@ -11,13 +11,17 @@ code:
 
 # Mitspieler
 
-Mit `autogroup: simplevoicechat` in `config.yml` sieht ein Spieler mit dem
+Mit `show: simplevoicechat` in `config.yml` sieht ein Spieler mit dem
 Mod auf seiner Karte die Spieler, die ihn in Simple Voice Chat hören. Eigene
 Gruppen hat das Plugin nicht. Nur der Server entscheidet, wer zu sehen ist;
 der Mod zeigt, was kommt. Wunsch des Maintainers, #23; die Seite des Mods
 ist heroic-map-renderer-mod#17. Der Schlüssel steht in
 [Konfiguration](konfiguration.md), die Nachricht `spieler` in
 [Download](download.md), „Kanal“.
+
+Bis zum 07.10. hiess der Schlüssel `autogroup` mit `disabled`. Das Plugin
+liest ihn nicht mehr, ohne Übergang, denn es gab dafür noch kein Release.
+Entschieden vom Maintainer.
 
 ## Simple Voice Chat
 
@@ -30,7 +34,7 @@ ist heroic-map-renderer-mod#17. Der Schlüssel steht in
   Warum, steht in [0005](entscheidungen/0005-simple-voice-chat-api.md).
 - **Die Brücke:** `Sprachchat` ist die einzige Klasse, die die API berührt.
   `HeroicMapPlugin.onEnable` gibt sie als Lambda an `Mitspieler.starte`,
-  und das ruft sie nur, wenn `autogroup: simplevoicechat` gilt und Simple
+  und das ruft sie nur, wenn `show: simplevoicechat` gilt und Simple
   Voice Chat an ist (`isPluginEnabled("voicechat")`). Ohne ihn lädt so
   keine seiner Klassen. `MitspielerTest` prüft das ohne die API.
 - **Anmelden:** `Sprachchat.starte` holt `BukkitVoicechatService` vom
@@ -44,13 +48,13 @@ ist heroic-map-renderer-mod#17. Der Schlüssel steht in
   einmal beim Start:
 
   ```
-  autogroup: simplevoicechat, aber Simple Voice Chat ist nicht auf dem Server; niemand sieht andere Spieler.
+  show: simplevoicechat, aber Simple Voice Chat ist nicht auf dem Server; niemand sieht andere Spieler.
   ```
 
   Ist er an, bietet aber keinen `BukkitVoicechatService`, sagt das Log
-  „autogroup: Simple Voice Chat bietet seine API nicht an; niemand sieht
+  „show: Simple Voice Chat bietet seine API nicht an; niemand sieht
   andere Spieler.“
-- **Ohne Renderer** läuft autogroup trotzdem. Es startet vor der Wahl des
+- **Ohne Renderer** läuft die Sicht trotzdem. Sie startet vor der Wahl des
   Binärs, siehe [Konfiguration](konfiguration.md), „Das Binär“.
 - **Der Kanal:** `Sprachchat` meldet `heroicmap:karte` zum Senden an. Ohne
   Baum zum Download bleibt er beim Empfangen aus, siehe

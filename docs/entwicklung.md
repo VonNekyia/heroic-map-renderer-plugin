@@ -133,7 +133,7 @@ Laufzeit packt das Plugin das passende aus, siehe
   Sprechweite im Raum mit Grenze, andere Welt, normale, offene und
   isolierte Gruppe, ohne Verbindung, Ton oder Recht. Der Takt: nur Spieler
   mit offenem Kanal, die Nachricht Zeichen für Zeichen, die leere Liste
-  einmal beim Ende der Sicht. Der Start mit `disabled` und ohne Simple
+  einmal beim Ende der Sicht. Der Start mit `hidden` und ohne Simple
   Voice Chat. Die Tests laufen ohne die API; so prüft der Test auch, dass
   `HeroicMapPlugin` ohne sie lädt und nur `Sprachchat` sie braucht.
 - **`DownloadTest`:** Angebot, unlesbare Anfragen, „Webserver aus“, Token mit
@@ -152,7 +152,7 @@ Laufzeit packt das Plugin das passende aus, siehe
   isolierte, die draussen hört, ohne Welt, ohne y, `<` statt `<=` an der
   Sprechweite, ohne Sprechen oder Hören, ohne Kanal, die leere Liste immer
   oder nie, ohne Vergessen geschlossener Kanäle, mit sich selbst in der
-  Liste, `starte` ohne Prüfung auf Simple Voice Chat oder auf `disabled`.
+  Liste, `starte` ohne Prüfung auf Simple Voice Chat oder auf `hidden`.
 
 ## Probe mit dem echten Renderer
 

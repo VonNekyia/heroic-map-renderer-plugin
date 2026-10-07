@@ -65,9 +65,9 @@ webserver:
   tls-key: ""
 
 # Wen Spieler mit dem Mod auf der Karte sehen, siehe docs/mitspieler.md.
-# disabled: niemanden. simplevoicechat: die Spieler, die einen in
+# hidden: niemanden. simplevoicechat: die Spieler, die einen in
 # Simple Voice Chat hören; ohne Simple Voice Chat niemanden.
-autogroup: disabled
+show: hidden
 
 # Kartendownload für den Mod, siehe docs/download.md.
 download:

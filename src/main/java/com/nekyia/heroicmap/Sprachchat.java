@@ -35,7 +35,7 @@ final class Sprachchat implements VoicechatPlugin {
     static void starte(JavaPlugin plugin) {
         var dienst = plugin.getServer().getServicesManager().load(BukkitVoicechatService.class);
         if (dienst == null) {
-            plugin.getLogger().warning("autogroup: Simple Voice Chat bietet seine API nicht an; niemand sieht andere Spieler.");
+            plugin.getLogger().warning("show: Simple Voice Chat bietet seine API nicht an; niemand sieht andere Spieler.");
             return;
         }
         var s = new Sprachchat(plugin);

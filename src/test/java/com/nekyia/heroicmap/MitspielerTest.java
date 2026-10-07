@@ -147,11 +147,11 @@ class MitspielerTest {
     }
 
     @Test
-    void disabled_startet_nichts() {
+    void hidden_startet_nichts() {
         var log = new ArrayList<String>();
-        Mitspieler.starte(false, true, logger(log), () -> fail("disabled lädt die Brücke nicht"));
+        Mitspieler.starte(false, true, logger(log), () -> fail("hidden lädt die Brücke nicht"));
         Mitspieler.starte(false, false, logger(log), () -> fail());
-        assertEquals(List.of(), log, "disabled sagt nichts");
+        assertEquals(List.of(), log, "hidden sagt nichts");
     }
 
     @Test
@@ -160,7 +160,7 @@ class MitspielerTest {
                 "die Tests laufen ohne die API, wie ein Server ohne Simple Voice Chat");
         var log = new ArrayList<String>();
         Mitspieler.starte(true, false, logger(log), () -> fail("ohne Simple Voice Chat keine Brücke"));
-        assertEquals(List.of("autogroup: simplevoicechat, aber Simple Voice Chat ist nicht auf dem Server; "
+        assertEquals(List.of("show: simplevoicechat, aber Simple Voice Chat ist nicht auf dem Server; "
                 + "niemand sieht andere Spieler."), log);
         // Die Hauptklasse lädt und prüft sich ohne die API; nur die Brücke braucht sie.
         Class.forName("com.nekyia.heroicmap.HeroicMapPlugin", true, getClass().getClassLoader());

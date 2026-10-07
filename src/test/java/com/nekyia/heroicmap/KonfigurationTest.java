@@ -57,11 +57,11 @@ class KonfigurationTest {
         assertEquals("minecraft:overworld", k.dimension());
         assertEquals(new Konfiguration.Webserver(true, "0.0.0.0:8080", "", null, null, "", "", "", 0), k.webserver());
         assertEquals(Konfiguration.ClientJar.OHNE, k.clientJar(), "ohne Zustimmung");
-        assertFalse(k.autogroup(), "Vorgabe disabled");
+        assertFalse(k.show(), "Vorgabe hidden");
     }
 
     @Test
-    void autogroup() throws Exception {
+    void show() throws Exception {
         Files.createFile(server.resolve("r"));
         String kopf = """
                 renderer:
@@ -69,13 +69,13 @@ class KonfigurationTest {
                 trees:
                   - camera: "2:1"
                 """;
-        assertFalse(Konfiguration.aus(yaml(kopf), server, server).autogroup(), "ohne Schlüssel disabled");
-        assertFalse(Konfiguration.aus(yaml(kopf + "autogroup: disabled"), server, server).autogroup());
-        assertTrue(Konfiguration.aus(yaml(kopf + "autogroup: simplevoicechat"), server, server).autogroup());
-        for (String falsch : List.of("false", "SimpleVoiceChat", "voicechat")) {
+        assertFalse(Konfiguration.aus(yaml(kopf), server, server).show(), "ohne Schlüssel hidden");
+        assertFalse(Konfiguration.aus(yaml(kopf + "show: hidden"), server, server).show());
+        assertTrue(Konfiguration.aus(yaml(kopf + "show: simplevoicechat"), server, server).show());
+        for (String falsch : List.of("false", "disabled", "SimpleVoiceChat", "voicechat")) {
             var e = assertThrows(IllegalArgumentException.class,
-                    () -> Konfiguration.aus(yaml(kopf + "autogroup: " + falsch), server, server));
-            assertEquals("autogroup: disabled oder simplevoicechat, nicht " + falsch, e.getMessage());
+                    () -> Konfiguration.aus(yaml(kopf + "show: " + falsch), server, server));
+            assertEquals("show: hidden oder simplevoicechat, nicht " + falsch, e.getMessage());
         }
     }
 

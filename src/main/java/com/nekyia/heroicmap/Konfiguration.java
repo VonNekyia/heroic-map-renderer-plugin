@@ -14,7 +14,7 @@ import org.bukkit.configuration.ConfigurationSection;
 
 /**
  * Die Einstellungen aus config.yml, geprüft, alle Pfade absolut; {@code renderer} null ohne renderer.binary;
- * {@code autogroup} wahr mit simplevoicechat. Siehe docs/konfiguration.md.
+ * {@code show} wahr mit simplevoicechat. Siehe docs/konfiguration.md.
  */
 record Konfiguration(
         Path renderer,
@@ -30,7 +30,7 @@ record Konfiguration(
         Download download,
         Webserver webserver,
         ClientJar clientJar,
-        boolean autogroup) {
+        boolean show) {
 
     private static final Pattern SCHRAEG = Pattern.compile("(\\d+):(\\d+)");
 
@@ -230,9 +230,9 @@ record Konfiguration(
             }
         }
 
-        String autogroup = c.getString("autogroup", "disabled");
-        if (!autogroup.equals("disabled") && !autogroup.equals("simplevoicechat")) {
-            fehler.add("autogroup: disabled oder simplevoicechat, nicht " + autogroup);
+        String show = c.getString("show", "hidden");
+        if (!show.equals("hidden") && !show.equals("simplevoicechat")) {
+            fehler.add("show: hidden oder simplevoicechat, nicht " + show);
         }
 
         if (!fehler.isEmpty()) {
@@ -254,13 +254,13 @@ record Konfiguration(
                         cert.isBlank() ? null : server.resolve(cert), key.isBlank() ? null : server.resolve(key),
                         titel, beschreibung, bild, oeffentlich),
                 new ClientJar(c.getBoolean("renderer.download-client-jar"), c.getString("renderer.client-version", "").strip()),
-                autogroup.equals("simplevoicechat"));
+                show.equals("simplevoicechat"));
     }
 
     /** Dieselbe Konfiguration mit diesem Binär. */
     Konfiguration mitRenderer(Path binaer) {
         return new Konfiguration(binaer, welt, kacheln, assets, daten, grafikkarte, threads, vollThreads, updateMinuten,
-                baeume, download, webserver, clientJar, autogroup);
+                baeume, download, webserver, clientJar, show);
     }
 
     /**

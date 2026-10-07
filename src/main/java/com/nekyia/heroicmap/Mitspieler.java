@@ -12,7 +12,7 @@ import java.util.UUID;
 import java.util.logging.Logger;
 
 /**
- * autogroup: wer wen in Simple Voice Chat hört, und die Nachricht spieler an den Mod. Ohne Bukkit und ohne
+ * show: wer wen in Simple Voice Chat hört, und die Nachricht spieler an den Mod. Ohne Bukkit und ohne
  * Simple Voice Chat; dessen Stand liefert {@link Sprachchat}. Siehe docs/mitspieler.md.
  */
 final class Mitspieler {
@@ -35,15 +35,15 @@ final class Mitspieler {
     private final Set<UUID> sahen = new HashSet<>();
 
     /**
-     * Startet autogroup, wenn es an ist und Simple Voice Chat auf dem Server liegt; sonst sagt das Log einmal,
-     * warum nicht. {@code bruecke} lädt die Klassen von Simple Voice Chat und läuft nur mit ihm.
+     * Startet die Sicht mit show: simplevoicechat, wenn Simple Voice Chat auf dem Server liegt; sonst sagt das
+     * Log einmal, warum nicht. {@code bruecke} lädt die Klassen von Simple Voice Chat und läuft nur mit ihm.
      */
     static void starte(boolean an, boolean simpleVoiceChat, Logger log, Runnable bruecke) {
         if (!an) {
             return;
         }
         if (!simpleVoiceChat) {
-            log.warning("autogroup: simplevoicechat, aber Simple Voice Chat ist nicht auf dem Server; "
+            log.warning("show: simplevoicechat, aber Simple Voice Chat ist nicht auf dem Server; "
                     + "niemand sieht andere Spieler.");
             return;
         }
