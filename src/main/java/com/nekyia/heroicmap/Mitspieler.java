@@ -32,8 +32,12 @@ final class Mitspieler {
         static final Stimme STUMM = new Stimme(null, null, false, false);
     }
 
-    /** Ein Spieler online, mit Lage und Stimme; {@code darf}: mit der Permission heroicmap.show. */
-    record Spieler(UUID uuid, String name, String dimension, double x, double y, double z, Stimme stimme, boolean darf) {}
+    /**
+     * Ein Spieler online, mit Lage und Stimme; {@code darf}: mit der Permission heroicmap.show; {@code zuschauer}:
+     * im Zuschauermodus.
+     */
+    record Spieler(UUID uuid, String name, String dimension, double x, double y, double z, Stimme stimme, boolean darf,
+            boolean zuschauer) {}
 
     /** Wer im Mod hidden gewählt hat; wer fehlt, hat simplevoicechat, auch ein Spieler ohne Mod. */
     private final Set<UUID> verborgen = new HashSet<>();
@@ -114,6 +118,18 @@ final class Mitspieler {
     }
 
     /**
+     * Ob {@code e} {@code h} auf der Karte sieht. {@code e} braucht immer Permission und simplevoicechat. Ein
+     * Zuschauer sieht dann jeden; ein anderer nur, wer ihn hört und selbst Permission und simplevoicechat hat,
+     * und nie einen Zuschauer. Siehe docs/mitspieler.md, „Wer wen sieht“.
+     */
+    boolean sieht(Spieler e, Spieler h, double weite) {
+        if (!zeigt(e) || e.uuid().equals(h.uuid())) {
+            return false;
+        }
+        return e.zuschauer() || !h.zuschauer() && zeigt(h) && hoert(h, e, weite);
+    }
+
+    /**
      * Ob {@code hoerer} {@code sprecher} hört: dieselbe Gruppe überall, sonst dieselbe Welt in {@code weite}
      * Blöcken, wenn der Sprecher ohne Gruppe oder in einer offenen ist und der Hörer nicht in einer isolierten.
      * Siehe docs/mitspieler.md, „Wer wen hört“.
@@ -137,9 +153,8 @@ final class Mitspieler {
     }
 
     /**
-     * Ein Takt: je Spieler mit offenem Kanal die Nachricht spieler mit allen, die ihn hören, wenn beide
-     * Permission und simplevoicechat haben; die leere Liste nur einmal, wenn seine Sicht endet. Spieler ohne
-     * Nachricht fehlen in der Antwort. Siehe docs/mitspieler.md, „Wer wen sieht“.
+     * Ein Takt: je Spieler mit offenem Kanal die Nachricht spieler mit allen, die er sieht; die leere Liste nur
+     * einmal, wenn seine Sicht endet. Spieler ohne Nachricht fehlen in der Antwort.
      */
     Map<UUID, JsonObject> takt(List<Spieler> alle, Set<UUID> mitKanal, double weite, Instant jetzt) {
         // Jeder gegen jeden, n² je Takt. Siehe docs/mitspieler.md, „Takt“.
@@ -150,8 +165,8 @@ final class Mitspieler {
                 continue;
             }
             var liste = new JsonArray();
-            for (var p : zeigt(empfaenger) ? alle : List.<Spieler>of()) {
-                if (!p.uuid().equals(empfaenger.uuid()) && zeigt(p) && hoert(p, empfaenger, weite)) {
+            for (var p : alle) {
+                if (sieht(empfaenger, p, weite)) {
                     var o = new JsonObject();
                     o.addProperty("uuid", p.uuid().toString());
                     o.addProperty("name", p.name());

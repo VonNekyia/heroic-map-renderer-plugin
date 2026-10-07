@@ -150,11 +150,22 @@ Geprüft am 07.10. an der API 2.6.24 und an seinem Code für Paper, Commit
 
 E sieht H, wenn H E hört, siehe „Wer wen hört“, und wenn beide die
 Permission `heroicmap.show` haben und beide `simplevoicechat` gewählt
-haben, ob mit Nachricht oder als Vorgabe. Der Code steht in
-`Mitspieler.takt`.
+haben, ob mit Nachricht oder als Vorgabe. Für Zuschauer gilt anderes,
+siehe unten. Der Code steht in `Mitspieler.sieht`.
 
 - **Ohne Permission oder mit `hidden`** sieht man niemanden und wird von
   niemandem gesehen.
+- **Ein Zuschauer** (`GameMode.SPECTATOR`) sieht alle anderen Spieler
+  online, aus jeder Dimension, auch andere Zuschauer. Ob er sie hört, was
+  sie gewählt haben und ob sie die Permission haben, zählt nicht; der Mod
+  filtert die Dimension selbst. Seine eigene Permission und seine eigene
+  Wahl gelten weiter: ohne Permission oder mit `hidden` sieht auch er
+  niemanden. Wunsch des Maintainers, 07.10.
+- **Wer kein Zuschauer ist,** sieht nie einen Zuschauer, auch wenn er ihn
+  hört, etwa in derselben Gruppe.
+- **Wechselt jemand den Modus,** gilt das ab dem nächsten Takt; der Takt
+  liest den Modus jede Sekunde neu. Sieht dann einer niemanden mehr,
+  bekommt er einmal die leere Liste.
 - **Ein Spieler ohne Mod** hat keine Wahl geschickt, also gilt für ihn
   `simplevoicechat`. Mit Permission erscheint er bei anderen, bekommt
   selbst aber keine Nachricht.
@@ -166,8 +177,8 @@ haben, ob mit Nachricht oder als Vorgabe. Der Code steht in
 
 - **Einmal je Sekunde,** alle 20 Ticks, über
   `GlobalRegionScheduler.runAtFixedRate`. Unter Paper läuft das im
-  Hauptthread; dort liest `Sprachchat.takt` je Spieler Lage, Welt, Stimme
-  und die Permission.
+  Hauptthread; dort liest `Sprachchat.takt` je Spieler Lage, Welt, Stimme,
+  die Permission und ob er Zuschauer ist.
 - **Nur Spieler mit offenem Kanal** bekommen eine Nachricht, also mit
   `heroicmap:karte` in `getListeningPluginChannels`. Gezeigt werden auch
   Spieler ohne Mod.

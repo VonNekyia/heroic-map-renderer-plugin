@@ -10,6 +10,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.UUID;
+import org.bukkit.GameMode;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -67,7 +68,8 @@ final class Sprachchat implements VoicechatPlugin {
         for (Player p : plugin.getServer().getOnlinePlayers()) {
             var l = p.getLocation();
             alle.add(new Mitspieler.Spieler(p.getUniqueId(), p.getName(), p.getWorld().getKey().toString(),
-                    l.getX(), l.getY(), l.getZ(), stimme(a, p), p.hasPermission(HeroicMapPlugin.SHOW)));
+                    l.getX(), l.getY(), l.getZ(), stimme(a, p), p.hasPermission(HeroicMapPlugin.SHOW),
+                    p.getGameMode() == GameMode.SPECTATOR));
             if (p.getListeningPluginChannels().contains(Download.KANAL)) {
                 mitKanal.add(p.getUniqueId());
             }
