@@ -34,7 +34,7 @@ class MitspielerTest {
 
     private static Spieler spieler(String dimension, double x, double y, double z, Stimme stimme) {
         var uuid = new UUID(0, ++naechste);
-        return new Spieler(uuid, "s" + naechste, dimension, x, y, z, stimme, true);
+        return new Spieler(uuid, "s" + naechste, dimension, x, y, z, stimme, true, false);
     }
 
     private static Spieler bei(double x, Stimme stimme) {
@@ -112,10 +112,10 @@ class MitspielerTest {
     @Test
     void takt_nur_mit_kanal_und_einmal_leer() {
         var sam = new Spieler(UUID.fromString("11111111-2222-3333-4444-555555555555"), "Sam", OBERWELT, 12.5, 64, -40.2,
-                OHNE_GRUPPE, true);
+                OHNE_GRUPPE, true, false);
         var alex = new Spieler(UUID.fromString("66666666-7777-8888-9999-000000000000"), "Alex", OBERWELT, 0, 64, 0,
-                OHNE_GRUPPE, true);
-        var fern = new Spieler(new UUID(0, 99), "Fern", OBERWELT, 1000, 64, 0, OHNE_GRUPPE, true);
+                OHNE_GRUPPE, true, false);
+        var fern = new Spieler(new UUID(0, 99), "Fern", OBERWELT, 1000, 64, 0, OHNE_GRUPPE, true, false);
         var m = new Mitspieler();
 
         var raus = m.takt(List.of(sam, alex, fern), Set.of(alex.uuid(), fern.uuid()), WEITE, JETZT);
@@ -128,7 +128,7 @@ class MitspielerTest {
         assertEquals(Set.of(alex.uuid()), m.takt(List.of(sam, alex, fern), Set.of(alex.uuid(), fern.uuid()), WEITE,
                 JETZT.plusSeconds(1)).keySet(), "jede Sekunde wieder, solange jemand zu sehen ist");
 
-        var weg = new Spieler(sam.uuid(), "Sam", OBERWELT, 500, 64, 0, OHNE_GRUPPE, true);
+        var weg = new Spieler(sam.uuid(), "Sam", OBERWELT, 500, 64, 0, OHNE_GRUPPE, true, false);
         raus = m.takt(List.of(weg, alex, fern), Set.of(alex.uuid(), fern.uuid()), WEITE, JETZT.plusSeconds(2));
         assertEquals("{\"v\":1,\"typ\":\"spieler\",\"jetzt\":1760000002,\"spieler\":[]}", raus.get(alex.uuid()).toString(),
                 "endet die Sicht, einmal leer");
@@ -165,7 +165,7 @@ class MitspielerTest {
     @Test
     void ohne_permission_sieht_man_niemanden_und_wird_nicht_gesehen() {
         var a = bei(0, OHNE_GRUPPE);
-        var ohne = new Spieler(new UUID(1, 1), "Ohne", OBERWELT, 1, 64, 0, OHNE_GRUPPE, false);
+        var ohne = new Spieler(new UUID(1, 1), "Ohne", OBERWELT, 1, 64, 0, OHNE_GRUPPE, false, false);
         var m = new Mitspieler();
         var raus = m.takt(List.of(a, ohne), Set.of(a.uuid(), ohne.uuid()), WEITE, JETZT);
         assertEquals(Set.of(), raus.keySet(), "beide hören sich, aber einer hat die Permission nicht");
@@ -224,6 +224,76 @@ class MitspielerTest {
                 .getBytes(StandardCharsets.UTF_8);
         assertFalse(Mitspieler.istShow(gross), "über 1024 Byte");
         assertEquals(null, m.show(gross, u, true, true, JETZT));
+    }
+
+    private static Spieler zuschauer(Spieler p, boolean zuschauer) {
+        return new Spieler(p.uuid(), p.name(), p.dimension(), p.x(), p.y(), p.z(), p.stimme(), p.darf(), zuschauer);
+    }
+
+    @Test
+    void zuschauer_sieht_alle_ueber_welt_und_sprechweite() {
+        var m = new Mitspieler();
+        var z = zuschauer(bei(0, Stimme.STUMM), true);
+        var weit = bei(10_000, OHNE_GRUPPE);
+        var nether = spieler("minecraft:the_nether", 0, 64, 0, OHNE_GRUPPE);
+        var isoliert = bei(1, in(GRUPPE, Typ.ISOLIERT));
+        var versteckt = bei(2, OHNE_GRUPPE);
+        var ohneRecht = new Spieler(new UUID(2, 2), "OhneRecht", OBERWELT, 3, 64, 0, Stimme.STUMM, false, false);
+        var andererZuschauer = zuschauer(bei(4, OHNE_GRUPPE), true);
+        m.show(show("hidden"), versteckt.uuid(), true, true, JETZT);
+        var alle = List.of(z, weit, nether, isoliert, versteckt, ohneRecht, andererZuschauer);
+        for (var h : alle) {
+            assertEquals(!h.equals(z), m.sieht(z, h, WEITE), "ohne Stimme, über Welt und Weite, hidden, ohne Permission: "
+                    + h.name());
+        }
+        var liste = m.takt(alle, Set.of(z.uuid()), WEITE, JETZT).get(z.uuid()).getAsJsonArray("spieler");
+        assertEquals(alle.size() - 1, liste.size());
+        assertEquals("minecraft:the_nether", liste.get(1).getAsJsonObject().get("dimension").getAsString(),
+                "jede Dimension; der Mod filtert selbst");
+    }
+
+    @Test
+    void nicht_zuschauer_sieht_keinen_zuschauer() {
+        var m = new Mitspieler();
+        var e = bei(0, in(GRUPPE, Typ.NORMAL));
+        var z = zuschauer(bei(1, in(GRUPPE, Typ.NORMAL)), true);
+        assertTrue(Mitspieler.hoert(z, e, WEITE), "derselbe Ort, dieselbe Gruppe: er hört E");
+        assertFalse(m.sieht(e, z, WEITE), "trotzdem nicht auf der Karte");
+        assertTrue(m.sieht(z, e, WEITE), "umgekehrt sieht der Zuschauer E");
+        assertEquals(Set.of(z.uuid()), empfaenger(m, e, z));
+    }
+
+    @Test
+    void zuschauer_braucht_eigene_permission_und_wahl() {
+        var m = new Mitspieler();
+        var z = zuschauer(bei(0, OHNE_GRUPPE), true);
+        var a = bei(1, OHNE_GRUPPE);
+        m.show(show("hidden"), z.uuid(), true, true, JETZT);
+        assertFalse(m.sieht(z, a, WEITE), "mit eigener Wahl hidden niemand");
+        assertEquals(Set.of(), empfaenger(m, z, a));
+        m.show(show("simplevoicechat"), z.uuid(), true, true, JETZT);
+        var ohneRecht = new Spieler(z.uuid(), z.name(), OBERWELT, 0, 64, 0, OHNE_GRUPPE, false, true);
+        assertFalse(m.sieht(ohneRecht, a, WEITE), "ohne eigene Permission niemand");
+    }
+
+    @Test
+    void moduswechsel_ab_dem_naechsten_takt() {
+        var m = new Mitspieler();
+        var e = bei(0, OHNE_GRUPPE);
+        var fern = bei(1000, OHNE_GRUPPE);
+        var nah = bei(1, OHNE_GRUPPE);
+        var mitKanal = Set.of(e.uuid(), fern.uuid(), nah.uuid());
+
+        var raus = m.takt(List.of(e, fern, nah), mitKanal, WEITE, JETZT);
+        assertEquals(1, raus.get(e.uuid()).getAsJsonArray("spieler").size(), "als Spieler nur, wer ihn hört");
+
+        raus = m.takt(List.of(zuschauer(e, true), fern, nah), mitKanal, WEITE, JETZT.plusSeconds(1));
+        assertEquals(2, raus.get(e.uuid()).getAsJsonArray("spieler").size(), "als Zuschauer alle");
+        assertTrue(raus.get(nah.uuid()).getAsJsonArray("spieler").isEmpty(), "nah sieht den Zuschauer nicht mehr: einmal leer");
+
+        raus = m.takt(List.of(e, fern, nah), mitKanal, WEITE, JETZT.plusSeconds(2));
+        assertEquals(1, raus.get(e.uuid()).getAsJsonArray("spieler").size(), "zurück: wieder nur, wer ihn hört");
+        assertEquals(1, raus.get(nah.uuid()).getAsJsonArray("spieler").size(), "nah sieht ihn wieder");
     }
 
     @Test

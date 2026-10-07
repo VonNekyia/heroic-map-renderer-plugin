@@ -142,7 +142,10 @@ Laufzeit packt das Plugin das passende aus, siehe
   Sprechweite im Raum mit Grenze, andere Welt, normale, offene und
   isolierte Gruppe, ohne Verbindung, Ton oder Recht. Wer wen sieht: ohne
   `heroicmap.show`, `hidden` auf einer Seite und zurück, ein Spieler ohne
-  Mod, Vergessen beim Verlassen. Die Antwort auf `show` Zeichen für Zeichen
+  Mod, Vergessen beim Verlassen; ein Zuschauer sieht alle über Welt und
+  Sprechweite hinaus, auch `hidden` und andere Zuschauer, aber nicht mit
+  eigener Wahl `hidden` oder ohne Permission; wer kein Zuschauer ist, sieht
+  keinen, auch in derselben Gruppe; der Wechsel des Modus von Takt zu Takt. Die Antwort auf `show` Zeichen für Zeichen
   mit und ohne Grund, unlesbare und zu grosse `show`. Der Takt: nur Spieler
   mit offenem Kanal, die Nachricht Zeichen für Zeichen, die leere Liste
   einmal beim Ende der Sicht. Der Start ohne Simple Voice Chat. Die Tests

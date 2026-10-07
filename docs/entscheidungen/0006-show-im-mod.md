@@ -58,3 +58,10 @@ Nachrichten in [Download](../download.md), „Kanal“.
 - Ein alter Schlüssel `autogroup` oder `show` in einer `config.yml` bleibt
   stehen, und das Log nennt ihn als unbekannt, siehe
   [Konfiguration](../konfiguration.md), „Nach einem Update“.
+
+## Nachtrag, 07.10.
+
+Zuschauer sehen jederzeit alle anderen Spieler, solange sie selbst die
+Permission und `simplevoicechat` haben, und wer kein Zuschauer ist, sieht
+nie einen Zuschauer (Maintainer), siehe
+[Mitspieler](../mitspieler.md), „Wer wen sieht“.
