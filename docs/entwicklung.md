@@ -174,6 +174,9 @@ Laufzeit packt das Plugin das passende aus, siehe
   Wirkung, `erlaubt` ohne Permission, Grund vertauscht, ein falscher Wert,
   `v` oder Grösse ungeprüft, die Brücke immer da, `starte` ohne Prüfung,
   `istShow` für jede Nachricht.
+  Dazu 6 an `Mitspieler.sieht` für Zuschauer, jede fiel ebenso: Zuschauer
+  wie alle, für alle sichtbar, nur mit der Wahl der anderen, ohne andere
+  Zuschauer, ohne eigene Wahl, mit sich selbst.
 
 ## Probe mit dem echten Renderer
 
