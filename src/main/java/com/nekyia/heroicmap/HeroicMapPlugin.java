@@ -12,7 +12,7 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.plugin.java.JavaPlugin;
 
 /**
- * Startet den Renderer nach Zeitplan und per Befehl, dazu seinen Server und autogroup. Siehe docs/laeufe.md,
+ * Startet den Renderer nach Zeitplan und per Befehl, dazu seinen Server und show. Siehe docs/laeufe.md,
  * docs/webserver.md, docs/mitspieler.md.
  */
 public final class HeroicMapPlugin extends JavaPlugin {
@@ -39,7 +39,7 @@ public final class HeroicMapPlugin extends JavaPlugin {
             return;
         }
         // Sprachchat lädt Klassen von Simple Voice Chat und läuft darum nur mit ihm. Siehe docs/mitspieler.md, „Simple Voice Chat“.
-        Mitspieler.starte(konf.autogroup(), getServer().getPluginManager().isPluginEnabled("voicechat"), getLogger(),
+        Mitspieler.starte(konf.show(), getServer().getPluginManager().isPluginEnabled("voicechat"), getLogger(),
                 () -> Sprachchat.starte(this));
         try {
             konf = konf.mitRenderer(Binaer.waehle(konf.renderer(), getFile().toPath(), getDataFolder().toPath().resolve("bin"),

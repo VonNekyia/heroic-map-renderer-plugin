@@ -1,6 +1,6 @@
 ---
 title: "0005: API von Simple Voice Chat"
-description: Warum das Plugin für autogroup gegen die API von Simple Voice Chat baut, nur zum Übersetzen und als weiche Abhängigkeit, ohne sie ins Jar zu legen, und Sprechweite und Sprachgruppen daraus nimmt. Verworfen sind die Sprechweite aus der Konfiguration von Simple Voice Chat ohne Gruppen, eigene Gruppen im Plugin und die API im Jar.
+description: Warum das Plugin für show gegen die API von Simple Voice Chat baut, nur zum Übersetzen und als weiche Abhängigkeit, ohne sie ins Jar zu legen, und Sprechweite und Sprachgruppen daraus nimmt. Verworfen sind die Sprechweite aus der Konfiguration von Simple Voice Chat ohne Gruppen, eigene Gruppen im Plugin und die API im Jar.
 status: gilt
 date: 2026-10-07
 issues: [23]
@@ -15,7 +15,7 @@ code:
 
 ## Anlass
 
-Mit `autogroup: simplevoicechat` sollen Spieler mit dem Mod die Spieler auf
+Mit `show: simplevoicechat` sollen Spieler mit dem Mod die Spieler auf
 der Karte sehen, die sie in Simple Voice Chat hören (#23). Wer wen hört,
 hängt an Sprechweite und Sprachgruppen. Beides kennt nur Simple Voice Chat.
 Er steht unter „All Rights Reserved“, seine API eingeschlossen. Ob das
