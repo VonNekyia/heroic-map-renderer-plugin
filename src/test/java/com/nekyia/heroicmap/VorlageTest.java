@@ -90,7 +90,9 @@ class VorlageTest {
         }
         var alt = yaml(ALT);
         for (String k : alt.getKeys(true)) {
-            assertEquals(alt.get(k), neu.get(k), "unverändert: " + k);
+            if (!alt.isConfigurationSection(k)) {
+                assertEquals(alt.get(k), neu.get(k), "unverändert: " + k);
+            }
         }
         assertEquals("2:1", neu.getMapList("trees").getFirst().get("camera"), "die Kamera bleibt Text");
         assertEquals(5, neu.getInt("update-minutes"));
@@ -123,7 +125,8 @@ class VorlageTest {
 
     @Test
     void eigene_einrueckung_und_zeilenenden() throws Exception {
-        var v = vorlage();
+        // Im Checkout unter Windows hat die Vorlage CRLF; hier erst LF, dann überall CRLF.
+        var v = vorlage().replace("\r\n", "\n");
         var alt = yaml(v);
         String mitVier = v.replace("\n  ", "\n    ").replace("\n    public-port: 0\n", "\n").replace("\n", "\r\n");
         assertFalse(yaml(mitVier).contains("webserver.public-port"));
