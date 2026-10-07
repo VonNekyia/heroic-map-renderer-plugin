@@ -365,7 +365,8 @@ final class Download {
         return a;
     }
 
-    private static JsonObject nachricht(String typ, Instant jetzt) {
+    /** Kopf jeder Nachricht im Kanal: v, typ und jetzt in Epoch s. Siehe docs/download.md, „Kanal“. */
+    static JsonObject nachricht(String typ, Instant jetzt) {
         var o = new JsonObject();
         o.addProperty("v", 1);
         o.addProperty("typ", typ);

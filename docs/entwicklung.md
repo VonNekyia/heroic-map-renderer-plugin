@@ -1,6 +1,6 @@
 ---
 title: Entwicklung
-description: Bauen und Testen mit Gradle 9.7.1 und Java 25, was im Jar steckt, der Renderer im Jar mit Version und SHA-256, die Tests mit einem falschen Renderer, die Probe mit dem echten, die CI und das Release.
+description: Bauen und Testen mit Gradle 9.7.1 und Java 25, die API von Simple Voice Chat nur zum Übersetzen, was im Jar steckt, der Renderer im Jar mit Version und SHA-256, die Tests mit einem falschen Renderer, die Probe mit dem echten, die CI und das Release.
 code:
   - build.gradle.kts
   - .github/workflows/ci.yml
@@ -11,6 +11,7 @@ code:
   - src/test/java/com/nekyia/heroicmap/FalscherRenderer.java
   - src/test/java/com/nekyia/heroicmap/WebserverTest.java
   - src/test/java/com/nekyia/heroicmap/BinaerTest.java
+  - src/test/java/com/nekyia/heroicmap/MitspielerTest.java
 ---
 
 # Entwicklung
@@ -19,7 +20,9 @@ code:
 Gradle 9.7.1 kommt über den Wrapper, Java 25 über die Toolchain; Paper 26.2
 verlangt Java 25. Gebaut wird gegen die Paper-API `26.2.build.129-stable`,
 nur zum Übersetzen, ohne paperweight-userdev, siehe
-[0001](entscheidungen/0001-nur-die-paper-api.md).
+[0001](entscheidungen/0001-nur-die-paper-api.md). Ebenso nur zum Übersetzen
+die API von Simple Voice Chat 2.6.24, aus seinem Maven-Repository, siehe
+[0005](entscheidungen/0005-simple-voice-chat-api.md).
 
 ## Im Jar
 
@@ -40,7 +43,7 @@ cd heroic-map-renderer/web && npm ci && npm run build
 Ihre fremden Lizenzen, etwa von Leaflet, stehen in `web/lizenzen.txt`
 neben ihr, mit `NOTICE` und `LICENSE` des Renderers. Ohne `-Pweb` enthält
 das Jar keine Karte, und der Webserver liefert nur `/tiles/`. Keine Datei
-von Mojang.
+von Mojang und keine Klasse von Simple Voice Chat.
 
 ## Der Renderer im Jar
 
@@ -125,6 +128,13 @@ Laufzeit packt das Plugin das passende aus, siehe
   der stirbt, startet mit wachsender Pause neu, nach einem langen Lauf
   wieder mit der ersten; ein Binär, das fehlt, steht im Status, und
   `stoppe` weckt die Pause.
+- **`MitspielerTest`:** wer wen hört: dieselbe Gruppe über Welten,
+  Sprechweite im Raum mit Grenze, andere Welt, normale, offene und
+  isolierte Gruppe, ohne Verbindung, Ton oder Recht. Der Takt: nur Spieler
+  mit offenem Kanal, die Nachricht Zeichen für Zeichen, die leere Liste
+  einmal beim Ende der Sicht. Der Start mit `disabled` und ohne Simple
+  Voice Chat. Die Tests laufen ohne die API; so prüft der Test auch, dass
+  `HeroicMapPlugin` ohne sie lädt und nur `Sprachchat` sie braucht.
 - **`DownloadTest`:** Angebot, unlesbare Anfragen, „Webserver aus“, Token mit
   Stufe, Deckel und Ablauf, Fortsetzen, Wechsel des Massstabs, alle drei
   Grenzen samt `wieder`, der tägliche Abgleich um die Uhrzeit herum, das
@@ -136,6 +146,12 @@ Laufzeit packt das Plugin das passende aus, siehe
   null im Status, mit falschem Deckel, ohne eine der drei Grenzen, mit
   vertauschten Feldern im Token oder ohne die Uhrzeit des täglichen
   Abgleichs. Das Skript prüft die Sperrdatei vor jeder Mutation.
+  Am 07.10. dazu 15 an `Mitspieler`, jede fiel in `MitspielerTest`: ohne
+  den Vorrang der Gruppe, eine normale Gruppe wie eine offene, eine
+  isolierte, die draussen hört, ohne Welt, ohne y, `<` statt `<=` an der
+  Sprechweite, ohne Sprechen oder Hören, ohne Kanal, die leere Liste immer
+  oder nie, ohne Vergessen geschlossener Kanäle, mit sich selbst in der
+  Liste, `starte` ohne Prüfung auf Simple Voice Chat oder auf `disabled`.
 
 ## Probe mit dem echten Renderer
 
@@ -199,9 +215,11 @@ Build 129, eine Kopie der Testwelt, das Jar des Plugins unter `plugins/`,
   `master`, packt sie mit `-Pweb` ins Jar und prüft, dass `web/index.html`,
   `web/lizenzen.txt` und die Vorlagen `web/seite.html` und
   `web/robots.vorlage.txt` darin stehen, ebenso alles unter `renderer/`,
-  siehe „Der Renderer im Jar“. Das Jar muss unter 10 000 000 Byte bleiben;
-  mehr nimmt Hangar je Datei nicht. Beides prüft
-  [`.github/pruefe-jar.sh`](../.github/pruefe-jar.sh), auch beim Release.
+  siehe „Der Renderer im Jar“, und dass keine Klasse unter `de/maxhenkel/`
+  darin liegt, siehe [0005](entscheidungen/0005-simple-voice-chat-api.md).
+  Das Jar muss unter 10 000 000 Byte bleiben; mehr nimmt Hangar je Datei
+  nicht. Alles prüft [`.github/pruefe-jar.sh`](../.github/pruefe-jar.sh),
+  auch beim Release.
 - **Doku:** Das Prüfskript des Renderers prüft Verweise, Links,
   Frontmatter und `docs/index.md`. Die CI lädt es vom Branch `master`, wie
   in [`AGENTS.md`](../AGENTS.md) beschrieben, und nimmt

@@ -1,6 +1,6 @@
 ---
 title: Konfiguration
-description: Jeder Schlüssel in config.yml mit Vorgabe und Schalter des Renderers, das Binär aus dem Jar und wann es ausgepackt wird, wie das Plugin den Ordner eines Baums bestimmt und welche Fehler es beim Start meldet.
+description: Jeder Schlüssel in config.yml mit Vorgabe und Schalter des Renderers, darunter autogroup, das Binär aus dem Jar und wann es ausgepackt wird, wie das Plugin den Ordner eines Baums bestimmt und welche Fehler es beim Start meldet.
 code:
   - src/main/resources/config.yml
   - src/main/java/com/nekyia/heroicmap/Konfiguration.java
@@ -37,6 +37,7 @@ Gelesen und geprüft in `Konfiguration.aus` in
 | `download.abgleich-je-tag` | `1` | – | Abgleiche je Spieler in 24 h, von Hand und der tägliche zusammen |
 | `download.abgleich-ab` | `"00:00"` | – | ab dieser Uhrzeit des Servers holt der erste Join den täglichen Abgleich |
 | `download.reserve-minuten` | `10` | – | Reserve für `abdeckt_bis` |
+| `autogroup` | `disabled` | – | `simplevoicechat`: Spieler mit dem Mod sehen auf der Karte, wer sie in Simple Voice Chat hört; ohne Simple Voice Chat niemanden, und das Log sagt es einmal beim Start. `disabled`: niemand sieht andere Spieler. Siehe [Mitspieler](mitspieler.md) |
 | `webserver.enabled` | `true` | – | ob das Plugin den Server des Renderers startet |
 | `webserver.listen` | `"0.0.0.0:8080"` | `--listen` | Adresse und Port, IPv6 in `[…]`; Pflicht, wenn der Webserver an ist |
 | `webserver.url` | leer | – | optional: wie Spieler den Webserver erreichen, `http://` oder `https://`, ohne `/` am Ende; nur für einen anderen Host, HTTPS oder einen Proxy davor; mit HTTPS und einem Baum zum Download Pflicht. Ohne sie baut der Mod die Adresse selbst, siehe [Webserver](webserver.md), „Download“ |
@@ -48,7 +49,8 @@ Gelesen und geprüft in `Konfiguration.aus` in
 | `webserver.tls-key` | leer | `--tls-key` | der Schlüssel dazu als PEM; nur mit `tls-cert` |
 
 Was die Schlüssel unter `download` bewirken, steht in [Download](download.md),
-was der Webserver tut, in [Webserver](webserver.md).
+was der Webserver tut, in [Webserver](webserver.md), was `autogroup` tut, in
+[Mitspieler](mitspieler.md).
 
 - **Das Binär** bringt das Jar für Windows und Linux auf x86_64 mit, siehe
   „Das Binär“. Die Assets kommen von Hand über `renderer.assets` oder mit
@@ -171,6 +173,7 @@ schaltet sich ab:
 - eine Grenze unter `download` kleiner als 0, oder `abgleich-ab` keine
   Uhrzeit wie `"00:00"`;
 - `web: false` an einem Baum ohne `download: true`;
+- `autogroup` weder `disabled` noch `simplevoicechat`, etwa `false`;
 - mit eingeschaltetem Webserver: `webserver.listen` ohne Port, mit einem
   Port über 65535, oder mit Port 0 und einem Baum zum Download ohne `url`
   und ohne `public-port`; `public-port` keine Zahl, etwa in

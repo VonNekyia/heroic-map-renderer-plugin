@@ -57,6 +57,26 @@ class KonfigurationTest {
         assertEquals("minecraft:overworld", k.dimension());
         assertEquals(new Konfiguration.Webserver(true, "0.0.0.0:8080", "", null, null, "", "", "", 0), k.webserver());
         assertEquals(Konfiguration.ClientJar.OHNE, k.clientJar(), "ohne Zustimmung");
+        assertFalse(k.autogroup(), "Vorgabe disabled");
+    }
+
+    @Test
+    void autogroup() throws Exception {
+        Files.createFile(server.resolve("r"));
+        String kopf = """
+                renderer:
+                  binary: r
+                trees:
+                  - camera: "2:1"
+                """;
+        assertFalse(Konfiguration.aus(yaml(kopf), server, server).autogroup(), "ohne Schlüssel disabled");
+        assertFalse(Konfiguration.aus(yaml(kopf + "autogroup: disabled"), server, server).autogroup());
+        assertTrue(Konfiguration.aus(yaml(kopf + "autogroup: simplevoicechat"), server, server).autogroup());
+        for (String falsch : List.of("false", "SimpleVoiceChat", "voicechat")) {
+            var e = assertThrows(IllegalArgumentException.class,
+                    () -> Konfiguration.aus(yaml(kopf + "autogroup: " + falsch), server, server));
+            assertEquals("autogroup: disabled oder simplevoicechat, nicht " + falsch, e.getMessage());
+        }
     }
 
     @Test
