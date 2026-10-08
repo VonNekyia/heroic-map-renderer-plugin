@@ -1,6 +1,6 @@
 ---
 title: Läufe
-description: Wie das Plugin den Renderer als Kindprozess startet, mit Befehlen, dem Zeitplan der Updates, einem Lauf zur Zeit und einem Thread. Dazu die Ausgabe im Log, Abbruch und Stoppen des Servers, das Fortsetzen nach einem Abbruch und verwaiste Prozesse.
+description: Wie das Plugin den Renderer als Kindprozess startet, mit Befehlen, dem Zeitplan der Updates, einem Lauf zur Zeit und einem Thread. Dazu die Ausgabe im Log, Abbruch und Stoppen des Servers, das Fortsetzen nach einem Abbruch, kompakt packen und Nachverdichten mit /heroicmap compact und verwaiste Prozesse.
 code:
   - src/main/java/com/nekyia/heroicmap/Laeufe.java
   - src/main/java/com/nekyia/heroicmap/HeroicMapPlugin.java
@@ -25,6 +25,7 @@ ist die Entscheidung des Maintainers in heroic-map-renderer#153.
 |---|---|
 | `render` | voller Lauf über alle Bäume; setzt einen abgebrochenen fort |
 | `update` | Update über alle Bäume, `--update` |
+| `compact` | Nachverdichten über alle Bäume, `--compact-tree`, siehe „Kompakt“ |
 | `status` | was läuft, seit wann, mit PID und letzter Zeile; dazu je Baum Dauer und Ausgang des letzten Aufrufs, siehe „Status“ |
 | `cancel` | bricht den Lauf ab |
 
@@ -144,8 +145,12 @@ wie voller Lauf:
 
 ```
 Kein Lauf.
+Packung: 2x1-se schnell; top-north-s kompakt
 2x1-se, zuletzt Update vor 42,0 s: 0,7 s, nichts zu zeichnen
 ```
+
+Die Zeile `Packung` nennt je Baum mit lesbarer `map.json`, wie er packt,
+siehe „Kompakt“.
 
 Während eines Laufs steht in der ersten Zeile die letzte Meldung des
 Fortschritts, etwa:
@@ -167,13 +172,14 @@ Läuft seit 01:12:03: Voller Lauf, Baum 2x1-se, PID 4711. Basis: 200/17820 Kache
   sie grob, denn Regionen am Rand halten weniger Chunks.
 - **Unbekannt:** Eine unbekannte Phase oder eine Meldung, der ein Feld
   fehlt, zeigt der Status roh. Unbekannte Felder übergeht er.
-- **Noch keine Meldung:** Dann zeigt der Status die letzte Zeile Text.
+- **Noch keine Meldung:** Dann zeigt der Status die letzte Zeile Text
+  des laufenden Prozesses, etwa beim Nachverdichten, siehe „Kompakt“.
 
 - **Wann:** wie lange der Aufruf her ist.
 - **Dauer:** vom Start des Prozesses bis zu seinem Ende, unter einer Minute
   mit einer Nachkommastelle, sonst in min oder h.
-- **Ausgang:** „nichts zu zeichnen“, „Kacheln gezeichnet“, „abgebrochen“
-  oder „Fehler, …“ mit dem Grund.
+- **Ausgang:** „nichts zu zeichnen“, „Kacheln gezeichnet“, „verdichtet“,
+  „abgebrochen“ oder „Fehler, …“ mit dem Grund.
 - **Nur im Status:** Die Dauer kommt nicht ins Log. Leise Updates bleiben
   leise, siehe „Zeitplan“.
 - **Wozu:** Die Dauer eines Updates ohne Änderung kommt so vom echten
@@ -222,6 +228,64 @@ Kopf zählt als nicht abgebrochen.
   fort“.
 - **Ein abgebrochenes Update** setzt das nächste Update fort. Ein voller Lauf
   setzt es nicht fort, er zeichnet ohnehin alles.
+
+## Kompakt
+
+Der Renderer packt eine Kachel schnell oder kompakt; kompakt sind es rund
+die Hälfte der Bytes für ein Mehrfaches der Zeit beim Kodieren. Die Packung
+gehört zum Baum: `"compact": true` in seiner `map.json`, siehe im Renderer
+[map.json, „Packen“](https://github.com/VonNekyia/heroic-map-renderer/blob/master/docs/benutzung/map-json.md#packen).
+Für Plugin und CLI gelten dieselben Optionen, entschieden vom Maintainer am
+08.10. (#31).
+
+- **`renderer.compact: true`** gibt jedem vollen Lauf `--compact`, auch
+  einem fortgesetzten. Ein neuer Baum packt dann kompakt und merkt es sich;
+  Updates, `--resume` und `--pyramid` packen danach von selbst wie er.
+  Updates bekommen den Schalter nicht.
+- **Ein bestehender schneller Baum** bleibt mit `--compact` schnell. Der
+  Renderer sagt es im Log mit der Zeile `Packen: … packt schnell, --compact
+  gilt nur für einen neuen Baum`; der Status nennt den Baum `schnell`, mit
+  dem Hinweis auf `/heroicmap compact`.
+- **Status:** Die Zeile `Packung` liest jede `map.json` neu (`Laeufe.packung`):
+  `kompakt` mit `"compact": true`, sonst `schnell`. Ein Baum ohne lesbare
+  `map.json` fehlt darin.
+
+### Nachverdichten
+
+`/heroicmap compact` packt jeden Baum mit `map.json` kompakt nach, mit
+`--compact-tree <ordner>`, ohne Welt und Assets. Wie der Renderer das tut,
+steht in seiner Doku,
+[Kacheln exportieren, „Nachverdichten“](https://github.com/VonNekyia/heroic-map-renderer/blob/master/docs/benutzung/kacheln.md#nachverdichten),
+und in seiner Entscheidung 0093.
+
+- **Eingereiht wie die Läufe:** Es ist ein Lauf wie `render` und `update`,
+  und es läuft höchstens einer zur Zeit. So läuft das Nachverdichten nie
+  neben einem anderen Lauf auf demselben Baum; das verlangt 0093 des
+  Renderers. Läuft schon einer, antwortet der Befehl „Es läuft schon“.
+- **Schalter:** `--threads` mit `renderer.threads` und `--low-priority` wie
+  ein Update; mit `download: true` dazu `--manifest`, sonst entfernte der
+  Renderer das Manifest. Ein Baum ohne `map.json` fällt aus, das Log sagt
+  einmal: „noch kein Baum zum Nachverdichten, erst /heroicmap render“.
+- **Dauer:** Der Renderer mass rund 13,5 ms je Kachel auf einem Thread,
+  für die grosse Welt hochgerechnet rund 12 CPU-Stunden. So lange fallen
+  die Updates aus, siehe „Zeitplan“: Mit `renderer.threads: 1` steht die
+  Karte dann einen halben Tag still. Mehr Threads kürzen das.
+- **Abbrechen und fortsetzen:** `cancel` bricht ab wie jeden Lauf. Ein neuer
+  `compact` setzt fort: Der Renderer erkennt an seinen Hashes, was schon
+  kompakt ist, und kodiert nur den Rest; ein Aufruf auf einem fertigen Baum
+  kostet rund 1 ms je Kachel. `map.json` trägt `"compact": true` schon vor
+  der ersten Kachel, also packt jedes Update danach kompakt.
+- **Fortschritt:** `--compact-tree` meldet keinen Fortschritt als JSON. Nach
+  jeder Stufe schreibt er eine Zeile wie `Zoom 10:     2304 neu, 0 schon
+  kompakt, 0 übergangen, 0 nicht lesbar`; die letzte steht im Status. Die
+  Basis kommt zuerst und ist die grösste Stufe.
+- **Ausgang:** „verdichtet“. Danach liest das Plugin das Manifest neu, wie
+  nach jedem Lauf. Für `abdeckt_bis` zählt das Nachverdichten nicht, denn es
+  liest die Welt nicht, siehe [Download](download.md), „Was die Kacheln
+  abdecken“.
+- **Für den Download:** Jede Kachel bekommt neue Bytes und ein neues ETag.
+  Der Mod sieht danach den ganzen Baum als geändert, siehe
+  [Download](download.md), „Manifest“.
 
 ## Keine verwaisten Prozesse
 

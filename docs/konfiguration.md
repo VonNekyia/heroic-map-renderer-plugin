@@ -30,6 +30,7 @@ Gelesen und geprüft in `Konfiguration.aus` in
 | `renderer.full-run-threads` | `0` | `--threads` bei vollen Läufen | so viele Threads bekommt ein voller Lauf, auch fortgesetzt; `0`: alle Kerne, die die JVM sieht |
 | `renderer.download-client-jar` | `false` | `--download-client-jar`, `--cache-dir` | die Zustimmung, das Client-Jar von Mojang zu laden, siehe „Client-Jar“ |
 | `renderer.client-version` | leer: die zur Welt | `--client-version` | die Version des Client-Jars, etwa `"26.2"` |
+| `renderer.compact` | `false` | `--compact` bei vollen Läufen | kompakt packen, rund die Hälfte der Bytes für ein Mehrfaches der Zeit beim Kodieren; gilt nur für einen neuen Baum, einen bestehenden packt `/heroicmap compact` nach, siehe [Läufe](laeufe.md), „Kompakt“ |
 | `world` | leer: die Hauptwelt | `--world` | die Weltwurzel mit `level.dat` |
 | `tiles` | `plugins/HeroicMap/tiles` | `--tiles` | die Wurzel der Kachelbäume |
 | `update-minutes` | `2` | – | Abstand der Updates in Minuten, `0` schaltet sie ab; dazu der Autosave von Paper auf 60 s, siehe [Läufe](laeufe.md), „Zeitplan“ |
@@ -76,7 +77,7 @@ in [`Binaer.java`](../src/main/java/com/nekyia/heroicmap/Binaer.java).
 | `Linux` | `amd64` oder `x86_64` | `renderer/linux-x64/heroic-map-renderer` |
 
 - **Auspacken:** nach `plugins/HeroicMap/bin/<version>/`, etwa
-  `bin/0.2.1/heroic-map-renderer`, nur wenn die Datei dort fehlt oder ihre
+  `bin/0.3.0/heroic-map-renderer`, nur wenn die Datei dort fehlt oder ihre
   SHA-256 nicht die aus dem Build ist. Sonst bleibt sie, wie sie ist; die
   Prüfung liest sie einmal je Start.
   - Erst in eine Datei daneben, `<name>.neu`, dann umbenannt. So liegt nie

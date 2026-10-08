@@ -8,8 +8,8 @@ website: https://github.com/VonNekyia/heroic-map-renderer-plugin
 softdepend: [voicechat]
 commands:
   heroicmap:
-    description: Karte rendern, Update, Status, Abbruch
-    usage: /<command> render|update|status|cancel
+    description: Karte rendern, Update, Nachverdichten, Status, Abbruch
+    usage: /<command> render|update|compact|status|cancel
     permission: heroicmap.admin
 permissions:
   heroicmap.admin:

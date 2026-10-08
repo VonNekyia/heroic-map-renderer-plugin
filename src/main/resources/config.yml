@@ -24,6 +24,10 @@ renderer:
   download-client-jar: false
   # Die Version des Client-Jars, etwa "26.2"; leer: die zur Welt.
   client-version: ""
+  # true: jeder volle Lauf packt kompakt (--compact), rund die Hälfte der
+  # Bytes für ein Mehrfaches der Zeit beim Kodieren. Gilt nur für einen neuen
+  # Baum; einen bestehenden packt /heroicmap compact nach.
+  compact: false
 
 # Die Weltwurzel mit level.dat; leer: die Hauptwelt des Servers.
 world: ""

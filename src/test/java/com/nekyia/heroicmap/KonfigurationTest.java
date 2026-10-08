@@ -57,6 +57,20 @@ class KonfigurationTest {
         assertEquals("minecraft:overworld", k.dimension());
         assertEquals(new Konfiguration.Webserver(true, "0.0.0.0:8080", "", null, null, "", "", "", 0), k.webserver());
         assertEquals(Konfiguration.ClientJar.OHNE, k.clientJar(), "ohne Zustimmung");
+        assertFalse(k.kompakt(), "volle Läufe packen schnell");
+    }
+
+    @Test
+    void kompakt_packen() throws Exception {
+        Files.createFile(server.resolve("r"));
+        var k = Konfiguration.aus(yaml("""
+                renderer:
+                  binary: r
+                  compact: true
+                trees:
+                  - camera: "2:1"
+                """), server, server);
+        assertTrue(k.kompakt());
     }
 
     @Test

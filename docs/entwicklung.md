@@ -56,8 +56,8 @@ Laufzeit packt das Plugin das passende aus, siehe
 
 | Version | Archiv | SHA-256 |
 |---|---|---|
-| `0.2.1` | `heroic-map-renderer-windows-x64.zip` | `3e091de956ee8a45a23a133fe61a5c160a720cc09d7906c190a5364111b0360d` |
-| `0.2.1` | `heroic-map-renderer-linux-x64.tar.gz` | `caca936cb26bc44a497c23626747ba7f8c0dfc6af1ccbf012f984db4a7bc0004` |
+| `0.3.0` | `heroic-map-renderer-windows-x64.zip` | `62d381161cceaaa7148530c68798f068a3dc85e69929db377edfa8970a55dc26` |
+| `0.3.0` | `heroic-map-renderer-linux-x64.tar.gz` | `9bc26cc0e9dbff42ccbe4bc051670f004b5869ed82f7ccbc75b6595a0bc625ba` |
 
 - **Laden:** von
   `https://github.com/VonNekyia/heroic-map-renderer/releases/download/v<version>/`
@@ -67,7 +67,7 @@ Laufzeit packt das Plugin das passende aus, siehe
 - **Prüfen:** Hat ein geladenes Archiv eine andere SHA-256 als in
   `build.gradle.kts`, oder antwortet GitHub nicht mit 200, scheitert der
   Build. `SHA256SUMS` aus dem Release liest er nicht.
-- **Ohne Netz,** auch mit `--offline`, warnt er „Renderer 0.2.1 nicht
+- **Ohne Netz,** auch mit `--offline`, warnt er „Renderer 0.3.0 nicht
   geladen, das Jar bleibt ohne Binärs“ und baut weiter. Der nächste Build
   versucht es wieder.
 - **Im Jar:**
@@ -81,8 +81,8 @@ Laufzeit packt das Plugin das passende aus, siehe
 
 - **Die Hinweise aus dem tar.gz:** Beide Archive haben dieselben vier
   Dateien, im Zip mit CRLF. Bei v0.2.0 war in `THIRD-PARTY-NOTICES` des
-  Zips ein Name doppelt als UTF-8 kodiert; bei v0.2.1 gleichen sich beide bis
-  auf die Zeilenenden (07.10. verglichen). `lizenzen.txt`
+  Zips ein Name doppelt als UTF-8 kodiert; seit v0.2.1 gleichen sich beide
+  bis auf die Zeilenenden (zuletzt am 08.10. mit v0.3.0 verglichen). `lizenzen.txt`
   im Archiv gehört zur Karte unter `web/` und kommt mit `-Pweb`.
 - **Grösse,** am 07.10. mit v0.2.1: das Jar ohne Karte 9 256 517 Byte, mit
   der Karte aus dem Archiv 9 530 080 Byte. Gepackt im Jar hat das Binär für
@@ -113,7 +113,13 @@ Laufzeit packt das Plugin das passende aus, siehe
   überschreibt, und Plattformen ohne Binär, auch ein Jar ganz ohne.
 - **`LaeufeTest`, Planen:** die Schalter je Baum, wann ein Lauf `--resume`
   bekommt, wann ein Update einen Baum auslässt, der Kopf von
-  `stand-neu.bin`, die Marke `nur-download`. Ohne Prozess.
+  `stand-neu.bin`, die Marke `nur-download`, `--compact` nur bei vollen
+  Läufen mit `renderer.compact`, das Nachverdichten je Baum mit `map.json`
+  und die Packung im Status. Ohne Prozess.
+- **`LaeufeTest`, Nachverdichten:** nie neben einem anderen Lauf, in beide
+  Richtungen, `cancel` und ein neuer Aufruf danach, der Ausgang
+  „verdichtet“, der das Manifest neu lesen lässt, aber nicht als Stand für
+  `abdeckt_bis` zählt.
 - **`LaeufeTest`, Prozesse:** mit `FalscherRenderer`, einer Testklasse, die
   der Test direkt über `java` startet, ohne Hülle wie `cmd` oder `sh`
   dazwischen. So trifft ein Abbruch den Prozess selbst. Geprüft:
