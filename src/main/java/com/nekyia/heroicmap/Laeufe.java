@@ -33,7 +33,8 @@ import java.util.regex.Pattern;
  */
 final class Laeufe {
 
-    enum Art { VOLL, UPDATE }
+    /** {@code VERDICHTEN}: --compact-tree, ein fertiger Baum kompakt nachgepackt. */
+    enum Art { VOLL, UPDATE, VERDICHTEN }
 
     /** Ein Aufruf des Renderers für einen Baum; ein leiser schreibt nichts ins Log, wenn er nichts zeichnet. */
     record Auftrag(String baum, List<String> befehl, boolean leise) {}
@@ -45,6 +46,7 @@ final class Laeufe {
     private static final String ABGEBROCHEN = "abgebrochen";
     private static final String NICHTS = "nichts zu zeichnen";
     private static final String GEZEICHNET = "Kacheln gezeichnet";
+    private static final String VERDICHTET = "verdichtet";
     /** Die Zeile, mit der der Renderer ein Update ohne Änderung meldet. */
     private static final Pattern NICHTS_ZEILE = Pattern.compile("Update:\\s+nichts zu zeichnen");
 
@@ -97,7 +99,11 @@ final class Laeufe {
         if (auftraege.isEmpty()) {
             return "Kein Baum zu rendern, Gründe im Log.";
         }
-        return starte(art == Art.VOLL ? "Voller Lauf" : "Update", auftraege);
+        return starte(switch (art) {
+            case VOLL -> "Voller Lauf";
+            case UPDATE -> "Update";
+            case VERDICHTEN -> "Nachverdichten";
+        }, auftraege);
     }
 
     /** Arbeitet die Aufträge nacheinander in einem eigenen Faden ab. */
@@ -117,6 +123,14 @@ final class Laeufe {
         List<Auftrag> auftraege = new ArrayList<>();
         for (Konfiguration.Baum baum : konf.baeume()) {
             Path ordner = konf.kacheln().resolve(baum.ordner());
+            if (art == Art.VERDICHTEN) {
+                if (Files.exists(ordner.resolve("map.json"))) {
+                    auftraege.add(new Auftrag(baum.ordner(), verdichten(baum, ordner), false));
+                } else {
+                    hinweis(baum.ordner() + ": noch kein Baum zum Nachverdichten, erst /heroicmap render");
+                }
+                continue;
+            }
             Art angefangen = angefangen(ordner);
             boolean resume;
             if (art == Art.VOLL) {
@@ -183,14 +197,15 @@ final class Laeufe {
             b.add("--cinematic");
         }
         b.addAll(List.of("--gpu", konf.grafikkarte() ? "auto" : "off"));
-        // Hinter dem Server: niedrigste Priorität; Updates mit wenigen Threads, volle Läufe mit eigenen, 0 = alle
-        // Kerne. Siehe docs/laeufe.md, „Der Kindprozess“.
-        int threads = art == Art.UPDATE ? konf.threads()
-                : konf.vollThreads() == 0 ? Runtime.getRuntime().availableProcessors() : konf.vollThreads();
-        b.addAll(List.of("--threads", Integer.toString(threads), "--low-priority", "--progress", "json"));
+        // Hinter dem Server: niedrigste Priorität. Siehe docs/laeufe.md, „Der Kindprozess“.
+        b.addAll(List.of("--threads", Integer.toString(threads(art)), "--low-priority", "--progress", "json"));
         // Bei jedem Lauf, sonst entfernt der Renderer das Manifest. Siehe docs/laeufe.md, „Der Kindprozess“.
         if (baum.download()) {
             b.add("--manifest");
+        }
+        // Ein Baum merkt sich die Packung; Updates und --resume packen dann wie er. Siehe docs/laeufe.md, „Kompakt“.
+        if (art == Art.VOLL && konf.kompakt()) {
+            b.add("--compact");
         }
         if (art == Art.UPDATE) {
             b.add("--update");
@@ -199,6 +214,40 @@ final class Laeufe {
             b.add("--resume");
         }
         return b;
+    }
+
+    /**
+     * Threads je Art: Updates wenige, volle Läufe und Nachverdichten eigene, 0 = alle Kerne. Siehe docs/laeufe.md,
+     * „Der Kindprozess“.
+     */
+    int threads(Art art) {
+        if (art == Art.UPDATE) {
+            return konf.threads();
+        }
+        return konf.vollThreads() == 0 ? Runtime.getRuntime().availableProcessors() : konf.vollThreads();
+    }
+
+    /**
+     * Nachverdichten mit --compact-tree, mit Threads wie ein voller Lauf und niedrigster Priorität; ohne
+     * --manifest entfernte der Renderer das Manifest. Siehe docs/laeufe.md, „Kompakt“.
+     */
+    List<String> verdichten(Konfiguration.Baum baum, Path ordner) {
+        List<String> b = new ArrayList<>(List.of(konf.renderer().toString(), "--compact-tree", ordner.toString(),
+                "--threads", Integer.toString(threads(Art.VERDICHTEN)), "--low-priority"));
+        if (baum.download()) {
+            b.add("--manifest");
+        }
+        return b;
+    }
+
+    /** Wie ein Baum packt, aus seiner map.json: kompakt oder schnell; null ohne lesbare map.json. */
+    static String packung(Path ordner) {
+        try {
+            var j = JsonParser.parseString(Files.readString(ordner.resolve("map.json"))).getAsJsonObject();
+            return j.has("compact") && j.get("compact").getAsBoolean() ? "kompakt" : "schnell";
+        } catch (IOException | RuntimeException e) {
+            return null;
+        }
     }
 
     /**
@@ -236,6 +285,18 @@ final class Laeufe {
             String pid = prozess != null ? ", PID " + prozess.pid() : "";
             text.append("Läuft seit ").append(seit).append(": ").append(laeuft).append(pid).append(". ")
                     .append(fortschritt.isEmpty() ? "Letzte Zeile: " + letzteZeile.strip() : fortschritt);
+        }
+        var packung = new ArrayList<String>();
+        for (var baum : konf.baeume()) {
+            String p = packung(konf.kacheln().resolve(baum.ordner()));
+            if (p != null) {
+                // Der Renderer packt einen bestehenden schnellen Baum mit --compact weiter schnell.
+                packung.add(baum.ordner() + " " + p + (p.equals("schnell") && konf.kompakt()
+                        ? ", renderer.compact gilt nur für einen neuen Baum, /heroicmap compact packt ihn nach" : ""));
+            }
+        }
+        if (!packung.isEmpty()) {
+            text.append("\nPackung: ").append(String.join("; ", packung));
         }
         var jetzt = Instant.now();
         letzte.forEach((baum, l) -> text.append('\n').append(baum).append(", zuletzt ").append(l.name())
@@ -359,18 +420,23 @@ final class Laeufe {
                 melde(puffer, name + ", Baum " + a.baum() + ": " + String.join(" ", a.befehl()));
                 var start = Instant.now();
                 long beginn = System.nanoTime();
+                boolean verdichten = a.befehl().contains("--compact-tree");
                 String ausgang = fuehreAus(a.befehl(), puffer);
+                if (verdichten && ausgang.equals(GEZEICHNET)) {
+                    ausgang = VERDICHTET;
+                }
                 var letzter = new Letzter(name, Instant.now(), Duration.ofNanos(System.nanoTime() - beginn), ausgang);
                 synchronized (this) {
                     letzte.put(a.baum(), letzter);
-                    // Ein fortgesetzter Lauf behält Kacheln von vor seinem Beginn; er zählt nicht.
+                    // Ein fortgesetzter Lauf behält Kacheln von vor seinem Beginn, Nachverdichten liest die Welt nicht;
+                    // beide zählen nicht.
                     if ((ausgang.equals(GEZEICHNET) || ausgang.equals(NICHTS)) && !a.befehl().contains("--resume")) {
                         erfolgreich.put(a.baum(), start);
                     }
                 }
                 // Gleich nach dem Baum, nicht nach allen: sein Manifest kann neu sein, auch nach einem
                 // Update ohne Änderung, das ein fehlendes schrieb.
-                if (ausgang.equals(GEZEICHNET) || ausgang.equals(NICHTS)) {
+                if (ausgang.equals(GEZEICHNET) || ausgang.equals(NICHTS) || ausgang.equals(VERDICHTET)) {
                     nachLauf.run();
                 }
                 ergebnisse.add(a.baum() + " " + ausgang);
@@ -482,6 +548,7 @@ final class Laeufe {
      */
     private void lies(Process p, List<String> puffer) throws IOException {
         fortschritt = "";
+        letzteZeile = "";
         fehler = null;
         try (var r = p.inputReader(StandardCharsets.UTF_8)) {
             for (String z; (z = r.readLine()) != null; ) {

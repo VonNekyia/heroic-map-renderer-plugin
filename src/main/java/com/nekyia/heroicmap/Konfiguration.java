@@ -13,8 +13,8 @@ import java.util.regex.Pattern;
 import org.bukkit.configuration.ConfigurationSection;
 
 /**
- * Die Einstellungen aus config.yml, geprüft, alle Pfade absolut; {@code renderer} null ohne renderer.binary.
- * Siehe docs/konfiguration.md.
+ * Die Einstellungen aus config.yml, geprüft, alle Pfade absolut; {@code renderer} null ohne renderer.binary;
+ * {@code kompakt}: volle Läufe mit --compact. Siehe docs/konfiguration.md.
  */
 record Konfiguration(
         Path renderer,
@@ -29,7 +29,8 @@ record Konfiguration(
         List<Baum> baeume,
         Download download,
         Webserver webserver,
-        ClientJar clientJar) {
+        ClientJar clientJar,
+        boolean kompakt) {
 
     private static final Pattern SCHRAEG = Pattern.compile("(\\d+):(\\d+)");
 
@@ -247,13 +248,14 @@ record Konfiguration(
                 new Webserver(webserver, adresse, url,
                         cert.isBlank() ? null : server.resolve(cert), key.isBlank() ? null : server.resolve(key),
                         titel, beschreibung, bild, oeffentlich),
-                new ClientJar(c.getBoolean("renderer.download-client-jar"), c.getString("renderer.client-version", "").strip()));
+                new ClientJar(c.getBoolean("renderer.download-client-jar"), c.getString("renderer.client-version", "").strip()),
+                c.getBoolean("renderer.compact"));
     }
 
     /** Dieselbe Konfiguration mit diesem Binär. */
     Konfiguration mitRenderer(Path binaer) {
         return new Konfiguration(binaer, welt, kacheln, assets, daten, grafikkarte, threads, vollThreads, updateMinuten,
-                baeume, download, webserver, clientJar);
+                baeume, download, webserver, clientJar, kompakt);
     }
 
     /**

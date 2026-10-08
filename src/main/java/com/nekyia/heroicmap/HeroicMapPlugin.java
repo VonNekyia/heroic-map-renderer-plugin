@@ -25,7 +25,7 @@ import org.bukkit.plugin.messaging.PluginMessageListener;
  */
 public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageListener, Listener {
 
-    private static final List<String> BEFEHLE = List.of("render", "update", "status", "cancel");
+    private static final List<String> BEFEHLE = List.of("render", "update", "compact", "status", "cancel");
     /** Wer sie hat, sieht Mitspieler und wird gesehen. Siehe docs/mitspieler.md, „Wer wen sieht“. */
     static final String SHOW = "heroicmap.show";
 
@@ -189,6 +189,7 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
         String antwort = switch (args[0]) {
             case "render" -> laeufe.starte(Laeufe.Art.VOLL);
             case "update" -> laeufe.starte(Laeufe.Art.UPDATE);
+            case "compact" -> laeufe.starte(Laeufe.Art.VERDICHTEN);
             case "status" -> laeufe.status() + (webserver != null ? "\n" + webserver.status() : "");
             case "cancel" -> laeufe.brichAb() ? "Der Lauf wird abgebrochen." : "Es läuft kein Lauf.";
             default -> null;

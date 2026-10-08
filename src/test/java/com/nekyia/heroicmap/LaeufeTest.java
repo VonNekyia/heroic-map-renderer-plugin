@@ -61,7 +61,7 @@ class LaeufeTest {
     private Konfiguration konf(Path renderer, boolean gpu, List<Konfiguration.Baum> baeume, Konfiguration.ClientJar clientJar) {
         return new Konfiguration(renderer, tmp.resolve("world"), tmp.resolve("tiles"),
                 List.of(tmp.resolve("a1"), tmp.resolve("a2")), List.of(tmp.resolve("d")), gpu, 1, 1, 30, baeume, DOWNLOAD,
-                new Konfiguration.Webserver(false, "", "", null, null, "", "", "", 0), clientJar);
+                new Konfiguration.Webserver(false, "", "", null, null, "", "", "", 0), clientJar, false);
     }
 
     private Laeufe laeufe(Konfiguration.Baum... baeume) {
@@ -389,6 +389,98 @@ class LaeufeTest {
 
     // Planen
 
+    // Kompakt
+
+    private static final Konfiguration.Baum OBEN = new Konfiguration.Baum("top-north", "s", 4, false, true, true);
+
+    /** Wie {@link #konf}, mit renderer.compact und 2 Threads für Updates, 6 für volle Läufe. */
+    private Laeufe kompakt(boolean kompakt, Konfiguration.Baum... baeume) {
+        var k = konf(JAVA, false, List.of(baeume));
+        return new Laeufe(new Konfiguration(k.renderer(), k.welt(), k.kacheln(), k.assets(), k.daten(), false, 2, 6, 30,
+                k.baeume(), k.download(), k.webserver(), k.clientJar(), kompakt), logger, tmp);
+    }
+
+    @Test
+    void volle_laeufe_mit_und_ohne_renderer_compact() throws Exception {
+        assertEquals(List.of("--threads", "6", "--low-priority", "--progress", "json", "--compact"),
+                ende(kompakt(true, KARTE).plane(Art.VOLL), 6));
+        assertFalse(kompakt(false, KARTE).plane(Art.VOLL).getFirst().befehl().contains("--compact"));
+        standNeu(1, 0);
+        assertEquals(List.of("--compact", "--resume"), ende(kompakt(true, KARTE).plane(Art.VOLL), 2),
+                "auch fortgesetzt");
+        Files.delete(baum().resolve("stand-neu.bin"));
+        Files.createFile(baum().resolve("stand.bin"));
+        assertFalse(kompakt(true, KARTE).plane(Art.UPDATE).getFirst().befehl().contains("--compact"),
+                "Updates packen wie der Baum");
+        assertEquals(List.of("json", "--manifest", "--compact"), ende(kompakt(true, OBEN).plane(Art.VOLL), 3));
+    }
+
+    @Test
+    void nachverdichten_je_baum_mit_map_json() throws Exception {
+        var l = kompakt(false, KARTE, OBEN);
+        assertEquals(List.of(), l.plane(Art.VERDICHTEN));
+        assertEquals(List.of("2x1-se: noch kein Baum zum Nachverdichten, erst /heroicmap render",
+                "top-north-s: noch kein Baum zum Nachverdichten, erst /heroicmap render"), log);
+        Files.writeString(baum().resolve("map.json"), "{}");
+        Files.createDirectories(tmp.resolve("tiles/top-north-s"));
+        Files.writeString(tmp.resolve("tiles/top-north-s/map.json"), "{}");
+        var plan = l.plane(Art.VERDICHTEN);
+        assertEquals(List.of(JAVA.toString(), "--compact-tree", baum().toString(), "--threads", "6", "--low-priority"),
+                plan.get(0).befehl(), "Threads wie ein voller Lauf, ohne Welt, Assets und --progress");
+        assertFalse(plan.get(0).leise());
+        assertEquals(List.of(JAVA.toString(), "--compact-tree", tmp.resolve("tiles/top-north-s").toString(), "--threads", "6",
+                "--low-priority", "--manifest"), plan.get(1).befehl(), "sonst entfernte der Renderer das Manifest");
+    }
+
+    @Test
+    void nachverdichten_nie_neben_einem_lauf_und_cancel() throws Exception {
+        Files.writeString(baum().resolve("map.json"), "{}");
+        var l = kompakt(false, KARTE);
+        l.starte("Voller Lauf", List.of(new Auftrag("2x1-se", falscher("sleep"), false)));
+        assertTrue(l.starte(Art.VERDICHTEN).startsWith("Es läuft schon: Voller Lauf"));
+        l.stoppe();
+
+        var befehl = new ArrayList<>(falscher("sleep"));
+        befehl.addAll(l.plane(Art.VERDICHTEN).getFirst().befehl().subList(1, 6));
+        assertEquals("Nachverdichten gestartet, die Ausgabe steht im Log.",
+                l.starte("Nachverdichten", List.of(new Auftrag("2x1-se", befehl, false))));
+        assertTrue(l.starte(Art.UPDATE).startsWith("Es läuft schon: Nachverdichten"));
+        assertTrue(l.starte(Art.VERDICHTEN).startsWith("Es läuft schon: Nachverdichten"));
+        warteAufZeile("bereit");
+        assertTrue(l.brichAb());
+        assertTrue(l.warte(10_000));
+        assertTrue(l.status().endsWith(", abgebrochen"), l::status);
+        assertEquals(1, l.plane(Art.VERDICHTEN).size(), "ein neuer Aufruf setzt fort");
+    }
+
+    @Test
+    void nachverdichten_liest_das_manifest_neu_zaehlt_aber_nicht_als_stand() throws Exception {
+        var l = laeufe();
+        int[] nachLauf = {0};
+        l.nachLauf(() -> nachLauf[0]++);
+        var befehl = new ArrayList<>(falscher("exit", "0"));
+        befehl.add("--compact-tree");
+        l.starte("Nachverdichten", List.of(new Auftrag("a", befehl, false)));
+        assertTrue(l.warte(30_000));
+        assertTrue(l.status().endsWith(", verdichtet"), l::status);
+        assertTrue(l.erfolgreichSeit("a").isEmpty(), "die Kacheln decken nicht mehr ab als vorher");
+        assertEquals(1, nachLauf[0], "mit --manifest ist das Manifest neu");
+    }
+
+    @Test
+    void status_nennt_die_packung() throws Exception {
+        assertEquals("Kein Lauf seit dem Start.", kompakt(false, KARTE, OBEN).status(), "ohne map.json nichts");
+        Files.writeString(baum().resolve("map.json"), "{\"minZoom\":0}");
+        Files.createDirectories(tmp.resolve("tiles/top-north-s"));
+        Files.writeString(tmp.resolve("tiles/top-north-s/map.json"), "{\"minZoom\":0,\"compact\":true}");
+        assertEquals("Kein Lauf seit dem Start.\nPackung: 2x1-se schnell; top-north-s kompakt",
+                kompakt(false, KARTE, OBEN).status());
+        assertEquals("Kein Lauf seit dem Start.\nPackung: 2x1-se schnell, renderer.compact gilt nur für einen neuen Baum, "
+                + "/heroicmap compact packt ihn nach; top-north-s kompakt", kompakt(true, KARTE, OBEN).status());
+        Files.writeString(baum().resolve("map.json"), "kaputt");
+        assertEquals("Kein Lauf seit dem Start.\nPackung: top-north-s kompakt", kompakt(false, KARTE, OBEN).status());
+    }
+
     private Path baum() throws Exception {
         return Files.createDirectories(tmp.resolve("tiles").resolve("2x1-se"));
     }
@@ -461,11 +553,11 @@ class LaeufeTest {
     void volle_laeufe_mit_eigenen_threads_updates_mit_wenigen() throws Exception {
         var k = konf(JAVA, false, List.of(KARTE));
         var mitDrei = new Konfiguration(k.renderer(), k.welt(), k.kacheln(), k.assets(), k.daten(), false, 1, 3, 30,
-                k.baeume(), k.download(), k.webserver(), k.clientJar());
+                k.baeume(), k.download(), k.webserver(), k.clientJar(), false);
         assertEquals(List.of("--threads", "3", "--low-priority", "--progress", "json"),
                 ende(new Laeufe(mitDrei, logger, tmp).plane(Art.VOLL), 5));
         var alle = new Konfiguration(k.renderer(), k.welt(), k.kacheln(), k.assets(), k.daten(), false, 1, 0, 30,
-                k.baeume(), k.download(), k.webserver(), k.clientJar());
+                k.baeume(), k.download(), k.webserver(), k.clientJar(), false);
         assertEquals(List.of("--threads", Integer.toString(Runtime.getRuntime().availableProcessors()), "--low-priority",
                 "--progress", "json"), ende(new Laeufe(alle, logger, tmp).plane(Art.VOLL), 5), "0: alle Kerne");
         Files.createDirectories(tmp.resolve("tiles/2x1-se"));
