@@ -1,6 +1,6 @@
 ---
 title: Entwicklung
-description: Bauen und Testen mit Gradle 9.7.1 und Java 25, die API von Simple Voice Chat nur zum Übersetzen, was im Jar steckt, der Renderer im Jar mit Version und SHA-256, die Tests mit einem falschen Renderer, die Probe mit dem echten, die CI und das Release.
+description: Bauen und Testen mit Gradle 9.7.1 und Java 25, die API von Simple Voice Chat nur zum Übersetzen, was im Jar steckt, der Renderer im Jar mit Version und SHA-256, die Tests mit einem falschen Renderer, die Proben mit dem echten, auch zum Nachverdichten, die CI und das Release.
 code:
   - build.gradle.kts
   - .github/workflows/ci.yml
@@ -84,10 +84,10 @@ Laufzeit packt das Plugin das passende aus, siehe
   Zips ein Name doppelt als UTF-8 kodiert; seit v0.2.1 gleichen sich beide
   bis auf die Zeilenenden (zuletzt am 08.10. mit v0.3.0 verglichen). `lizenzen.txt`
   im Archiv gehört zur Karte unter `web/` und kommt mit `-Pweb`.
-- **Grösse,** am 07.10. mit v0.2.1: das Jar ohne Karte 9 256 517 Byte, mit
-  der Karte aus dem Archiv 9 530 080 Byte. Gepackt im Jar hat das Binär für
-  Windows 4 674 691 Byte, das für Linux 4 434 304. Die Grenze prüft die CI,
-  siehe „CI“.
+- **Grösse,** am 08.10. mit v0.3.0: das Jar ohne Karte 9 331 957 Byte, mit
+  der Karte aus dem Archiv 9 605 444 Byte (CI, Job „Jar“). Gepackt im Jar
+  hat das Binär für Windows 4 707 673 Byte, das für Linux 4 465 495. Die
+  Grenze prüft die CI, siehe „CI“.
 - **Neue Version:** `renderer` und beide SHA-256 in `build.gradle.kts`
   ändern, dann die Tabelle hier. Die SHA-256 selbst rechnen:
   `gh release download v<version> --repo VonNekyia/heroic-map-renderer`,
@@ -208,6 +208,20 @@ ersten, siehe
 [Pyramide und Fortsetzen](https://github.com/VonNekyia/heroic-map-renderer/blob/master/docs/benutzung/pyramide-und-resume.md)
 in der Doku des Renderers. Unter Linux ist das Auspacken nur in der CI
 geprüft.
+
+Am 09.10. das kompakte Packen (#31), ebenso ohne Server, mit dem Binär
+v0.3.0 aus dem Jar, an der Testwelt, Baum `top-north` mit scale 4, unter
+Windows mit `full-run-threads: 0`, also 24 Threads:
+
+| Schritt | Ergebnis |
+|---|---|
+| voller Lauf, schnell | 98 s, 22 037 Kacheln, 1 058 125 162 Byte; Status `Packung: top-north-s schnell` |
+| `compact` | `--compact-tree <baum> --threads 24 --low-priority`; ein Update daneben antwortet „Es läuft schon: Nachverdichten“ |
+| Abbruch | nach der Basis, `Zoom  8:     16127 neu` steht im Status; Ausgang „abgebrochen“, `map.json` schon `kompakt` |
+| `compact` noch einmal | 5 766 neu, 16 271 schon kompakt, 28 s; Ausgang „verdichtet“ |
+| voller Lauf mit `renderer.compact: true` | in einem zweiten Ordner, 119 s, mit `--compact` |
+| Vergleich | 22 037 Kacheln in beiden, jede Byte für Byte gleich; je 753 894 310 Byte, 71 % des schnellen Baums |
+| `compact` ein drittes Mal | 0 neu, 22 037 schon kompakt, 3,8 s; keine Kachel ändert sich |
 
 ## Rauchtest am Paper-Server
 
