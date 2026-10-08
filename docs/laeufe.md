@@ -79,10 +79,11 @@ entschieden in [0003](entscheidungen/0003-live-render-ueber-autosave-und-zeitpla
   Manifest, siehe [Download](download.md), „Manifest“.
 - **Hinter dem Server:** immer `--low-priority` (heroic-map-renderer#148);
   `--threads` bei Updates mit `renderer.threads`, Vorgabe 1, bei vollen
-  Läufen mit `renderer.full-run-threads`, Vorgabe 0, also alle Kerne, die
-  die JVM sieht (`Runtime.availableProcessors`). Ein voller Lauf kommt
-  selten und soll schnell fertig sein; die Updates alle 2 min laufen
-  dauernd neben dem Spiel. Was der Renderer mit der Priorität setzt, steht
+  Läufen und beim Nachverdichten mit `renderer.full-run-threads`, Vorgabe
+  0, also alle Kerne, die die JVM sieht (`Runtime.availableProcessors`).
+  Ein voller Lauf und das Nachverdichten kommen selten, sperren die Updates
+  und sollen schnell fertig sein; die Updates alle 2 min laufen dauernd
+  neben dem Spiel (`Laeufe.threads`). Was der Renderer mit der Priorität setzt, steht
   in seiner Zeile `Priorität:` im Log.
   - **Threads:** Alle Phasen des Renderers laufen über einen Pool mit so
     vielen Threads, auch Vorlauf und Pyramide.
@@ -262,14 +263,15 @@ und in seiner Entscheidung 0093.
   und es läuft höchstens einer zur Zeit. So läuft das Nachverdichten nie
   neben einem anderen Lauf auf demselben Baum; das verlangt 0093 des
   Renderers. Läuft schon einer, antwortet der Befehl „Es läuft schon“.
-- **Schalter:** `--threads` mit `renderer.threads` und `--low-priority` wie
-  ein Update; mit `download: true` dazu `--manifest`, sonst entfernte der
-  Renderer das Manifest. Ein Baum ohne `map.json` fällt aus, das Log sagt
+- **Schalter:** `--threads` mit `renderer.full-run-threads` wie ein voller
+  Lauf, dazu `--low-priority`; mit `download: true` dazu `--manifest`,
+  sonst entfernte der Renderer das Manifest. Ein Baum ohne `map.json` fällt aus, das Log sagt
   einmal: „noch kein Baum zum Nachverdichten, erst /heroicmap render“.
 - **Dauer:** Der Renderer mass rund 13,5 ms je Kachel auf einem Thread,
-  für die grosse Welt hochgerechnet rund 12 CPU-Stunden. So lange fallen
-  die Updates aus, siehe „Zeitplan“: Mit `renderer.threads: 1` steht die
-  Karte dann einen halben Tag still. Mehr Threads kürzen das.
+  für die grosse Welt hochgerechnet rund 12 CPU-Stunden, geteilt durch die
+  Threads. So lange fallen die Updates aus, siehe „Zeitplan“. Mit
+  `full-run-threads: 0` sind es alle Kerne, bei niedrigster Priorität; mit
+  einem Thread stünde die Karte einen halben Tag.
 - **Abbrechen und fortsetzen:** `cancel` bricht ab wie jeden Lauf. Ein neuer
   `compact` setzt fort: Der Renderer erkennt an seinen Hashes, was schon
   kompakt ist, und kodiert nur den Rest; ein Aufruf auf einem fertigen Baum

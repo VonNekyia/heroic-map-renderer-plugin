@@ -197,11 +197,8 @@ final class Laeufe {
             b.add("--cinematic");
         }
         b.addAll(List.of("--gpu", konf.grafikkarte() ? "auto" : "off"));
-        // Hinter dem Server: niedrigste Priorität; Updates mit wenigen Threads, volle Läufe mit eigenen, 0 = alle
-        // Kerne. Siehe docs/laeufe.md, „Der Kindprozess“.
-        int threads = art == Art.UPDATE ? konf.threads()
-                : konf.vollThreads() == 0 ? Runtime.getRuntime().availableProcessors() : konf.vollThreads();
-        b.addAll(List.of("--threads", Integer.toString(threads), "--low-priority", "--progress", "json"));
+        // Hinter dem Server: niedrigste Priorität. Siehe docs/laeufe.md, „Der Kindprozess“.
+        b.addAll(List.of("--threads", Integer.toString(threads(art)), "--low-priority", "--progress", "json"));
         // Bei jedem Lauf, sonst entfernt der Renderer das Manifest. Siehe docs/laeufe.md, „Der Kindprozess“.
         if (baum.download()) {
             b.add("--manifest");
@@ -220,12 +217,23 @@ final class Laeufe {
     }
 
     /**
-     * Nachverdichten mit --compact-tree, mit Threads und Priorität wie ein Update; ohne --manifest entfernte der
-     * Renderer das Manifest. Siehe docs/laeufe.md, „Kompakt“.
+     * Threads je Art: Updates wenige, volle Läufe und Nachverdichten eigene, 0 = alle Kerne. Siehe docs/laeufe.md,
+     * „Der Kindprozess“.
+     */
+    int threads(Art art) {
+        if (art == Art.UPDATE) {
+            return konf.threads();
+        }
+        return konf.vollThreads() == 0 ? Runtime.getRuntime().availableProcessors() : konf.vollThreads();
+    }
+
+    /**
+     * Nachverdichten mit --compact-tree, mit Threads wie ein voller Lauf und niedrigster Priorität; ohne
+     * --manifest entfernte der Renderer das Manifest. Siehe docs/laeufe.md, „Kompakt“.
      */
     List<String> verdichten(Konfiguration.Baum baum, Path ordner) {
         List<String> b = new ArrayList<>(List.of(konf.renderer().toString(), "--compact-tree", ordner.toString(),
-                "--threads", Integer.toString(konf.threads()), "--low-priority"));
+                "--threads", Integer.toString(threads(Art.VERDICHTEN)), "--low-priority"));
         if (baum.download()) {
             b.add("--manifest");
         }

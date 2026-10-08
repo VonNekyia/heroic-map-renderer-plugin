@@ -27,7 +27,7 @@ Gelesen und geprüft in `Konfiguration.aus` in
 | `renderer.data` | leer | `--data` je Eintrag | Datenwurzeln mit Biomen und Bannermustern |
 | `renderer.gpu` | `false` | `--gpu auto`, sonst `--gpu off` | ob die Grafikkarte zeichnen darf |
 | `renderer.threads` | `1` | `--threads` bei Updates | so viele Threads bekommt ein Update, ab 1; dazu immer `--low-priority` |
-| `renderer.full-run-threads` | `0` | `--threads` bei vollen Läufen | so viele Threads bekommt ein voller Lauf, auch fortgesetzt; `0`: alle Kerne, die die JVM sieht |
+| `renderer.full-run-threads` | `0` | `--threads` bei vollen Läufen und beim Nachverdichten | so viele Threads bekommt ein voller Lauf, auch fortgesetzt, und `/heroicmap compact`; `0`: alle Kerne, die die JVM sieht |
 | `renderer.download-client-jar` | `false` | `--download-client-jar`, `--cache-dir` | die Zustimmung, das Client-Jar von Mojang zu laden, siehe „Client-Jar“ |
 | `renderer.client-version` | leer: die zur Welt | `--client-version` | die Version des Client-Jars, etwa `"26.2"` |
 | `renderer.compact` | `false` | `--compact` bei vollen Läufen | kompakt packen, rund die Hälfte der Bytes für ein Mehrfaches der Zeit beim Kodieren; gilt nur für einen neuen Baum, einen bestehenden packt `/heroicmap compact` nach, siehe [Läufe](laeufe.md), „Kompakt“ |

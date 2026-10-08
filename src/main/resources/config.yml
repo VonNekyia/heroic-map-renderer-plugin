@@ -14,7 +14,7 @@ renderer:
   # So viele Threads bekommt der Renderer für Updates (--threads); er läuft
   # immer mit niedrigster Priorität (--low-priority).
   threads: 1
-  # Threads für volle Läufe; 0: alle Kerne.
+  # Threads für volle Läufe und /heroicmap compact; 0: alle Kerne.
   full-run-threads: 0
   # Ohne assets lädt der Renderer das Client-Jar von Minecraft von Mojangs
   # Servern und nutzt daraus Texturen, Modelle und Biome. Das Jar gehört Mojang

@@ -425,10 +425,10 @@ class LaeufeTest {
         Files.createDirectories(tmp.resolve("tiles/top-north-s"));
         Files.writeString(tmp.resolve("tiles/top-north-s/map.json"), "{}");
         var plan = l.plane(Art.VERDICHTEN);
-        assertEquals(List.of(JAVA.toString(), "--compact-tree", baum().toString(), "--threads", "2", "--low-priority"),
-                plan.get(0).befehl(), "Threads wie ein Update, ohne Welt, Assets und --progress");
+        assertEquals(List.of(JAVA.toString(), "--compact-tree", baum().toString(), "--threads", "6", "--low-priority"),
+                plan.get(0).befehl(), "Threads wie ein voller Lauf, ohne Welt, Assets und --progress");
         assertFalse(plan.get(0).leise());
-        assertEquals(List.of(JAVA.toString(), "--compact-tree", tmp.resolve("tiles/top-north-s").toString(), "--threads", "2",
+        assertEquals(List.of(JAVA.toString(), "--compact-tree", tmp.resolve("tiles/top-north-s").toString(), "--threads", "6",
                 "--low-priority", "--manifest"), plan.get(1).befehl(), "sonst entfernte der Renderer das Manifest");
     }
 
