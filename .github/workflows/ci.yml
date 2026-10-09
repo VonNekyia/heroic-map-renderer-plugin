@@ -96,7 +96,7 @@ jobs:
 
       - name: Jar mit Karte
         timeout-minutes: 15
-        run: ./gradlew jar -Pweb="$GITHUB_WORKSPACE/renderer/web/dist" --console=plain
+        run: ./gradlew assemble -Pweb="$GITHUB_WORKSPACE/renderer/web/dist" --console=plain
 
       # Dateien im Jar und Grösse, wie beim Release.
       - name: Karte und Renderer im Jar, Grösse

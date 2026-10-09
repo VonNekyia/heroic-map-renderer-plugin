@@ -23,12 +23,16 @@ verlangt Java 25. Gebaut wird gegen die Paper-API `26.2.build.129-stable`,
 nur zum Übersetzen, ohne paperweight-userdev, siehe
 [0001](entscheidungen/0001-nur-die-paper-api.md). Ebenso nur zum Übersetzen
 die API von Simple Voice Chat 2.6.24, aus seinem Maven-Repository, siehe
-[0005](entscheidungen/0005-simple-voice-chat-api.md).
+[0005](entscheidungen/0005-simple-voice-chat-api.md). Das Jar baut Shadow
+in `tasks.shadowJar`, damit bStats darin unter eigenem Paket steht; `jar`
+ist aus, siehe [0007](entscheidungen/0007-bstats.md).
 
 ## Im Jar
 
 - der eigene Code, `plugin.yml` und `config.yml`;
 - `LICENSE` und `NOTICE` unter `META-INF/`;
+- bStats unter `com/nekyia/heroicmap/bstats/`, seine Lizenz unter
+  `META-INF/LICENSE-bstats.txt`, siehe [Statistik](statistik.md), „Im Jar“;
 - mit `-Pweb=<ordner>` die gebaute Karte unter `web/`, siehe
   [Webserver](webserver.md), „Die Karte im Jar“;
 - mit Netz die Binärs des Renderers für Windows und Linux unter
@@ -262,7 +266,8 @@ Build 129, eine Kopie der Testwelt, das Jar des Plugins unter `plugins/`,
   `web/robots.vorlage.txt` darin stehen, ebenso alles unter `renderer/`,
   siehe „Der Renderer im Jar“, und dass keine Klasse unter `de/maxhenkel/`
   darin liegt, siehe [0005](entscheidungen/0005-simple-voice-chat-api.md).
-  Das Jar muss unter 10 000 000 Byte bleiben; mehr nimmt Hangar je Datei
+  bStats muss umbenannt und mit Lizenz darin stehen, siehe
+  [Statistik](statistik.md), „Im Jar“. Das Jar muss unter 10 000 000 Byte bleiben; mehr nimmt Hangar je Datei
   nicht. Alles prüft [`.github/pruefe-jar.sh`](../.github/pruefe-jar.sh),
   auch beim Release.
 - **Doku:** Das Prüfskript des Renderers prüft Verweise, Links,

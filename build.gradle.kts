@@ -9,6 +9,8 @@ import java.util.zip.ZipFile
 
 plugins {
     java
+    // Nur für bStats, das im Jar unter eigenem Paket stehen muss. Siehe docs/entscheidungen/0007-bstats.md.
+    id("com.gradleup.shadow") version "9.6.1"
 }
 
 group = "com.nekyia"
@@ -28,6 +30,8 @@ dependencies {
     compileOnly(paperApi)
     // Nur zum Übersetzen, nicht im Jar und nicht in den Tests. Siehe docs/entscheidungen/0005-simple-voice-chat-api.md.
     compileOnly("de.maxhenkel.voicechat:voicechat-api:2.6.24")
+    // Im Jar, umbenannt nach com.nekyia.heroicmap.bstats. Siehe docs/statistik.md.
+    implementation("org.bstats:bstats-bukkit:3.2.1")
     testImplementation(paperApi)
     testImplementation(platform("org.junit:junit-bom:6.1.3"))
     testImplementation("org.junit.jupiter:junit-jupiter")
@@ -146,7 +150,12 @@ val holeRenderer = tasks.register("holeRenderer") {
     }
 }
 
-tasks.jar {
+// Das Jar des Plugins baut Shadow: mit bStats unter eigenem Paket, wie bStats es verlangt.
+tasks.jar { enabled = false }
+
+tasks.shadowJar {
+    archiveClassifier = ""
+    relocate("org.bstats", "com.nekyia.heroicmap.bstats")
     metaInf { from("LICENSE", "NOTICE") }
     from(holeRenderer)
 }

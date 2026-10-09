@@ -18,6 +18,7 @@ Wie der Renderer arbeitet und was seine Schalter tun, steht in der
 - [Webserver](webserver.md): der Server des Renderers als zweiter Kindprozess, die Karte aus dem Jar, Ende mit stdin, Neustart, Status, HTTPS.
 - [Download](download.md): der Kanal `heroicmap:karte` zum Mod, Angebot, Anfrage, Manifest, Grenzen, Token, täglicher Abgleich, `abdeckt_bis`, Stand je Spieler, die Nachricht `spieler`.
 - [Mitspieler](mitspieler.md): die Wahl `show` im Mod und die Permission `heroicmap.show`, wer wen in Simple Voice Chat hört, mit Beleg, wer wen sieht, der Takt je Sekunde, die Brücke zu Simple Voice Chat und was ohne ihn geschieht.
+- [Statistik](statistik.md): was das Plugin über bStats meldet, wohin und wie oft, Abschalten in `plugins/bStats/config.yml`, umbenannt im Jar, Lizenz und Grösse.
 
 ## Entwicklung
 
@@ -35,3 +36,4 @@ Wie der Renderer arbeitet und was seine Schalter tun, steht in der
 - [0004: Renderer im Jar](entscheidungen/0004-renderer-im-jar.md): beide Binärs aus einem Release mit fester SHA-256 im Build, zur Laufzeit nach `bin/<version>/` ausgepackt; `renderer.binary` überschreibt nur noch.
 - [0005: API von Simple Voice Chat](entscheidungen/0005-simple-voice-chat-api.md): für die Mitspieler nur `compileOnly` und `softdepend`, nicht im Jar, Sprechweite und Gruppen aus der API; entschieden vom Maintainer.
 - [0006: show im Mod, Permission am Server](entscheidungen/0006-show-im-mod.md): jeder Spieler wählt `show` im Mod, der Server regelt nur `heroicmap.show` mit `default: true`; der Schlüssel in `config.yml` fällt weg.
+- [0007: bStats](entscheidungen/0007-bstats.md): melden, dass das Plugin läuft, nur mit den Feldern von bStats, umbenannt im Jar durch Shadow, abschaltbar über `plugins/bStats/config.yml`; entschieden vom Maintainer.

@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
+import org.bstats.bukkit.Metrics;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.InvalidConfigurationException;
@@ -28,6 +29,10 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
     private static final List<String> BEFEHLE = List.of("render", "update", "compact", "status", "cancel");
     /** Wer sie hat, sieht Mitspieler und wird gesehen. Siehe docs/mitspieler.md, „Wer wen sieht“. */
     static final String SHOW = "heroicmap.show";
+    /** Die ID des Plugins auf bstats.org. Siehe docs/statistik.md. */
+    private static final int BSTATS = 0; // Platzhalter, bis die ID von bstats.org steht
+
+    private Metrics metrics;
 
     private final Mitspieler mitspieler = new Mitspieler();
     /** Ob die Brücke zu Simple Voice Chat läuft. */
@@ -40,6 +45,7 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
 
     @Override
     public void onEnable() {
+        metrics = new Metrics(this, BSTATS);
         saveDefaultConfig();
         ergaenzeKonfiguration();
         Path server = Path.of("").toAbsolutePath();
@@ -169,6 +175,9 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
 
     @Override
     public void onDisable() {
+        if (metrics != null) {
+            metrics.shutdown();
+        }
         if (laeufe != null) {
             laeufe.stoppe();
         }
