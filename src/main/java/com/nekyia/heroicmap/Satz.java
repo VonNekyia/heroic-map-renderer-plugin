@@ -16,9 +16,10 @@ import java.util.zip.GZIPInputStream;
 
 /**
  * Ein Baum zum Download: Stufen aus seiner map.json, Grössen je Stufe und Prüfsumme aus dem
- * Manifest, das der Renderer neben map.json schreibt. Siehe docs/download.md, „Manifest“.
+ * Manifest, das der Renderer neben map.json schreibt; {@code nebenher} sind die Bytes von map.json und manifest
+ * selbst, die der Server mit auf das Token bucht. Siehe docs/download.md, „Manifest“.
  */
-record Satz(int minZoom, int maxZoom, long stand, String sha256, long[] bytes, int[] kacheln) {
+record Satz(int minZoom, int maxZoom, long stand, String sha256, long[] bytes, int[] kacheln, long nebenher) {
 
     private static final Pattern ZEILE = Pattern.compile("(\\d+)/-?\\d+/-?\\d+ (\\d+) \\S.*");
 
@@ -48,7 +49,8 @@ record Satz(int minZoom, int maxZoom, long stand, String sha256, long[] bytes, i
                 kacheln[stufe]++;
             }
         }
-        return new Satz(min, max, Files.getLastModifiedTime(map).toInstant().getEpochSecond(), sha256(roh), bytes, kacheln);
+        return new Satz(min, max, Files.getLastModifiedTime(map).toInstant().getEpochSecond(), sha256(roh), bytes, kacheln,
+                Files.size(map) + roh.length);
     }
 
     /** Die feinste Stufe zum Massstab: 4 px die Basis, 2 px eine gröber, 1 px zwei; -1, wenn es sie nicht gibt. */
