@@ -8,9 +8,10 @@ dem Server rendert, aktuell hält und ausliefert.
 
 ## Der Mod dazu
 
-Mit dem Fabric-Mod
-[heroic-map-renderer-mod](https://github.com/VonNekyia/heroic-map-renderer-mod)
-haben Spieler eine Minimap und eine Vollbildkarte im Spiel und laden die
+Mit dem Fabric-Mod **Heroic Map**
+([Modrinth](https://modrinth.com/mod/heroic-map),
+[Quelltext](https://github.com/VonNekyia/heroic-map-renderer-mod)) haben
+Spieler eine Minimap und eine Vollbildkarte im Spiel und laden die
 Karte vom Server herunter.
 
 ![Vollbildkarte im Mod nach dem Download vom Server](https://raw.githubusercontent.com/VonNekyia/heroic-map-renderer-mod/6bfa863c2b69d812199c1899572e6b15f5d2c3a9/docs/bilder/server-karte.png)

@@ -48,12 +48,12 @@ Secret auf GitHub:
 | Einstellung | Wert |
 |---|---|
 | Schlüssel | auf Hangar unter den Einstellungen des Kontos, „API Keys“, ein Schlüssel mit `create_version` und `view_public_info`; auf GitHub unter Settings, „Secrets and variables“, „Actions“ als Secret `HANGAR_API_TOKEN` |
-| Kategorie | `misc`, wie Karten auf Hangar üblich |
+| Kategorie | `world_management` |
 | Tags | keine: Das Plugin ist kein Addon und keine Bibliothek, und Folia ist nicht erklärt |
-| Keywords | `map`, `webmap`, `isometric`, `render`, `minimap`, `layers` |
-| Links, oben | Source: `https://github.com/VonNekyia/heroic-map-renderer-plugin`; Issues: `https://github.com/VonNekyia/heroic-map-renderer-plugin/issues`; Docs: `https://github.com/VonNekyia/heroic-map-renderer-plugin/blob/main/docs/index.md` |
-| Links, Seitenleiste | Renderer: `https://github.com/VonNekyia/heroic-map-renderer`; Mod: `https://github.com/VonNekyia/heroic-map-renderer-mod`; bStats: `https://bstats.org/plugin/bukkit/heroic-map-renderer-plugin/34598` |
-| Lizenz | Apache 2.0 |
+| Keywords | `map`, `webmap`, `isometric`, `minimap`, `layers` |
+| Links, oben | Source: `https://github.com/VonNekyia/heroic-map-renderer-plugin`; Issues: `https://github.com/VonNekyia/heroic-map-renderer-plugin/issues`; Docs: `https://github.com/VonNekyia/heroic-map-renderer-plugin/blob/main/docs/index.md`; Mod: `https://modrinth.com/mod/heroic-map`; Renderer: `https://github.com/VonNekyia/heroic-map-renderer` |
+| Links, Seitenleiste „More“ | Layer API: `https://github.com/VonNekyia/heroic-map-renderer-plugin/blob/main/docs/api.md`; GitHub Releases: `https://github.com/VonNekyia/heroic-map-renderer-plugin/releases`; bStats: `https://bstats.org/plugin/bukkit/heroic-map-renderer-plugin/34598`; Mod source: `https://github.com/VonNekyia/heroic-map-renderer-mod` |
+| Lizenz | Apache 2.0, mit Link auf `https://github.com/VonNekyia/heroic-map-renderer-plugin/blob/main/LICENSE` |
 | Logo | ein quadratisches Bild, das der User wählt; aus der Testwelt oder den Bildern des Renderers, etwa ein Ausschnitt von `dorf.webp` |
 | Beschreibung, kurz | `Isometric and top-down maps of your world, rendered like the game itself, with a web map, layers and a companion mod.` |
 | Seite | der Text unter „Seite“, ohne die Zeilen `~~~` |
@@ -151,7 +151,7 @@ The documentation is in German.
 
 ![The full-screen map of the mod](https://raw.githubusercontent.com/VonNekyia/heroic-map-renderer-mod/main/docs/bilder/vollbildkarte.png)
 
-The Fabric mod [heroic-map-renderer-mod](https://github.com/VonNekyia/heroic-map-renderer-mod)
+The Fabric mod **Heroic Map** ([Modrinth](https://modrinth.com/mod/heroic-map), [source](https://github.com/VonNekyia/heroic-map-renderer-mod))
 downloads the map from the server and shows it as a minimap and a
 full-screen map, with layers and the other players.
 
