@@ -14,6 +14,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import com.google.gson.JsonObject;
 import com.nekyia.heroicmap.Ebenen.Ebene;
 import com.nekyia.heroicmap.api.Layer;
+import com.nekyia.heroicmap.api.MapObject.Banner;
 import com.nekyia.heroicmap.api.MapObject.Circle;
 import com.nekyia.heroicmap.api.MapObject.Label;
 import com.nekyia.heroicmap.api.MapObject.Line;
@@ -166,7 +167,10 @@ class EbenenApiTest {
             l.put(Pin.at("n" + i, i, 0));
         }
         var zuViele = assertThrows(IllegalArgumentException.class, () -> l.put(Pin.at("n1000", 0, 0)));
-        assertTrue(zuViele.getMessage().contains("höchstens 1000 Nadeln"), zuViele.getMessage());
+        assertTrue(zuViele.getMessage().contains("höchstens 1000 Nadeln und Banner"), zuViele.getMessage());
+        l.image("images/nation.png", png(22, 40));
+        assertThrows(IllegalArgumentException.class, () -> l.put(Banner.at("b", 0, 0, "images/nation.png")),
+                "ein Banner zählt wie eine Nadel");
         l.put(Pin.at("a", 3, 4));
         l.remove("n1");
         l.put(Pin.at("n1000", 0, 0));
@@ -236,11 +240,19 @@ class EbenenApiTest {
                 .withStroke(Stroke.of("#40E53FDD").withWidth(2)).withDimension("minecraft:the_nether"));
         l.put(Circle.around("weit", 130, -330, 2000).withStroke(Stroke.of("#FFFFFFAA").dashed()).withPanel(Panel.of(new Panel.Title("Weit", null))));
         l.put(Line.through("route", List.of(new Point(0, 0), new Point(5, 5))).withStroke(Stroke.of("#3A6EA5").withDash(10, 8)));
+        l.image("images/nation.png", png(22, 40));
+        l.put(Banner.at("hafen", 120.5, -340.5, "images/nation.png").withY(71).withName("Hafenstadt")
+                .withPanel(Panel.of(new Panel.Title("Hafenstadt", null))).withDimension("minecraft:overworld"));
 
         var e = ebene(a, "beispiel:alles");
         assertEquals(List.of(), log, "der Schnappschuss besteht die Prüfung");
-        assertEquals(List.of("stadt", "meer", "flaeche", "weit", "route"), ids(e));
-        assertEquals(4, e.bilder().size());
+        assertEquals(List.of("stadt", "meer", "flaeche", "weit", "route", "hafen"), ids(e));
+        assertEquals(5, e.bilder().size());
+        assertEquals("{\"id\":\"hafen\",\"type\":\"banner\",\"at\":[120.5,-340.5],\"y\":71,\"image\":\"images/nation.png\","
+                + "\"name\":\"Hafenstadt\",\"panel\":{\"blocks\":[{\"type\":\"title\",\"text\":\"Hafenstadt\"}]},"
+                + "\"dimension\":\"minecraft:overworld\"}", e.json().getAsJsonArray("objects").get(5).toString());
+        assertThrows(IllegalArgumentException.class, () -> l.put(Banner.at("zu-gross", 0, 0, "images/banner.png")),
+                "44 × 80 ist zu gross für ein Banner");
         JsonObject route = e.json().getAsJsonArray("objects").get(4).getAsJsonObject();
         assertEquals("{\"color\":\"#3A6EA5\",\"style\":\"dashed\",\"dash\":[10.0,8.0]}", route.get("stroke").toString());
         JsonObject stadt = e.json().getAsJsonArray("objects").get(0).getAsJsonObject();

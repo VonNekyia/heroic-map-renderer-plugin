@@ -45,7 +45,7 @@ public interface Layer {
      * @param path like {@code images/castle_16.png}; the file name follows the rule of
      *     {@link HeroicMapApi#layer}'s {@code name}, its extension the format
      * @param data PNG or lossless WebP ({@code VP8L}), at most 256 KiB and 512 × 512 pixels; symbols exactly
-     *     16 × 16 or 9 × 9
+     *     16 × 16 or 9 × 9, banners at most 32 × 64
      */
     void image(String path, byte[] data);
 

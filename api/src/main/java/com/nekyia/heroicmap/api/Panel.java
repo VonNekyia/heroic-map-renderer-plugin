@@ -4,7 +4,7 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * The panel of a pin, region or circle, shown on click: a list of blocks, no HTML. At most 64 blocks; {@link Columns}
+ * The panel of a pin, banner, region or circle, shown when the pointer rests on it: a list of blocks, no HTML. At most 64 blocks; {@link Columns}
  * and {@link Section} only at the top, holding blocks without columns or sections.
  */
 public record Panel(List<Block> blocks) {

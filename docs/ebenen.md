@@ -16,8 +16,8 @@ code:
 
 # Ebenen
 
-Ebenen legen Nadeln, Kartenschrift, Regionen, Kreise und Linien über die
-Karte (#35, heroic-map-renderer#219). Ihr Format beschreibt der Renderer:
+Ebenen legen Nadeln, Banner, Kartenschrift, Regionen, Kreise und Linien
+über die Karte (#35, heroic-map-renderer#219). Ihr Format beschreibt der Renderer:
 [Ebenen](https://github.com/VonNekyia/heroic-map-renderer/blob/master/docs/benutzung/ebenen.md).
 Diese Seite sagt, wie das Plugin sie lädt, prüft und für die Webkarte
 schreibt und dem Mod schickt. Sie kommen aus Dateien und über die API für
@@ -88,8 +88,9 @@ Bausteine der Tafel und ihre Tiefe, die Bilder. Dazu eigene Regeln:
   denn der Server setzt den Typ nach der Endung: PNG mit allen acht Bytes
   der Signatur und Breite und Höhe von 1 bis 2^31 − 1, oder WebP nur mit
   dem Chunk `VP8L`. Symbole genau 16 × 16 (`large`) und 9 × 9 (`medium`),
-  Bilder der Tafel höchstens 512 × 512, jedes höchstens 256 KiB,
-  höchstens 200 je Ebene.
+  Bilder eines Banners höchstens 32 × 64, Bilder der Tafel höchstens
+  512 × 512, jedes höchstens 256 KiB, höchstens 200 je Ebene.
+- **Nadeln und Banner** zählen zusammen gegen die 1000 einer Ebene.
 - **`holes`** darf fehlen; dann hat das Polygon keine Löcher.
 
 ## web und permission
@@ -148,9 +149,12 @@ Ausgeliefert werden die Dateien vom Server des Renderers
 
 ## Mod
 
-Das Plugin schickt dem Mod Nadeln, Regionen und Kreise jeder Ebene, die
-der Spieler sehen darf, über den Kanal `heroicmap:karte`. Kartenschrift,
-Linien und Tafeln schickt es nicht. Der Code steht in `EbenenFuerMod` in
+Das Plugin schickt dem Mod jede Ebene, die der Spieler sehen darf, mit
+allen Objekten, über den Kanal `heroicmap:karte`: Nadeln, Banner,
+Kartenschrift, Regionen, Kreise und Linien. Tafeln schickt es nicht; die
+holt der Mod später. Ein Mod, der eine Art nicht kennt, übergeht sie, so
+wie es das Format verlangt. Banner, Kartenschrift und Linien gehen seit
+0.4.0 mit, auf Wunsch des Users. Der Code steht in `EbenenFuerMod` in
 [`EbenenFuerMod.java`](../src/main/java/com/nekyia/heroicmap/EbenenFuerMod.java).
 
 | `typ` | Felder | Wann |

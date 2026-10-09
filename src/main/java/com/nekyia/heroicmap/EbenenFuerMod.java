@@ -9,7 +9,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
@@ -28,8 +27,6 @@ final class EbenenFuerMod {
     static final int OBJEKT = (1 << 20) - 1024;
     /** Je Spieler und Sekunde, also je Lauf des Takts, höchstens so viele Byte an Teilen; eine Ebene geht aber immer ganz. */
     static final int JE_SEKUNDE = 1 << 20;
-    /** Die Arten, die der Mod bekommt. */
-    static final Set<String> ARTEN = Set.of("pin", "region", "circle");
 
     /** Ein vorbereiteter Stand: die Ebenen und ihre Teile, je Kennung. */
     private record Fertig(List<Ebene> stand, Map<String, Teile> teile) {}
@@ -138,7 +135,7 @@ final class EbenenFuerMod {
     }
 
     /**
-     * Die Objekte für den Mod, Nadeln, Regionen und Kreise ohne panel, der Reihe nach in Teile von höchstens
+     * Die Objekte für den Mod, jede Art ohne panel, der Reihe nach in Teile von höchstens
      * {@link #TEIL} Byte; ein Objekt, das allein grösser ist, steht allein. Eine leere Ebene ist ein leerer Teil.
      */
     static Teile teile(Ebene e) {
@@ -148,9 +145,6 @@ final class EbenenFuerMod {
         long summe = 0;
         for (JsonElement x : e.json().getAsJsonArray("objects")) {
             String objekt = fuerMod(x.getAsJsonObject());
-            if (objekt == null) {
-                continue;
-            }
             int n = objekt.getBytes(StandardCharsets.UTF_8).length + 1;
             if (bytes > 1 && bytes + n > TEIL) {
                 aus.add(teil.append(']').toString());
@@ -165,11 +159,8 @@ final class EbenenFuerMod {
         return new Teile(e.version(), List.copyOf(aus), summe + bytes);
     }
 
-    /** Ein Objekt, wie der Mod es bekommt, oder null, wenn er die Art nicht bekommt. */
+    /** Ein Objekt, wie der Mod es bekommt: ohne panel, das holt er später. */
     static String fuerMod(JsonObject o) {
-        if (!ARTEN.contains(o.get("type").getAsString())) {
-            return null;
-        }
         if (!o.has("panel")) {
             return o.toString();
         }

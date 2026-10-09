@@ -39,7 +39,7 @@ public sealed interface MapObject {
     /** Solid or dashed. */
     enum Style { SOLID, DASHED }
 
-    /** The size of a pin by the type of place. */
+    /** The size of a pin, the same on every zoom level. */
     enum Size { LARGE, MEDIUM, SMALL }
 
     /**
@@ -139,6 +139,52 @@ public sealed interface MapObject {
         /** A copy with this panel, shown on click. */
         public Pin withPanel(Panel p) {
             return new Pin(id, at, dimension, y, name, size, symbol, color, p);
+        }
+    }
+
+    /**
+     * A place of the map as an image, such as a town with the banner of its nation. The image is drawn pixel for
+     * pixel, the same on every zoom level, standing on the point.
+     */
+    record Banner(String id, Point at, String dimension, Integer y, String image, String name, Panel panel)
+            implements MapObject {
+        public Banner {
+            Objects.requireNonNull(id);
+            Objects.requireNonNull(at);
+            Objects.requireNonNull(image);
+        }
+
+        /**
+         * A banner at {@code x}, {@code z} with an image of the owner, at most 32 × 64 pixels; several banners may
+         * share one image.
+         */
+        public static Banner at(String id, double x, double z, String image) {
+            return new Banner(id, new Point(x, z), null, null, image, null, null);
+        }
+
+        /** A copy in this dimension. */
+        public Banner withDimension(String d) {
+            return new Banner(id, at, d, y, image, name, panel);
+        }
+
+        /** A copy standing on this block. */
+        public Banner withY(int blockY) {
+            return new Banner(id, at, dimension, blockY, image, name, panel);
+        }
+
+        /** A copy with this image. */
+        public Banner withImage(String i) {
+            return new Banner(id, at, dimension, y, i, name, panel);
+        }
+
+        /** A copy with this name. */
+        public Banner withName(String n) {
+            return new Banner(id, at, dimension, y, image, n, panel);
+        }
+
+        /** A copy with this panel, shown when the pointer rests on the banner. */
+        public Banner withPanel(Panel p) {
+            return new Banner(id, at, dimension, y, image, name, p);
         }
     }
 

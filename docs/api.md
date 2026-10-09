@@ -19,7 +19,8 @@ code:
 # API für andere Plugins
 
 Andere Plugins legen über den Service `HeroicMapApi` eigene Ebenen an, mit
-Nadeln, Kartenschrift, Regionen, Kreisen, Linien und Tafeln, ohne Neustart.
+Nadeln, Bannern, Kartenschrift, Regionen, Kreisen, Linien und Tafeln, ohne
+Neustart.
 Die Ebenen gehen wie die aus Dateien auf die Webkarte und an den Mod, siehe
 [Ebenen](ebenen.md). Die Namen der API sind englisch, denn fremde
 Entwickler nutzen sie; ihre Javadoc ist englisch, die Meldungen der Prüfung
@@ -93,11 +94,14 @@ final class Staedte {
         HeroicMapApi api = Bukkit.getServicesManager().load(HeroicMapApi.class);
         Layer staedte = api.layer(plugin, "staedte");
         staedte.name("Städte", "Towns");
-        staedte.image("images/burg_16.png", bytesAusDemJar("burg_16.png"));
-        staedte.put(MapObject.Pin.at("stadt-17", 120.5, -340.5)
-                .withName("Hafenstadt")
-                .withSize(MapObject.Size.LARGE)
-                .withSymbol(new MapObject.Symbol("images/burg_16.png", null))
+        // Städte als Banner ihrer Nation, höchstens 32 × 64 Pixel; Banner einer Nation teilen ihr Bild.
+        staedte.image("images/nordreich.png", bannerAlsPng("nordreich"));
+        staedte.put(MapObject.Banner.at("stadt-17", 120.5, -340.5, "images/nordreich.png")
+                .withName("Hafenstadt"));
+        // Wegpunkte als Nadel.
+        staedte.put(MapObject.Pin.at("hafen", 130.5, -330.5)
+                .withName("Hafen")
+                .withSize(MapObject.Size.SMALL)
                 .withColor("#40E53F"));
     }
 }
@@ -126,7 +130,7 @@ Optionale Felder sind null; `with…` gibt eine Kopie mit einem Feld mehr.
 - **Sofort geprüft:** Jeder Aufruf geht durch dieselbe Prüfung wie eine
   Datei, nur für das eine Objekt, und wirft `IllegalArgumentException`,
   wenn etwas nicht passt; dann ändert sich nichts. Dazu die Grenzen der
-  Ebene: 10 000 Objekte, 1000 Nadeln, 4 MiB. Ein `Stroke` mit nur `dash`
+  Ebene: 10 000 Objekte, 1000 Nadeln und Banner zusammen, 4 MiB. Ein `Stroke` mit nur `dash`
   oder nur `gap` wirft schon beim Anlegen.
 - **Jeder Thread:** Jede Methode darf aus jedem Thread kommen. Der Takt
   übernimmt Änderungen einmal je Sekunde. Aufrufe hintereinander ergeben
@@ -170,7 +174,7 @@ Optionale Felder sind null; `with…` gibt eine Kopie mit einem Feld mehr.
   ersetzt es, `removeImage` entfernt eines.
 - **Geprüft beim Aufruf:** Name wie unter „Dateien“, PNG oder WebP `VP8L`
   passend zur Endung, höchstens 256 KiB und 512 × 512. Ob ein Symbol genau
-  16 × 16 oder 9 × 9 ist, prüft `put`.
+  16 × 16 oder 9 × 9 ist und ein Banner höchstens 32 × 64, prüft `put`.
 - **Ein Ersatz behält Breite und Höhe.** So bleibt jedes Objekt gültig, das
   das Bild schon nennt. Seine Ebenen bekommen eine neue `version`.
 - **Entfernen nur, wenn kein Objekt es nennt:** `removeImage` wirft

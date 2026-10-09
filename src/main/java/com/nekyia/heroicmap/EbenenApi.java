@@ -306,14 +306,13 @@ final class EbenenApi implements HeroicMapApi, Listener {
                     throw new IllegalArgumentException("Objekt " + m.id() + ": " + fehler(p.fehler()));
                 }
                 var alt = objekte.get(m.id());
-                int pin = j.get("type").getAsString().equals("pin") ? 1 : 0;
-                int neueNadeln = nadeln + pin - (alt != null && alt.get("type").getAsString().equals("pin") ? 1 : 0);
+                int neueNadeln = nadeln + nadel(j) - (alt == null ? 0 : nadel(alt));
                 long neueBytes = bytes + groesse(j) - (alt == null ? 0 : groesse(alt));
                 if (alt == null && objekte.size() >= 10_000) {
                     throw new IllegalArgumentException("Objekt " + m.id() + ": höchstens 10 000 Objekte je Ebene");
                 }
                 if (neueNadeln > 1000) {
-                    throw new IllegalArgumentException("Objekt " + m.id() + ": höchstens 1000 Nadeln je Ebene");
+                    throw new IllegalArgumentException("Objekt " + m.id() + ": höchstens 1000 Nadeln und Banner je Ebene");
                 }
                 if (neueBytes > EbenenPruefung.EBENE_BYTES - (64 << 10)) {
                     throw new IllegalArgumentException("Objekt " + m.id() + ": die Ebene würde grösser als 4 MiB");
@@ -330,6 +329,12 @@ final class EbenenApi implements HeroicMapApi, Listener {
             geaendert();
         }
 
+        /** 1 für eine Nadel oder ein Banner: Beide zählen zusammen gegen die 1000 einer Ebene. */
+        private static int nadel(JsonObject j) {
+            String typ = j.get("type").getAsString();
+            return typ.equals("pin") || typ.equals("banner") ? 1 : 0;
+        }
+
         private static long groesse(JsonObject j) {
             return j.toString().getBytes(StandardCharsets.UTF_8).length + 1;
         }
@@ -343,7 +348,7 @@ final class EbenenApi implements HeroicMapApi, Listener {
                 bilderJeObjekt.remove(objektId);
             }
             if (alt != null) {
-                nadeln -= alt.get("type").getAsString().equals("pin") ? 1 : 0;
+                nadeln -= nadel(alt);
                 bytes -= groesse(alt);
                 geaendert();
             }

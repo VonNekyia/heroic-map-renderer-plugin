@@ -7,6 +7,11 @@ Links und die Hinweise aus `NOTICE` setzt
 [`.github/notizen.sh`](.github/notizen.sh) dazu. Siehe
 [Entwicklung](docs/entwicklung.md), „Release“.
 
+## 0.4.0
+
+- **Banners:** a new object for places such as towns, an image of up to 32 × 64 pixels drawn pixel for pixel, with a panel; in layer files and through the [layer API](https://github.com/VonNekyia/heroic-map-renderer-plugin/blob/main/docs/api.md) as `MapObject.Banner`.
+- **More for the companion mod:** banners, labels and lines now reach the mod as well.
+
 ## 0.3.3
 
 - **Map sync fixed:** the daily sync no longer stops with "budget used up" when more than a tenth of the map changed; it downloads its share and the rest follows with the next sync or a full download.
