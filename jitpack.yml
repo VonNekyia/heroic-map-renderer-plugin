@@ -1,0 +1,5 @@
+# JitPack baut nur die API, mit Java 21. Siehe docs/api.md.
+jdk:
+  - openjdk21
+install:
+  - ./gradlew :api:publishToMavenLocal --console=plain

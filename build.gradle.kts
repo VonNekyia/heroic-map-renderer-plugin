@@ -25,9 +25,11 @@ repositories {
 
 // Nur die API, ohne paperweight-userdev. Siehe docs/entscheidungen/0001-nur-die-paper-api.md.
 val paperApi = "io.papermc.paper:paper-api:26.2.build.129-stable"
+extra["paperApi"] = paperApi
 
 dependencies {
     compileOnly(paperApi)
+    implementation(project(":api"))
     // Nur zum Übersetzen, nicht im Jar und nicht in den Tests. Siehe docs/entscheidungen/0005-simple-voice-chat-api.md.
     compileOnly("de.maxhenkel.voicechat:voicechat-api:2.6.24")
     // Im Jar, umbenannt nach com.nekyia.heroicmap.bstats. Siehe docs/statistik.md.

@@ -414,6 +414,21 @@ final class EbenenPruefung {
         }
     }
 
+    /** Ein Bild für die API: Pfad, Grösse und Kopf, höchstens 512 × 512; null, wenn es passt. */
+    static String bild(String pfad, byte[] b) {
+        if (pfad == null || !BILD.matcher(pfad).matches()) {
+            return "ein Pfad wie images/name.png oder images/name.webp";
+        }
+        if (b.length > BILD_BYTES) {
+            return "grösser als 256 KiB";
+        }
+        int[] m = masse(b);
+        if (m == null) {
+            return "weder PNG noch WebP VP8L";
+        }
+        return m[0] > 512 || m[1] > 512 ? m[0] + " × " + m[1] + " Pixel, erlaubt höchstens 512 × 512" : null;
+    }
+
     /** Breite und Höhe aus dem Kopf eines PNG oder eines WebP nur mit dem Chunk VP8L; sonst null. */
     static int[] masse(byte[] b) {
         if (b.length >= 24 && b[0] == (byte) 0x89 && b[1] == 'P' && b[2] == 'N' && b[3] == 'G'
