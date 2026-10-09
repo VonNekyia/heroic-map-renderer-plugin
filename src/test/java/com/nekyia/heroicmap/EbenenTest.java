@@ -105,6 +105,7 @@ class EbenenTest {
         log.setUseParentHandlers(false);
         var e = new Ebenen(ordner, OBERWELT, new EbenenSchreiber(tmp.resolve("tiles"), OBERWELT), log);
         e.ladeNeu();
+        e.takt();
         assertEquals(List.of("beispiel:staedte", "zweiter:karte"), e.stand().stream().map(Ebene::id).toList());
 
         Files.setPosixFilePermissions(zweiter, PosixFilePermissions.fromString("---------"));
@@ -113,6 +114,7 @@ class EbenenTest {
             assertEquals(List.of("beispiel:staedte"), ids(g), "der andere Mod lädt");
             assertEquals(java.util.Set.of("zweiter"), g.nichtGelesen());
             e.ladeNeu();
+            e.takt();
             assertEquals(List.of("beispiel:staedte", "zweiter:karte"), e.stand().stream().map(Ebene::id).toList(),
                     "für den unlesbaren Ordner gilt der alte Stand");
         } finally {
@@ -128,6 +130,7 @@ class EbenenTest {
         Files.writeString(alt.resolve("karte.json"), "{\"id\": \"alt:karte\", \"name\": {\"de\": \"x\"}, \"objects\": []}");
         var e = new Ebenen(ordner, OBERWELT, new EbenenSchreiber(tmp.resolve("tiles"), OBERWELT), still());
         e.ladeNeu();
+        e.takt();
         for (int i = 0; i < 64; i++) {
             Path d = Files.createDirectories(ordner.resolve("b"));
             Files.writeString(d.resolve(String.format("x%02d.json", i)),
@@ -136,6 +139,7 @@ class EbenenTest {
         Files.setPosixFilePermissions(alt, PosixFilePermissions.fromString("---------"));
         try {
             e.ladeNeu();
+            e.takt();
             assertEquals(64, e.stand().size(), "64 lesbare und eine alte aus dem unlesbaren Mod: höchstens 64");
             assertEquals("alt:karte", e.stand().getFirst().id());
         } finally {
