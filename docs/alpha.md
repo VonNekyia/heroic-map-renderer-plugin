@@ -1,24 +1,40 @@
 ---
 title: Alpha einrichten
-description: Schritt für Schritt das Plugin als Alpha auf einen Paper-Server bringen, ohne Release: Jar mit Karte und Renderer, die Konfiguration mit Webkarte und Baum zum Download, Webserver mit url und HTTPS, Assets oder Zustimmung zum Client-Jar, die Schätzung vor dem ersten vollen Lauf und der erste Lauf.
+description: Schritt für Schritt das Plugin als Alpha auf einen Paper-Server bringen: welches Jar oder welche Version auf Hangar, Jar mit Karte und Renderer, die Konfiguration mit Webkarte und Baum zum Download, Webserver mit url und HTTPS, Assets oder Zustimmung zum Client-Jar, die Schätzung vor dem ersten vollen Lauf und der erste Lauf.
 code:
   - src/main/resources/config.yml
 ---
 
 # Alpha einrichten
 
-Solange es kein Release gibt, kommt das Plugin aus `main`. Das Binär des
-Renderers bringt das Jar für Windows und Linux mit, siehe
+Das Plugin kommt aus einem Release, auf GitHub oder Hangar, oder selbst
+gebaut aus `main`. Das Binär des Renderers bringt das Jar mit, siehe
 [Konfiguration](konfiguration.md), „Das Binär“. Diese Seite nennt die
 Schritte in ihrer Reihenfolge. Was jeder Schlüssel tut, steht in
 [Konfiguration](konfiguration.md), der Webserver in [Webserver](webserver.md),
 die Läufe in [Läufe](laeufe.md).
 
+## Welches Jar
+
+Ab v0.3.2 gibt es je Release ein Jar für jede Plattform, siehe
+[0008](entscheidungen/0008-jar-je-plattform.md). Bis v0.3.1 hatte das eine
+Jar beide Binärs.
+
+| Server | auf GitHub | auf Hangar |
+|---|---|---|
+| Windows auf x86_64 | `heroic-map-renderer-plugin-<version>-windows-x64.jar` | Version `<version>-windows-x64` |
+| Linux auf x86_64 | `heroic-map-renderer-plugin-<version>-linux-x64.jar` | Version `<version>-linux-x64` |
+| andere, etwa ARM oder macOS | eins der beiden, dazu ein eigenes Binär in `renderer.binary` | ebenso |
+
+Mit dem Jar der anderen Plattform startet das Plugin ohne Renderer, und das
+Log nennt das passende Jar, siehe [Konfiguration](konfiguration.md), „Das
+Binär“.
+
 ## Was auf den Server kommt
 
 | Teil | Woher | Wohin |
 |---|---|---|
-| Plugin mit Karte und Renderer | `./gradlew build -Pweb=<renderer>/web/dist` auf `main`, mit Netz, siehe [Entwicklung](entwicklung.md), „Im Jar“ | `plugins/` des Servers |
+| Plugin mit Karte und Renderer | ein Release, siehe „Welches Jar“; oder `./gradlew build -Pweb=<renderer>/web/dist` auf `main`, mit Netz, siehe [Entwicklung](entwicklung.md), „Im Jar“, und aus `build/libs/` das Jar der Plattform | `plugins/` des Servers |
 | Renderer, nur ohne Binär im Jar | `cargo build --release --locked` in `renderer/` des Renderers, für das Betriebssystem des Servers | ein Ordner neben dem Server, Pfad in `renderer.binary` |
 | Kacheln | entstehen beim ersten Lauf | `tiles`, auf einer Platte mit genug Platz, siehe „Schätzung“ |
 

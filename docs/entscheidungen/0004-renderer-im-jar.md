@@ -1,7 +1,7 @@
 ---
 title: "0004: Renderer im Jar"
 description: Warum das Jar die Binärs des Renderers für Windows und Linux selbst mitbringt, aus einem Release mit fester Version und SHA-256 im Build, zur Laufzeit nach bin/<version>/ ausgepackt, und renderer.binary nur noch überschreibt. Verworfen sind Laden zur Laufzeit, SHA256SUMS allein, ein Jar je Plattform, ein Plugin für Gradle und Auspacken bei jedem Start.
-status: gilt
+status: teilweise abgelöst durch 0008
 date: 2026-10-06
 issues: [19]
 code:

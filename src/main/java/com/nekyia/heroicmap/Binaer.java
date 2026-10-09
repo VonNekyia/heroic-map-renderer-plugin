@@ -23,8 +23,11 @@ final class Binaer {
 
     private Binaer() {}
 
-    /** {@code gesetzt} aus renderer.binary, sonst das Binär aus dem Jar für {@code os.name} und {@code os.arch}. */
-    static Path waehle(Path gesetzt, Path jar, Path bin, String os, String arch) throws IOException {
+    /**
+     * {@code gesetzt} aus renderer.binary, sonst das Binär aus dem Jar für {@code os.name} und {@code os.arch}.
+     * {@code version} ist die des Plugins, für die Meldung beim Jar der anderen Plattform.
+     */
+    static Path waehle(Path gesetzt, Path jar, Path bin, String os, String arch, String version) throws IOException {
         if (gesetzt != null) {
             return gesetzt;
         }
@@ -32,7 +35,7 @@ final class Binaer {
         if (plattform == null) {
             throw new IOException("das Jar hat kein Binär für " + os + " " + arch);
         }
-        return packeAus(jar, bin, plattform);
+        return packeAus(jar, bin, plattform, version);
     }
 
     /** Der Ordner im Jar für {@code os.name} und {@code os.arch}; null, wenn es keinen gibt. */
@@ -48,7 +51,7 @@ final class Binaer {
      * SHA-256 nicht die aus dem Build ist, und gibt seinen Pfad. Wirft, wenn das Jar keins hat oder das
      * Ausgepackte nicht passt; dann bleibt keine Datei daneben liegen.
      */
-    static Path packeAus(Path jar, Path bin, String plattform) throws IOException {
+    static Path packeAus(Path jar, Path bin, String plattform, String version) throws IOException {
         try (var fs = FileSystems.newFileSystem(jar)) {
             Path ordner = fs.getPath("/renderer");
             Path liste = ordner.resolve("renderer.properties");
@@ -60,7 +63,12 @@ final class Binaer {
             }
             String soll = props.getProperty(plattform);
             if (soll == null) {
-                throw new IOException("das Jar hat kein Binär für " + plattform);
+                // Ein Jar hat nur das Binär seiner Plattform, siehe docs/entscheidungen/0008-jar-je-plattform.md.
+                var andere = props.stringPropertyNames().stream().filter(k -> !k.equals("version")).sorted().toList();
+                throw new IOException(andere.isEmpty() ? "das Jar hat kein Binär für " + plattform
+                        : "dieses Jar ist für " + String.join(", ", andere) + "; für " + plattform + " braucht es "
+                                + "heroic-map-renderer-plugin-" + version + "-" + plattform + ".jar, auf Hangar die Version "
+                                + version + "-" + plattform);
             }
             String name = plattform.startsWith("windows") ? "heroic-map-renderer.exe" : "heroic-map-renderer";
             Path ziel = bin.resolve(props.getProperty("version")).resolve(name);

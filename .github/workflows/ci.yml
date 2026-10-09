@@ -98,6 +98,6 @@ jobs:
         timeout-minutes: 15
         run: ./gradlew assemble -Pweb="$GITHUB_WORKSPACE/renderer/web/dist" --console=plain
 
-      # Dateien im Jar und Grösse, wie beim Release.
+      # Dateien in jedem Jar und Grösse, wie beim Release.
       - name: Karte und Renderer im Jar, Grösse
-        run: bash .github/pruefe-jar.sh build/libs/*.jar
+        run: for p in windows-x64 linux-x64; do bash .github/pruefe-jar.sh build/libs/heroic-map-renderer-plugin-*-$p.jar; done

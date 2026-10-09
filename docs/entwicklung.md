@@ -25,7 +25,7 @@ code:
 
 # Entwicklung
 
-`./gradlew build` baut das Jar nach `build/libs/` und führt die Tests aus. Dazu baut es das Modul `api/`, die API für
+`./gradlew build` baut je Plattform ein Jar nach `build/libs/` und führt die Tests aus. Dazu baut es das Modul `api/`, die API für
 andere Plugins, nach `api/build/libs/`, mit Quellen und Javadoc; JitPack
 baut nur dieses Modul, siehe [API](api.md), „Einbinden“.
 Gradle 9.7.1 kommt über den Wrapper, Java 25 über die Toolchain, für das
@@ -34,9 +34,11 @@ Rechner liegen. Gebaut wird gegen die Paper-API `26.2.build.129-stable`
 aus `gradle.properties`, nur zum Übersetzen, ohne paperweight-userdev, siehe
 [0001](entscheidungen/0001-nur-die-paper-api.md). Ebenso nur zum Übersetzen
 die API von Simple Voice Chat 2.6.24, aus seinem Maven-Repository, siehe
-[0005](entscheidungen/0005-simple-voice-chat-api.md). Das Jar baut Shadow
-in `tasks.shadowJar`, damit bStats darin unter eigenem Paket steht; `jar`
-ist aus, siehe [0007](entscheidungen/0007-bstats.md).
+[0005](entscheidungen/0005-simple-voice-chat-api.md). Die Basis der Jars
+baut Shadow in `tasks.shadowJar` nach `build/basis/`, damit bStats darin
+unter eigenem Paket steht; `jar` ist aus, siehe
+[0007](entscheidungen/0007-bstats.md). Aus der Basis bauen `jar-windows-x64`
+und `jar-linux-x64` die Jars je Plattform, siehe „Der Renderer im Jar“.
 
 ## Im Jar
 
@@ -46,7 +48,7 @@ ist aus, siehe [0007](entscheidungen/0007-bstats.md).
   `META-INF/LICENSE-bstats.txt`, siehe [Statistik](statistik.md), „Im Jar“;
 - mit `-Pweb=<ordner>` die gebaute Karte unter `web/`, siehe
   [Webserver](webserver.md), „Die Karte im Jar“;
-- mit Netz die Binärs des Renderers für Windows und Linux unter
+- mit Netz das Binär des Renderers für die Plattform des Jars unter
   `renderer/`, siehe „Der Renderer im Jar“.
 
 Die Karte ist `web/dist` des Renderers, gebaut so:
@@ -64,10 +66,11 @@ von Mojang und keine Klasse von Simple Voice Chat.
 ## Der Renderer im Jar
 
 Die Aufgabe `holeRenderer` in [`build.gradle.kts`](../build.gradle.kts)
-lädt die Archive eines Releases des Renderers und legt beide Binärs ins
-Jar, entschieden in [0004](entscheidungen/0004-renderer-im-jar.md). Zur
-Laufzeit packt das Plugin das passende aus, siehe
-[Konfiguration](konfiguration.md), „Das Binär“.
+lädt die Archive eines Releases des Renderers, entschieden in
+[0004](entscheidungen/0004-renderer-im-jar.md). Je Plattform gibt es ein
+Jar mit nur ihrem Binär, entschieden in
+[0008](entscheidungen/0008-jar-je-plattform.md). Zur Laufzeit packt das
+Plugin es aus, siehe [Konfiguration](konfiguration.md), „Das Binär“.
 
 | Version | Archiv | SHA-256 |
 |---|---|---|
@@ -85,13 +88,17 @@ Laufzeit packt das Plugin das passende aus, siehe
 - **Ohne Netz,** auch mit `--offline`, warnt er „Renderer 0.5.0 nicht
   geladen, das Jar bleibt ohne Binärs“ und baut weiter. Der nächste Build
   versucht es wieder.
+- **Je Plattform:** `holeRenderer` legt unter
+  `build/renderer/jar/<plattform>/` ab, was ins Jar der Plattform kommt.
+  `jar-windows-x64` und `jar-linux-x64` packen die Basis aus Shadow und
+  diesen Ordner zu `heroic-map-renderer-plugin-<version>-<plattform>.jar`.
 - **Im Jar:**
 
   | Pfad | Inhalt |
   |---|---|
-  | `renderer/windows-x64/heroic-map-renderer.exe` | das Binär für Windows |
-  | `renderer/linux-x64/heroic-map-renderer` | das Binär für Linux |
-  | `renderer/renderer.properties` | `version` und je Plattform die SHA-256 ihres Binärs |
+  | `renderer/windows-x64/heroic-map-renderer.exe` | das Binär für Windows, nur im Jar für Windows |
+  | `renderer/linux-x64/heroic-map-renderer` | das Binär für Linux, nur im Jar für Linux |
+  | `renderer/renderer.properties` | `version` und die SHA-256 des Binärs, unter dem Namen seiner Plattform |
   | `renderer/LICENSE`, `renderer/NOTICE`, `renderer/THIRD-PARTY-NOTICES`, `renderer/COPYRIGHT-library.html` | die Hinweise, die jeder Weitergabe des Binärs beiliegen, siehe im Renderer [Drittlizenzen](https://github.com/VonNekyia/heroic-map-renderer/blob/master/docs/entwicklung/drittlizenzen.md) |
 
 - **Die Hinweise aus dem tar.gz:** Beide Archive haben dieselben vier
@@ -101,11 +108,18 @@ Laufzeit packt das Plugin das passende aus, siehe
   v0.4.0 ist nur in `NOTICE` der Absatz zur Schrift der Kartenschrift
   unter OFL neu). `lizenzen.txt`
   im Archiv gehört zur Karte unter `web/` und kommt mit `-Pweb`.
-- **Grösse,** am 09.10. mit v0.5.0, aus der CI, Job „Jar mit Karte“: das
-  Jar mit der Karte aus dem Archiv 9 854 668 Byte, bis zur Grenze bleiben
-  145 332 Byte. Gepackt im Jar hat das Binär für Windows 4 709 943 Byte,
-  das für Linux 4 470 060; beide nennt `pruefe-jar.sh`. Die Grenze prüft
-  die CI, siehe „CI“.
+- **Grösse,** am 09.10. mit v0.5.0, aus der CI, Job „Jar“ des
+  Release-Workflows als Probe in #42, Version `0.0.0-probe`, mit der Karte
+  aus dem Archiv:
+
+  | Jar | Byte | bis zur Grenze | Binär gepackt |
+  |---|---|---|---|
+  | `…-windows-x64.jar` | 5 382 538 | 4 617 462 | 4 709 943 |
+  | `…-linux-x64.jar` | 5 142 638 | 4 857 362 | 4 470 060 |
+
+  Das eine Jar davor steht in [0008](entscheidungen/0008-jar-je-plattform.md),
+  „Anlass“. Beide Grössen nennt `pruefe-jar.sh`. Die Grenze prüft die CI,
+  siehe „CI“.
 - **Neue Version:** `renderer` und beide SHA-256 in `build.gradle.kts`
   ändern, dann die Tabelle hier. Die SHA-256 selbst rechnen:
   `gh release download v<version> --repo VonNekyia/heroic-map-renderer`,
@@ -292,15 +306,17 @@ Build 129, eine Kopie der Testwelt, das Jar des Plugins unter `plugins/`,
   `renderer/tests/fixtures/` des Renderers. Der Job „Doku“ vergleicht sie
   mit `master` und fällt, wenn eine abweicht.
 - **Jar mit Karte:** baut die Karte aus `web/` des Renderers, Stand
-  `master`, packt sie mit `-Pweb` ins Jar und prüft, dass `web/index.html`,
+  `master`, packt sie mit `-Pweb` in beide Jars und prüft je Jar, dass `web/index.html`,
   `web/lizenzen.txt` und die Vorlagen `web/seite.html` und
-  `web/robots.vorlage.txt` darin stehen, ebenso alles unter `renderer/`,
-  siehe „Der Renderer im Jar“, und dass keine Klasse unter `de/maxhenkel/`
+  `web/robots.vorlage.txt` darin stehen, ebenso alles unter `renderer/`
+  für seine Plattform, mit seiner SHA-256 in `renderer.properties`, und
+  nichts für die andere, siehe „Der Renderer im Jar“, und dass keine
+  Klasse unter `de/maxhenkel/`
   darin liegt, siehe [0005](entscheidungen/0005-simple-voice-chat-api.md).
   bStats muss umbenannt und mit Lizenz darin stehen, siehe
   [Statistik](statistik.md), „Im Jar“, und die API für andere Plugins,
-  siehe [API](api.md). Das Jar muss unter 10 000 000 Byte bleiben; mehr nimmt Hangar je Datei
-  nicht. Alles prüft [`.github/pruefe-jar.sh`](../.github/pruefe-jar.sh),
+  siehe [API](api.md). Jedes Jar muss unter 10 000 000 Byte bleiben; mehr
+  nimmt Hangar je Datei nicht. Alles prüft [`.github/pruefe-jar.sh`](../.github/pruefe-jar.sh),
   auch beim Release.
 - **Doku:** Das Prüfskript des Renderers prüft Verweise, Links,
   Frontmatter und `docs/index.md`. Die CI lädt es vom Branch `master`, wie
@@ -311,23 +327,25 @@ Build 129, eine Kopie der Testwelt, das Jar des Plugins unter `plugins/`,
 ## Release
 
 [`.github/workflows/release.yml`](../.github/workflows/release.yml) baut
-auf einem Tag `v<version>` das Jar und legt einen Entwurf eines Releases
-auf GitHub an. Den Tag, das Veröffentlichen und Hangar übernimmt der
+auf einem Tag `v<version>` die Jars je Plattform und legt einen Entwurf
+eines Releases auf GitHub an. Den Tag, das Veröffentlichen und Hangar übernimmt der
 Maintainer.
 
 - **Version** aus dem Tag ohne `v`, an Gradle mit `-Pversion`: im Namen
-  `heroic-map-renderer-plugin-<version>.jar` und in `plugin.yml`. Ohne
+  `heroic-map-renderer-plugin-<version>-<plattform>.jar` und in
+  `plugin.yml`. Ohne
   `-Pversion` bleibt `0.1.0-SNAPSHOT`. Ein Tag, der keine Version wie
   `v1.2.3` ist, lässt den Lauf fallen.
 - **Renderer und Karte aus demselben Release:** `holeRenderer` lädt und
   prüft die Archive wie in „Der Renderer im Jar“. Die Karte ist `web/` aus
   dem Archiv für Linux, nicht `master` wie im Job „Jar mit Karte“. Eine
   neue Version des Renderers in `build.gradle.kts` bringt so beide.
-- **Prüfen:** `./gradlew build` mit den Tests, dann
-  `.github/pruefe-jar.sh` wie in der CI; `plugin.yml` im Jar muss die
+- **Prüfen:** `./gradlew build` mit den Tests, dann je Jar
+  `.github/pruefe-jar.sh` wie in der CI; `plugin.yml` in jedem Jar muss die
   Version nennen.
-- **Entwurf:** das Jar und `SHA256SUMS`. Die Notizen nennen die Version
-  des Renderers, die [Konfiguration](konfiguration.md) am Tag und aus
+- **Entwurf:** beide Jars und `SHA256SUMS`, sonst fällt der Lauf. Die
+  Notizen nennen die Version des Renderers, welches Jar wofür ist, die
+  [Konfiguration](konfiguration.md) am Tag und aus
   `NOTICE` Herausgeber, Kontakt und den Hinweis zu Mojang. Nur dieser Job
   darf schreiben.
 - **In einer PR,** die den Workflow, das Prüfskript oder

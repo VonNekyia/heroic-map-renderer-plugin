@@ -62,8 +62,9 @@ tasks.processResources {
     }
 }
 
-// Der Renderer im Jar, für Windows und Linux auf x86_64. Die SHA-256 der Archive stehen hier fest, denn
-// SHA256SUMS kommt von derselben Stelle wie die Archive. Siehe docs/entscheidungen/0004-renderer-im-jar.md.
+// Der Renderer im Jar, je Plattform ein Jar für Windows und Linux auf x86_64. Die SHA-256 der Archive stehen hier
+// fest, denn SHA256SUMS kommt von derselben Stelle wie die Archive. Siehe docs/entscheidungen/0004-renderer-im-jar.md
+// und docs/entscheidungen/0008-jar-je-plattform.md.
 val renderer = "0.5.0"
 val rendererArchive = mapOf(
     "windows-x64" to "b3b8ab01aee1223e2de2ec2fba74b5578196c2f80981025645c3d665b2340047",
@@ -111,7 +112,7 @@ val holeRenderer = tasks.register("holeRenderer") {
     inputs.property("archive", rendererArchive)
     outputs.dir(ziel)
     // Ohne Netz bleibt der Ordner leer; dann versucht es der nächste Build wieder.
-    outputs.upToDateWhen { File(ziel, "renderer/renderer.properties").isFile }
+    outputs.upToDateWhen { rendererArchive.keys.all { File(ziel, "$it/renderer/renderer.properties").isFile } }
     doLast {
         ziel.deleteRecursively()
         val inhalte = mutableMapOf<String, Map<String, ByteArray>>()
@@ -134,29 +135,44 @@ val holeRenderer = tasks.register("holeRenderer") {
             }
             inhalte[plattform] = if (windows) ausZip(datei) else ausTarGz(datei)
         }
-        val liste = StringBuilder("version=$renderer\n")
+        // Je Plattform ein Ordner mit ihrem Binär, den Hinweisen und renderer.properties; die Hinweise aus dem
+        // Archiv für Linux, siehe docs/entwicklung.md, „Der Renderer im Jar“.
+        val linux = inhalte.getValue("linux-x64")
         for ((plattform, inhalt) in inhalte) {
             val stamm = "heroic-map-renderer-$plattform/"
             val binaer = "heroic-map-renderer" + if (plattform.startsWith("windows")) ".exe" else ""
-            // Die Hinweise aus dem Archiv für Linux, siehe docs/entwicklung.md, „Der Renderer im Jar“.
-            for (d in if (plattform == "linux-x64") listOf(binaer) + rendererHinweise else listOf(binaer)) {
-                val b = inhalt[stamm + d] ?: throw GradleException("$stamm$d fehlt im Archiv")
-                val f = File(ziel, if (d == binaer) "renderer/$plattform/$d" else "renderer/$d")
-                f.parentFile.mkdirs()
-                f.writeBytes(b)
+            val b = inhalt[stamm + binaer] ?: throw GradleException("$stamm$binaer fehlt im Archiv")
+            val dateien = mapOf("renderer/$plattform/$binaer" to b) + rendererHinweise.associate { d ->
+                "renderer/$d" to (linux["heroic-map-renderer-linux-x64/$d"] ?: throw GradleException("$d fehlt im Archiv"))
             }
-            liste.append("$plattform=${sha256(inhalt.getValue(stamm + binaer))}\n")
+            for ((pfad, inhaltDerDatei) in dateien) {
+                val f = File(ziel, "$plattform/$pfad")
+                f.parentFile.mkdirs()
+                f.writeBytes(inhaltDerDatei)
+            }
+            File(ziel, "$plattform/renderer/renderer.properties").writeText("version=$renderer\n$plattform=${sha256(b)}\n")
         }
-        File(ziel, "renderer/renderer.properties").writeText(liste.toString())
     }
 }
 
-// Das Jar des Plugins baut Shadow: mit bStats unter eigenem Paket, wie bStats es verlangt.
+// Die Basis des Jars baut Shadow: mit bStats unter eigenem Paket, wie bStats es verlangt. Ausgeliefert wird sie nicht,
+// sondern je Plattform ein Jar mit dem Binär dieser Plattform. Siehe docs/entscheidungen/0008-jar-je-plattform.md.
 tasks.jar { enabled = false }
 
 tasks.shadowJar {
     archiveClassifier = ""
+    destinationDirectory = layout.buildDirectory.dir("basis")
     relocate("org.bstats", "com.nekyia.heroicmap.bstats")
     metaInf { from("LICENSE", "NOTICE") }
-    from(holeRenderer)
+}
+
+for (plattform in rendererArchive.keys) {
+    val jarDerPlattform = tasks.register<Jar>("jar-$plattform") {
+        archiveClassifier = plattform
+        // Das Manifest schreibt diese Aufgabe selbst.
+        from(zipTree(tasks.shadowJar.flatMap { it.archiveFile })) { exclude("META-INF/MANIFEST.MF") }
+        from(layout.buildDirectory.dir("renderer/jar/$plattform"))
+        dependsOn(tasks.shadowJar, holeRenderer)
+    }
+    tasks.assemble { dependsOn(jarDerPlattform) }
 }

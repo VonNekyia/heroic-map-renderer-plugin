@@ -19,6 +19,9 @@ Karte vom Server herunter.
 
 **Stand:** Die Jars stehen unter
 [Releases](https://github.com/VonNekyia/heroic-map-renderer-plugin/releases).
+Ab v0.3.2 gibt es je eins für Windows und Linux auf x86_64,
+`…-windows-x64.jar` und `…-linux-x64.jar`, auf Hangar als eigene Versionen;
+welches man nimmt, steht in [Alpha einrichten](docs/alpha.md).
 
 ## Herausgeber und Kontakt
 
