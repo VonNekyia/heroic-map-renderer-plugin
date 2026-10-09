@@ -97,13 +97,15 @@ Laufzeit packt das Plugin das passende aus, siehe
 - **Die Hinweise aus dem tar.gz:** Beide Archive haben dieselben vier
   Dateien, im Zip mit CRLF. Bei v0.2.0 war in `THIRD-PARTY-NOTICES` des
   Zips ein Name doppelt als UTF-8 kodiert; seit v0.2.1 gleichen sich beide
-  bis auf die Zeilenenden (zuletzt am 09.10. mit v0.4.0 verglichen). `lizenzen.txt`
+  bis auf die Zeilenenden (zuletzt am 09.10. mit v0.5.0 verglichen: gegen
+  v0.4.0 ist nur in `NOTICE` der Absatz zur Schrift der Kartenschrift
+  unter OFL neu). `lizenzen.txt`
   im Archiv gehört zur Karte unter `web/` und kommt mit `-Pweb`.
-- **Grösse,** am 09.10. mit v0.4.0 und der API (#39): das Jar ohne Karte
-  9 456 183 Byte (lokal), mit der Karte aus dem Archiv 9 727 787 Byte
-  (CI, Job „Jar“).
-  Gepackt im Jar hat das Binär für Windows 4 710 353 Byte, das für Linux
-  4 470 202. Die Grenze prüft die CI, siehe „CI“.
+- **Grösse,** am 09.10. mit v0.5.0, aus der CI, Job „Jar mit Karte“: das
+  Jar mit der Karte aus dem Archiv 9 854 668 Byte, bis zur Grenze bleiben
+  145 332 Byte. Gepackt im Jar hat das Binär für Windows 4 709 943 Byte,
+  das für Linux 4 470 060; beide nennt `pruefe-jar.sh`. Die Grenze prüft
+  die CI, siehe „CI“.
 - **Neue Version:** `renderer` und beide SHA-256 in `build.gradle.kts`
   ändern, dann die Tabelle hier. Die SHA-256 selbst rechnen:
   `gh release download v<version> --repo VonNekyia/heroic-map-renderer`,
