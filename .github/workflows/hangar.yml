@@ -62,7 +62,8 @@ jobs:
 
           jwt=$(curl -fsS -X POST "$HANGAR_API/authenticate?apiKey=$HANGAR_API_TOKEN" | jq -r .token)
           echo "::add-mask::$jwt"
-          for plattform in linux-x64 windows-x64; do
+          # Linux zuletzt: Hangar bietet die zuletzt hochgeladene Version als Download an.
+          for plattform in windows-x64 linux-x64; do
             name=$version-$plattform
             # Gibt es die Version schon, bleibt sie; so scheitert ein zweiter Lauf nicht.
             status=$(curl -sS -o /dev/null -w '%{http_code}' -H "Authorization: Bearer $jwt" \
