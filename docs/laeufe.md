@@ -28,6 +28,7 @@ ist die Entscheidung des Maintainers in heroic-map-renderer#153.
 | `compact` | Nachverdichten über alle Bäume, `--compact-tree`, siehe „Kompakt“ |
 | `status` | was läuft, seit wann, mit PID und letzter Zeile; dazu je Baum Dauer und Ausgang des letzten Aufrufs, siehe „Status“ |
 | `cancel` | bricht den Lauf ab |
+| `layers` | lädt die Ebenen neu, auch ohne Renderer, siehe [Ebenen](ebenen.md) |
 
 Vor einem vollen Lauf warnt das Plugin noch nicht. Die Schätzung und die
 Bestätigung kommen mit heroic-map-renderer#149.
