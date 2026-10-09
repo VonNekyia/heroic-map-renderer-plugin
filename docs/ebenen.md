@@ -29,12 +29,12 @@ plugins/HeroicMap/ebenen/
     images/             ihre Bilder, etwa images/burg_16.png
 ```
 
-- **Namen:** `modname`, `ebene` und der Name eines Bilds ohne Endung je
-  1 bis 64 Zeichen aus `a`–`z`, `0`–`9`, `_`, `-` und `.`, ohne `.` vorn
-  oder hinten und kein Gerät von Windows wie `nul`, `con` oder `com1`, auch
-  nicht vor einer Endung wie in `nul.json`. Anders liefert der Server des
-  Renderers die Datei nicht aus, und die Ebene fehlte still auf der Karte.
-  Geprüft in `EbenenPruefung.teil` und `datei`.
+- **Namen:** `modname`, `ebene` und der Name eines Bilds folgen der Regel
+  aus
+  [Ebenen](https://github.com/VonNekyia/heroic-map-renderer/blob/master/docs/benutzung/ebenen.md),
+  „Kennung“, im Renderer. Anders liefert sein Server die Datei nicht aus,
+  und die Ebene fehlte still auf der Karte. Geprüft in `EbenenPruefung.teil`
+  und `datei`.
 - **Kennung:** Die Datei nennt ihre Kennung `<modname>:<ebene>` in `id`,
   gleich wie Ordner und Datei.
 - **Ohne Ordner `ebenen`** gibt es keine Ebenen, und das Log schweigt dazu.
@@ -55,8 +55,12 @@ plugins/HeroicMap/ebenen/
   `Ebenen: beispiel/staedte.json: objects[0].symbol.large: images/burg.png hat 9 × 9 Pixel, erlaubt genau 16 × 16`.
   Je Datei höchstens 20 Fehler, dann `und N weitere Fehler`.
 - **Ein Ordner, der nicht zu lesen ist,** behält seinen alten Stand: der
-  Ordner `ebenen` ganz, der Ordner eines `modname` für seine Ebenen. So
-  löscht ein Lesefehler nichts von der Webkarte.
+  Ordner `ebenen` ganz, der Ordner eines `modname` für seine Ebenen. Gibt
+  es noch keinen, etwa gleich nach dem Start, bleiben seine Dateien unter
+  `layers/` und ihre Einträge in `layers.json` stehen. So löscht ein
+  Lesefehler nichts von der Webkarte.
+- **Höchstens 64,** auch mit den alten Ebenen eines unlesbaren Ordners;
+  gezählt wird nach dem Zusammenführen.
 - **Der Befehl** antwortet mit der Zahl der geladenen Ebenen; `/heroicmap
   status` nennt die Ebenen und wie viele davon auf der Webkarte stehen,
   auch ohne Renderer.

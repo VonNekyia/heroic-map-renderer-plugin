@@ -11,8 +11,12 @@ import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.channels.FileChannel;
+import java.nio.file.StandardOpenOption;
+import java.nio.file.attribute.PosixFilePermissions;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 import javax.imageio.ImageIO;
 
 /** Das Beispiel der Städte aus dem Format des Renderers, Bilder und Helfer für die Tests der Ebenen. */
@@ -109,6 +113,28 @@ final class EbenenBeispiel {
             Files.write(ordner.resolve("beispiel").resolve(b.getKey()), b.getValue());
         }
         return ordner;
+    }
+
+    /** Bilder, die schon gelesen sind, so wie die Prüfung nach ihnen fragt. */
+    static Function<String, EbenenPruefung.Bild> gelesen(Map<String, byte[]> bilder) {
+        return p -> bilder.containsKey(p) ? new EbenenPruefung.Bild(bilder.get(p), null) : null;
+    }
+
+    /**
+     * Macht {@code datei} unlesbar, bis das Ergebnis geschlossen wird: unter Windows mit einer Sperre über die
+     * ganze Datei, sonst ohne Rechte.
+     */
+    static AutoCloseable unlesbar(Path datei) throws IOException {
+        if (System.getProperty("os.name").startsWith("Windows")) {
+            var kanal = FileChannel.open(datei, StandardOpenOption.WRITE);
+            var sperre = kanal.lock();
+            return () -> {
+                sperre.release();
+                kanal.close();
+            };
+        }
+        Files.setPosixFilePermissions(datei, PosixFilePermissions.fromString("---------"));
+        return () -> Files.setPosixFilePermissions(datei, PosixFilePermissions.fromString("rw-------"));
     }
 
     static void enthaelt(List<String> fehler, String erwartet) {

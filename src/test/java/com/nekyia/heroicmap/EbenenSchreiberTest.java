@@ -7,7 +7,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import com.nekyia.heroicmap.Ebenen.Ebene;
 import java.io.FileInputStream;
@@ -18,6 +17,7 @@ import java.nio.file.attribute.FileTime;
 import java.nio.file.attribute.PosixFilePermissions;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.DisabledOnOs;
 import org.junit.jupiter.api.condition.EnabledOnOs;
@@ -46,7 +46,7 @@ class EbenenSchreiberTest {
         var geheim = ebene("beispiel:geheim", ", \"permission\": \"x\"", Map.of());
         var nurMod = ebene("andere:nurmod", ", \"web\": false", Map.of("images/s.png", png(16, 16)));
         Path wurzel = tmp.resolve("tiles");
-        new EbenenSchreiber(wurzel, OBERWELT).schreibe(List.of(staedte, geheim, nurMod));
+        new EbenenSchreiber(wurzel, OBERWELT).schreibe(List.of(staedte, geheim, nurMod), Set.of());
 
         var liste = Ebenen.lies(Files.readString(wurzel.resolve("layers.json"))).getAsJsonArray("layers");
         assertEquals(1, liste.size(), "nur die Ebene für die Webkarte");
@@ -71,27 +71,42 @@ class EbenenSchreiberTest {
         var staedte = staedte();
         Path wurzel = tmp.resolve("tiles");
         var schreiber = new EbenenSchreiber(wurzel, OBERWELT);
-        schreiber.schreibe(List.of(staedte, ebene("andere:wege", "", Map.of())));
+        schreiber.schreibe(List.of(staedte, ebene("andere:wege", "", Map.of())), Set.of());
         Path datei = wurzel.resolve("layers/beispiel/staedte.json");
         var alt = FileTime.fromMillis(1_000_000);
         Files.setLastModifiedTime(datei, alt);
         Files.writeString(wurzel.resolve("layers/beispiel/.staedte.json.neu"), "halb");
 
-        schreiber.schreibe(List.of(staedte));
+        schreiber.schreibe(List.of(staedte), Set.of());
         assertEquals(alt, Files.getLastModifiedTime(datei), "gleiche Bytes werden nicht neu geschrieben");
         assertFalse(Files.exists(wurzel.resolve("layers/andere")), "Datei und leerer Ordner der entfernten Ebene");
         assertFalse(Files.exists(wurzel.resolve("layers/beispiel/.staedte.json.neu")), "liegen gebliebene halbe Datei");
         assertEquals(1, Ebenen.lies(Files.readString(wurzel.resolve("layers.json"))).getAsJsonArray("layers").size());
 
-        schreiber.schreibe(List.of());
+        schreiber.schreibe(List.of(), Set.of());
         assertFalse(Files.exists(wurzel.resolve("layers.json")));
         assertFalse(Files.exists(wurzel.resolve("layers")));
+    }
+
+    @Test
+    void unberuehrte_mods_bleiben_mit_ihrem_eintrag() throws IOException {
+        Path wurzel = tmp.resolve("tiles");
+        var schreiber = new EbenenSchreiber(wurzel, OBERWELT);
+        schreiber.schreibe(List.of(staedte(), ebene("zweiter:karte", "", Map.of())), Set.of());
+        schreiber.schreibe(List.of(staedte()), Set.of("zweiter"));
+        assertTrue(Files.exists(wurzel.resolve("layers/zweiter/karte.json")));
+        assertEquals(2, Ebenen.lies(Files.readString(wurzel.resolve("layers.json"))).getAsJsonArray("layers").size());
+        schreiber.schreibe(List.of(), null);
+        assertTrue(Files.exists(wurzel.resolve("layers/beispiel/staedte.json")), "null: jeder modname bleibt");
+        assertEquals(2, Ebenen.lies(Files.readString(wurzel.resolve("layers.json"))).getAsJsonArray("layers").size());
+        schreiber.schreibe(List.of(staedte()), Set.of());
+        assertFalse(Files.exists(wurzel.resolve("layers/zweiter")), "wieder lesbar und ohne Ebene: weg");
     }
 
     /** Lässt das Löschen von {@code bild} scheitern und prüft, dass die Datei der Ebene vorher weg ist. */
     private void ebeneVorBild(Path wurzel, Path bild, AutoCloseable sperre) throws Exception {
         try (sperre) {
-            assertThrows(IOException.class, () -> new EbenenSchreiber(wurzel, OBERWELT).schreibe(List.of()));
+            assertThrows(IOException.class, () -> new EbenenSchreiber(wurzel, OBERWELT).schreibe(List.of(), Set.of()));
         }
         assertFalse(Files.exists(wurzel.resolve("layers/beispiel/staedte.json")), "erst die Ebene, dann die Bilder");
         assertFalse(Files.exists(wurzel.resolve("layers.json")), "layers.json vor allem anderen");
@@ -102,7 +117,7 @@ class EbenenSchreiberTest {
     @EnabledOnOs(OS.WINDOWS)
     void beim_entfernen_erst_die_ebene_dann_die_bilder_windows() throws Exception {
         Path wurzel = tmp.resolve("tiles");
-        new EbenenSchreiber(wurzel, OBERWELT).schreibe(List.of(staedte()));
+        new EbenenSchreiber(wurzel, OBERWELT).schreibe(List.of(staedte()), Set.of());
         Path bild = wurzel.resolve("layers/beispiel/images/banner.png");
         // Ein offener Strom hält die Datei unter Windows fest; löschen scheitert.
         ebeneVorBild(wurzel, bild, new FileInputStream(bild.toFile()));
@@ -112,7 +127,7 @@ class EbenenSchreiberTest {
     @DisabledOnOs(OS.WINDOWS)
     void beim_entfernen_erst_die_ebene_dann_die_bilder() throws Exception {
         Path wurzel = tmp.resolve("tiles");
-        new EbenenSchreiber(wurzel, OBERWELT).schreibe(List.of(staedte()));
+        new EbenenSchreiber(wurzel, OBERWELT).schreibe(List.of(staedte()), Set.of());
         Path images = wurzel.resolve("layers/beispiel/images");
         Files.setPosixFilePermissions(images, PosixFilePermissions.fromString("r-x------"));
         ebeneVorBild(wurzel, images.resolve("banner.png"),
@@ -122,10 +137,10 @@ class EbenenSchreiberTest {
     /** Ein Ordner draussen mit einer Datei, die das Plugin nie anfassen darf, und ein Link darauf unter layers/. */
     private void nieDurchDenLink(Path wurzel, Path draussen) throws IOException {
         Path wichtig = draussen.resolve("wichtig.txt");
-        new EbenenSchreiber(wurzel, OBERWELT).schreibe(List.of());
+        new EbenenSchreiber(wurzel, OBERWELT).schreibe(List.of(), Set.of());
         assertTrue(Files.exists(wichtig), "Aufräumen folgt dem Link nicht");
         assertThrows(IOException.class, () -> new EbenenSchreiber(wurzel, OBERWELT)
-                .schreibe(List.of(ebene("fremd:karte", "", Map.of("images/s.png", png(16, 16))))));
+                .schreibe(List.of(ebene("fremd:karte", "", Map.of("images/s.png", png(16, 16)))), Set.of()));
         try (var inhalt = Files.list(draussen)) {
             assertEquals(List.of(wichtig), inhalt.toList(), "Schreiben geht nicht durch den Link");
         }
@@ -139,7 +154,7 @@ class EbenenSchreiberTest {
         Files.writeString(draussen.resolve("wichtig.txt"), "x");
         var mklink = new ProcessBuilder("cmd", "/c", "mklink", "/J", wurzel.resolve("layers/fremd").toString(),
                 draussen.toString()).redirectErrorStream(true).start();
-        assumeTrue(mklink.waitFor() == 0, "mklink /J ging nicht");
+        assertEquals(0, mklink.waitFor(), "mklink /J muss unter Windows gehen");
         nieDurchDenLink(wurzel, draussen);
     }
 

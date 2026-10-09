@@ -6,6 +6,7 @@ import static com.nekyia.heroicmap.EbenenBeispiel.enthaelt;
 import static com.nekyia.heroicmap.EbenenBeispiel.ordnerMitStaedten;
 import static com.nekyia.heroicmap.EbenenBeispiel.png;
 import static com.nekyia.heroicmap.EbenenBeispiel.staedte;
+import static com.nekyia.heroicmap.EbenenBeispiel.unlesbar;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -64,30 +65,34 @@ class EbenenTest {
     }
 
     @Test
-    void nur_genannte_bilder_und_erst_nach_der_groesse() throws IOException {
+    void nur_genannte_bilder_und_erst_nach_der_groesse() throws Exception {
         Path ordner = ordnerMitStaedten(tmp);
-        Files.write(ordner.resolve("beispiel/images/entwurf.psd"), new byte[3 << 20]);
-        Files.createDirectory(ordner.resolve("beispiel/images/ordner.png"));
-        var g = Ebenen.lade(ordner, OBERWELT);
-        assertEquals(List.of("beispiel:staedte"), ids(g), "ein grosser Entwurf daneben stört nicht");
-        assertEquals(4, g.ebenen().getFirst().bilder().size(), "nur genannte Bilder");
-
+        Path entwurf = ordner.resolve("beispiel/images/entwurf.psd");
+        Files.write(entwurf, new byte[3 << 20]);
+        try (var _ = unlesbar(entwurf)) {
+            var g = Ebenen.lade(ordner, OBERWELT);
+            assertEquals(List.of("beispiel:staedte"), ids(g), "ein grosser, unlesbarer Entwurf daneben stört nicht");
+            assertEquals(List.of(), g.fehler());
+            assertEquals(4, g.ebenen().getFirst().bilder().size(), "nur genannte Bilder");
+        }
         Files.write(ordner.resolve("beispiel/images/banner.png"), new byte[(256 << 10) + 1]);
         enthaelt(Ebenen.lade(ordner, OBERWELT).fehler(), "images/banner.png ist grösser als 256 KiB");
     }
 
     @Test
-    void ein_fehler_in_einem_mod_laesst_die_anderen_stehen() throws IOException {
+    void ein_unlesbares_bild_trifft_nur_seine_ebene() throws Exception {
         Path ordner = ordnerMitStaedten(tmp);
-        Path a = Files.createDirectories(ordner.resolve("a/images"));
+        // Mod a kommt beim Laden vor beispiel; sein Fehler darf beispiel nicht verhindern.
+        Path images = Files.createDirectories(ordner.resolve("a/images"));
         Files.writeString(ordner.resolve("a/karte.json"), """
                 {"id": "a:karte", "name": {"de": "K"}, "objects": [
                   {"id": "p", "type": "pin", "at": [0, 0], "symbol": {"large": "images/s.png"}}]}""");
-        // Ein Ordner statt des Bilds: Lesen scheitert für diese Ebene, nicht für den Mod danach.
-        Files.createDirectory(a.resolve("s.png"));
-        var g = Ebenen.lade(ordner, OBERWELT);
-        assertEquals(List.of("beispiel:staedte"), ids(g));
-        enthaelt(g.fehler(), "a/karte.json: objects[0].symbol.large: images/s.png fehlt");
+        Files.write(images.resolve("s.png"), png(16, 16));
+        try (var _ = unlesbar(images.resolve("s.png"))) {
+            var g = Ebenen.lade(ordner, OBERWELT);
+            assertEquals(List.of("beispiel:staedte"), ids(g));
+            enthaelt(g.fehler(), "a/karte.json: objects[0].symbol.large: images/s.png nicht gelesen");
+        }
     }
 
     @Test
@@ -113,6 +118,61 @@ class EbenenTest {
         } finally {
             Files.setPosixFilePermissions(zweiter, PosixFilePermissions.fromString("rwx------"));
         }
+    }
+
+    @Test
+    @DisabledOnOs(OS.WINDOWS)
+    void der_deckel_gilt_auch_mit_alten_ebenen() throws IOException {
+        Path ordner = tmp.resolve("ebenen");
+        Path alt = Files.createDirectories(ordner.resolve("alt"));
+        Files.writeString(alt.resolve("karte.json"), "{\"id\": \"alt:karte\", \"name\": {\"de\": \"x\"}, \"objects\": []}");
+        var e = new Ebenen(ordner, OBERWELT, new EbenenSchreiber(tmp.resolve("tiles"), OBERWELT), still());
+        e.ladeNeu();
+        for (int i = 0; i < 64; i++) {
+            Path d = Files.createDirectories(ordner.resolve("b"));
+            Files.writeString(d.resolve(String.format("x%02d.json", i)),
+                    String.format("{\"id\": \"b:x%02d\", \"name\": {\"de\": \"x\"}, \"objects\": []}", i));
+        }
+        Files.setPosixFilePermissions(alt, PosixFilePermissions.fromString("---------"));
+        try {
+            e.ladeNeu();
+            assertEquals(64, e.stand().size(), "64 lesbare und eine alte aus dem unlesbaren Mod: höchstens 64");
+            assertEquals("alt:karte", e.stand().getFirst().id());
+        } finally {
+            Files.setPosixFilePermissions(alt, PosixFilePermissions.fromString("rwx------"));
+        }
+    }
+
+    @Test
+    @DisabledOnOs(OS.WINDOWS)
+    void ein_beim_start_unlesbarer_mod_bleibt_auf_der_webkarte() throws IOException {
+        Path ordner = ordnerMitStaedten(tmp);
+        Path zweiter = Files.createDirectories(ordner.resolve("zweiter"));
+        Files.writeString(zweiter.resolve("karte.json"), "{\"id\": \"zweiter:karte\", \"name\": {\"de\": \"K\"}, \"objects\": []}");
+        Path tiles = tmp.resolve("tiles");
+        var vorher = new Ebenen(ordner, OBERWELT, new EbenenSchreiber(tiles, OBERWELT), still());
+        vorher.ladeNeu();
+        vorher.takt();
+        assertTrue(Files.exists(tiles.resolve("layers/zweiter/karte.json")));
+
+        Files.setPosixFilePermissions(zweiter, PosixFilePermissions.fromString("---------"));
+        try {
+            var nachDemStart = new Ebenen(ordner, OBERWELT, new EbenenSchreiber(tiles, OBERWELT), still());
+            nachDemStart.ladeNeu();
+            nachDemStart.takt();
+            assertTrue(Files.exists(tiles.resolve("layers/zweiter/karte.json")), "die Datei bleibt");
+            var liste = Ebenen.lies(Files.readString(tiles.resolve("layers.json"))).getAsJsonArray("layers");
+            assertEquals(List.of("beispiel:staedte", "zweiter:karte"),
+                    liste.asList().stream().map(x -> x.getAsJsonObject().get("id").getAsString()).toList(), "und ihr Eintrag");
+        } finally {
+            Files.setPosixFilePermissions(zweiter, PosixFilePermissions.fromString("rwx------"));
+        }
+    }
+
+    private static Logger still() {
+        var log = Logger.getAnonymousLogger();
+        log.setUseParentHandlers(false);
+        return log;
     }
 
     @Test

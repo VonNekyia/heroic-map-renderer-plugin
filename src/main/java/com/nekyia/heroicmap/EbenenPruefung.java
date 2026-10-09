@@ -8,7 +8,6 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.function.Function;
@@ -47,11 +46,6 @@ final class EbenenPruefung {
 
     private EbenenPruefung(Function<String, Bild> vorhanden) {
         this.vorhanden = vorhanden;
-    }
-
-    /** Wie {@link #pruefe(String, JsonObject, Function)} mit Bildern, die schon gelesen sind. */
-    static Ergebnis pruefe(String id, JsonObject ebene, Map<String, byte[]> bilder) {
-        return pruefe(id, ebene, p -> bilder.containsKey(p) ? new Bild(bilder.get(p), null) : null);
     }
 
     /**
