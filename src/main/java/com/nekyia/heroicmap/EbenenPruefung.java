@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.function.Function;
 import java.util.regex.Pattern;
 
 /**
@@ -19,13 +20,12 @@ import java.util.regex.Pattern;
  */
 final class EbenenPruefung {
 
-    /** Ein Teil der Kennung modname:ebene, ebenso ein Ordner oder eine Datei darunter. */
-    static final Pattern TEIL = Pattern.compile("[a-z0-9_-][a-z0-9_.-]{0,63}");
+    private static final Pattern ZEICHEN = Pattern.compile("[a-z0-9_.-]{1,64}");
+    private static final Pattern GERAET = Pattern.compile("con|prn|aux|nul|com[0-9]|lpt[0-9]");
     static final int EBENE_BYTES = 4 << 20;
     static final int BILD_BYTES = 256 << 10;
     private static final Pattern FARBE = Pattern.compile("#(\\p{XDigit}{6}|\\p{XDigit}{8})");
     private static final Pattern DIMENSION = Pattern.compile("[a-z0-9_.-]+:[a-z0-9_./-]+");
-    private static final Pattern BILD = Pattern.compile("images/[A-Za-z0-9_-][A-Za-z0-9_.-]{0,63}\\.(png|webp)");
     private static final int OBJEKTE = 10_000;
     private static final int NADELN = 1000;
     private static final int PUNKTE = 10_000;
@@ -36,18 +36,29 @@ final class EbenenPruefung {
     /** Die Fehler, leer für eine gültige Ebene, und die Bilder, die sie nennt. */
     record Ergebnis(List<String> fehler, Set<String> bilder) {}
 
+    /** Ein Bild, wie es zu lesen war: die Bytes, oder warum es sie nicht gibt. */
+    record Bild(byte[] daten, String fehler) {}
+
     private final List<String> fehler = new ArrayList<>();
     private final Set<String> benutzt = new TreeSet<>();
-    private final Map<String, byte[]> vorhanden;
+    private final Function<String, Bild> vorhanden;
     private boolean mitPermission;
     private int bausteine;
 
-    private EbenenPruefung(Map<String, byte[]> vorhanden) {
+    private EbenenPruefung(Function<String, Bild> vorhanden) {
         this.vorhanden = vorhanden;
     }
 
-    /** Prüft die Ebene {@code id}; {@code bilder} sind die Bilder ihres modname, Pfad wie images/burg.png. */
+    /** Wie {@link #pruefe(String, JsonObject, Function)} mit Bildern, die schon gelesen sind. */
     static Ergebnis pruefe(String id, JsonObject ebene, Map<String, byte[]> bilder) {
+        return pruefe(id, ebene, p -> bilder.containsKey(p) ? new Bild(bilder.get(p), null) : null);
+    }
+
+    /**
+     * Prüft die Ebene {@code id}. {@code bilder} gibt ein Bild ihres modname zu einem Pfad wie images/burg.png,
+     * null, wenn es fehlt; gefragt wird nur nach Bildern, die die Ebene nennt.
+     */
+    static Ergebnis pruefe(String id, JsonObject ebene, Function<String, Bild> bilder) {
         var p = new EbenenPruefung(bilder);
         p.ebene(id, ebene);
         if (p.benutzt.size() > BILDER) {
@@ -393,55 +404,98 @@ final class EbenenPruefung {
             fehler.add(t + ": eine Ebene mit permission hat keine Bilder, alles unter layers/ ist öffentlich");
             return;
         }
-        if (!BILD.matcher(pfad).matches()) {
+        if (!bildpfad(pfad)) {
             fehler.add(t + ": ein Bild wie images/name.png oder images/name.webp");
             return;
         }
-        byte[] b = vorhanden.get(pfad);
+        Bild b = vorhanden.apply(pfad);
         if (b == null) {
             fehler.add(t + ": " + pfad + " fehlt");
             return;
         }
+        if (b.fehler() != null) {
+            fehler.add(t + ": " + pfad + " " + b.fehler());
+            return;
+        }
         benutzt.add(pfad);
-        int[] mass = b.length > BILD_BYTES ? null : masse(b);
-        if (b.length > BILD_BYTES) {
-            fehler.add(t + ": " + pfad + " ist grösser als 256 KiB");
-        } else if (mass == null) {
-            fehler.add(t + ": " + pfad + " ist weder PNG noch WebP VP8L");
+        String falsch = bild(pfad, b.daten());
+        int[] mass = falsch == null ? masse(b.daten()) : null;
+        if (falsch != null) {
+            fehler.add(t + ": " + pfad + ": " + falsch);
         } else if (genau ? mass[0] != breite || mass[1] != hoehe : mass[0] > breite || mass[1] > hoehe) {
             fehler.add(t + ": " + pfad + " hat " + mass[0] + " × " + mass[1] + " Pixel, erlaubt "
                     + (genau ? "genau " : "höchstens ") + breite + " × " + hoehe);
         }
     }
 
-    /** Ein Bild für die API: Pfad, Grösse und Kopf, höchstens 512 × 512; null, wenn es passt. */
+    /**
+     * Ein Teil der Kennung modname:ebene oder ein Dateiname darunter, wie der Server des Renderers ihn
+     * ausliefert: 1 bis 64 Zeichen aus a-z, 0-9, _, - und ., kein . vorn oder hinten, kein Gerät von Windows,
+     * auch nicht vor einer Endung. Siehe docs/ebenen.md, „Dateien“.
+     */
+    static boolean teil(String name) {
+        if (name == null || !ZEICHEN.matcher(name).matches() || name.startsWith(".") || name.endsWith(".")) {
+            return false;
+        }
+        int punkt = name.indexOf('.');
+        return !GERAET.matcher(punkt < 0 ? name : name.substring(0, punkt)).matches();
+    }
+
+    /** Ein Dateiname mit einer der Endungen, sein Stamm ein {@link #teil}. */
+    static boolean datei(String name, String... endungen) {
+        for (String e : endungen) {
+            if (name.endsWith(e) && teil(name.substring(0, name.length() - e.length()))) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean bildpfad(String pfad) {
+        return pfad != null && pfad.startsWith("images/") && datei(pfad.substring("images/".length()), ".png", ".webp");
+    }
+
+    /**
+     * Ein Bild: Pfad, Grösse in Byte, Kopf passend zur Endung; null, wenn es passt. Breite und Höhe prüft, wer
+     * es nennt. Der Server setzt den Typ nach der Endung, darum muss der Kopf zu ihr passen.
+     */
     static String bild(String pfad, byte[] b) {
-        if (pfad == null || !BILD.matcher(pfad).matches()) {
+        if (!bildpfad(pfad)) {
             return "ein Pfad wie images/name.png oder images/name.webp";
         }
         if (b.length > BILD_BYTES) {
             return "grösser als 256 KiB";
         }
-        int[] m = masse(b);
-        if (m == null) {
+        String art = art(b);
+        if (art == null) {
             return "weder PNG noch WebP VP8L";
         }
-        return m[0] > 512 || m[1] > 512 ? m[0] + " × " + m[1] + " Pixel, erlaubt höchstens 512 × 512" : null;
+        return pfad.endsWith("." + art) ? null : "der Kopf ist " + art + ", die Endung nicht";
     }
 
-    /** Breite und Höhe aus dem Kopf eines PNG oder eines WebP nur mit dem Chunk VP8L; sonst null. */
-    static int[] masse(byte[] b) {
-        if (b.length >= 24 && b[0] == (byte) 0x89 && b[1] == 'P' && b[2] == 'N' && b[3] == 'G'
-                && b[12] == 'I' && b[13] == 'H' && b[14] == 'D' && b[15] == 'R') {
-            return new int[] {gross(b, 16), gross(b, 20)};
+    private static final byte[] PNG = {(byte) 0x89, 'P', 'N', 'G', '\r', '\n', 0x1a, '\n', 0, 0, 0, 13, 'I', 'H', 'D', 'R'};
+
+    /** png, webp für ein WebP nur mit dem Chunk VP8L, sonst null. */
+    static String art(byte[] b) {
+        if (b.length >= 24 && java.util.Arrays.equals(b, 0, 16, PNG, 0, 16) && gross(b, 16) > 0 && gross(b, 20) > 0) {
+            return "png";
         }
         if (b.length < 25 || !ascii(b, 0, "RIFF") || !ascii(b, 8, "WEBP") || !ascii(b, 12, "VP8L")
                 || klein(b, 4) != b.length - 8L) {
             return null;
         }
         long chunk = klein(b, 16);
-        if (20 + chunk + (chunk & 1) != b.length || b[20] != 0x2f) {
+        return 20 + chunk + (chunk & 1) == b.length && b[20] == 0x2f ? "webp" : null;
+    }
+
+    /** Breite und Höhe aus dem Kopf, wenn {@link #art} ihn kennt; sonst null. */
+    static int[] masse(byte[] b) {
+        String art = art(b);
+        if (art == null) {
             return null;
+        }
+        if (art.equals("png")) {
+            return new int[] {gross(b, 16), gross(b, 20)};
         }
         long bits = klein(b, 21);
         return new int[] {(int) (bits & 0x3fff) + 1, (int) (bits >> 14 & 0x3fff) + 1};
@@ -510,16 +564,11 @@ final class EbenenPruefung {
         return Double.NaN;
     }
 
-    /** Das Feld als endliche Zahl; fehlt es, 0; sonst ein Fehler und NaN. */
-    private double zahl(JsonObject o, String feld, String s) {
-        if (!o.has(feld)) {
-            return 0;
-        }
-        double d = endlich(o.get(feld));
-        if (Double.isNaN(d)) {
+    /** Fehlt das Feld oder ist es eine endliche Zahl, gut; sonst ein Fehler. */
+    private void zahl(JsonObject o, String feld, String s) {
+        if (o.has(feld) && Double.isNaN(endlich(o.get(feld)))) {
             fehler.add(stelle(s, feld) + ": keine Zahl");
         }
-        return d;
     }
 
     private void positiv(JsonObject o, String feld, String s) {

@@ -25,7 +25,6 @@ repositories {
 
 // Nur die API, ohne paperweight-userdev. Siehe docs/entscheidungen/0001-nur-die-paper-api.md.
 val paperApi = "io.papermc.paper:paper-api:26.2.build.129-stable"
-extra["paperApi"] = paperApi
 
 dependencies {
     compileOnly(paperApi)

@@ -12,10 +12,10 @@ repositories {
     maven("https://repo.papermc.io/repository/maven-public/")
 }
 
-val paperApi: String by rootProject.extra
-
+// Die API braucht von Paper nur org.bukkit.plugin.Plugin. Gebaut wird gegen eine Fassung für Java 21, denn die
+// API zu 26.2 verlangt Java 25; zur Laufzeit gilt die des Servers.
 dependencies {
-    compileOnly(paperApi)
+    compileOnly("io.papermc.paper:paper-api:1.21.11-R0.1-SNAPSHOT")
 }
 
 java {

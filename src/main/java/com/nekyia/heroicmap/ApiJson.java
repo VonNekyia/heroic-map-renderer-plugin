@@ -33,6 +33,7 @@ final class ApiJson {
                     var s = new JsonObject();
                     s.addProperty("large", p.symbol().large());
                     s.addProperty("medium", p.symbol().medium());
+                    s.entrySet().removeIf(e -> e.getValue().isJsonNull());
                     o.add("symbol", s);
                 }
                 o.addProperty("color", p.color());
@@ -50,6 +51,7 @@ final class ApiJson {
                     var k = new JsonObject();
                     k.addProperty("color", l.outline().color());
                     k.addProperty("width", l.outline().width());
+                    k.entrySet().removeIf(e -> e.getValue().isJsonNull());
                     o.add("outline", k);
                 }
             }

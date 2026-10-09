@@ -23,7 +23,7 @@ class EbenenFuerModTest {
 
     private static Ebene ebene(String id, String objekte, String extra) {
         var json = Ebenen.lies("{\"id\": \"" + id + "\", \"name\": {\"de\": \"E\"}" + extra + ", \"objects\": [" + objekte + "]}");
-        return new Ebene(id, json, Map.of(), Ebenen.version(json, Map.of()));
+        return new Ebene(id, json, Map.of(), Ebenen.version(json, Map.of(), "minecraft:overworld"));
     }
 
     private static JsonObject lies(String nachricht) {

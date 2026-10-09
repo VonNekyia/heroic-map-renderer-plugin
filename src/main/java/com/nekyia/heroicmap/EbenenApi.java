@@ -35,11 +35,13 @@ final class EbenenApi implements HeroicMapApi, Listener {
     private final Map<String, Map<String, byte[]>> bilder = new ConcurrentHashMap<>();
     private final AtomicBoolean geaendert = new AtomicBoolean();
     private final IntSupplier ausDateien;
+    private final String dimension;
     private final Logger log;
 
-    /** {@code ausDateien} zählt die Ebenen aus Dateien, für die Grenze von 64 zusammen. */
-    EbenenApi(IntSupplier ausDateien, Logger log) {
+    /** {@code ausDateien} zählt die Ebenen aus Dateien, für die Grenze von 64 zusammen; {@code dimension} wie bei {@link Ebenen}. */
+    EbenenApi(IntSupplier ausDateien, String dimension, Logger log) {
         this.ausDateien = ausDateien;
+        this.dimension = dimension;
         this.log = log;
     }
 
@@ -55,7 +57,7 @@ final class EbenenApi implements HeroicMapApi, Listener {
 
     synchronized ApiEbene layer(String plugin, String name) {
         String modname = modname(plugin);
-        if (!EbenenPruefung.TEIL.matcher(modname).matches() || name == null || !EbenenPruefung.TEIL.matcher(name).matches()) {
+        if (!EbenenPruefung.teil(modname) || !EbenenPruefung.teil(name)) {
             throw new IllegalArgumentException("Ebene " + modname + ":" + name
                     + ": je Teil 1 bis 64 Zeichen aus a-z, 0-9, _, - und ., nicht mit . am Anfang");
         }
@@ -210,6 +212,10 @@ final class EbenenApi implements HeroicMapApi, Listener {
             lebt();
             Objects.requireNonNull(daten);
             String f = EbenenPruefung.bild(pfad, daten);
+            int[] m = f == null ? EbenenPruefung.masse(daten) : null;
+            if (f == null && (m[0] > 512 || m[1] > 512)) {
+                f = m[0] + " × " + m[1] + " Pixel, erlaubt höchstens 512 × 512";
+            }
             if (f != null) {
                 throw new IllegalArgumentException("Bild " + pfad + ": " + f);
             }
@@ -341,7 +347,7 @@ final class EbenenApi implements HeroicMapApi, Listener {
                     }
                     p.bilder().forEach(b -> benutzt.put(b, pool.get(b)));
                 }
-                schnappschuss = new Ebene(id, json, benutzt, Ebenen.version(json, benutzt));
+                schnappschuss = new Ebene(id, json, benutzt, Ebenen.version(json, benutzt, dimension));
                 veraltet = false;
             }
             return schnappschuss;

@@ -11,6 +11,9 @@ code:
   - src/test/java/com/nekyia/heroicmap/FalscherRenderer.java
   - src/test/java/com/nekyia/heroicmap/WebserverTest.java
   - src/test/java/com/nekyia/heroicmap/BinaerTest.java
+  - src/test/java/com/nekyia/heroicmap/EbenenPruefungTest.java
+  - src/test/java/com/nekyia/heroicmap/EbenenTest.java
+  - src/test/java/com/nekyia/heroicmap/EbenenSchreiberTest.java
   - src/test/java/com/nekyia/heroicmap/MitspielerTest.java
   - src/test/java/com/nekyia/heroicmap/VorlageTest.java
 ---
@@ -132,6 +135,15 @@ Laufzeit packt das Plugin das passende aus, siehe
   Umgebungsvariable für Threads, Fehlercode, Abbruch vor und während eines
   Prozesses, ein Fehler beim Lesen der Ausgabe, Stoppen, ein Lauf zur Zeit,
   ein Binär, das fehlt, und verwaiste Prozesse.
+- **`EbenenPruefungTest`:** das Beispiel der Städte aus dem Format, Fehler
+  mit Stelle, jede Grenze des Formats und des Plugins, die Namen wie der
+  Server sie ausliefert, Bildköpfe von PNG und WebP `VP8L` samt Endung.
+- **`EbenenTest`:** Laden je Datei und je Mod, nur genannte Bilder nach
+  ihrer Grösse, die ersten 64 nach Kennung, der alte Stand bei einem
+  unlesbaren Ordner, der Deckel fürs Log, `version` mit Dimension.
+- **`EbenenSchreiberTest`:** Liste, Ebenen und Bilder für die Webkarte,
+  Aufräumen in der Reihenfolge Ebenen vor Bildern, gleiche Bytes nicht neu,
+  nie durch eine Junction (Windows) oder einen Symlink.
 - **`TokenTest`:** stellt jedes gültige Token aus den Testvektoren des
   Renderers Zeichen für Zeichen gleich aus, lehnt ab, was kein gültiges
   ergäbe.
