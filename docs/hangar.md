@@ -1,6 +1,6 @@
 ---
 title: Hangar
-description: Das Projekt auf Hangar, gerryxn/heroic-map — wie jedes Release dorthin kommt, welche Einstellungen der User einmal von Hand setzt, mit dem Schlüssel als Secret, und der englische Text der Projektseite zum Einfügen.
+description: Das Projekt auf Hangar, Neky/heroic-map — wie jedes Release dorthin kommt, welche Einstellungen der User einmal von Hand setzt, mit dem Schlüssel als Secret, und der englische Text der Projektseite zum Einfügen.
 code:
   - .github/workflows/hangar.yml
 ---
@@ -8,7 +8,7 @@ code:
 # Hangar
 
 Das Plugin steht auf Hangar als
-[`gerryxn/heroic-map`](https://hangar.papermc.io/gerryxn/heroic-map). Jedes
+[`Neky/heroic-map`](https://hangar.papermc.io/Neky/heroic-map). Jedes
 Release lädt ein Workflow dort hoch, je Plattform als eigene Version. Den
 Text der Seite und die Einstellungen setzt der User einmal von Hand; beides
 steht hier. Die Seite ist englisch, wie auf Hangar üblich. Warum curl und
@@ -23,7 +23,7 @@ ein Release auf GitHub veröffentlicht wird, oder von Hand mit dem Tag.
 | Schritt | Was |
 |---|---|
 | Jars holen | `*-x64.jar` und `SHA256SUMS` aus dem Release, mit `sha256sum -c` geprüft |
-| Changelog | die Notizen des Releases |
+| Changelog | je Plattform aus [`.github/notizen.sh`](../.github/notizen.sh), englisch, mit dem Verweis auf die Version der anderen Plattform, siehe [Entwicklung](entwicklung.md), „Release“ |
 | Anmelden | `POST /api/v1/authenticate?apiKey=…` gibt ein JWT |
 | Je Plattform | `GET /api/v1/projects/heroic-map/versions/<version>-<plattform>`: 200 überspringt, 404 lädt hoch, alles andere bricht ab |
 | Hochladen | `POST /api/v1/projects/heroic-map/upload`, multipart: `versionUpload` als JSON mit Version, Kanal `Release`, Changelog, `platformDependencies` `{"PAPER": ["26.2", "26.3"]}` und einer Datei für `PAPER`; dazu das Jar unter `files` |

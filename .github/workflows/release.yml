@@ -8,7 +8,7 @@ on:
   push:
     tags: ["v*"]
   pull_request:
-    paths: [".github/workflows/release.yml", ".github/pruefe-jar.sh", "build.gradle.kts"]
+    paths: [".github/workflows/release.yml", ".github/pruefe-jar.sh", ".github/notizen.sh", "CHANGELOG.md", "build.gradle.kts"]
 
 # Nur der Job, der den Entwurf anlegt, darf schreiben.
 permissions:
@@ -33,13 +33,19 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v6
 
-      # Auf einem Tag die Version aus dem Tag, in einer PR eine zur Probe.
-      - name: Version
+      # Auf einem Tag die Version aus dem Tag, in einer PR eine zur Probe. Die
+      # Notizen gleich hier: Fehlt der Abschnitt in CHANGELOG.md, fällt der Lauf
+      # vor dem Bauen; in einer PR mit dem neuesten Abschnitt.
+      - name: Version und Notizen
         run: |
           if [[ "$GITHUB_REF" == refs/tags/* ]]; then version=${GITHUB_REF_NAME#v}; else version=0.0.0-probe; fi
           [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]] \
             || { echo "::error::$GITHUB_REF_NAME ist keine Version wie v1.2.3"; exit 1; }
           echo "VERSION=$version" >> "$GITHUB_ENV"
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then notizen=$version; else notizen=$(sed -n 's/^## //p' CHANGELOG.md | head -1); fi
+          bash .github/notizen.sh "$notizen"
+          bash .github/notizen.sh "$notizen" linux-x64 > /dev/null
+          bash .github/notizen.sh "$notizen" windows-x64 > /dev/null
 
       # Binärs und Karte aus demselben Release des Renderers: holeRenderer lädt
       # und prüft die Archive, die Karte ist web/ im Archiv für Linux.
@@ -91,20 +97,12 @@ jobs:
           test "$(ls dist/*.jar | wc -l)" -eq 2 || { echo "::error::erwartet zwei Jars, je Plattform eins"; exit 1; }
           cd dist && sha256sum *.jar > SHA256SUMS && cat SHA256SUMS
 
-      # Nur ein Entwurf: Veröffentlichen ist Sache des Maintainers. Die Notizen
-      # nennen den Renderer in den Jars, welches Jar wofür ist, die Konfiguration
-      # und, aus NOTICE, Herausgeber, Kontakt und den Hinweis zu Mojang; der Text
-      # steht nur dort.
+      # Nur ein Entwurf: Veröffentlichen ist Sache des Maintainers. Die Notizen,
+      # englisch, schreibt notizen.sh aus CHANGELOG.md und NOTICE.
       - name: Entwurf anlegen
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          renderer=$(unzip -p dist/*-linux-x64.jar renderer/renderer.properties | sed -n 's/^version=//p')
-          herausgeber=$(sed -n '/^Publisher/,/^Contact/p' NOTICE)
-          hinweis=$(sed -n '/^NOT AN OFFICIAL/,$p' NOTICE)
-          test -n "$renderer" && test -n "$herausgeber" && test -n "$hinweis"
-          konfiguration="https://github.com/$GITHUB_REPOSITORY/blob/$GITHUB_REF_NAME/docs/konfiguration.md"
-          printf 'Mit der Karte und dem Renderer v%s, je ein Jar für x86_64: das auf -windows-x64.jar für Windows, das auf -linux-x64.jar für Linux.\nKonfiguration: %s\n\n%s\n\n%s\n' \
-            "$renderer" "$konfiguration" "$herausgeber" "$hinweis" > notizen.md
+          bash .github/notizen.sh "${GITHUB_REF_NAME#v}" > notizen.md
           gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --draft \
             --title "$GITHUB_REF_NAME" --notes-file notizen.md dist/*.jar dist/SHA256SUMS
