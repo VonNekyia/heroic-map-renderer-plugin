@@ -21,6 +21,7 @@ Wie der Renderer arbeitet und was seine Schalter tun, steht in der
 - [Ebenen](ebenen.md): Ebenen aus `plugins/HeroicMap/ebenen/`, geprüft gegen das Format des Renderers, für die Webkarte neben `trees.json` geschrieben und dem Mod in Teilen geschickt; `web` und `permission`, Bilder, `version`, Aufräumen, `heroicmap.layers`, `/heroicmap layers`.
 - [API für andere Plugins](api.md): der Service `HeroicMapApi` mit englischen Namen, über JitPack eingebunden und ohne HeroicMap sicher geladen, sofort geprüft, Ebenen und Bilder je Besitzer, nur im Speicher, ein `modname` der API verdeckt seine Dateien, Versionierung.
 - [Statistik](statistik.md): was das Plugin über bStats meldet, wohin und wie oft, Abschalten in `plugins/bStats/config.yml`, umbenannt im Jar, Lizenz und Grösse.
+- [Hangar](hangar.md): das Projekt `gerryxn/heroic-map`, wie jedes Release als zwei Versionen dorthin kommt, die Einstellungen von Hand mit dem Schlüssel als Secret, und der englische Text der Projektseite.
 
 ## Entwicklung
 
@@ -40,3 +41,4 @@ Wie der Renderer arbeitet und was seine Schalter tun, steht in der
 - [0006: show im Mod, Permission am Server](entscheidungen/0006-show-im-mod.md): jeder Spieler wählt `show` im Mod, der Server regelt nur `heroicmap.show` mit `default: true`; der Schlüssel in `config.yml` fällt weg.
 - [0007: bStats](entscheidungen/0007-bstats.md): melden, dass das Plugin läuft, nur mit den Feldern von bStats, umbenannt im Jar durch Shadow, abschaltbar über `plugins/bStats/config.yml`; entschieden vom Maintainer.
 - [0008: Ein Jar je Plattform](entscheidungen/0008-jar-je-plattform.md): für Windows und Linux auf x86_64 je ein Jar mit Karte und nur dem eigenen Binär, wegen der Grenze von Hangar; löst in 0004 die beiden Binärs in einem Jar ab; entschieden vom Maintainer.
+- [0009: Hangar mit curl](entscheidungen/0009-hangar-mit-curl.md): ein Workflow lädt die Jars eines veröffentlichten Releases über die API von Hangar hoch, je Plattform eine Version, der Schlüssel nur aus einem Secret; das Gradle-Plugin für Hangar und Hochladen schon beim Entwurf verworfen.

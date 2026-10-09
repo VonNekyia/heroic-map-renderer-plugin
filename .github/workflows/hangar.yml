@@ -1,0 +1,80 @@
+name: Hangar
+
+# Lädt die Jars eines veröffentlichten Releases auf Hangar, je Plattform als
+# eigene Version <version>-linux-x64 und <version>-windows-x64, mit den
+# Notizen des Releases als Changelog. Von Hand mit dem Tag als Eingabe.
+# Siehe docs/entscheidungen/0009-hangar-mit-curl.md.
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Tag des Releases, etwa v0.3.2
+        required: true
+
+permissions:
+  contents: read
+
+env:
+  # Das Projekt auf Hangar: https://hangar.papermc.io/gerryxn/heroic-map
+  HANGAR_PROJEKT: heroic-map
+  HANGAR_API: https://hangar.papermc.io/api/v1
+  # Die Versionen von Paper, auf denen das Plugin läuft, siehe docs/alpha.md.
+  PAPER: '["26.2", "26.3"]'
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  hangar:
+    name: Auf Hangar
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      # Der Schlüssel kommt nur aus dem Secret; er und das JWT stehen maskiert
+      # und nie im Log. Ohne Secret nur eine Warnung, das Release bleibt grün.
+      - name: Hochladen
+        timeout-minutes: 15
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HANGAR_API_TOKEN: ${{ secrets.HANGAR_API_TOKEN }}
+          TAG: ${{ github.event.release.tag_name || inputs.tag }}
+        run: |
+          set -euo pipefail
+          if [ -z "$HANGAR_API_TOKEN" ]; then
+            echo "::warning::Das Secret HANGAR_API_TOKEN fehlt; nichts auf Hangar hochgeladen"
+            exit 0
+          fi
+          echo "::add-mask::$HANGAR_API_TOKEN"
+          [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] \
+            || { echo "::error::$TAG ist kein Tag eines Releases wie v1.2.3"; exit 1; }
+          version=${TAG#v}
+
+          mkdir dist && cd dist
+          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern '*-x64.jar' --pattern SHA256SUMS
+          sha256sum -c SHA256SUMS
+          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json body --jq .body > changelog.md
+
+          jwt=$(curl -fsS -X POST "$HANGAR_API/authenticate?apiKey=$HANGAR_API_TOKEN" | jq -r .token)
+          echo "::add-mask::$jwt"
+          for plattform in linux-x64 windows-x64; do
+            name=$version-$plattform
+            # Gibt es die Version schon, bleibt sie; so scheitert ein zweiter Lauf nicht.
+            status=$(curl -sS -o /dev/null -w '%{http_code}' -H "Authorization: Bearer $jwt" \
+              "$HANGAR_API/projects/$HANGAR_PROJEKT/versions/$name")
+            if [ "$status" = 200 ]; then
+              echo "$name gibt es auf Hangar schon"
+              continue
+            fi
+            [ "$status" = 404 ] || { echo "::error::Hangar antwortet auf $name mit $status"; exit 1; }
+            jq -n --arg name "$name" --rawfile changelog changelog.md --argjson paper "$PAPER" \
+              '{version: $name, channel: "Release", description: $changelog,
+                platformDependencies: {PAPER: $paper}, files: [{platforms: ["PAPER"]}]}' > version.json
+            curl -fsS -X POST -H "Authorization: Bearer $jwt" \
+              -F "versionUpload=@version.json;type=application/json" \
+              -F "files=@heroic-map-renderer-plugin-$name.jar;type=application/java-archive" \
+              "$HANGAR_API/projects/$HANGAR_PROJEKT/upload"
+            echo
+          done
