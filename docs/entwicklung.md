@@ -26,7 +26,8 @@ code:
 `./gradlew build` baut das Jar nach `build/libs/` und führt die Tests aus. Dazu baut es das Modul `api/`, die API für
 andere Plugins, nach `api/build/libs/`, mit Quellen und Javadoc; JitPack
 baut nur dieses Modul, siehe [API](api.md), „Einbinden“.
-Gradle 9.7.1 kommt über den Wrapper, Java 25 über die Toolchain; Paper 26.2
+Gradle 9.7.1 kommt über den Wrapper, Java 25 über die Toolchain; fehlt
+es, lädt es der Resolver von Foojay aus `settings.gradle.kts`; Paper 26.2
 verlangt Java 25. Gebaut wird gegen die Paper-API `26.2.build.129-stable`,
 nur zum Übersetzen, ohne paperweight-userdev, siehe
 [0001](entscheidungen/0001-nur-die-paper-api.md). Ebenso nur zum Übersetzen

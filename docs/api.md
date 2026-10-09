@@ -47,10 +47,14 @@ softdepend: [HeroicMap]
   fremde Plugin bringt sie nicht mit.
 - **`softdepend`** oder `depend`, damit Paper HeroicMap vorher lädt. Ohne
   HeroicMap gibt der `ServicesManager` null.
-- **JitPack** baut nur `:api:publishToMavenLocal` mit Java 21, siehe
-  [`jitpack.yml`](../jitpack.yml). Das Modul übersetzt mit `release 21` und
-  gegen die Paper-API 1.21.11, denn die zu 26.2 verlangt Java 25; es nutzt
-  davon nur `org.bukkit.plugin.Plugin`.
+- **JitPack** baut nur `:api:publishToMavenLocal`, mit Gradle auf Java 21,
+  siehe [`jitpack.yml`](../jitpack.yml). Das Modul übersetzt mit
+  `release 21` und gegen die Paper-API 1.21.11, denn die zu 26.2 verlangt
+  Java 25; es nutzt davon nur `org.bukkit.plugin.Plugin`.
+- **Java 25** verlangt das Plugin schon beim Einrichten des Builds. Fehlt
+  es, lädt es der Resolver von Foojay in
+  [`settings.gradle.kts`](../settings.gradle.kts), bei JitPack wie auf
+  einem Rechner ohne Java 25.
 
 ## Benutzen
 
