@@ -3,6 +3,7 @@ package com.nekyia.heroicmap;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import com.google.gson.JsonPrimitive;
 import com.nekyia.heroicmap.Ebenen.Ebene;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -63,12 +64,16 @@ final class EbenenSchreiber {
         }
         Path layersJson = wurzel.resolve("layers.json");
         if (unberuehrt == null || !unberuehrt.isEmpty()) {
-            for (JsonElement alt : alteListe(layersJson)) {
-                String id = alt.getAsJsonObject().get("id").getAsString();
+            for (JsonObject alt : alteListe(layersJson)) {
+                String id = alt.get("id").getAsString();
                 if (unberuehrt(id.substring(0, id.indexOf(':')), unberuehrt)) {
                     liste.putIfAbsent(id, alt);
                 }
             }
+        }
+        // Erst die alten Einträge, dann der Deckel: Auch mit ihnen nennt layers.json höchstens 64 Ebenen.
+        while (liste.size() > Ebenen.HOECHSTENS) {
+            liste.pollLastEntry();
         }
         for (var s : soll.entrySet()) {
             schreibe(wurzel.resolve(s.getKey()), s.getValue());
@@ -89,16 +94,31 @@ final class EbenenSchreiber {
         return unberuehrt == null || unberuehrt.contains(modname);
     }
 
-    /** Die Einträge der layers.json, die schon liegt; leer, wenn es keine gibt oder sie nicht zu lesen ist. */
-    private static List<JsonElement> alteListe(Path layersJson) {
+    /**
+     * Die Einträge der layers.json, die schon liegt, nur solche mit einer Kennung modname:ebene; leer, wenn es
+     * keine gibt oder sie nicht zu lesen ist.
+     */
+    private static List<JsonObject> alteListe(Path layersJson) {
+        var aus = new ArrayList<JsonObject>();
         try {
             if (Files.isRegularFile(layersJson)) {
-                return Ebenen.lies(Files.readString(layersJson, StandardCharsets.UTF_8)).getAsJsonArray("layers").asList();
+                for (JsonElement e : Ebenen.lies(Files.readString(layersJson, StandardCharsets.UTF_8)).getAsJsonArray("layers")) {
+                    if (e instanceof JsonObject o && o.get("id") instanceof JsonPrimitive p && p.isString()
+                            && kennung(p.getAsString())) {
+                        aus.add(o);
+                    }
+                }
             }
         } catch (IOException | RuntimeException e) {
             // Eine kaputte Liste ersetzt die neue; ihre Ebenen fehlen, bis ihr Ordner lesbar ist.
+            return List.of();
         }
-        return List.of();
+        return aus;
+    }
+
+    private static boolean kennung(String id) {
+        int i = id.indexOf(':');
+        return i > 0 && EbenenPruefung.teil(id.substring(0, i)) && EbenenPruefung.teil(id.substring(i + 1));
     }
 
     /** Die Datei der Ebene für die Webkarte: ohne web und permission, nur Objekte aus der Dimension der Wurzel. */
