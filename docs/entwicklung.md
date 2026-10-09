@@ -70,8 +70,8 @@ Laufzeit packt das Plugin das passende aus, siehe
 
 | Version | Archiv | SHA-256 |
 |---|---|---|
-| `0.3.0` | `heroic-map-renderer-windows-x64.zip` | `62d381161cceaaa7148530c68798f068a3dc85e69929db377edfa8970a55dc26` |
-| `0.3.0` | `heroic-map-renderer-linux-x64.tar.gz` | `9bc26cc0e9dbff42ccbe4bc051670f004b5869ed82f7ccbc75b6595a0bc625ba` |
+| `0.4.0` | `heroic-map-renderer-windows-x64.zip` | `5a36dd40348dd6113bd9ebb12c283f913b1057d1b5801264cd16f8ef78623179` |
+| `0.4.0` | `heroic-map-renderer-linux-x64.tar.gz` | `9143a57fba4ed7e0995eb4f36ac22b8ce1f2081c4a1011221bfbe598bdad9225` |
 
 - **Laden:** von
   `https://github.com/VonNekyia/heroic-map-renderer/releases/download/v<version>/`
@@ -81,7 +81,7 @@ Laufzeit packt das Plugin das passende aus, siehe
 - **Prüfen:** Hat ein geladenes Archiv eine andere SHA-256 als in
   `build.gradle.kts`, oder antwortet GitHub nicht mit 200, scheitert der
   Build. `SHA256SUMS` aus dem Release liest er nicht.
-- **Ohne Netz,** auch mit `--offline`, warnt er „Renderer 0.3.0 nicht
+- **Ohne Netz,** auch mit `--offline`, warnt er „Renderer 0.4.0 nicht
   geladen, das Jar bleibt ohne Binärs“ und baut weiter. Der nächste Build
   versucht es wieder.
 - **Im Jar:**
@@ -96,12 +96,12 @@ Laufzeit packt das Plugin das passende aus, siehe
 - **Die Hinweise aus dem tar.gz:** Beide Archive haben dieselben vier
   Dateien, im Zip mit CRLF. Bei v0.2.0 war in `THIRD-PARTY-NOTICES` des
   Zips ein Name doppelt als UTF-8 kodiert; seit v0.2.1 gleichen sich beide
-  bis auf die Zeilenenden (zuletzt am 08.10. mit v0.3.0 verglichen). `lizenzen.txt`
+  bis auf die Zeilenenden (zuletzt am 09.10. mit v0.4.0 verglichen). `lizenzen.txt`
   im Archiv gehört zur Karte unter `web/` und kommt mit `-Pweb`.
-- **Grösse,** am 08.10. mit v0.3.0: das Jar ohne Karte 9 331 957 Byte, mit
-  der Karte aus dem Archiv 9 605 444 Byte (CI, Job „Jar“). Gepackt im Jar
-  hat das Binär für Windows 4 707 673 Byte, das für Linux 4 465 495. Die
-  Grenze prüft die CI, siehe „CI“.
+- **Grösse,** am 09.10. mit v0.4.0: das Jar ohne Karte 9 368 047 Byte
+  (lokal), mit der Karte aus dem Archiv 9 641 982 Byte (CI, Job „Jar“).
+  Gepackt im Jar hat das Binär für Windows 4 710 353 Byte, das für Linux
+  4 470 202. Die Grenze prüft die CI, siehe „CI“.
 - **Neue Version:** `renderer` und beide SHA-256 in `build.gradle.kts`
   ändern, dann die Tabelle hier. Die SHA-256 selbst rechnen:
   `gh release download v<version> --repo VonNekyia/heroic-map-renderer`,
