@@ -1,8 +1,8 @@
 name: Release
 
-# Auf einem Tag vX.Y.Z das Jar mit Karte und Renderer bauen und als Entwurf
-# eines GitHub-Releases ablegen. Ändert eine PR diese Datei, das Prüfskript
-# oder den Build, baut sie das Jar ohne Entwurf.
+# Auf einem Tag vX.Y.Z je Plattform ein Jar mit Karte und Renderer bauen und
+# als Entwurf eines GitHub-Releases ablegen. Ändert eine PR diese Datei, das
+# Prüfskript oder den Build, baut sie die Jars ohne Entwurf.
 # Siehe docs/entwicklung.md, „Release“.
 on:
   push:
@@ -57,15 +57,17 @@ jobs:
 
       - name: Prüfen
         run: |
-          jar=build/libs/heroic-map-renderer-plugin-$VERSION.jar
-          bash .github/pruefe-jar.sh "$jar"
-          unzip -p "$jar" plugin.yml | grep -qx "version: '$VERSION'" \
-            || { echo "::error::plugin.yml nennt nicht die Version $VERSION"; exit 1; }
+          for p in windows-x64 linux-x64; do
+            jar=build/libs/heroic-map-renderer-plugin-$VERSION-$p.jar
+            bash .github/pruefe-jar.sh "$jar"
+            unzip -p "$jar" plugin.yml | grep -qx "version: '$VERSION'" \
+              || { echo "::error::plugin.yml in $jar nennt nicht die Version $VERSION"; exit 1; }
+          done
 
       - uses: actions/upload-artifact@v7
         with:
           name: jar
-          path: build/libs/heroic-map-renderer-plugin-${{ env.VERSION }}.jar
+          path: build/libs/heroic-map-renderer-plugin-${{ env.VERSION }}-*-x64.jar
           if-no-files-found: error
 
   release:
@@ -85,21 +87,24 @@ jobs:
           path: dist
 
       - name: Prüfsummen
-        run: cd dist && sha256sum *.jar > SHA256SUMS && cat SHA256SUMS
+        run: |
+          test "$(ls dist/*.jar | wc -l)" -eq 2 || { echo "::error::erwartet zwei Jars, je Plattform eins"; exit 1; }
+          cd dist && sha256sum *.jar > SHA256SUMS && cat SHA256SUMS
 
       # Nur ein Entwurf: Veröffentlichen ist Sache des Maintainers. Die Notizen
-      # nennen den Renderer im Jar, die Konfiguration und, aus NOTICE,
-      # Herausgeber, Kontakt und den Hinweis zu Mojang; der Text steht nur dort.
+      # nennen den Renderer in den Jars, welches Jar wofür ist, die Konfiguration
+      # und, aus NOTICE, Herausgeber, Kontakt und den Hinweis zu Mojang; der Text
+      # steht nur dort.
       - name: Entwurf anlegen
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          renderer=$(unzip -p dist/*.jar renderer/renderer.properties | sed -n 's/^version=//p')
+          renderer=$(unzip -p dist/*-linux-x64.jar renderer/renderer.properties | sed -n 's/^version=//p')
           herausgeber=$(sed -n '/^Publisher/,/^Contact/p' NOTICE)
           hinweis=$(sed -n '/^NOT AN OFFICIAL/,$p' NOTICE)
           test -n "$renderer" && test -n "$herausgeber" && test -n "$hinweis"
           konfiguration="https://github.com/$GITHUB_REPOSITORY/blob/$GITHUB_REF_NAME/docs/konfiguration.md"
-          printf 'Mit der Karte und dem Renderer v%s für Windows und Linux auf x86_64.\nKonfiguration: %s\n\n%s\n\n%s\n' \
+          printf 'Mit der Karte und dem Renderer v%s, je ein Jar für x86_64: das auf -windows-x64.jar für Windows, das auf -linux-x64.jar für Linux.\nKonfiguration: %s\n\n%s\n\n%s\n' \
             "$renderer" "$konfiguration" "$herausgeber" "$hinweis" > notizen.md
           gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --draft \
             --title "$GITHUB_REF_NAME" --notes-file notizen.md dist/*.jar dist/SHA256SUMS

@@ -83,7 +83,11 @@ class BinaerTest {
         var ohne = assertThrows(IOException.class, () -> Binaer.waehle(null, jar("ohne.jar", null), bin, "Linux", "amd64"));
         assertEquals("das Jar hat kein Binär für linux-x64", ohne.getMessage());
         Path nurWindows = jar("windows.jar", "version=0.2.0\nwindows-x64=" + sha256("windows") + "\n");
-        assertThrows(IOException.class, () -> Binaer.waehle(null, nurWindows, bin, "Linux", "amd64"));
+        var falsch = assertThrows(IOException.class, () -> Binaer.waehle(null, nurWindows, bin, "Linux", "amd64"));
+        assertEquals("dieses Jar ist für windows-x64; für linux-x64 braucht es "
+                + "heroic-map-renderer-plugin-<version>-linux-x64.jar aus demselben Release", falsch.getMessage());
+        assertEquals("windows", Files.readString(Binaer.waehle(null, nurWindows, tmp.resolve("bin-w"), "Windows 11", "amd64")),
+                "für die eigene Plattform packt es aus");
         assertFalse(Files.exists(bin), "nichts ausgepackt");
     }
 

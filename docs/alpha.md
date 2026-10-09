@@ -8,7 +8,7 @@ code:
 # Alpha einrichten
 
 Solange es kein Release gibt, kommt das Plugin aus `main`. Das Binär des
-Renderers bringt das Jar für Windows und Linux mit, siehe
+Renderers bringt das Jar mit, je ein Jar für Windows und Linux, siehe
 [Konfiguration](konfiguration.md), „Das Binär“. Diese Seite nennt die
 Schritte in ihrer Reihenfolge. Was jeder Schlüssel tut, steht in
 [Konfiguration](konfiguration.md), der Webserver in [Webserver](webserver.md),
@@ -18,7 +18,7 @@ die Läufe in [Läufe](laeufe.md).
 
 | Teil | Woher | Wohin |
 |---|---|---|
-| Plugin mit Karte und Renderer | `./gradlew build -Pweb=<renderer>/web/dist` auf `main`, mit Netz, siehe [Entwicklung](entwicklung.md), „Im Jar“ | `plugins/` des Servers |
+| Plugin mit Karte und Renderer | `./gradlew build -Pweb=<renderer>/web/dist` auf `main`, mit Netz, siehe [Entwicklung](entwicklung.md), „Im Jar“; aus `build/libs/` das Jar, das auf die Plattform des Servers endet, `-windows-x64.jar` oder `-linux-x64.jar` | `plugins/` des Servers |
 | Renderer, nur ohne Binär im Jar | `cargo build --release --locked` in `renderer/` des Renderers, für das Betriebssystem des Servers | ein Ordner neben dem Server, Pfad in `renderer.binary` |
 | Kacheln | entstehen beim ersten Lauf | `tiles`, auf einer Platte mit genug Platz, siehe „Schätzung“ |
 

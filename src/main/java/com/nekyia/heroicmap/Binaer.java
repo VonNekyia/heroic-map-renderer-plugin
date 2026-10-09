@@ -60,7 +60,11 @@ final class Binaer {
             }
             String soll = props.getProperty(plattform);
             if (soll == null) {
-                throw new IOException("das Jar hat kein Binär für " + plattform);
+                // Ein Jar hat nur das Binär seiner Plattform, siehe docs/entscheidungen/0008-jar-je-plattform.md.
+                var andere = props.stringPropertyNames().stream().filter(k -> !k.equals("version")).sorted().toList();
+                throw new IOException(andere.isEmpty() ? "das Jar hat kein Binär für " + plattform
+                        : "dieses Jar ist für " + String.join(", ", andere) + "; für " + plattform
+                                + " braucht es heroic-map-renderer-plugin-<version>-" + plattform + ".jar aus demselben Release");
             }
             String name = plattform.startsWith("windows") ? "heroic-map-renderer.exe" : "heroic-map-renderer";
             Path ziel = bin.resolve(props.getProperty("version")).resolve(name);

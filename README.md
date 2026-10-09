@@ -18,7 +18,9 @@ Karte vom Server herunter.
 <!-- Hier kommt das Diagramm „Platz vs. RAM vs. Geschwindigkeit“ aus dem Benchmark hin. -->
 
 **Stand:** Die Jars stehen unter
-[Releases](https://github.com/VonNekyia/heroic-map-renderer-plugin/releases).
+[Releases](https://github.com/VonNekyia/heroic-map-renderer-plugin/releases),
+je eins für Windows und Linux auf x86_64: `…-windows-x64.jar` oder
+`…-linux-x64.jar`, passend zum Server.
 
 ## Herausgeber und Kontakt
 
