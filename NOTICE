@@ -8,11 +8,11 @@ A jar built with the map contains, under web/, the built map of Heroic Map
 Renderer (Apache-2.0, same publisher). Its NOTICE, LICENSE and the licenses
 of the third-party code in it are in web/lizenzen.txt.
 
-A jar built with network access contains, under renderer/, the binaries of
-Heroic Map Renderer for Windows and Linux (Apache-2.0, same publisher), from
-the release named in renderer/renderer.properties. Their LICENSE and NOTICE
-and the licenses of the third-party code in them, THIRD-PARTY-NOTICES and
-COPYRIGHT-library.html, are in renderer/.
+A jar built with network access contains, under renderer/, the binary of
+Heroic Map Renderer for its platform, Windows or Linux (Apache-2.0, same
+publisher), from the release named in renderer/renderer.properties. Its
+LICENSE and NOTICE and the licenses of the third-party code in it,
+THIRD-PARTY-NOTICES and COPYRIGHT-library.html, are in renderer/.
 
 The jar contains, under com/nekyia/heroicmap/bstats/, bStats Metrics 3.2.1
 (MIT License, Copyright (c) 2021 Bastian Oppermann), renamed from
