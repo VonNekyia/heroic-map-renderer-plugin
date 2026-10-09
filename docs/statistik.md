@@ -11,7 +11,9 @@ code:
 # Statistik mit bStats
 
 Das Plugin meldet über [bStats](https://bstats.org), dass es läuft. So
-sieht man, auf wie vielen Servern es läuft. Es meldet nur, was bStats von
+sieht man, auf wie vielen Servern es läuft, auf
+[bstats.org](https://bstats.org/plugin/bukkit/heroic-map-renderer-plugin/34598)
+und im Badge des README. Es meldet nur, was bStats von
 sich aus sendet; eigene Diagramme hat es nicht. Abschalten lässt es sich in
 `plugins/bStats/config.yml`. Warum bStats, steht in
 [0007](entscheidungen/0007-bstats.md).
@@ -27,7 +29,7 @@ und `MetricsBase` in
 |---|---|
 | `serverUUID` | eine zufällige UUID, die bStats beim ersten Start in `plugins/bStats/config.yml` anlegt |
 | `metricsVersion` | `3.2.1` |
-| `service.id` | die ID des Plugins auf bstats.org, `HeroicMapPlugin.BSTATS` |
+| `service.id` | `34598`, die ID des Plugins auf bstats.org, `HeroicMapPlugin.BSTATS` |
 | `service.pluginVersion` | `version` aus `plugin.yml` |
 | `service.customCharts` | leer |
 | `playerAmount` | Spieler online |

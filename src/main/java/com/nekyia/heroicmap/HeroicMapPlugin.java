@@ -30,7 +30,7 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
     /** Wer sie hat, sieht Mitspieler und wird gesehen. Siehe docs/mitspieler.md, „Wer wen sieht“. */
     static final String SHOW = "heroicmap.show";
     /** Die ID des Plugins auf bstats.org. Siehe docs/statistik.md. */
-    private static final int BSTATS = 0; // Platzhalter, bis die ID von bstats.org steht
+    private static final int BSTATS = 34598;
 
     private Metrics metrics;
 

@@ -4,7 +4,7 @@ Ein Paper-Plugin, das die Karte des
 [Heroic Map Renderer](https://github.com/VonNekyia/heroic-map-renderer) auf
 dem Server rendert, aktuell hält und ausliefert.
 
-<!-- Hier kommt das Badge mit der Zahl der Server aus bStats hin. -->
+[![Server mit dem Plugin](https://img.shields.io/bstats/servers/34598)](https://bstats.org/plugin/bukkit/heroic-map-renderer-plugin/34598)
 
 ## Der Mod dazu
 
