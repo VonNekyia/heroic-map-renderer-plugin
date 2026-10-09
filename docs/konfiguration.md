@@ -99,7 +99,7 @@ in [`Binaer.java`](../src/main/java/com/nekyia/heroicmap/Binaer.java).
 
   ```
   Kein Renderer: das Jar hat kein Binär für Mac OS X aarch64. renderer.binary in config.yml setzen, siehe docs/konfiguration.md.
-  Kein Renderer: dieses Jar ist für windows-x64; für linux-x64 braucht es heroic-map-renderer-plugin-<version>-linux-x64.jar aus demselben Release. renderer.binary in config.yml setzen, siehe docs/konfiguration.md.
+  Kein Renderer: dieses Jar ist für windows-x64; für linux-x64 braucht es heroic-map-renderer-plugin-0.3.2-linux-x64.jar, auf Hangar die Version 0.3.2-linux-x64. renderer.binary in config.yml setzen, siehe docs/konfiguration.md.
   ```
 
 - **musl:** Unter Linux mit musl, etwa in einem Image mit Alpine, nimmt das

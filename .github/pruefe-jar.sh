@@ -7,8 +7,8 @@ jar=$1
 
 # Je Plattform ein Jar mit nur ihrem Binär. Siehe docs/entscheidungen/0008-jar-je-plattform.md.
 case "$jar" in
-  *-windows-x64.jar) binaer=renderer/windows-x64/heroic-map-renderer.exe; anderes=renderer/linux-x64/heroic-map-renderer; andere=linux-x64 ;;
-  *-linux-x64.jar) binaer=renderer/linux-x64/heroic-map-renderer; anderes=renderer/windows-x64/heroic-map-renderer.exe; andere=windows-x64 ;;
+  *-windows-x64.jar) plattform=windows-x64; binaer=renderer/windows-x64/heroic-map-renderer.exe; anderes=renderer/linux-x64/heroic-map-renderer; andere=linux-x64 ;;
+  *-linux-x64.jar) plattform=linux-x64; binaer=renderer/linux-x64/heroic-map-renderer; anderes=renderer/windows-x64/heroic-map-renderer.exe; andere=windows-x64 ;;
   *) echo "::error::$jar nennt keine Plattform, erwartet …-windows-x64.jar oder …-linux-x64.jar"; exit 1 ;;
 esac
 
@@ -28,6 +28,10 @@ fi
 if unzip -p "$jar" renderer/renderer.properties | grep -q "^$andere="; then
   echo "::error::renderer.properties in $jar nennt $andere"; exit 1
 fi
+# Der eigene Schlüssel mit der SHA-256 des Binärs, sonst fände das Plugin am Server keins.
+sha=$(unzip -p "$jar" "$binaer" | sha256sum | cut -d' ' -f1)
+unzip -p "$jar" renderer/renderer.properties | grep -qx "$plattform=$sha" \
+  || { echo "::error::renderer.properties in $jar nennt nicht $plattform=$sha"; exit 1; }
 
 # Die API von Simple Voice Chat nur zum Übersetzen, nie im Jar.
 # Siehe docs/entscheidungen/0005-simple-voice-chat-api.md.

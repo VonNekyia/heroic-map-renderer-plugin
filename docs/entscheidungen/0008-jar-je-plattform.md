@@ -16,11 +16,9 @@ code:
 
 ## Anlass
 
-Hangar nimmt höchstens 10 000 000 Byte je Datei. Das Jar von v0.3.1 hatte
-mit beiden Binärs und der Karte 9 854 658 Byte, nur 145 342 unter der
-Grenze. Mit dem Renderer v0.5.0 war es um 126 881 Byte gewachsen, vor
-allem durch die Karte mit Ebenen; eine Stufe wie diese reisst die Grenze.
-Auftrag des Maintainers vom 09.10., über den Reviewer.
+Hangar nimmt höchstens 10 000 000 Byte je Datei. Das Jar des Releases
+v0.3.1 hatte mit beiden Binärs und der Karte 9 854 658 Byte, nur 145 342
+unter der Grenze. Auftrag des Maintainers vom 09.10., über den Reviewer.
 
 ## Entscheidung
 
@@ -36,6 +34,9 @@ Auftrag des Maintainers vom 09.10., über den Reviewer.
   beiden.
 - **Release:** beide Jars und `SHA256SUMS` im Entwurf; die Notizen sagen,
   welches Jar wofür ist.
+- **Hangar:** je Release zwei Versionen, `<version>-windows-x64` und
+  `<version>-linux-x64`, jede mit ihrem Jar. Hangar nimmt je Version nur
+  eine Datei für Paper. Entschieden vom User am 09.10.
 - **Die CI** prüft jedes Jar für sich: die Grenze, das eigene Binär darin
   und das andere nicht, auch nicht in `renderer.properties`.
 
@@ -58,8 +59,8 @@ Rest von 0004 gilt: feste Version und SHA-256 im Build, Auspacken nach
 
 ## Folgen
 
-- Der Betreiber wählt das Jar nach dem Betriebssystem des Servers. Wie die
-  beiden Jars auf Hangar stehen, entscheidet der Maintainer.
+- Der Betreiber wählt das Jar oder die Version auf Hangar nach dem
+  Betriebssystem des Servers, siehe [Alpha einrichten](../alpha.md).
 - Jedes Jar hat nur noch eins der Binärs, gepackt je rund 4,5 MB; die
   Grössen stehen in [Entwicklung](../entwicklung.md), „Der Renderer im
   Jar“.

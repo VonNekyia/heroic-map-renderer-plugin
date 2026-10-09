@@ -108,17 +108,18 @@ Plugin es aus, siehe [Konfiguration](konfiguration.md), „Das Binär“.
   v0.4.0 ist nur in `NOTICE` der Absatz zur Schrift der Kartenschrift
   unter OFL neu). `lizenzen.txt`
   im Archiv gehört zur Karte unter `web/` und kommt mit `-Pweb`.
-- **Grösse,** am 09.10. mit v0.5.0, aus der CI, Job „Jar“ des Releases in
-  #42, mit der Karte aus dem Archiv:
+- **Grösse,** am 09.10. mit v0.5.0, aus der CI, Job „Jar“ des
+  Release-Workflows als Probe in #42, Version `0.0.0-probe`, mit der Karte
+  aus dem Archiv:
 
   | Jar | Byte | bis zur Grenze | Binär gepackt |
   |---|---|---|---|
   | `…-windows-x64.jar` | 5 382 538 | 4 617 462 | 4 709 943 |
   | `…-linux-x64.jar` | 5 142 638 | 4 857 362 | 4 470 060 |
 
-  Bis zu [0008](entscheidungen/0008-jar-je-plattform.md) hatte das eine
-  Jar mit beiden Binärs 9 854 658 Byte (v0.3.1). Beide Grössen nennt
-  `pruefe-jar.sh`. Die Grenze prüft die CI, siehe „CI“.
+  Das eine Jar davor steht in [0008](entscheidungen/0008-jar-je-plattform.md),
+  „Anlass“. Beide Grössen nennt `pruefe-jar.sh`. Die Grenze prüft die CI,
+  siehe „CI“.
 - **Neue Version:** `renderer` und beide SHA-256 in `build.gradle.kts`
   ändern, dann die Tabelle hier. Die SHA-256 selbst rechnen:
   `gh release download v<version> --repo VonNekyia/heroic-map-renderer`,
@@ -308,8 +309,9 @@ Build 129, eine Kopie der Testwelt, das Jar des Plugins unter `plugins/`,
   `master`, packt sie mit `-Pweb` in beide Jars und prüft je Jar, dass `web/index.html`,
   `web/lizenzen.txt` und die Vorlagen `web/seite.html` und
   `web/robots.vorlage.txt` darin stehen, ebenso alles unter `renderer/`
-  für seine Plattform und nichts für die andere, siehe „Der Renderer im
-  Jar“, und dass keine Klasse unter `de/maxhenkel/`
+  für seine Plattform, mit seiner SHA-256 in `renderer.properties`, und
+  nichts für die andere, siehe „Der Renderer im Jar“, und dass keine
+  Klasse unter `de/maxhenkel/`
   darin liegt, siehe [0005](entscheidungen/0005-simple-voice-chat-api.md).
   bStats muss umbenannt und mit Lizenz darin stehen, siehe
   [Statistik](statistik.md), „Im Jar“, und die API für andere Plugins,
