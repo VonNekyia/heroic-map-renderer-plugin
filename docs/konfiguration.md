@@ -17,6 +17,8 @@ Servers. Fast jeder Schlüssel wird ein Schalter des Renderers, siehe
 [Schalter des Renderers](https://github.com/VonNekyia/heroic-map-renderer/blob/master/docs/benutzung/schalter.md).
 Gelesen und geprüft in `Konfiguration.aus` in
 [`Konfiguration.java`](../src/main/java/com/nekyia/heroicmap/Konfiguration.java).
+Die Statistik über bStats hat hier keinen Schlüssel; sie schaltet
+`plugins/bStats/config.yml` ab, siehe [Statistik](statistik.md).
 
 ## Schlüssel
 

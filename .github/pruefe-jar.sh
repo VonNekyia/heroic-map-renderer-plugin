@@ -9,7 +9,8 @@ jar=$1
 inhalt=$(unzip -Z1 "$jar")
 for datei in web/index.html web/lizenzen.txt web/seite.html web/robots.vorlage.txt \
     renderer/renderer.properties renderer/windows-x64/heroic-map-renderer.exe renderer/linux-x64/heroic-map-renderer \
-    renderer/LICENSE renderer/NOTICE renderer/THIRD-PARTY-NOTICES renderer/COPYRIGHT-library.html; do
+    renderer/LICENSE renderer/NOTICE renderer/THIRD-PARTY-NOTICES renderer/COPYRIGHT-library.html \
+    com/nekyia/heroicmap/bstats/bukkit/Metrics.class META-INF/LICENSE-bstats.txt; do
   grep -qx "$datei" <<< "$inhalt" || { echo "::error::$datei fehlt im Jar"; exit 1; }
 done
 
@@ -17,6 +18,11 @@ done
 # Siehe docs/entscheidungen/0005-simple-voice-chat-api.md.
 if grep -q '^de/maxhenkel/' <<< "$inhalt"; then
   echo "::error::Klassen von Simple Voice Chat im Jar"; exit 1
+fi
+
+# bStats nur unter eigenem Paket, sonst wirft es beim Start. Siehe docs/statistik.md.
+if grep -q '^org/bstats/' <<< "$inhalt"; then
+  echo "::error::bStats im Jar nicht umbenannt"; exit 1
 fi
 
 # Hangar nimmt höchstens 10 000 000 Byte je Datei. Siehe docs/entscheidungen/0004-renderer-im-jar.md.

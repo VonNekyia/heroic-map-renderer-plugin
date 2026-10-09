@@ -14,5 +14,9 @@ the release named in renderer/renderer.properties. Their LICENSE and NOTICE
 and the licenses of the third-party code in them, THIRD-PARTY-NOTICES and
 COPYRIGHT-library.html, are in renderer/.
 
+The jar contains, under com/nekyia/heroicmap/bstats/, bStats Metrics 3.2.1
+(MIT License, Copyright (c) 2021 Bastian Oppermann), renamed from
+org.bstats. Its license is in META-INF/LICENSE-bstats.txt.
+
 NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH MOJANG
 OR MICROSOFT.
