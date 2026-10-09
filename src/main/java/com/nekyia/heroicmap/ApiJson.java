@@ -119,7 +119,8 @@ final class ApiJson {
         r.addProperty("color", s.color());
         r.addProperty("width", s.width());
         r.addProperty("style", klein(s.style()));
-        if (s.dash() != null && s.gap() != null) {
+        // Stroke hat dash und gap nur zusammen.
+        if (s.dash() != null) {
             var d = new JsonArray();
             d.add(s.dash());
             d.add(s.gap());

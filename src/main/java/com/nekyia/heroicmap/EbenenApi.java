@@ -9,16 +9,19 @@ import com.nekyia.heroicmap.api.MapObject;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
-import java.util.function.IntSupplier;
+import java.util.function.Supplier;
 import java.util.logging.Logger;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -27,7 +30,7 @@ import org.bukkit.plugin.Plugin;
 
 /**
  * Die API für andere Plugins: Ebenen im Speicher, je Besitzer, jede Änderung sofort geprüft. Der Takt holt
- * geänderte Ebenen als {@link Ebene}. Siehe docs/api.md.
+ * geänderte Ebenen als {@link Ebene}. Sperren immer in der Reihenfolge API, Ebene, Bilder. Siehe docs/api.md.
  */
 final class EbenenApi implements HeroicMapApi, Listener {
 
@@ -35,12 +38,12 @@ final class EbenenApi implements HeroicMapApi, Listener {
     /** Die Bilder je modname; alle Ebenen eines Besitzers teilen sie, wie im Ordner images/. */
     private final Map<String, Map<String, byte[]>> bilder = new ConcurrentHashMap<>();
     private final AtomicBoolean geaendert = new AtomicBoolean();
-    private final IntSupplier ausDateien;
+    private final Supplier<List<Ebene>> ausDateien;
     private final String dimension;
     private final Logger log;
 
-    /** {@code ausDateien} zählt die Ebenen aus Dateien, für die Grenze von 64 zusammen; {@code dimension} wie bei {@link Ebenen}. */
-    EbenenApi(IntSupplier ausDateien, String dimension, Logger log) {
+    /** {@code ausDateien} gibt die Ebenen aus Dateien, für die Grenze von 64 zusammen; {@code dimension} wie bei {@link Ebenen}. */
+    EbenenApi(Supplier<List<Ebene>> ausDateien, String dimension, Logger log) {
         this.ausDateien = ausDateien;
         this.dimension = dimension;
         this.log = log;
@@ -48,6 +51,10 @@ final class EbenenApi implements HeroicMapApi, Listener {
 
     @Override
     public Layer layer(Plugin owner, String name) {
+        // Paper meldet PluginDisableEvent vor onDisable; eine Ebene von dort fiele nie mehr weg.
+        if (!owner.isEnabled()) {
+            throw new IllegalStateException("Ebene " + name + ": Plugin " + owner.getName() + " ist abgeschaltet");
+        }
         return layer(owner.getName(), name);
     }
 
@@ -60,14 +67,19 @@ final class EbenenApi implements HeroicMapApi, Listener {
         String modname = modname(plugin);
         if (!EbenenPruefung.teil(modname) || !EbenenPruefung.teil(name)) {
             throw new IllegalArgumentException("Ebene " + modname + ":" + name
-                    + ": je Teil 1 bis 64 Zeichen aus a-z, 0-9, _, - und ., nicht mit . am Anfang");
+                    + ": je Teil 1 bis 64 Zeichen aus a-z, 0-9, _, - und ., kein . vorn oder hinten, kein Gerät von Windows wie nul");
         }
         String id = modname + ":" + name;
         var e = ebenen.get(id);
         if (e != null) {
             return e;
         }
-        if (ebenen.size() + ausDateien.getAsInt() >= Ebenen.HOECHSTENS) {
+        // Gezählt wie im Stand: Ein modname mit Ebenen der API verdeckt seine Dateien.
+        var mods = new HashSet<String>();
+        ebenen.values().forEach(x -> mods.add(x.modname));
+        mods.add(modname);
+        long dateien = ausDateien.get().stream().filter(d -> !mods.contains(d.modname())).count();
+        if (ebenen.size() + dateien >= Ebenen.HOECHSTENS) {
             throw new IllegalArgumentException("Ebene " + id + ": der Server hat schon 64 Ebenen");
         }
         e = new ApiEbene(modname, id);
@@ -104,7 +116,7 @@ final class EbenenApi implements HeroicMapApi, Listener {
         return ebenen.size();
     }
 
-    /** Jede Ebene als {@link Ebene}, nach Kennung; nur geänderte werden neu gebaut. */
+    /** Jede Ebene als {@link Ebene}, nach Kennung; nur geänderte werden neu gebaut. Nur der Takt ruft das. */
     List<Ebene> ebenen() {
         return ebenen.values().stream().map(ApiEbene::schnappschuss).filter(Objects::nonNull)
                 .sorted(Comparator.comparing(Ebene::id)).toList();
@@ -119,7 +131,11 @@ final class EbenenApi implements HeroicMapApi, Listener {
         return String.join("; ", fehler);
     }
 
-    /** Eine Ebene der API. Jede Methode sperrt die Ebene; geprüft wird wie eine Datei, das Objekt allein. */
+    /**
+     * Eine Ebene der API. Jede Methode sperrt die Ebene; geprüft wird wie eine Datei, das Objekt allein.
+     * {@code objekte} und {@code bilderJeObjekt} ändern sich nur unter der Sperre der Bilder des Besitzers, damit
+     * {@link #removeImage} mit ihr allein sieht, ob ein Objekt ein Bild nennt.
+     */
     final class ApiEbene implements Layer {
 
         private final String modname;
@@ -130,11 +146,14 @@ final class EbenenApi implements HeroicMapApi, Listener {
         private Boolean web;
         private String permission;
         private final LinkedHashMap<String, JsonObject> objekte = new LinkedHashMap<>();
+        /** Die Bilder, die ein Objekt nennt, je id; nur Objekte mit Bildern. */
+        private final Map<String, Set<String>> bilderJeObjekt = new HashMap<>();
         private int nadeln;
         private long bytes;
         private volatile boolean geloescht;
         private volatile boolean veraltet = true;
-        private Ebene schnappschuss;
+        /** Der letzte gültige Schnappschuss; null, solange es keinen gab. */
+        private volatile Ebene schnappschuss;
 
         private ApiEbene(String modname, String id) {
             this.modname = modname;
@@ -236,9 +255,23 @@ final class EbenenApi implements HeroicMapApi, Listener {
                 }
                 pool.put(pfad, daten.clone());
             }
-            // Jede Ebene des Besitzers kann das Bild nennen; ihre version ändert sich mit.
+            // Erst das Bild, dann veraltet: Der Schnappschuss setzt veraltet zurück, bevor er die Bilder kopiert.
             ebenen.values().stream().filter(e -> e.modname.equals(modname)).forEach(e -> e.veraltet = true);
             geaendert.set(true);
+        }
+
+        @Override
+        public void removeImage(String pfad) {
+            lebt();
+            var pool = bilderVon();
+            synchronized (pool) {
+                for (var e : ebenen.values()) {
+                    if (e.modname.equals(modname) && e.bilderJeObjekt.values().stream().anyMatch(b -> b.contains(pfad))) {
+                        throw new IllegalArgumentException("Bild " + pfad + ": " + e.id + " nennt es noch");
+                    }
+                }
+                pool.remove(pfad);
+            }
         }
 
         private Map<String, byte[]> bilderVon() {
@@ -250,30 +283,34 @@ final class EbenenApi implements HeroicMapApi, Listener {
             lebt();
             Objects.requireNonNull(m);
             JsonObject j = ApiJson.json(m);
-            List<String> f;
             var pool = bilderVon();
             synchronized (pool) {
-                f = EbenenPruefung.pruefe(id, json(permission, List.of(j)), aus(pool)).fehler();
+                var p = EbenenPruefung.pruefe(id, json(permission, List.of(j)), aus(pool));
+                if (!p.fehler().isEmpty()) {
+                    throw new IllegalArgumentException("Objekt " + m.id() + ": " + fehler(p.fehler()));
+                }
+                var alt = objekte.get(m.id());
+                int pin = j.get("type").getAsString().equals("pin") ? 1 : 0;
+                int neueNadeln = nadeln + pin - (alt != null && alt.get("type").getAsString().equals("pin") ? 1 : 0);
+                long neueBytes = bytes + groesse(j) - (alt == null ? 0 : groesse(alt));
+                if (alt == null && objekte.size() >= 10_000) {
+                    throw new IllegalArgumentException("Objekt " + m.id() + ": höchstens 10 000 Objekte je Ebene");
+                }
+                if (neueNadeln > 1000) {
+                    throw new IllegalArgumentException("Objekt " + m.id() + ": höchstens 1000 Nadeln je Ebene");
+                }
+                if (neueBytes > EbenenPruefung.EBENE_BYTES - (64 << 10)) {
+                    throw new IllegalArgumentException("Objekt " + m.id() + ": die Ebene würde grösser als 4 MiB");
+                }
+                objekte.put(m.id(), j);
+                if (p.bilder().isEmpty()) {
+                    bilderJeObjekt.remove(m.id());
+                } else {
+                    bilderJeObjekt.put(m.id(), p.bilder());
+                }
+                nadeln = neueNadeln;
+                bytes = neueBytes;
             }
-            if (!f.isEmpty()) {
-                throw new IllegalArgumentException("Objekt " + m.id() + ": " + fehler(f));
-            }
-            var alt = objekte.get(m.id());
-            int pin = j.get("type").getAsString().equals("pin") ? 1 : 0;
-            int neueNadeln = nadeln + pin - (alt != null && alt.get("type").getAsString().equals("pin") ? 1 : 0);
-            long neueBytes = bytes + groesse(j) - (alt == null ? 0 : groesse(alt));
-            if (alt == null && objekte.size() >= 10_000) {
-                throw new IllegalArgumentException("Objekt " + m.id() + ": höchstens 10 000 Objekte je Ebene");
-            }
-            if (neueNadeln > 1000) {
-                throw new IllegalArgumentException("Objekt " + m.id() + ": höchstens 1000 Nadeln je Ebene");
-            }
-            if (neueBytes > EbenenPruefung.EBENE_BYTES - (64 << 10)) {
-                throw new IllegalArgumentException("Objekt " + m.id() + ": die Ebene würde grösser als 4 MiB");
-            }
-            objekte.put(m.id(), j);
-            nadeln = neueNadeln;
-            bytes = neueBytes;
             geaendert();
         }
 
@@ -284,7 +321,11 @@ final class EbenenApi implements HeroicMapApi, Listener {
         @Override
         public synchronized void remove(String objektId) {
             lebt();
-            var alt = objekte.remove(objektId);
+            JsonObject alt;
+            synchronized (bilderVon()) {
+                alt = objekte.remove(objektId);
+                bilderJeObjekt.remove(objektId);
+            }
             if (alt != null) {
                 nadeln -= alt.get("type").getAsString().equals("pin") ? 1 : 0;
                 bytes -= groesse(alt);
@@ -295,7 +336,10 @@ final class EbenenApi implements HeroicMapApi, Listener {
         @Override
         public synchronized void clear() {
             lebt();
-            objekte.clear();
+            synchronized (bilderVon()) {
+                objekte.clear();
+                bilderJeObjekt.clear();
+            }
             nadeln = 0;
             bytes = 0;
             geaendert();
@@ -304,7 +348,10 @@ final class EbenenApi implements HeroicMapApi, Listener {
         @Override
         public void delete() {
             synchronized (EbenenApi.this) {
-                lebt();
+                // Schon gelöscht, auch durch das Abschalten vor onDisable: ohne Wirkung, damit onDisable weiterläuft.
+                if (geloescht) {
+                    return;
+                }
                 geloescht = true;
                 ebenen.remove(id);
                 geaendert.set(true);
@@ -320,7 +367,7 @@ final class EbenenApi implements HeroicMapApi, Listener {
             }
         }
 
-        /** Die Ebene als JSON im Format einer Datei. */
+        /** Die Ebene als JSON im Format einer Datei; die Objekte nicht kopiert, denn niemand ändert sie. */
         private JsonObject json(String p, Iterable<JsonObject> mitObjekten) {
             var o = new JsonObject();
             o.addProperty("id", id);
@@ -336,26 +383,39 @@ final class EbenenApi implements HeroicMapApi, Listener {
             return o;
         }
 
-        /** Für den Takt: die Ebene, neu gebaut nur nach einer Änderung; null, wenn sie gelöscht ist. */
-        synchronized Ebene schnappschuss() {
-            if (geloescht) {
-                return null;
-            }
-            if (veraltet || schnappschuss == null) {
-                var json = json(permission, objekte.values());
-                var pool = bilderVon();
-                var benutzt = new TreeMap<String, byte[]>();
-                synchronized (pool) {
-                    var p = EbenenPruefung.pruefe(id, json, aus(pool));
-                    if (!p.fehler().isEmpty()) {
-                        // Nur bei einem Fehler im Plugin: Jede Änderung wurde schon beim Aufruf geprüft.
-                        log.warning("Ebenen: " + id + " aus der API ist ungültig: " + fehler(p.fehler()));
-                    }
-                    p.bilder().forEach(b -> benutzt.put(b, pool.get(b)));
+        /**
+         * Für den Takt: die Ebene, neu gebaut nur nach einer Änderung; null, wenn sie gelöscht ist oder nie gültig
+         * war. Unter der Sperre nur flach kopiert, Prüfung und Hash ohne sie. Ist der neue Stand ungültig, bleibt
+         * der letzte gültige.
+         */
+        Ebene schnappschuss() {
+            JsonObject json;
+            Map<String, byte[]> pool;
+            synchronized (this) {
+                if (geloescht) {
+                    return null;
                 }
-                schnappschuss = new Ebene(id, json, benutzt, Ebenen.version(json, benutzt, dimension));
+                if (!veraltet) {
+                    return schnappschuss;
+                }
+                // Erst zurücksetzen, dann kopieren: Was danach kommt, setzt veraltet wieder.
                 veraltet = false;
+                json = json(permission, objekte.values());
+                var b = bilderVon();
+                synchronized (b) {
+                    pool = new HashMap<>(b);
+                }
             }
+            var p = EbenenPruefung.pruefe(id, json, aus(pool));
+            if (!p.fehler().isEmpty()) {
+                // Nur bei einem Fehler im Plugin: Jede Änderung wurde schon beim Aufruf geprüft.
+                log.warning("Ebenen: " + id + " aus der API ist ungültig, es gilt ihr letzter gültiger Stand: "
+                        + fehler(p.fehler()));
+                return schnappschuss;
+            }
+            var benutzt = new TreeMap<String, byte[]>();
+            p.bilder().forEach(b -> benutzt.put(b, pool.get(b)));
+            schnappschuss = new Ebene(id, json, benutzt, Ebenen.version(json, benutzt, dimension));
             return schnappschuss;
         }
     }

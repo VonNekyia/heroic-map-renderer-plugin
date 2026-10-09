@@ -3,12 +3,17 @@ package com.nekyia.heroicmap.api;
 /**
  * One layer of the map. Every change is checked right away and throws {@link IllegalArgumentException} if it does
  * not fit the format or its limits; nothing changes then. The messages of these exceptions are German, like the
- * log of the plugin. The web map and the mod get the changes within about one second; many calls in a row become
- * one update.
+ * log of the plugin. The web map and the mod get the changes within about one second. Calls in a row usually
+ * become one update, but nothing groups them: a tick between {@link #clear()} and {@link #put} publishes the empty
+ * layer. To change many objects, {@link #put} the new ones and {@link #remove} the old ones instead.
  */
 public interface Layer {
 
-    /** The id, {@code modname:name}. */
+    /**
+     * The id, {@code modname:name}: the modname is the name of the owning plugin in lower case, spaces as
+     * {@code _}; the name is the one passed to {@link HeroicMapApi#layer}. Files of the layer lie under
+     * {@code layers/<modname>/}.
+     */
     String id();
 
     /** The name in the list of layers; one of both may be null. Default: the name of the layer. */
@@ -37,10 +42,18 @@ public interface Layer {
      * their images, at most 200; they are public under {@code layers/<modname>/images/} as soon as a layer
      * references them. A replacement keeps width and height.
      *
-     * @param path like {@code images/castle_16.png}, PNG or lossless WebP ({@code VP8L}), at most 256 KiB and
-     *     512 × 512 pixels; symbols exactly 16 × 16 or 9 × 9
+     * @param path like {@code images/castle_16.png}; the file name follows the rule of
+     *     {@link HeroicMapApi#layer}'s {@code name}, its extension the format
+     * @param data PNG or lossless WebP ({@code VP8L}), at most 256 KiB and 512 × 512 pixels; symbols exactly
+     *     16 × 16 or 9 × 9
      */
     void image(String path, byte[] data);
+
+    /**
+     * Removes an image of the owner, if there is one. Throws {@link IllegalArgumentException} while an object of
+     * any layer of the owner references it.
+     */
+    void removeImage(String path);
 
     /** Adds the object, or replaces the one with the same id. */
     void put(MapObject object);
@@ -51,6 +64,9 @@ public interface Layer {
     /** Removes every object. */
     void clear();
 
-    /** Removes the layer; any further call throws {@link IllegalStateException}. */
+    /**
+     * Removes the layer; any further call other than {@code delete} throws {@link IllegalStateException}. Deleting
+     * a deleted layer has no effect, so an owner may call it in {@code onDisable}, after its layers are gone.
+     */
     void delete();
 }

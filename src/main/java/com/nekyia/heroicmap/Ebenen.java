@@ -28,9 +28,11 @@ import java.util.TreeSet;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
 
 /**
- * Die Ebenen aus dem Ordner des Plugins: geladen, geprüft und im Takt für die Webkarte geschrieben.
+ * Die Ebenen des Servers. „Dateien“ sind die aus dem Ordner des Plugins, geladen und geprüft von {@link #ladeNeu}.
+ * Der „Stand“ vereint sie im Takt mit denen der API; nur ihn sehen Webkarte, Mod und {@code /heroicmap status}.
  * Siehe docs/ebenen.md.
  */
 final class Ebenen {
@@ -67,14 +69,17 @@ final class Ebenen {
     private final EbenenSchreiber schreiber;
     private final Logger log;
     private final EbenenApi api;
-    /** Die Ebenen aus den Dateien; mit denen der API zusammen ergeben sie den Stand. */
+    /** Die Ebenen aus den Dateien; mit denen der API zusammen ergeben sie im Takt den Stand. */
     private volatile List<Ebene> ausDateien = List.of();
+    /** Dateien und API vereint, wie zuletzt geschrieben. */
     private volatile List<Ebene> stand = List.of();
     /** Die modname, deren Ordner zuletzt nicht zu lesen war; null: der Ordner ebenen selbst. */
     private volatile Set<String> nichtGelesen = Set.of();
     private final AtomicBoolean geaendert = new AtomicBoolean();
     private boolean schreibenScheiterte;
+    /** Dateien, die der Stand zuletzt ohne sie bildete, für das Log: verdeckt von der API, geschnitten bei 64. */
     private Set<String> verdeckt = Set.of();
+    private Set<String> geschnitten = Set.of();
 
     /** {@code dimension} ist die der Wurzel von tiles; sie geht in jede version ein. */
     Ebenen(Path ordner, String dimension, EbenenSchreiber schreiber, Logger log) {
@@ -82,7 +87,7 @@ final class Ebenen {
         this.dimension = dimension;
         this.schreiber = schreiber;
         this.log = log;
-        this.api = new EbenenApi(() -> ausDateien.size(), dimension, log);
+        this.api = new EbenenApi(() -> ausDateien, dimension, log);
     }
 
     /** Die API für andere Plugins. Siehe docs/api.md. */
@@ -91,8 +96,8 @@ final class Ebenen {
     }
 
     /**
-     * Lädt den Ordner neu; jeder Fehler steht im Log. Ist ein Ordner nicht zu lesen, bleibt dafür der alte Stand.
-     * Gibt eine Zeile für den Befehl.
+     * Lädt die Dateien neu; jeder Fehler steht im Log. Ist ein Ordner nicht zu lesen, bleiben dafür seine alten
+     * Dateien. Den Stand bildet erst der nächste {@link #takt}. Gibt eine Zeile für den Befehl.
      */
     synchronized String ladeNeu() {
         var g = lade(ordner, dimension);
@@ -152,22 +157,35 @@ final class Ebenen {
     }
 
     /**
-     * Dateien und API zusammen, nach Kennung, höchstens 64. Bei gleicher Kennung gewinnt die API; das Log nennt
-     * das einmal, wenn es anfängt.
+     * Dateien und API zusammen, nach Kennung, höchstens 64. Erst die API, die {@link EbenenApi#layer} schon unter 64
+     * hält. Hat ein modname Ebenen der API, gehört ihr {@code layers/<modname>/} ganz, und seine Dateien fallen
+     * weg; sonst überschrieben sich Bilder gleichen Pfads. Dann die Dateien nach Kennung, bis 64 voll sind. Das Log
+     * nennt jede weggefallene Datei einmal, wenn es anfängt.
      */
     private List<Ebene> vereine(List<Ebene> dateien, List<Ebene> ausApi) {
         var alle = new TreeMap<String, Ebene>();
-        dateien.forEach(e -> alle.put(e.id(), e));
+        ausApi.forEach(e -> alle.put(e.id(), e));
+        var apiMods = ausApi.stream().map(Ebene::modname).collect(Collectors.toSet());
         var neuVerdeckt = new TreeSet<String>();
-        for (Ebene e : ausApi) {
-            if (alle.put(e.id(), e) != null) {
+        var neuGeschnitten = new TreeSet<String>();
+        for (Ebene e : dateien) {
+            if (apiMods.contains(e.modname())) {
                 neuVerdeckt.add(e.id());
+            } else if (alle.size() < HOECHSTENS) {
+                alle.put(e.id(), e);
+            } else {
+                neuGeschnitten.add(e.id());
             }
         }
-        neuVerdeckt.stream().filter(id -> !verdeckt.contains(id))
-                .forEach(id -> log.warning("Ebenen: " + id + " aus der Datei gilt nicht, ein Plugin setzt sie über die API"));
+        neuVerdeckt.stream().filter(id -> !verdeckt.contains(id)).forEach(id -> log.warning("Ebenen: " + id
+                + " aus der Datei gilt nicht, ein Plugin setzt Ebenen dieses modname über die API"));
+        var neu = neuGeschnitten.stream().filter(id -> !geschnitten.contains(id)).toList();
+        if (!neu.isEmpty()) {
+            log.warning("Ebenen: mit denen der API mehr als 64 Ebenen; es gelten die der API und die ersten Dateien nach id, ohne: " + neu);
+        }
         verdeckt = neuVerdeckt;
-        return alle.values().stream().limit(HOECHSTENS).toList();
+        geschnitten = neuGeschnitten;
+        return List.copyOf(alle.values());
     }
 
     String status() {
@@ -278,6 +296,15 @@ final class Ebenen {
             return new Bild(Files.readAllBytes(f), null);
         } catch (IOException e) {
             return new Bild(null, "nicht gelesen: " + e.getMessage());
+        }
+    }
+
+    /** Der SHA-256 der Bytes, hexadezimal. */
+    static String sha256(byte[] b) {
+        try {
+            return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(b));
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException(e);
         }
     }
 

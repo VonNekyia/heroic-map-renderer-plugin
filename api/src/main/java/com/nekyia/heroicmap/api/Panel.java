@@ -13,6 +13,7 @@ public record Panel(List<Block> blocks) {
         blocks = List.copyOf(blocks);
     }
 
+    /** A panel of these blocks, in this order. */
     public static Panel of(Block... blocks) {
         return new Panel(List.of(blocks));
     }
@@ -36,6 +37,7 @@ public record Panel(List<Block> blocks) {
             lines = List.copyOf(lines);
         }
 
+        /** These lines, in this order. */
         public static Lines of(String... lines) {
             return new Lines(List.of(lines));
         }
@@ -50,10 +52,12 @@ public record Panel(List<Block> blocks) {
 
     /** A heading of a section: an image with alternative text, or a text. */
     public record Heading(String image, Integer width, Integer height, String alt, String text) {
+        /** An image of the layer in this size, in panel pixels, with {@code alt} as its text. */
         public static Heading image(String image, int width, int height, String alt) {
             return new Heading(image, width, height, alt, null);
         }
 
+        /** A heading of text only. */
         public static Heading text(String text) {
             return new Heading(null, null, null, null, text);
         }

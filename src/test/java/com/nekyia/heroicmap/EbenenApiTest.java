@@ -27,16 +27,27 @@ import com.nekyia.heroicmap.api.MapObject.Stroke;
 import com.nekyia.heroicmap.api.MapObject.Symbol;
 import com.nekyia.heroicmap.api.Panel;
 import java.io.IOException;
+import java.lang.reflect.Field;
+import java.lang.reflect.Proxy;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.BooleanSupplier;
 import java.util.logging.Handler;
 import java.util.logging.LogRecord;
 import java.util.logging.Logger;
+import org.bukkit.Bukkit;
+import org.bukkit.Server;
+import org.bukkit.event.server.PluginDisableEvent;
+import org.bukkit.plugin.Plugin;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
-/** Die API für andere Plugins: Kennung, Prüfen beim Aufruf, Bilder je Besitzer, permission, Löschen, Vorrang. */
+/** Die API für andere Plugins: Kennung, Prüfen beim Aufruf, Grenzen, Bilder je Besitzer, permission, Löschen, Vorrang. */
 class EbenenApiTest {
 
     @TempDir
@@ -62,8 +73,38 @@ class EbenenApiTest {
         return l;
     }
 
+    /** Die API neben {@code ausDateien} Ebenen aus Dateien, alle mit dem modname datei. */
     private EbenenApi api(int ausDateien) {
-        return new EbenenApi(() -> ausDateien, OBERWELT, logger());
+        var dateien = new ArrayList<Ebene>();
+        for (int i = 0; i < ausDateien; i++) {
+            dateien.add(new Ebene("datei:e" + i, new JsonObject(), Map.of(), "0"));
+        }
+        return new EbenenApi(() -> dateien, OBERWELT, logger());
+    }
+
+    /** Ein Plugin, wie Paper es der API gibt: nur Name und Zustand. */
+    private static Plugin plugin(String name, BooleanSupplier an) {
+        return (Plugin) Proxy.newProxyInstance(Plugin.class.getClassLoader(), new Class<?>[] {Plugin.class},
+                (p, m, args) -> switch (m.getName()) {
+                    case "getName", "toString" -> name;
+                    case "isEnabled" -> an.getAsBoolean();
+                    case "hashCode" -> System.identityHashCode(p);
+                    case "equals" -> p == args[0];
+                    default -> throw new UnsupportedOperationException(m.getName());
+                });
+    }
+
+    /** Ein PluginDisableEvent wie von Paper; sein Konstruktor fragt den Server, ob er im Hauptthread läuft. */
+    private static PluginDisableEvent abschalten(Plugin p) throws ReflectiveOperationException {
+        Field f = Bukkit.class.getDeclaredField("server");
+        f.setAccessible(true);
+        f.set(null, Proxy.newProxyInstance(Server.class.getClassLoader(), new Class<?>[] {Server.class},
+                (s, m, args) -> m.getName().equals("isPrimaryThread") ? true : null));
+        try {
+            return new PluginDisableEvent(p);
+        } finally {
+            f.set(null, null);
+        }
     }
 
     private static Ebene ebene(EbenenApi api, String id) {
@@ -87,6 +128,29 @@ class EbenenApiTest {
         voll.layer("Beispiel", "eins");
         var e = assertThrows(IllegalArgumentException.class, () -> voll.layer("Beispiel", "zwei"));
         assertTrue(e.getMessage().contains("schon 64 Ebenen"), e.getMessage());
+        voll.layer("Datei", "eigen");
+        assertEquals(2, voll.anzahl(), "gezählt wie im Stand: Seine Ebene der API verdeckt die Dateien von datei");
+    }
+
+    @Test
+    void abschalten_kommt_vor_ondisable() throws ReflectiveOperationException {
+        var a = api(0);
+        var an = new AtomicBoolean(true);
+        Plugin p = plugin("Beispiel", an::get);
+        Layer l = a.layer(p, "staedte");
+        assertEquals("beispiel:staedte", l.id());
+        a.layer(plugin("Andere", () -> true), "bleibt");
+
+        // Paper: erst PluginDisableEvent, dann isEnabled false, dann onDisable.
+        a.beimAbschalten(abschalten(p));
+        an.set(false);
+        assertEquals(List.of("andere:bleibt"), a.ebenen().stream().map(Ebene::id).toList());
+        l.delete();
+        l.delete();
+        assertThrows(IllegalStateException.class, () -> l.put(Pin.at("q", 0, 0)), "nur delete bleibt ohne Wirkung");
+        var e = assertThrows(IllegalStateException.class, () -> a.layer(p, "staedte"));
+        assertTrue(e.getMessage().contains("abgeschaltet"), e.getMessage());
+        assertEquals(1, a.anzahl(), "keine Ebene aus onDisable, die nie wegfiele");
     }
 
     @Test
@@ -109,6 +173,44 @@ class EbenenApiTest {
         assertEquals(1000, ids(ebene(a, "beispiel:staedte")).size(), "ersetzen und entfernen zählen mit");
         l.clear();
         assertEquals(List.of(), ids(ebene(a, "beispiel:staedte")));
+    }
+
+    @Test
+    void hoechstens_10000_objekte() {
+        var a = api(0);
+        Layer l = a.layer("Beispiel", "viele");
+        for (int i = 0; i < 10_000; i++) {
+            l.put(Circle.around("k" + i, i, 0, 5));
+        }
+        var e = assertThrows(IllegalArgumentException.class, () -> l.put(Circle.around("k10000", 0, 0, 5)));
+        assertTrue(e.getMessage().contains("höchstens 10 000 Objekte"), e.getMessage());
+        l.put(Circle.around("k0", 1, 1, 5));
+        assertEquals(10_000, ids(ebene(a, "beispiel:viele")).size(), "ersetzen geht auch bei 10 000");
+    }
+
+    @Test
+    void hoechstens_4_mib_je_ebene() {
+        var a = api(0);
+        Layer l = a.layer("Beispiel", "gross");
+        var punkte = new ArrayList<Point>();
+        for (int i = 0; i < 10_000; i++) {
+            punkte.add(new Point(i + 0.123456789, -i - 0.987654321));
+        }
+        int n = 0;
+        IllegalArgumentException e = null;
+        while (e == null) {
+            try {
+                l.put(Line.through("l" + n, punkte));
+                n++;
+            } catch (IllegalArgumentException x) {
+                e = x;
+            }
+        }
+        assertTrue(e.getMessage().contains("grösser als 4 MiB"), e.getMessage());
+        assertTrue(n > 5, "mehrere Linien zu je über 300 KiB passen");
+        int bytes = ebene(a, "beispiel:gross").json().toString().getBytes(StandardCharsets.UTF_8).length;
+        assertTrue(bytes <= EbenenPruefung.EBENE_BYTES - (64 << 10), bytes + " Byte");
+        assertEquals(List.of(), log, "der Schnappschuss besteht die Prüfung");
     }
 
     @Test
@@ -148,6 +250,13 @@ class EbenenApiTest {
     }
 
     @Test
+    void strich_und_luecke_nur_zusammen() {
+        assertThrows(IllegalArgumentException.class, () -> new Stroke("#FFFFFF", null, null, 8.0, null));
+        assertThrows(IllegalArgumentException.class, () -> new Stroke("#FFFFFF", null, null, null, 6.0));
+        assertEquals(8.0, new Stroke("#FFFFFF", null, null, 8.0, 6.0).dash());
+    }
+
+    @Test
     void bilder_gehoeren_dem_besitzer() {
         var a = api(0);
         Layer eins = a.layer("Beispiel", "eins");
@@ -169,6 +278,44 @@ class EbenenApiTest {
         assertThrows(IllegalArgumentException.class,
                 () -> a.layer("Andere", "drei").put(Pin.at("p", 0, 0).withSymbol(new Symbol("images/burg_16.png", null))),
                 "Bilder eines anderen Besitzers gibt es hier nicht");
+    }
+
+    @Test
+    void hoechstens_200_bilder_und_entfernen() {
+        var a = api(0);
+        Layer l = a.layer("Beispiel", "eins");
+        for (int i = 0; i < 200; i++) {
+            l.image(String.format("images/b%03d.png", i), png(16, 16));
+        }
+        var e = assertThrows(IllegalArgumentException.class, () -> l.image("images/b200.png", png(16, 16)));
+        assertTrue(e.getMessage().contains("höchstens 200 Bilder"), e.getMessage());
+        l.image("images/b000.png", png(16, 16));
+
+        Layer zwei = a.layer("Beispiel", "zwei");
+        var mitBild = Pin.at("p", 0, 0).withSymbol(new Symbol("images/b000.png", null));
+        zwei.put(mitBild);
+        var nennt = assertThrows(IllegalArgumentException.class, () -> l.removeImage("images/b000.png"));
+        assertTrue(nennt.getMessage().contains("beispiel:zwei nennt es noch"), nennt.getMessage());
+        zwei.put(Pin.at("p", 0, 0));
+        l.removeImage("images/b000.png");
+        l.removeImage("images/b000.png");
+        assertThrows(IllegalArgumentException.class, () -> zwei.put(mitBild), "das Bild ist weg");
+        l.image("images/b200.png", png(16, 16));
+
+        zwei.put(Pin.at("p", 0, 0).withSymbol(new Symbol("images/b001.png", null)));
+        zwei.clear();
+        l.removeImage("images/b001.png");
+        zwei.put(Pin.at("p", 0, 0).withSymbol(new Symbol("images/b002.png", null)));
+        zwei.remove("p");
+        l.removeImage("images/b002.png");
+        zwei.put(Pin.at("p", 0, 0).withSymbol(new Symbol("images/b003.png", null)));
+        zwei.delete();
+        l.removeImage("images/b003.png");
+
+        a.entferne("Beispiel");
+        assertThrows(IllegalArgumentException.class,
+                () -> a.layer("Beispiel", "neu").put(Pin.at("p", 0, 0).withSymbol(new Symbol("images/b004.png", null))),
+                "mit dem Plugin gehen seine Bilder");
     }
 
     @Test
@@ -199,11 +346,16 @@ class EbenenApiTest {
         l.put(Pin.at("p", 0, 0));
         assertTrue(a.holeAenderung());
         l.delete();
+        assertTrue(a.holeAenderung());
         assertThrows(IllegalStateException.class, () -> l.put(Pin.at("q", 0, 0)));
         assertEquals(List.of(), a.ebenen());
         Layer neu = a.layer("Beispiel", "weg");
         neu.put(Pin.at("q", 0, 0));
         assertEquals(List.of("q"), ids(ebene(a, "beispiel:weg")), "nach delete legt layer eine neue Ebene an");
+        a.holeAenderung();
+        l.delete();
+        assertFalse(a.holeAenderung(), "delete auf einer gelöschten Ebene bleibt ohne Wirkung");
+        assertEquals(List.of("q"), ids(ebene(a, "beispiel:weg")), "auch für die neue gleicher Kennung");
 
         Layer bleibt = a.layer("Andere", "bleibt");
         Layer eins = a.layer("Beispiel", "eins");
@@ -212,22 +364,52 @@ class EbenenApiTest {
         assertTrue(a.holeAenderung());
         assertEquals(List.of("andere:bleibt"), a.ebenen().stream().map(Ebene::id).toList());
         assertThrows(IllegalStateException.class, () -> eins.put(Pin.at("q", 0, 0)), "die Ebene des Plugins ist gelöscht");
+        eins.delete();
         bleibt.put(Pin.at("p", 0, 0));
     }
 
     @Test
-    void die_api_gewinnt_gegen_die_datei() throws IOException {
+    void ein_modname_der_api_verdeckt_seine_dateien() throws IOException {
         Path ordner = ordnerMitStaedten(tmp);
-        var e = new Ebenen(ordner, OBERWELT, new EbenenSchreiber(tmp.resolve("tiles"), OBERWELT), logger());
+        Path tiles = tmp.resolve("tiles");
+        var e = new Ebenen(ordner, OBERWELT, new EbenenSchreiber(tiles, OBERWELT), logger());
         e.ladeNeu();
         e.takt();
         assertEquals(6, ids(e.stand().getFirst()).size(), "aus der Datei");
-        e.api().layer("Beispiel", "staedte").put(Pin.at("nur-api", 0, 0));
+        assertTrue(Files.isRegularFile(tiles.resolve("layers/beispiel/staedte.json")));
+        e.api().layer("Beispiel", "andere").put(Pin.at("nur-api", 0, 0));
         e.takt();
-        assertEquals(List.of("nur-api"), ids(e.stand().getFirst()), "die API setzt die Ebene");
+        assertEquals(List.of("beispiel:andere"), e.stand().stream().map(Ebene::id).toList(),
+                "layers/beispiel/ gehört der API ganz, auch bei anderer Kennung");
+        assertFalse(Files.exists(tiles.resolve("layers/beispiel/staedte.json")));
+        assertFalse(Files.exists(tiles.resolve("layers/beispiel/images")), "ihre Bilder gehen mit");
         assertEquals(1, log.stream().filter(z -> z.contains("beispiel:staedte aus der Datei gilt nicht")).count());
         e.api().layer("Beispiel", "staedte").put(Pin.at("zwei", 1, 1));
         e.takt();
+        assertEquals(List.of("zwei"), ids(e.stand().get(1)), "gleiche Kennung: die API");
         assertEquals(1, log.stream().filter(z -> z.contains("aus der Datei gilt nicht")).count(), "das Log sagt es einmal");
+    }
+
+    @Test
+    void die_api_zaehlt_vor_den_dateien() throws IOException {
+        Path ordner = tmp.resolve("ebenen");
+        Path d = Files.createDirectories(ordner.resolve("datei"));
+        for (int i = 0; i < 63; i++) {
+            Files.writeString(d.resolve(String.format("e%02d.json", i)), String.format("{\"id\": \"datei:e%02d\", \"name\": {\"de\": \"x\"}, \"objects\": []}", i));
+        }
+        var e = new Ebenen(ordner, OBERWELT, new EbenenSchreiber(tmp.resolve("tiles"), OBERWELT), logger());
+        e.ladeNeu();
+        e.api().layer("Beispiel", "eins").put(Pin.at("p", 0, 0));
+        assertThrows(IllegalArgumentException.class, () -> e.api().layer("Beispiel", "zwei"), "63 Dateien und eine der API");
+        Files.writeString(d.resolve("e63.json"), "{\"id\": \"datei:e63\", \"name\": {\"de\": \"x\"}, \"objects\": []}");
+        e.ladeNeu();
+        e.takt();
+        assertEquals(64, e.stand().size());
+        assertTrue(e.stand().stream().anyMatch(x -> x.id().equals("beispiel:eins")), "die Ebene der API bleibt");
+        assertTrue(log.stream().anyMatch(z -> z.contains("ohne: [datei:e63]")), log.toString());
+        e.takt();
+        e.api().layer("Beispiel", "eins").put(Pin.at("q", 0, 0));
+        e.takt();
+        assertEquals(1, log.stream().filter(z -> z.contains("ohne: [datei:e63]")).count(), "das Log sagt es einmal");
     }
 }

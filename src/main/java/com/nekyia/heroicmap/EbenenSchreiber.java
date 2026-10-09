@@ -15,13 +15,15 @@ import java.nio.file.SimpleFileVisitor;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 /**
@@ -34,6 +36,8 @@ final class EbenenSchreiber {
 
     private final Path wurzel;
     private final String dimension;
+    /** Der SHA-256 dessen, was zuletzt in jeder Datei landete; so liest das Schreiben zum Vergleich keine Datei. */
+    private final Map<Path, String> geschrieben = new HashMap<>();
 
     /** {@code wurzel} ist die von --tiles, {@code dimension} die ihrer Welt. */
     EbenenSchreiber(Path wurzel, String dimension) {
@@ -45,10 +49,13 @@ final class EbenenSchreiber {
      * Bringt layers/ und layers.json auf den Stand von {@code ebenen}. Die Reihenfolge darf nicht wechseln:
      * erst Bilder, dann Ebenen, dann layers.json, zuletzt das Entfernen. So nennt layers.json nie eine
      * Datei, die fehlt. Was zu einem modname aus {@code unberuehrt} schon liegt, bleibt mit seinem Eintrag in
-     * layers.json stehen, denn sein Ordner war nicht zu lesen; null heisst: jeder modname.
+     * layers.json stehen, denn sein Ordner war nicht zu lesen; null heisst: jeder modname. Ausgenommen ist jeder
+     * modname mit einer Ebene in {@code ebenen}: Sein Ordner unter layers/ wird genau, was sie sagen.
      */
-    synchronized void schreibe(Collection<Ebene> ebenen, Set<String> unberuehrt) throws IOException {
+    synchronized void schreibe(Collection<Ebene> ebenen, Set<String> nichtGelesen) throws IOException {
         var sortiert = ebenen.stream().sorted(Comparator.comparing(Ebene::id)).toList();
+        var mitEbene = sortiert.stream().map(Ebene::modname).collect(Collectors.toSet());
+        Predicate<String> unberuehrt = m -> (nichtGelesen == null || nichtGelesen.contains(m)) && !mitEbene.contains(m);
         var soll = new LinkedHashMap<Path, byte[]>();
         for (Ebene e : sortiert) {
             for (var b : e.bilder().entrySet()) {
@@ -63,10 +70,10 @@ final class EbenenSchreiber {
             }
         }
         Path layersJson = wurzel.resolve("layers.json");
-        if (unberuehrt == null || !unberuehrt.isEmpty()) {
+        if (nichtGelesen == null || !nichtGelesen.isEmpty()) {
             for (JsonObject alt : alteListe(layersJson)) {
                 String id = alt.get("id").getAsString();
-                if (unberuehrt(id.substring(0, id.indexOf(':')), unberuehrt)) {
+                if (unberuehrt.test(id.substring(0, id.indexOf(':')))) {
                     liste.putIfAbsent(id, alt);
                 }
             }
@@ -87,11 +94,9 @@ final class EbenenSchreiber {
             l.add("layers", a);
             schreibe(layersJson, bytes(l));
         }
-        raeumeAuf(soll.keySet().stream().map(wurzel::resolve).collect(Collectors.toSet()), unberuehrt);
-    }
-
-    private static boolean unberuehrt(String modname, Set<String> unberuehrt) {
-        return unberuehrt == null || unberuehrt.contains(modname);
+        var dateien = soll.keySet().stream().map(wurzel::resolve).collect(Collectors.toSet());
+        raeumeAuf(dateien, unberuehrt);
+        geschrieben.keySet().removeIf(p -> !dateien.contains(p) && !p.equals(layersJson));
     }
 
     /**
@@ -156,16 +161,21 @@ final class EbenenSchreiber {
         return o.toString().getBytes(StandardCharsets.UTF_8);
     }
 
-    /** Schreibt nur, was sich ändert: erst unter einem Namen mit . vorn, dann umbenannt. */
+    /**
+     * Schreibt nur, was sich seit dem letzten Schreiben ändert oder fehlt: erst unter einem Namen mit . vorn, dann
+     * umbenannt. Nach einem Neustart schreibt es jede Datei einmal.
+     */
     private void schreibe(Path ziel, byte[] inhalt) throws IOException {
         keinLink(ziel.getParent());
-        if (Files.isRegularFile(ziel, LinkOption.NOFOLLOW_LINKS) && Arrays.equals(Files.readAllBytes(ziel), inhalt)) {
+        String hash = Ebenen.sha256(inhalt);
+        if (hash.equals(geschrieben.get(ziel)) && Files.isRegularFile(ziel, LinkOption.NOFOLLOW_LINKS)) {
             return;
         }
         Files.createDirectories(ziel.getParent());
         Path neu = ziel.resolveSibling("." + ziel.getFileName() + ".neu");
         Files.write(neu, inhalt);
         Files.move(neu, ziel, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
+        geschrieben.put(ziel, hash);
     }
 
     /**
@@ -193,7 +203,7 @@ final class EbenenSchreiber {
      * Entfernt unter layers/ jede Datei, die nicht in {@code soll} steht: erst Ebenen, dann Bilder, dann leere
      * Ordner. Einem Link, unter Windows auch einer Junction, folgt es nicht; er bleibt stehen.
      */
-    private void raeumeAuf(Set<Path> soll, Set<String> unberuehrt) throws IOException {
+    private void raeumeAuf(Set<Path> soll, Predicate<String> unberuehrt) throws IOException {
         Path layers = wurzel.resolve("layers");
         if (!Files.exists(layers, LinkOption.NOFOLLOW_LINKS)) {
             return;
@@ -208,7 +218,7 @@ final class EbenenSchreiber {
                 if (a.isSymbolicLink() || a.isOther()) {
                     return FileVisitResult.SKIP_SUBTREE;
                 }
-                if (dir.getParent().equals(layers) && unberuehrt(dir.getFileName().toString(), unberuehrt)) {
+                if (dir.getParent().equals(layers) && unberuehrt.test(dir.getFileName().toString())) {
                     return FileVisitResult.SKIP_SUBTREE;
                 }
                 ordner.add(dir);
