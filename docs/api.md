@@ -56,8 +56,9 @@ dependencies:
 
 - **Version:** der Hash des Commits eines Releases ab dem ersten mit der
   API, siehe „Versionierung“. Über den Tag selbst baut JitPack derzeit
-  nicht: In einem Teil seiner Umgebungen öffnet Java den Wrapper von
-  Gradle nicht, und Tags landen bisher immer dort (#43).
+  nicht: In einem Teil seiner Umgebungen darf Java die Attribute einer
+  Datei nicht lesen und öffnet darum kein Jar, auch nicht den Wrapper von
+  Gradle. Tags landeten bisher immer dort, Hashes meist nicht (#43).
 - **`compileOnly`:** Die Klassen der API liegen im Jar des Plugins; das
   fremde Plugin bringt sie nicht mit.
 - **`softdepend`** oder `depend`, damit Paper HeroicMap vorher lädt. In
