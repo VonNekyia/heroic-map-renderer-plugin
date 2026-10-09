@@ -184,9 +184,7 @@ final class EbenenPruefung {
             if (o.get("outline") instanceof JsonObject k) {
                 erlaubt(k, s + ".outline", "color", "width");
                 farbe(k, "color", s + ".outline");
-                if (k.has("width") && !(endlich(k.get("width")) >= 0)) {
-                    fehler.add(s + ".outline.width: eine Zahl ab 0");
-                }
+                abNull(k, "width", s + ".outline");
             } else {
                 fehler.add(s + ".outline: ein Objekt mit color und width");
             }
@@ -255,7 +253,8 @@ final class EbenenPruefung {
         }
         erlaubt(r, t, "color", "width", "style", "dash");
         farbe(r, "color", t);
-        positiv(r, "width", t);
+        // 0 heisst ohne Rand; die Vorgabe der Farbe setzt die Karte, nicht das Plugin.
+        abNull(r, "width", t);
         auswahl(r, "style", t, "solid", "dashed");
         if (r.has("dash") && !(r.get("dash") instanceof JsonArray d && d.size() == 2
                 && endlich(d.get(0)) > 0 && endlich(d.get(1)) > 0)) {
@@ -568,6 +567,12 @@ final class EbenenPruefung {
     private void positiv(JsonObject o, String feld, String s) {
         if (o.has(feld) && !(endlich(o.get(feld)) > 0)) {
             fehler.add(stelle(s, feld) + ": eine Zahl über 0");
+        }
+    }
+
+    private void abNull(JsonObject o, String feld, String s) {
+        if (o.has(feld) && !(endlich(o.get(feld)) >= 0)) {
+            fehler.add(stelle(s, feld) + ": eine Zahl ab 0");
         }
     }
 

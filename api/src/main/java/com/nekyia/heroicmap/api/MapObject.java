@@ -44,7 +44,9 @@ public sealed interface MapObject {
 
     /**
      * A border or line; null fields take the defaults of the format. {@code width}, {@code dash} and {@code gap} in
-     * screen pixels; {@code dash} and {@code gap} only together.
+     * screen pixels; {@code dash} and {@code gap} only together. Defaults: {@code color} the one of {@code fill}
+     * without alpha for a region or circle, otherwise {@code #2B2B2B}; {@code width} 2, and 0 means no border;
+     * {@code style} solid; dash 8 and gap 6 when dashed.
      */
     record Stroke(String color, Double width, Style style, Double dash, Double gap) {
         /**
@@ -63,7 +65,7 @@ public sealed interface MapObject {
             return new Stroke(color, null, null, null, null);
         }
 
-        /** A copy with this width in screen pixels. */
+        /** A copy with this width in screen pixels, at least 0; 0 means no border. */
         public Stroke withWidth(double w) {
             return new Stroke(color, w, style, dash, gap);
         }

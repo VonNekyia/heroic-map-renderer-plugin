@@ -250,6 +250,17 @@ class EbenenApiTest {
     }
 
     @Test
+    void rand_ohne_breite_und_farbe_der_karte() {
+        var a = api(0);
+        Layer l = a.layer("Beispiel", "rand");
+        l.put(Region.of("r", List.of(Polygon.of(List.of(new Point(0, 0), new Point(9, 0), new Point(9, 9)))))
+                .withFill("#40E53F55").withStroke(Stroke.of(null).withWidth(0)));
+        JsonObject r = ebene(a, "beispiel:rand").json().getAsJsonArray("objects").get(0).getAsJsonObject();
+        assertEquals("{\"width\":0.0}", r.get("stroke").toString(), "0 geht; die Farbe setzt erst die Karte");
+        assertThrows(IllegalArgumentException.class, () -> l.put(Circle.around("k", 0, 0, 5).withStroke(Stroke.of("#FFFFFF").withWidth(-1))));
+    }
+
+    @Test
     void strich_und_luecke_nur_zusammen() {
         assertThrows(IllegalArgumentException.class, () -> new Stroke("#FFFFFF", null, null, 8.0, null));
         assertThrows(IllegalArgumentException.class, () -> new Stroke("#FFFFFF", null, null, null, 6.0));
@@ -264,6 +275,7 @@ class EbenenApiTest {
         eins.image("images/burg_16.png", png(16, 16));
         zwei.put(Pin.at("p", 0, 0).withSymbol(new Symbol("images/burg_16.png", null)));
         String v = ebene(a, "beispiel:zwei").version();
+        assertSame(ebene(a, "beispiel:zwei"), ebene(a, "beispiel:zwei"), "ohne Änderung kein neuer Schnappschuss");
 
         var anders = png(16, 16);
         anders[anders.length - 5] ^= 1;
