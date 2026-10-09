@@ -348,6 +348,9 @@ Maintainer.
   [Konfiguration](konfiguration.md) am Tag und aus
   `NOTICE` Herausgeber, Kontakt und den Hinweis zu Mojang. Nur dieser Job
   darf schreiben.
+- **Hangar:** Wird der Entwurf veröffentlicht, lädt
+  [`hangar.yml`](../.github/workflows/hangar.yml) beide Jars als zwei
+  Versionen auf Hangar, siehe [Hangar](hangar.md).
 - **In einer PR,** die den Workflow, das Prüfskript oder
   `build.gradle.kts` ändert, läuft alles ausser dem Entwurf, mit der
   Version `0.0.0-probe`.
