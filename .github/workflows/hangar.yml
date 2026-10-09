@@ -60,26 +60,38 @@ jobs:
           gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --dir dist --pattern '*-x64.jar' --pattern SHA256SUMS
           (cd dist && sha256sum -c SHA256SUMS)
 
-          jwt=$(curl -fsS -X POST "$HANGAR_API/authenticate?apiKey=$HANGAR_API_TOKEN" | jq -r .token)
+          jwt=$(curl -fsS --retry 3 --retry-delay 10 --retry-all-errors -X POST \
+            "$HANGAR_API/authenticate?apiKey=$HANGAR_API_TOKEN" | jq -r .token)
           echo "::add-mask::$jwt"
           # Linux zuletzt: Hangar bietet die zuletzt hochgeladene Version als Download an.
           for plattform in windows-x64 linux-x64; do
             name=$version-$plattform
-            # Gibt es die Version schon, bleibt sie; so scheitert ein zweiter Lauf nicht.
-            status=$(curl -sS -o /dev/null -w '%{http_code}' -H "Authorization: Bearer $jwt" \
-              "$HANGAR_API/projects/$HANGAR_PROJEKT/versions/$name")
-            if [ "$status" = 200 ]; then
-              echo "$name gibt es auf Hangar schon"
-              continue
-            fi
-            [ "$status" = 404 ] || { echo "::error::Hangar antwortet auf $name mit $status"; exit 1; }
             bash .github/notizen.sh "$version" "$plattform" > beschreibung.md
             jq -n --arg name "$name" --rawfile changelog beschreibung.md --argjson paper "$PAPER" \
               '{version: $name, channel: "Release", description: $changelog,
                 platformDependencies: {PAPER: $paper}, files: [{platforms: ["PAPER"]}]}' > version.json
-            curl -fsS -X POST -H "Authorization: Bearer $jwt" \
-              -F "versionUpload=@version.json;type=application/json" \
-              -F "files=@dist/heroic-map-renderer-plugin-$name.jar;type=application/java-archive" \
-              "$HANGAR_API/projects/$HANGAR_PROJEKT/upload"
-            echo
+            # Bis zu drei Versuche, jeder erst mit dem Blick, ob es die Version schon gibt: So scheitert weder ein
+            # zweiter Lauf noch ein Versuch nach einem Upload, der trotz Fehler bei Hangar ankam.
+            fertig=
+            for versuch in 1 2 3; do
+              status=$(curl -sS -o /dev/null -w '%{http_code}' -H "Authorization: Bearer $jwt" \
+                "$HANGAR_API/projects/$HANGAR_PROJEKT/versions/$name" || true)
+              if [ "$status" = 200 ]; then
+                echo "$name gibt es auf Hangar"
+                fertig=1
+                break
+              fi
+              if [ "$status" = 404 ] && curl -fsS -X POST -H "Authorization: Bearer $jwt" \
+                -F "versionUpload=@version.json;type=application/json" \
+                -F "files=@dist/heroic-map-renderer-plugin-$name.jar;type=application/java-archive" \
+                "$HANGAR_API/projects/$HANGAR_PROJEKT/upload"; then
+                echo
+                fertig=1
+                break
+              fi
+              if [ "$status" = 404 ]; then grund="der Upload scheiterte"; else grund="Hangar antwortet mit ${status:-nichts}"; fi
+              echo "::warning::$name, Versuch $versuch: $grund"
+              [ "$versuch" = 3 ] || sleep 10
+            done
+            [ -n "$fertig" ] || { echo "::error::$name nicht auf Hangar"; exit 1; }
           done

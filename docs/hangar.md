@@ -25,7 +25,7 @@ ein Release auf GitHub veröffentlicht wird, oder von Hand mit dem Tag.
 | Jars holen | `*-x64.jar` und `SHA256SUMS` aus dem Release, mit `sha256sum -c` geprüft |
 | Changelog | je Plattform aus [`.github/notizen.sh`](../.github/notizen.sh), englisch, mit dem Verweis auf die Version der anderen Plattform, siehe [Entwicklung](entwicklung.md), „Release“ |
 | Anmelden | `POST /api/v1/authenticate?apiKey=…` gibt ein JWT |
-| Je Plattform | `GET /api/v1/projects/heroic-map/versions/<version>-<plattform>`: 200 überspringt, 404 lädt hoch, alles andere bricht ab |
+| Je Plattform | `GET /api/v1/projects/heroic-map/versions/<version>-<plattform>`: 200 überspringt, 404 lädt hoch, sonst ein neuer Versuch, siehe „Wiederholt“ |
 | Hochladen | `POST /api/v1/projects/heroic-map/upload`, multipart: `versionUpload` als JSON mit Version, Kanal `Release`, Changelog, `platformDependencies` `{"PAPER": ["26.2", "26.3"]}` und einer Datei für `PAPER`; dazu das Jar unter `files` |
 
 - **Versionen:** `<version>-linux-x64` und `<version>-windows-x64`, etwa
@@ -37,6 +37,11 @@ ein Release auf GitHub veröffentlicht wird, oder von Hand mit dem Tag.
   warnt der Lauf und bleibt grün.
 - **Erneut:** Eine Version, die es schon gibt, bleibt; ein zweiter Lauf
   lädt nur, was fehlt.
+- **Wiederholt:** Das Anmelden versucht curl bis zu viermal. Je Version
+  versucht der Lauf es bis zu dreimal, 10 s auseinander, jedes Mal erst
+  mit dem Blick, ob es sie schon gibt. Kam ein Upload trotz Fehler an,
+  etwa bei einem 502 wie am 10.10. mit `0.3.3-linux-x64`, gilt die Version
+  dann als fertig.
 - **Releases bis v0.3.1** haben ein Jar für beide Plattformen; der Workflow
   findet dort keine Jars je Plattform und fällt.
 
