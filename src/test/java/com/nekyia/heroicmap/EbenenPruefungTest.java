@@ -115,6 +115,22 @@ class EbenenPruefungTest {
     }
 
     @Test
+    void wertung_hoechstens_20_punkte() {
+        enthaelt(fehler(j -> wertung(j).addProperty("max", 21)), "max: eine ganze Zahl von 1 bis 20");
+        enthaelt(fehler(j -> wertung(j).addProperty("value", 5)), "value: eine ganze Zahl von 0 bis 4");
+        assertEquals(List.of(), fehler(j -> {
+            wertung(j).addProperty("max", 20);
+            wertung(j).addProperty("value", 20);
+        }));
+    }
+
+    /** Die Reihe der Wertung im Beispiel: Bergbau, 3 von 4. */
+    private static JsonObject wertung(JsonObject ebene) {
+        return bausteine(ebene).get(2).getAsJsonObject().getAsJsonArray("blocks").get(0).getAsJsonObject()
+                .getAsJsonArray("rows").get(0).getAsJsonObject();
+    }
+
+    @Test
     void bilder_der_tafel_hoechstens_512() {
         var b = new HashMap<>(bilder());
         b.put("images/banner.png", png(513, 10));

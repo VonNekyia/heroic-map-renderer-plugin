@@ -381,8 +381,8 @@ final class EbenenPruefung {
             }
             erlaubt(o, t, "label", "value", "max", "color");
             text(o, "label", t, 64, true);
-            Integer max = ganz(o, "max", t, 1, 100, true);
-            ganz(o, "value", t, 0, max == null ? 100 : max, true);
+            Integer max = ganz(o, "max", t, 1, 20, true);
+            ganz(o, "value", t, 0, max == null ? 20 : max, true);
             farbe(o, "color", t);
         }
     }
