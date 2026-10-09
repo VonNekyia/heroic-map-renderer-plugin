@@ -1,6 +1,6 @@
-# JitPack baut nur die API. Gradle läuft mit Java 21; Java 25 für das Plugin holt
-# der Resolver in settings.gradle.kts, gebaut wird es hier nicht. Siehe docs/api.md.
-jdk:
-  - openjdk21
+# JitPack baut nur die API, mit Java 25 aus SDKMAN wie das Plugin. Siehe docs/api.md, „Einbinden“.
+before_install:
+  - sdk install java 25.0.2-tem
+  - sdk use java 25.0.2-tem
 install:
   - ./gradlew :api:publishToMavenLocal --console=plain

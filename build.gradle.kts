@@ -23,8 +23,8 @@ repositories {
     maven("https://maven.maxhenkel.de/repository/public/") { content { includeGroup("de.maxhenkel.voicechat") } }
 }
 
-// Nur die API, ohne paperweight-userdev. Siehe docs/entscheidungen/0001-nur-die-paper-api.md.
-val paperApi = "io.papermc.paper:paper-api:26.2.build.129-stable"
+// Steht in gradle.properties, für das Plugin und das Modul api/.
+val paperApi = providers.gradleProperty("paperApi").get()
 
 dependencies {
     compileOnly(paperApi)

@@ -12,20 +12,19 @@ repositories {
     maven("https://repo.papermc.io/repository/maven-public/")
 }
 
-// Die API braucht von Paper nur org.bukkit.plugin.Plugin. Gebaut wird gegen eine Fassung für Java 21, denn die
-// API zu 26.2 verlangt Java 25; zur Laufzeit gilt die des Servers.
+// Die API braucht von Paper nur org.bukkit.plugin.Plugin; dieselbe Fassung wie das Plugin, aus gradle.properties.
 dependencies {
-    compileOnly("io.papermc.paper:paper-api:1.21.11-R0.1-SNAPSHOT")
+    compileOnly(providers.gradleProperty("paperApi").get())
 }
+
+java.toolchain.languageVersion = JavaLanguageVersion.of(25)
 
 java {
     withSourcesJar()
     withJavadocJar()
 }
 
-// Java 21 genügt den Records und sealed Typen; so baut JitPack ohne Java 25.
 tasks.withType<JavaCompile>().configureEach {
-    options.release = 21
     options.encoding = "UTF-8"
     options.compilerArgs.addAll(listOf("-Xlint:all", "-Werror"))
 }
