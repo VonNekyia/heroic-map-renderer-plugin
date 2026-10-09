@@ -2,6 +2,7 @@ package com.nekyia.heroicmap;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.time.ZoneId;
@@ -9,6 +10,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
+import java.util.stream.Stream;
 import org.bstats.bukkit.Metrics;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
@@ -38,6 +40,7 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
     /** Ob die Brücke zu Simple Voice Chat läuft. */
     private boolean simpleVoiceChat;
 
+    private Ebenen ebenen;
     private Laeufe laeufe;
     private volatile Webserver webserver;
     /** Warum das Plugin ohne Renderer bleibt; null mit Renderer. Jeder Befehl nennt es. */
@@ -66,6 +69,16 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
         getServer().getMessenger().registerOutgoingPluginChannel(this, Download.KANAL);
         getServer().getMessenger().registerIncomingPluginChannel(this, Download.KANAL, this);
         getServer().getPluginManager().registerEvents(this, this);
+        // Ebenen brauchen keinen Renderer; geladen wird ausserhalb des Hauptthreads. Siehe docs/ebenen.md.
+        Path ebenenOrdner = getDataFolder().toPath().resolve("ebenen");
+        ebenen = new Ebenen(ebenenOrdner, konf.dimension(), new EbenenSchreiber(konf.kacheln(), konf.dimension()), getLogger());
+        getServer().getAsyncScheduler().runNow(this, t -> {
+            String geladen = ebenen.ladeNeu();
+            if (Files.isDirectory(ebenenOrdner)) {
+                getLogger().info(geladen);
+            }
+        });
+        getServer().getAsyncScheduler().runAtFixedRate(this, t -> ebenen.takt(), 1, 1, TimeUnit.SECONDS);
         try {
             konf = konf.mitRenderer(Binaer.waehle(konf.renderer(), getFile().toPath(), getDataFolder().toPath().resolve("bin"),
                     System.getProperty("os.name"), System.getProperty("os.arch")));
@@ -191,15 +204,23 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
         if (args.length != 1) {
             return false;
         }
+        if (args[0].equals("layers")) {
+            sender.sendMessage("Ebenen werden neu geladen.");
+            getServer().getAsyncScheduler().runNow(this, t -> {
+                String z = ebenen.ladeNeu();
+                getServer().getGlobalRegionScheduler().execute(this, () -> sender.sendMessage(z));
+            });
+            return true;
+        }
         if (ohneRenderer != null && BEFEHLE.contains(args[0])) {
-            sender.sendMessage(ohneRenderer);
+            sender.sendMessage(ohneRenderer + (args[0].equals("status") ? "\n" + ebenen.status() : ""));
             return true;
         }
         String antwort = switch (args[0]) {
             case "render" -> laeufe.starte(Laeufe.Art.VOLL);
             case "update" -> laeufe.starte(Laeufe.Art.UPDATE);
             case "compact" -> laeufe.starte(Laeufe.Art.VERDICHTEN);
-            case "status" -> laeufe.status() + (webserver != null ? "\n" + webserver.status() : "");
+            case "status" -> laeufe.status() + (webserver != null ? "\n" + webserver.status() : "") + "\n" + ebenen.status();
             case "cancel" -> laeufe.brichAb() ? "Der Lauf wird abgebrochen." : "Es läuft kein Lauf.";
             default -> null;
         };
@@ -212,6 +233,7 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
 
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String label, String[] args) {
-        return args.length == 1 ? BEFEHLE.stream().filter(b -> b.startsWith(args[0])).toList() : List.of();
+        return args.length == 1 ? Stream.concat(BEFEHLE.stream(), Stream.of("layers"))
+                .filter(b -> b.startsWith(args[0])).toList() : List.of();
     }
 }
