@@ -7,6 +7,8 @@ code:
   - .github/workflows/ci.yml
   - .github/workflows/release.yml
   - .github/pruefe-jar.sh
+  - .github/notizen.sh
+  - CHANGELOG.md
   - src/test/java/com/nekyia/heroicmap/LaeufeTest.java
   - src/test/java/com/nekyia/heroicmap/KonfigurationTest.java
   - src/test/java/com/nekyia/heroicmap/FalscherRenderer.java
@@ -328,8 +330,8 @@ Build 129, eine Kopie der Testwelt, das Jar des Plugins unter `plugins/`,
 
 [`.github/workflows/release.yml`](../.github/workflows/release.yml) baut
 auf einem Tag `v<version>` die Jars je Plattform und legt einen Entwurf
-eines Releases auf GitHub an. Den Tag, das Veröffentlichen und Hangar übernimmt der
-Maintainer.
+eines Releases auf GitHub an. Den Tag und das Veröffentlichen übernimmt
+der Maintainer, Hangar danach ein eigener Workflow.
 
 - **Version** aus dem Tag ohne `v`, an Gradle mit `-Pversion`: im Namen
   `heroic-map-renderer-plugin-<version>-<plattform>.jar` und in
@@ -343,14 +345,20 @@ Maintainer.
 - **Prüfen:** `./gradlew build` mit den Tests, dann je Jar
   `.github/pruefe-jar.sh` wie in der CI; `plugin.yml` in jedem Jar muss die
   Version nennen.
-- **Entwurf:** beide Jars und `SHA256SUMS`, sonst fällt der Lauf. Die
-  Notizen nennen die Version des Renderers, welches Jar wofür ist, die
-  [Konfiguration](konfiguration.md) am Tag und aus
-  `NOTICE` Herausgeber, Kontakt und den Hinweis zu Mojang. Nur dieser Job
-  darf schreiben.
+- **Notizen:** englisch, aus [`.github/notizen.sh`](../.github/notizen.sh):
+  die Stichpunkte aus dem Abschnitt `## <version>` in
+  [`CHANGELOG.md`](../CHANGELOG.md), welches Jar wofür ist, die
+  [Konfiguration](konfiguration.md) am Tag, alle Releases und aus `NOTICE`
+  Herausgeber, Kontakt und den Hinweis zu Mojang. Für Hangar dieselben
+  Notizen je Plattform, mit dem Verweis auf die Version der anderen. Vor dem
+  Tag kommt der Abschnitt in `CHANGELOG.md`; fehlt er, fällt der Lauf vor
+  dem Bauen.
+- **Entwurf:** beide Jars, `SHA256SUMS` und die Notizen; ohne zwei Jars
+  fällt der Lauf. Nur dieser Job darf schreiben.
 - **Hangar:** Wird der Entwurf veröffentlicht, lädt
   [`hangar.yml`](../.github/workflows/hangar.yml) beide Jars als zwei
   Versionen auf Hangar, siehe [Hangar](hangar.md).
-- **In einer PR,** die den Workflow, das Prüfskript oder
-  `build.gradle.kts` ändert, läuft alles ausser dem Entwurf, mit der
-  Version `0.0.0-probe`.
+- **In einer PR,** die den Workflow, eins der beiden Skripte,
+  `CHANGELOG.md` oder `build.gradle.kts` ändert, läuft alles ausser dem
+  Entwurf, mit der Version `0.0.0-probe` und den Notizen zum neuesten
+  Abschnitt in `CHANGELOG.md`.

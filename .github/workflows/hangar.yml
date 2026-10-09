@@ -2,7 +2,7 @@ name: Hangar
 
 # Lädt die Jars eines veröffentlichten Releases auf Hangar, je Plattform als
 # eigene Version <version>-linux-x64 und <version>-windows-x64, mit den
-# Notizen des Releases als Changelog. Von Hand mit dem Tag als Eingabe.
+# Notizen aus notizen.sh, je Plattform. Von Hand mit dem Tag als Eingabe.
 # Siehe docs/entscheidungen/0009-hangar-mit-curl.md.
 on:
   release:
@@ -17,7 +17,7 @@ permissions:
   contents: read
 
 env:
-  # Das Projekt auf Hangar: https://hangar.papermc.io/gerryxn/heroic-map
+  # Das Projekt auf Hangar: https://hangar.papermc.io/Neky/heroic-map
   HANGAR_PROJEKT: heroic-map
   HANGAR_API: https://hangar.papermc.io/api/v1
   # Die Versionen von Paper, auf denen das Plugin läuft, siehe docs/alpha.md.
@@ -33,6 +33,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 120
     steps:
+      # CHANGELOG.md, NOTICE und notizen.sh so, wie sie am Tag stehen.
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.release.tag_name || inputs.tag }}
+
       # Der Schlüssel kommt nur aus dem Secret; er und das JWT stehen maskiert
       # und nie im Log. Ohne Secret nur eine Warnung, das Release bleibt grün.
       - name: Hochladen
@@ -52,10 +57,8 @@ jobs:
             || { echo "::error::$TAG ist kein Tag eines Releases wie v1.2.3"; exit 1; }
           version=${TAG#v}
 
-          mkdir dist && cd dist
-          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern '*-x64.jar' --pattern SHA256SUMS
-          sha256sum -c SHA256SUMS
-          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json body --jq .body > changelog.md
+          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --dir dist --pattern '*-x64.jar' --pattern SHA256SUMS
+          (cd dist && sha256sum -c SHA256SUMS)
 
           jwt=$(curl -fsS -X POST "$HANGAR_API/authenticate?apiKey=$HANGAR_API_TOKEN" | jq -r .token)
           echo "::add-mask::$jwt"
@@ -69,12 +72,13 @@ jobs:
               continue
             fi
             [ "$status" = 404 ] || { echo "::error::Hangar antwortet auf $name mit $status"; exit 1; }
-            jq -n --arg name "$name" --rawfile changelog changelog.md --argjson paper "$PAPER" \
+            bash .github/notizen.sh "$version" "$plattform" > beschreibung.md
+            jq -n --arg name "$name" --rawfile changelog beschreibung.md --argjson paper "$PAPER" \
               '{version: $name, channel: "Release", description: $changelog,
                 platformDependencies: {PAPER: $paper}, files: [{platforms: ["PAPER"]}]}' > version.json
             curl -fsS -X POST -H "Authorization: Bearer $jwt" \
               -F "versionUpload=@version.json;type=application/json" \
-              -F "files=@heroic-map-renderer-plugin-$name.jar;type=application/java-archive" \
+              -F "files=@dist/heroic-map-renderer-plugin-$name.jar;type=application/java-archive" \
               "$HANGAR_API/projects/$HANGAR_PROJEKT/upload"
             echo
           done

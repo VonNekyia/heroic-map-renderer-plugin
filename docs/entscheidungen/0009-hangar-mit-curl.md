@@ -24,8 +24,8 @@ Paper, darum gibt es je Release zwei Versionen, siehe
   Von Hand geht es mit dem Tag als Eingabe.
 - **Was:** genau die Jars des Releases, geprüft gegen dessen `SHA256SUMS`;
   je Jar eine Version `<version>-<plattform>` im Kanal `Release`, für Paper
-  26.2 und 26.3, mit den Notizen des Releases als Changelog. Gibt es eine
-  Version schon, bleibt sie.
+  26.2 und 26.3, mit den englischen Notizen aus `.github/notizen.sh` als
+  Changelog. Gibt es eine Version schon, bleibt sie.
 - **Wie:** mit curl über die API von Hangar: mit dem Schlüssel ein JWT
   holen, dann je Version ein Upload. Wie genau, steht in
   [Hangar](../hangar.md), „Hochladen“.
