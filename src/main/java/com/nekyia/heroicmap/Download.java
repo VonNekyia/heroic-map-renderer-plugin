@@ -37,6 +37,11 @@ final class Download {
     static final Duration GUELTIG = Duration.ofHours(24);
     /** Ein Token für einen vollen Download kommt noch einmal, solange es mindestens so lange gilt. */
     static final Duration NOCH_GUELTIG = Duration.ofMinutes(10);
+    /**
+     * Platz im Deckel eines Abgleichs für Kacheln, die neuer und grösser sind als im Manifest; der Mod bucht sie
+     * erst nach dem Laden nach. Siehe docs/download.md, „Token“.
+     */
+    static final long RESERVE = 1 << 20;
     static final int GROESSTE_ANFRAGE = 1024;
 
     private static final long ZEHN_MINUTEN = 600;
@@ -316,11 +321,14 @@ final class Download {
         return heute.toEpochSecond();
     }
 
-    /** Voll: Deckel das 1,5-Fache des Satzes; Abgleich: 10 %. Siehe docs/download.md, „Token“. */
+    /**
+     * Voll: Deckel das 1,5-Fache des Satzes; Abgleich: 10 % für Kacheln, dazu map.json, manifest und
+     * {@link #RESERVE}, denn der Server bucht alles auf das Token. Siehe docs/download.md, „Token“.
+     */
     private Ausgestellt stelleAus(UUID spieler, long s, String baum, Satz satz, int massstab, boolean voll) {
         int stufe = satz.stufe(massstab);
         long bytes = satz.bytesBis(stufe);
-        long deckel = voll ? bytes + bytes / 2 : bytes / 10;
+        long deckel = voll ? bytes + bytes / 2 : bytes / 10 + satz.nebenher() + RESERVE;
         long ablauf = s + GUELTIG.toSeconds();
         byte[] z = new byte[Token.ZUFALL];
         zufall.nextBytes(z);
@@ -342,7 +350,10 @@ final class Download {
         f.addProperty("token", t.token());
         f.addProperty("ablauf", t.ablauf());
         f.addProperty("manifest_sha256", satz.sha256());
-        f.addProperty("bytes", art.equals("voll") ? satz.bytesBis(stufe) : t.deckel());
+        // Beim Abgleich, was der Mod an Kacheln laden darf: der Deckel ohne das, was der Server ausserdem bucht. So
+        // kappt der Mod vor dem Deckel, auch mit einem älteren Token oder einem neueren Manifest.
+        f.addProperty("bytes", art.equals("voll") ? satz.bytesBis(stufe)
+                : Math.max(0, t.deckel() - satz.nebenher() - RESERVE));
         return f;
     }
 

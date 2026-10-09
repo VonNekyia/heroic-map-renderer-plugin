@@ -7,6 +7,10 @@ Links und die Hinweise aus `NOTICE` setzt
 [`.github/notizen.sh`](.github/notizen.sh) dazu. Siehe
 [Entwicklung](docs/entwicklung.md), „Release“.
 
+## 0.3.3
+
+- **Map sync fixed:** the daily sync no longer stops with "budget used up" when more than a tenth of the map changed; it downloads its share and the rest follows with the next sync or a full download.
+
 ## 0.3.2
 
 - **Layers on the web map:** pins, labels, regions, circles and lines, in 2D and isometric, lying on the terrain.

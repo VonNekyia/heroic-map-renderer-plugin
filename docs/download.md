@@ -78,7 +78,9 @@ Bukkit, und in `Kanal`, der den Kanal und den Stand im Spieler bedient.
   bis 65535. Der Mod baut daraus
   `http://<IP der Verbindung>:<port>/download/<baum>`, IPv6 in `[…]`.
 - **`bytes`** in `freigabe`: bei `voll` die Summe des Satzes, bei `abgleich`
-  der Deckel des Tokens.
+  was der Mod an Kacheln laden darf: der Deckel des Tokens ohne `map.json`,
+  `manifest` und die Reserve, siehe „Token“. Bis zu dieser Zahl lädt der
+  Mod Kacheln und kappt dann.
 - **Der Mod** schickt `anfrage` nur, wenn `ClientPlayNetworking.canSend`
   wahr ist. Paper meldet dem Client beim Beitritt die Kanäle, die das Plugin
   angemeldet hat. Belegt an #154.
@@ -196,7 +198,14 @@ des Renderers. `TokenTest` prüft gegen dessen Testvektoren. Die Kopie in
 - **Ablauf:** 24 h nach dem Ausstellen.
 - **Stufe:** die zum Massstab.
 - **Deckel:** bei `voll` das 1,5-Fache der Bytes des Satzes, bei `abgleich`
-  10 %.
+  10 % für Kacheln, dazu die Bytes von `map.json` und `manifest` und 1 MiB
+  Reserve für Kacheln, die neuer und grösser als im Manifest sind. Der
+  Server bucht alles, was er unter `/download/` ausliefert, auf das Token,
+  auch `map.json` und `manifest`. Bis 0.3.2 war der Deckel eines Abgleichs
+  genau die Grenze des Mods; brauchte ein Abgleich mehr als 10 %, etwa
+  wenn der Mod für Baum und Massstab keinen Stand hat, kam vor dem Kappen
+  429 und im Mod „budget used up“. Belegt am 10.10. mit `DownloadTest`,
+  `abgleich_beim_join_laesst_platz_fuer_map_json_und_manifest`.
 - **Zufall:** 16 Byte aus `SecureRandom`.
 - **Geheimnis:** 32 Byte in `plugins/HeroicMap/token.geheimnis`, beim ersten
   Start erzeugt. Unter Linux entsteht die Datei gleich nur für den Besitzer

@@ -215,7 +215,8 @@ class DownloadTest {
         var a = d.anfrage(anfrage("top-north-s", 4, "abgleich"), SPIELER, stand, JETZT.plusSeconds(60));
         assertEquals("abgleich", a.get("art").getAsString());
         assertEquals(1_160, a.get("bytes").getAsLong());
-        assertEquals(1_160, inhalt(a.get("token").getAsString()).getLong(25));
+        assertEquals(1_160 + satz.nebenher() + Download.RESERVE, inhalt(a.get("token").getAsString()).getLong(25),
+                "Platz für map.json, manifest und neuere Kacheln");
         assertEquals(1, stand.abgleich.length);
 
         // Jünger als 10 min: dasselbe Token, mit dem aktuellen Manifest, und es zählt nicht.
@@ -462,6 +463,41 @@ class DownloadTest {
         var vonHand = d.anfrage(anfrage("top-north-s", 2, "abgleich"), SPIELER, stand, heute.plusSeconds(600));
         assertEquals("Dein Abgleich der letzten 24 Stunden ist schon gelaufen.", vonHand.get("grund").getAsString(),
                 "nach dem täglichen keiner von Hand");
+    }
+
+    /**
+     * Der Fall vom 10.10.: Ein Abgleich beim Join braucht mehr als seine Grenze, etwa wenn der Mod für Baum und
+     * Massstab keinen Stand hat.
+     * Der Mod lädt Kacheln bis zu {@code bytes} der freigabe; der Server bucht dazu map.json und manifest auf das
+     * Token. Lag die Grenze am Deckel, kam vor dem Kappen 429.
+     */
+    @Test
+    void abgleich_beim_join_laesst_platz_fuer_map_json_und_manifest() throws Exception {
+        var d = download(LocalTime.of(6, 0));
+        var stand = new Download.Spielerstand();
+        d.anfrage(anfrage("top-north-s", 4, "voll"), SPIELER, stand, Instant.parse("2026-10-05T07:00:00Z"));
+        var f = d.beimJoin(SPIELER, stand, Instant.parse("2026-10-06T06:00:00Z")).get(0);
+        assertEquals("abgleich", f.get("art").getAsString());
+        long kacheln = f.get("bytes").getAsLong();
+        assertEquals(satz.bytesBis(satz.stufe(4)) / 10, kacheln, "für Kacheln weiter 10 % des Satzes");
+        long deckel = inhalt(f.get("token").getAsString()).getLong(25);
+        Path baum = tmp.resolve("top-north-s");
+        long gebucht = Files.size(baum.resolve("map.json")) + Files.size(baum.resolve("manifest")) + kacheln;
+        assertTrue(gebucht <= deckel, gebucht + " Byte gebucht, Deckel " + deckel);
+        assertTrue(gebucht + Download.RESERVE <= deckel, "dazu die Reserve für neuere Kacheln");
+
+        // Ein Token von vorher, mit dem Deckel nur aus 10 %, gibt das Plugin binnen 10 min noch einmal aus:
+        // Die Grenze für den Mod bleibt dann unter dem Deckel.
+        var vonHand = download(LocalTime.MIDNIGHT, 2);
+        var alt = new Download.Spielerstand();
+        vonHand.anfrage(anfrage("top-north-s", 4, "voll"), SPIELER, alt, JETZT);
+        var a = vonHand.anfrage(anfrage("top-north-s", 4, "abgleich"), SPIELER, alt, JETZT.plusSeconds(60));
+        var t = alt.baeume.get("top-north-s").token.get("abgleich");
+        alt.baeume.get("top-north-s").token.put("abgleich",
+                new Download.Ausgestellt(t.massstab(), t.ablauf(), satz.bytesBis(satz.stufe(4)) / 10, t.token()));
+        var b = vonHand.anfrage(anfrage("top-north-s", 4, "abgleich"), SPIELER, alt, JETZT.plusSeconds(120));
+        assertEquals(a.get("token").getAsString(), b.get("token").getAsString());
+        assertEquals(0, b.get("bytes").getAsLong(), "alter Deckel kleiner als das, was der Server ausserdem bucht");
     }
 
     @Test
