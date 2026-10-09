@@ -203,8 +203,8 @@ des Renderers. `TokenTest` prüft gegen dessen Testvektoren. Die Kopie in
   Server bucht alles, was er unter `/download/` ausliefert, auf das Token,
   auch `map.json` und `manifest`. Bis 0.3.2 war der Deckel eines Abgleichs
   genau die Grenze des Mods; brauchte ein Abgleich mehr als 10 %, etwa
-  nach dem Umbau der Pyramide, kam vor dem Kappen 429 und im Mod „budget
-  used up“. Belegt am 10.10. mit `DownloadTest`,
+  wenn der Mod für Baum und Massstab keinen Stand hat, kam vor dem Kappen
+  429 und im Mod „budget used up“. Belegt am 10.10. mit `DownloadTest`,
   `abgleich_beim_join_laesst_platz_fuer_map_json_und_manifest`.
 - **Zufall:** 16 Byte aus `SecureRandom`.
 - **Geheimnis:** 32 Byte in `plugins/HeroicMap/token.geheimnis`, beim ersten

@@ -466,7 +466,8 @@ class DownloadTest {
     }
 
     /**
-     * Der Fall vom 10.10.: Ein Abgleich beim Join braucht mehr als seine Grenze, etwa nach einem Umbau der Pyramide.
+     * Der Fall vom 10.10.: Ein Abgleich beim Join braucht mehr als seine Grenze, etwa wenn der Mod für Baum und
+     * Massstab keinen Stand hat.
      * Der Mod lädt Kacheln bis zu {@code bytes} der freigabe; der Server bucht dazu map.json und manifest auf das
      * Token. Lag die Grenze am Deckel, kam vor dem Kappen 429.
      */
