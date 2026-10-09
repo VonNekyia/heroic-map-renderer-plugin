@@ -3,6 +3,7 @@ package com.nekyia.heroicmap;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.nekyia.heroicmap.api.MapObject;
+import com.nekyia.heroicmap.api.MapObject.Banner;
 import com.nekyia.heroicmap.api.MapObject.Circle;
 import com.nekyia.heroicmap.api.MapObject.Label;
 import com.nekyia.heroicmap.api.MapObject.Line;
@@ -38,6 +39,14 @@ final class ApiJson {
                 }
                 o.addProperty("color", p.color());
                 tafel(o, p.panel());
+            }
+            case Banner b -> {
+                o.addProperty("type", "banner");
+                o.add("at", punkt(b.at()));
+                o.addProperty("y", b.y());
+                o.addProperty("image", b.image());
+                o.addProperty("name", b.name());
+                tafel(o, b.panel());
             }
             case Label l -> {
                 o.addProperty("type", "label");

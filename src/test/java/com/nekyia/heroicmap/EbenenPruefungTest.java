@@ -190,6 +190,48 @@ class EbenenPruefungTest {
     }
 
     @Test
+    void banner_mit_bild_bis_32_mal_64_zaehlt_wie_eine_nadel() {
+        var bilder = new java.util.HashMap<>(bilder());
+        bilder.put("images/nation.png", png(22, 40));
+        bilder.put("images/rand.png", png(32, 64));
+        bilder.put("images/breit.png", png(33, 64));
+        bilder.put("images/hoch.png", png(32, 65));
+        var banner = "{\"id\": \"bn\", \"type\": \"banner\", \"at\": [120.5, -340.5], \"y\": 71, \"name\": \"Hafenstadt\","
+                + " \"image\": \"images/%s\", \"panel\": {\"blocks\": [{\"type\": \"title\", \"text\": \"Hafenstadt\"}]}}";
+        for (String gut : List.of("nation.png", "rand.png")) {
+            assertEquals(List.of(), fehler(j -> j.getAsJsonArray("objects").add(JsonParser.parseString(banner.formatted(gut))), bilder),
+                    gut);
+        }
+        enthaelt(fehler(j -> j.getAsJsonArray("objects").add(JsonParser.parseString(banner.formatted("breit.png"))), bilder),
+                "images/breit.png hat 33 × 64 Pixel, erlaubt höchstens 32 × 64");
+        enthaelt(fehler(j -> j.getAsJsonArray("objects").add(JsonParser.parseString(banner.formatted("hoch.png"))), bilder),
+                "images/hoch.png hat 32 × 65 Pixel, erlaubt höchstens 32 × 64");
+        enthaelt(fehler(j -> j.getAsJsonArray("objects").add(JsonParser.parseString(
+                "{\"id\": \"bn\", \"type\": \"banner\", \"at\": [0, 0]}")), bilder), ".image: fehlt");
+        enthaelt(fehler(j -> j.getAsJsonArray("objects").add(JsonParser.parseString(
+                "{\"id\": \"bn\", \"type\": \"banner\", \"at\": [0, 0], \"image\": \"images/nation.png\", \"size\": \"large\"}")),
+                bilder), ".size: unbekanntes Feld");
+
+        var geheim = JsonParser.parseString("""
+                {"id": "beispiel:geheim", "name": {"de": "Geheim"}, "permission": "beispiel.karte",
+                 "objects": [{"id": "b", "type": "banner", "at": [0, 0], "image": "images/nation.png"}]}""").getAsJsonObject();
+        enthaelt(EbenenPruefung.pruefe("beispiel:geheim", geheim, gelesen(bilder)).fehler(),
+                "eine Ebene mit permission hat keine Bilder");
+
+        // staedte() hat schon 2 Nadeln: 997 + 1 Banner sind 1000, 998 + 1 Banner sind 1001.
+        for (int nadeln : List.of(997, 998)) {
+            var f = fehler(j -> {
+                var o = j.getAsJsonArray("objects");
+                for (int i = 0; i < nadeln; i++) {
+                    o.add(JsonParser.parseString("{\"id\": \"n" + i + "\", \"type\": \"pin\", \"at\": [0, 0]}"));
+                }
+                o.add(JsonParser.parseString(banner.formatted("nation.png")));
+            }, bilder);
+            assertEquals(nadeln == 998, f.contains("objects: mehr als 1000 Nadeln und Banner"), nadeln + " Nadeln: " + f);
+        }
+    }
+
+    @Test
     void grenzen_der_objekte_und_punkte() {
         enthaelt(fehler(j -> {
             var o = j.getAsJsonArray("objects");

@@ -81,6 +81,34 @@ class EbenenFuerModTest {
     }
 
     @Test
+    void linien_und_schrift_in_teilen_der_reihe_nach() {
+        var objekte = new StringBuilder();
+        for (int i = 0; i < 10; i++) {
+            var punkte = new StringBuilder();
+            for (int k = 0; k < 1000; k++) {
+                punkte.append(k == 0 ? "" : ",").append("[12345.123456,").append(-6789.654321 - k).append(']');
+            }
+            objekte.append(i == 0 ? "" : ",").append("{\"id\": \"w").append(i).append("\", \"type\": \"line\", \"points\": [")
+                    .append(punkte).append("]},{\"id\": \"l").append(i)
+                    .append("\", \"type\": \"label\", \"text\": \"Route\", \"path\": [[0, 0], [10, 10]]}");
+        }
+        var e = ebene("beispiel:routen", objekte.toString(), "");
+        var n = ohneAdresse(List.of(e)).nachrichten(SAM, true, p -> true, JETZT);
+        var ids = new ArrayList<String>();
+        for (int i = 1; i < n.size(); i++) {
+            assertTrue(bytes(n.get(i)) <= 64 << 10, "Teil " + i + ": " + bytes(n.get(i)) + " Byte");
+            lies(n.get(i)).getAsJsonArray("objects").forEach(o -> ids.add(o.getAsJsonObject().get("id").getAsString()));
+        }
+        assertTrue(n.size() > 3, "mehrere Teile, wie bei Nadeln");
+        var soll = new ArrayList<String>();
+        for (int i = 0; i < 10; i++) {
+            soll.add("w" + i);
+            soll.add("l" + i);
+        }
+        assertEquals(soll, ids, "alle Linien und Schriften, in ihrer Reihenfolge über die Teile");
+    }
+
+    @Test
     void zu_gross_fuer_den_mod_ist_ein_fehler() {
         String lang = "1." + "0".repeat(60);
         var ring = new StringBuilder();
@@ -90,6 +118,9 @@ class EbenenFuerModTest {
         var e = ebene("beispiel:riesig", "{\"id\": \"r\", \"type\": \"region\", \"polygons\": [{\"outer\": [" + ring + "]}]}", "");
         assertTrue(EbenenPruefung.pruefe("beispiel:riesig", e.json(), keine()).fehler()
                 .contains("objects[0]: für den Mod grösser als 1 MiB"));
+        var linie = ebene("beispiel:riesig", "{\"id\": \"w\", \"type\": \"line\", \"points\": [" + ring + "]}", "");
+        assertTrue(EbenenPruefung.pruefe("beispiel:riesig", linie.json(), keine()).fehler()
+                .contains("objects[0]: für den Mod grösser als 1 MiB"), "Linien gehen jetzt auch an den Mod");
     }
 
     @Test
@@ -119,9 +150,10 @@ class EbenenFuerModTest {
     }
 
     @Test
-    void nur_nadeln_regionen_kreise_ohne_tafel() {
+    void alle_arten_ohne_tafel() {
         var e = ebene("beispiel:arten", """
                 {"id": "p", "type": "pin", "at": [0, 0], "panel": {"blocks": []}},
+                {"id": "b", "type": "banner", "at": [0, 0], "image": "images/b.png", "panel": {"blocks": []}},
                 {"id": "l", "type": "label", "text": "T", "path": [[0, 0]]},
                 {"id": "r", "type": "region", "polygons": [{"outer": [[0, 0], [1, 0], [1, 1]]}]},
                 {"id": "w", "type": "line", "points": [[0, 0], [1, 1]]},
@@ -129,8 +161,9 @@ class EbenenFuerModTest {
         var teile = EbenenFuerMod.teile(e).teile();
         assertEquals(1, teile.size());
         var objekte = JsonParser.parseString(teile.getFirst()).getAsJsonArray();
-        assertEquals(List.of("p", "r", "c"), objekte.asList().stream().map(o -> o.getAsJsonObject().get("id").getAsString()).toList());
-        assertFalse(objekte.get(0).getAsJsonObject().has("panel"));
+        assertEquals(List.of("p", "b", "l", "r", "w", "c"),
+                objekte.asList().stream().map(o -> o.getAsJsonObject().get("id").getAsString()).toList());
+        objekte.forEach(o -> assertFalse(o.getAsJsonObject().has("panel"), o.toString()));
         assertEquals(List.of("[]"), EbenenFuerMod.teile(ebene("beispiel:leer", "", "")).teile(), "eine leere Ebene ist ein leerer Teil");
     }
 

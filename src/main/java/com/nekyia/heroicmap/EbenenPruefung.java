@@ -110,19 +110,22 @@ final class EbenenPruefung {
                     nadeln++;
                     nadel(o, s);
                 }
+                case "banner" -> {
+                    nadeln++;
+                    banner(o, s);
+                }
                 case "label" -> schrift(o, s);
                 case "region" -> region(o, s);
                 case "circle" -> kreis(o, s);
                 case "line" -> linie(o, s);
                 default -> fehler.add(s + ".type: unbekannt: " + typ);
             }
-            String fuerMod = EbenenFuerMod.ARTEN.contains(typ) ? EbenenFuerMod.fuerMod(o) : null;
-            if (fuerMod != null && fuerMod.getBytes(StandardCharsets.UTF_8).length > EbenenFuerMod.OBJEKT) {
+            if (EbenenFuerMod.fuerMod(o).getBytes(StandardCharsets.UTF_8).length > EbenenFuerMod.OBJEKT) {
                 fehler.add(s + ": für den Mod grösser als 1 MiB");
             }
         }
         if (nadeln > NADELN) {
-            fehler.add("objects: mehr als 1000 Nadeln");
+            fehler.add("objects: mehr als 1000 Nadeln und Banner");
         }
     }
 
@@ -170,6 +173,15 @@ final class EbenenPruefung {
         erlaubt(symbol, s + ".symbol", "large", "medium");
         bild(symbol, "large", s + ".symbol", 16, 16, true, false);
         bild(symbol, "medium", s + ".symbol", 9, 9, true, false);
+    }
+
+    /** Wie eine Nadel, mit einem Bild bis 32 × 64 statt des Schilds. Siehe docs/ebenen.md, „Prüfen“. */
+    private void banner(JsonObject o, String s) {
+        gemeinsam(o, s, true, "at", "y", "image", "name");
+        punkt(o.get("at"), s + ".at");
+        ganz(o, "y", s, -4096, 4096, false);
+        text(o, "name", s, 64, false);
+        bild(o, "image", s, 32, 64, false, true);
     }
 
     private void schrift(JsonObject o, String s) {
