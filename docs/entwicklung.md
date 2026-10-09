@@ -88,10 +88,10 @@ Laufzeit packt das Plugin das passende aus, siehe
   Zips ein Name doppelt als UTF-8 kodiert; seit v0.2.1 gleichen sich beide
   bis auf die Zeilenenden (zuletzt am 09.10. mit v0.4.0 verglichen). `lizenzen.txt`
   im Archiv gehört zur Karte unter `web/` und kommt mit `-Pweb`.
-- **Grösse,** am 08.10. mit v0.3.0: das Jar ohne Karte 9 331 957 Byte, mit
-  der Karte aus dem Archiv 9 605 444 Byte (CI, Job „Jar“). Gepackt im Jar
-  hat das Binär für Windows 4 707 673 Byte, das für Linux 4 465 495. Die
-  Grenze prüft die CI, siehe „CI“.
+- **Grösse,** am 09.10. mit v0.4.0: das Jar ohne Karte 9 368 047 Byte
+  (lokal), mit der Karte aus dem Archiv 9 641 982 Byte (CI, Job „Jar“).
+  Gepackt im Jar hat das Binär für Windows 4 710 353 Byte, das für Linux
+  4 470 202. Die Grenze prüft die CI, siehe „CI“.
 - **Neue Version:** `renderer` und beide SHA-256 in `build.gradle.kts`
   ändern, dann die Tabelle hier. Die SHA-256 selbst rechnen:
   `gh release download v<version> --repo VonNekyia/heroic-map-renderer`,
