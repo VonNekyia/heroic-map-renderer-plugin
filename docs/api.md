@@ -34,7 +34,7 @@ repositories {
     maven("https://jitpack.io")
 }
 dependencies {
-    compileOnly("com.github.VonNekyia.heroic-map-renderer-plugin:api:v0.3.0")
+    compileOnly("com.github.VonNekyia:heroic-map-renderer-plugin:v0.3.0")
 }
 ```
 
@@ -48,7 +48,10 @@ softdepend: [HeroicMap]
 - **`softdepend`** oder `depend`, damit Paper HeroicMap vorher lädt. Ohne
   HeroicMap gibt der `ServicesManager` null.
 - **JitPack** baut nur `:api:publishToMavenLocal`, mit Gradle auf Java 21,
-  siehe [`jitpack.yml`](../jitpack.yml). Das Modul übersetzt mit
+  siehe [`jitpack.yml`](../jitpack.yml). Weil es nur dieses eine Artefakt
+  findet, nennt es es wie das Repo: `com.github.VonNekyia:heroic-map-renderer-plugin`,
+  mit dem Tag als Version. Geprüft am 09.10. an einem Commit: Das Jar
+  enthält nur `com/nekyia/heroicmap/api/`. Das Modul übersetzt mit
   `release 21` und gegen die Paper-API 1.21.11, denn die zu 26.2 verlangt
   Java 25; es nutzt davon nur `org.bukkit.plugin.Plugin`.
 - **Java 25** verlangt das Plugin schon beim Einrichten des Builds. Fehlt
