@@ -72,13 +72,15 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
         getServer().getMessenger().registerOutgoingPluginChannel(this, Download.KANAL);
         getServer().getMessenger().registerIncomingPluginChannel(this, Download.KANAL, this);
         getServer().getPluginManager().registerEvents(this, this);
-        // Ebenen brauchen keinen Renderer. Siehe docs/ebenen.md.
+        // Ebenen brauchen keinen Renderer; geladen wird ausserhalb des Hauptthreads. Siehe docs/ebenen.md.
         Path ebenenOrdner = getDataFolder().toPath().resolve("ebenen");
-        ebenen = new Ebenen(ebenenOrdner, new EbenenSchreiber(konf.kacheln(), konf.dimension()), getLogger());
-        String geladen = ebenen.ladeNeu();
-        if (Files.isDirectory(ebenenOrdner)) {
-            getLogger().info(geladen);
-        }
+        ebenen = new Ebenen(ebenenOrdner, konf.dimension(), new EbenenSchreiber(konf.kacheln(), konf.dimension()), getLogger());
+        getServer().getAsyncScheduler().runNow(this, t -> {
+            String geladen = ebenen.ladeNeu();
+            if (Files.isDirectory(ebenenOrdner)) {
+                getLogger().info(geladen);
+            }
+        });
         fuerMod = new EbenenFuerMod(EbenenFuerMod.adresse(konf.webserver()));
         getServer().getAsyncScheduler().runAtFixedRate(this, t -> {
             ebenen.takt();
@@ -238,7 +240,7 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
             return true;
         }
         if (ohneRenderer != null && BEFEHLE.contains(args[0])) {
-            sender.sendMessage(ohneRenderer);
+            sender.sendMessage(ohneRenderer + (args[0].equals("status") ? "\n" + ebenen.status() : ""));
             return true;
         }
         String antwort = switch (args[0]) {
