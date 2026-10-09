@@ -5,7 +5,7 @@ import java.io.FileOutputStream;
 import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
 
-/** Steht in den Tests für den Renderer: gibt Zeilen wie er aus, den Fortschritt als JSON; `exit N` endet mit Code N, `nichts` meldet ein Update ohne Änderung, `kurz` läuft 1,5 s, `sleep` eine Minute, `server` meldet eine Adresse und läuft, bis stdin schliesst, `still` ebenso ohne Adresse, `zustimmung` bricht wie der Renderer ohne Assets und Zustimmung ab. */
+/** Steht in den Tests für den Renderer: gibt Zeilen wie er aus, den Fortschritt als JSON; `exit N` endet mit Code N, `nichts` meldet ein Update ohne Änderung, `kurz` läuft 1,5 s, `sleep` eine Minute, `server` meldet eine Adresse und läuft, bis stdin schliesst, `still` ebenso ohne Adresse, `zustimmung` bricht wie der Renderer ohne Assets und Zustimmung ab, `anderer-build` wie ein Update auf einem Stand eines anderen Builds. */
 public final class FalscherRenderer {
 
     public static void main(String[] args) throws Exception {
@@ -25,6 +25,12 @@ public final class FalscherRenderer {
                 System.in.readAllBytes();
             }
             case "still" -> System.in.readAllBytes();
+            case "anderer-build" -> {
+                var err = new PrintStream(new FileOutputStream(FileDescriptor.err), true, StandardCharsets.UTF_8);
+                err.println("Error: kacheln/stand.bin stammt von einem anderen Build des Renderers. Erst ein voller Lauf "
+                        + "zeichnet alles mit diesem, danach geht --update wieder.");
+                System.exit(1);
+            }
             case "zustimmung" -> {
                 var err = new PrintStream(new FileOutputStream(FileDescriptor.err), true, StandardCharsets.UTF_8);
                 err.println("Error: ohne --assets braucht der Lauf das Client-Jar von Mojang. Der Renderer lädt das Client-Jar "

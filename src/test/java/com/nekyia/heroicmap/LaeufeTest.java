@@ -550,6 +550,16 @@ class LaeufeTest {
     }
 
     @Test
+    void update_auf_dem_stand_eines_anderen_builds_nennt_den_vollen_lauf() throws Exception {
+        var l = laeufe();
+        l.starte("Update", List.of(new Auftrag("a", falscher("anderer-build"), false)));
+        assertTrue(l.warte(30_000));
+        assertTrue(l.status().endsWith(", Fehler, Code 1: neuer Renderer: erst /heroicmap render"), l::status);
+        assertTrue(log.stream().anyMatch(z -> z.contains("stammt von einem anderen Build des Renderers")),
+                "der Text des Renderers steht weiter im Log");
+    }
+
+    @Test
     void volle_laeufe_mit_eigenen_threads_updates_mit_wenigen() throws Exception {
         var k = konf(JAVA, false, List.of(KARTE));
         var mitDrei = new Konfiguration(k.renderer(), k.welt(), k.kacheln(), k.assets(), k.daten(), false, 1, 3, 30,
