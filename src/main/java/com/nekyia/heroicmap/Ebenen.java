@@ -67,6 +67,8 @@ final class Ebenen {
     private final EbenenSchreiber schreiber;
     private final Logger log;
     private volatile List<Ebene> stand = List.of();
+    /** Die modname, deren Ordner zuletzt nicht zu lesen war; null: der Ordner ebenen selbst. */
+    private volatile Set<String> nichtGelesen = Set.of();
     private final AtomicBoolean geaendert = new AtomicBoolean();
     private boolean schreibenScheiterte;
 
@@ -86,12 +88,24 @@ final class Ebenen {
         var g = lade(ordner, dimension);
         g.fehler().forEach(f -> log.warning("Ebenen: " + f));
         if (g.nichtGelesen() == null) {
+            // Ein früherer Stand gilt weiter; ohne ihn rührt das Schreiben layers/ nicht an.
+            if (stand.isEmpty()) {
+                nichtGelesen = null;
+                geaendert.set(true);
+            }
             return "Ebenen: nicht gelesen, es gilt der alte Stand, siehe Log";
         }
         var neu = new ArrayList<>(g.ebenen());
         stand.stream().filter(e -> g.nichtGelesen().contains(e.modname())).forEach(neu::add);
         neu.sort(Comparator.comparing(Ebene::id));
+        // Erst zusammenführen, dann schneiden: Auch alte Ebenen eines unlesbaren Mods zählen zu den 64.
+        if (neu.size() > HOECHSTENS) {
+            log.warning("Ebenen: mehr als 64 Ebenen; es gelten die ersten 64 nach id, ohne: "
+                    + neu.subList(HOECHSTENS, neu.size()).stream().map(Ebene::id).toList());
+            neu = new ArrayList<>(neu.subList(0, HOECHSTENS));
+        }
         stand = List.copyOf(neu);
+        nichtGelesen = g.nichtGelesen();
         geaendert.set(true);
         return "Ebenen: " + g.ebenen().size() + " geladen"
                 + (g.fehler().isEmpty() ? "" : ", Fehler, siehe Log");
@@ -103,7 +117,7 @@ final class Ebenen {
             return;
         }
         try {
-            schreiber.schreibe(stand);
+            schreiber.schreibe(stand, nichtGelesen);
             if (schreibenScheiterte) {
                 log.info("Ebenen: wieder für die Webkarte geschrieben");
                 schreibenScheiterte = false;

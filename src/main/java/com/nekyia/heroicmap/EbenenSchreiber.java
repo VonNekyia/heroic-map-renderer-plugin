@@ -18,7 +18,9 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.stream.Collectors;
 
 /**
@@ -41,9 +43,10 @@ final class EbenenSchreiber {
     /**
      * Bringt layers/ und layers.json auf den Stand von {@code ebenen}. Die Reihenfolge darf nicht wechseln:
      * erst Bilder, dann Ebenen, dann layers.json, zuletzt das Entfernen. So nennt layers.json nie eine
-     * Datei, die fehlt.
+     * Datei, die fehlt. Was zu einem modname aus {@code unberuehrt} schon liegt, bleibt mit seinem Eintrag in
+     * layers.json stehen, denn sein Ordner war nicht zu lesen; null heisst: jeder modname.
      */
-    synchronized void schreibe(Collection<Ebene> ebenen) throws IOException {
+    synchronized void schreibe(Collection<Ebene> ebenen, Set<String> unberuehrt) throws IOException {
         var sortiert = ebenen.stream().sorted(Comparator.comparing(Ebene::id)).toList();
         var soll = new LinkedHashMap<Path, byte[]>();
         for (Ebene e : sortiert) {
@@ -51,25 +54,51 @@ final class EbenenSchreiber {
                 soll.put(Path.of("layers", e.modname()).resolve(b.getKey()), b.getValue());
             }
         }
-        var liste = new JsonArray();
+        var liste = new TreeMap<String, JsonElement>();
         for (Ebene e : sortiert) {
             if (e.web()) {
                 soll.put(Path.of("layers", e.modname(), e.name() + ".json"), bytes(fuerWebkarte(e)));
-                liste.add(eintrag(e));
+                liste.put(e.id(), eintrag(e));
+            }
+        }
+        Path layersJson = wurzel.resolve("layers.json");
+        if (unberuehrt == null || !unberuehrt.isEmpty()) {
+            for (JsonElement alt : alteListe(layersJson)) {
+                String id = alt.getAsJsonObject().get("id").getAsString();
+                if (unberuehrt(id.substring(0, id.indexOf(':')), unberuehrt)) {
+                    liste.putIfAbsent(id, alt);
+                }
             }
         }
         for (var s : soll.entrySet()) {
             schreibe(wurzel.resolve(s.getKey()), s.getValue());
         }
-        Path layersJson = wurzel.resolve("layers.json");
         if (liste.isEmpty()) {
             Files.deleteIfExists(layersJson);
         } else {
             var l = new JsonObject();
-            l.add("layers", liste);
+            var a = new JsonArray();
+            liste.values().forEach(a::add);
+            l.add("layers", a);
             schreibe(layersJson, bytes(l));
         }
-        raeumeAuf(soll.keySet().stream().map(wurzel::resolve).collect(Collectors.toSet()));
+        raeumeAuf(soll.keySet().stream().map(wurzel::resolve).collect(Collectors.toSet()), unberuehrt);
+    }
+
+    private static boolean unberuehrt(String modname, Set<String> unberuehrt) {
+        return unberuehrt == null || unberuehrt.contains(modname);
+    }
+
+    /** Die Einträge der layers.json, die schon liegt; leer, wenn es keine gibt oder sie nicht zu lesen ist. */
+    private static List<JsonElement> alteListe(Path layersJson) {
+        try {
+            if (Files.isRegularFile(layersJson)) {
+                return Ebenen.lies(Files.readString(layersJson, StandardCharsets.UTF_8)).getAsJsonArray("layers").asList();
+            }
+        } catch (IOException | RuntimeException e) {
+            // Eine kaputte Liste ersetzt die neue; ihre Ebenen fehlen, bis ihr Ordner lesbar ist.
+        }
+        return List.of();
     }
 
     /** Die Datei der Ebene für die Webkarte: ohne web und permission, nur Objekte aus der Dimension der Wurzel. */
@@ -143,7 +172,7 @@ final class EbenenSchreiber {
      * Entfernt unter layers/ jede Datei, die nicht in {@code soll} steht: erst Ebenen, dann Bilder, dann leere
      * Ordner. Einem Link, unter Windows auch einer Junction, folgt es nicht; er bleibt stehen.
      */
-    private void raeumeAuf(Set<Path> soll) throws IOException {
+    private void raeumeAuf(Set<Path> soll, Set<String> unberuehrt) throws IOException {
         Path layers = wurzel.resolve("layers");
         if (!Files.exists(layers, LinkOption.NOFOLLOW_LINKS)) {
             return;
@@ -156,6 +185,9 @@ final class EbenenSchreiber {
             @Override
             public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes a) {
                 if (a.isSymbolicLink() || a.isOther()) {
+                    return FileVisitResult.SKIP_SUBTREE;
+                }
+                if (dir.getParent().equals(layers) && unberuehrt(dir.getFileName().toString(), unberuehrt)) {
                     return FileVisitResult.SKIP_SUBTREE;
                 }
                 ordner.add(dir);
