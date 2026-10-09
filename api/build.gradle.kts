@@ -31,7 +31,11 @@ tasks.withType<JavaCompile>().configureEach {
 }
 
 tasks.withType<Javadoc>().configureEach {
-    (options as StandardJavadocDocletOptions).encoding = "UTF-8"
+    (options as StandardJavadocDocletOptions).apply {
+        encoding = "UTF-8"
+        // Die Felder der Records beschreibt ihr Typ; @param je Feld wäre nur Wiederholung.
+        addBooleanOption("Xdoclint:all,-missing", true)
+    }
 }
 
 publishing {

@@ -17,6 +17,7 @@ import java.util.Objects;
 import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Function;
 import java.util.function.IntSupplier;
 import java.util.logging.Logger;
 import org.bukkit.event.EventHandler;
@@ -109,6 +110,11 @@ final class EbenenApi implements HeroicMapApi, Listener {
                 .sorted(Comparator.comparing(Ebene::id)).toList();
     }
 
+    /** Die Bilder eines Besitzers, wie die Prüfung nach ihnen fragt. */
+    private static Function<String, EbenenPruefung.Bild> aus(Map<String, byte[]> pool) {
+        return p -> pool.containsKey(p) ? new EbenenPruefung.Bild(pool.get(p), null) : null;
+    }
+
     private static String fehler(List<String> fehler) {
         return String.join("; ", fehler);
     }
@@ -198,7 +204,7 @@ final class EbenenApi implements HeroicMapApi, Listener {
             var pool = bilderVon();
             List<String> f;
             synchronized (pool) {
-                f = EbenenPruefung.pruefe(id, json(p, objekte.values()), pool).fehler();
+                f = EbenenPruefung.pruefe(id, json(p, objekte.values()), aus(pool)).fehler();
             }
             if (!f.isEmpty()) {
                 throw new IllegalArgumentException("Ebene " + id + ": " + fehler(f));
@@ -247,7 +253,7 @@ final class EbenenApi implements HeroicMapApi, Listener {
             List<String> f;
             var pool = bilderVon();
             synchronized (pool) {
-                f = EbenenPruefung.pruefe(id, json(permission, List.of(j)), pool).fehler();
+                f = EbenenPruefung.pruefe(id, json(permission, List.of(j)), aus(pool)).fehler();
             }
             if (!f.isEmpty()) {
                 throw new IllegalArgumentException("Objekt " + m.id() + ": " + fehler(f));
@@ -308,7 +314,7 @@ final class EbenenApi implements HeroicMapApi, Listener {
         private void pruefeKopf(JsonObject n, String p) {
             var kopf = json(p, List.of());
             kopf.add("name", n);
-            var f = EbenenPruefung.pruefe(id, kopf, Map.of()).fehler();
+            var f = EbenenPruefung.pruefe(id, kopf, pfad -> null).fehler();
             if (!f.isEmpty()) {
                 throw new IllegalArgumentException("Ebene " + id + ": " + fehler(f));
             }
@@ -340,7 +346,7 @@ final class EbenenApi implements HeroicMapApi, Listener {
                 var pool = bilderVon();
                 var benutzt = new TreeMap<String, byte[]>();
                 synchronized (pool) {
-                    var p = EbenenPruefung.pruefe(id, json, pool);
+                    var p = EbenenPruefung.pruefe(id, json, aus(pool));
                     if (!p.fehler().isEmpty()) {
                         // Nur bei einem Fehler im Plugin: Jede Änderung wurde schon beim Aufruf geprüft.
                         log.warning("Ebenen: " + id + " aus der API ist ungültig: " + fehler(p.fehler()));

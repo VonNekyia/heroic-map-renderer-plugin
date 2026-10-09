@@ -2,6 +2,7 @@ package com.nekyia.heroicmap;
 
 import static com.nekyia.heroicmap.EbenenBeispiel.bilder;
 import static com.nekyia.heroicmap.EbenenBeispiel.enthaelt;
+import static com.nekyia.heroicmap.EbenenBeispiel.gelesen;
 import static com.nekyia.heroicmap.EbenenBeispiel.png;
 import static com.nekyia.heroicmap.EbenenBeispiel.schreibe;
 import static com.nekyia.heroicmap.EbenenBeispiel.staedte;
@@ -33,7 +34,7 @@ class EbenenPruefungTest {
     private static List<String> fehler(Consumer<JsonObject> aendere, Map<String, byte[]> bilder) {
         var json = staedte();
         aendere.accept(json);
-        return EbenenPruefung.pruefe("beispiel:staedte", json, bilder).fehler();
+        return EbenenPruefung.pruefe("beispiel:staedte", json, gelesen(bilder)).fehler();
     }
 
     private static JsonObject objekt(JsonObject ebene, int i) {
@@ -57,7 +58,7 @@ class EbenenPruefungTest {
 
     @Test
     void das_beispiel_aus_dem_format_ist_gueltig() {
-        var e = EbenenPruefung.pruefe("beispiel:staedte", staedte(), bilder());
+        var e = EbenenPruefung.pruefe("beispiel:staedte", staedte(), gelesen(bilder()));
         assertEquals(List.of(), e.fehler());
         assertEquals(4, e.bilder().size(), "alle vier Bilder genannt");
     }
@@ -90,6 +91,13 @@ class EbenenPruefungTest {
         enthaelt(fehler(j -> bausteine(j).get(1).getAsJsonObject().getAsJsonArray("blocks").get(0).getAsJsonObject()
                 .getAsJsonArray("lines").add("x".repeat(121))), "lines[1]: ein Text bis 120 Zeichen");
         assertEquals(List.of(), fehler(j -> objekt(j, 0).addProperty("name", "x".repeat(64))), "64 gehen noch");
+        enthaelt(fehler(j -> j.getAsJsonObject("name").addProperty("de", "x".repeat(65))), "name.de: länger als 64 Zeichen");
+        assertEquals(List.of(), fehler(j -> j.getAsJsonObject("name").addProperty("en", "x".repeat(64))));
+        var geheim = JsonParser.parseString("{\"id\": \"beispiel:staedte\", \"name\": {\"de\": \"G\"}, \"objects\": []}").getAsJsonObject();
+        geheim.addProperty("permission", "p".repeat(129));
+        enthaelt(EbenenPruefung.pruefe("beispiel:staedte", geheim, gelesen(Map.of())).fehler(), "permission: länger als 128 Zeichen");
+        geheim.addProperty("permission", "p".repeat(128));
+        assertEquals(List.of(), EbenenPruefung.pruefe("beispiel:staedte", geheim, gelesen(Map.of())).fehler());
     }
 
     @Test
@@ -164,10 +172,10 @@ class EbenenPruefungTest {
         var ohneBilder = JsonParser.parseString("""
                 {"id": "beispiel:geheim", "name": {"de": "Geheim"}, "permission": "beispiel.karte",
                  "objects": [{"id": "a", "type": "pin", "at": [0, 0]}]}""").getAsJsonObject();
-        assertEquals(List.of(), EbenenPruefung.pruefe("beispiel:geheim", ohneBilder, Map.of()).fehler());
+        assertEquals(List.of(), EbenenPruefung.pruefe("beispiel:geheim", ohneBilder, gelesen(Map.of())).fehler());
         assertFalse(new Ebene("beispiel:geheim", ohneBilder, Map.of(), "v").web(), "permission ohne web heisst web: false");
         ohneBilder.addProperty("web", true);
-        enthaelt(EbenenPruefung.pruefe("beispiel:geheim", ohneBilder, Map.of()).fehler(), "web: true mit permission");
+        enthaelt(EbenenPruefung.pruefe("beispiel:geheim", ohneBilder, gelesen(Map.of())).fehler(), "web: true mit permission");
     }
 
     @Test

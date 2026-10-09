@@ -116,7 +116,9 @@ auch unter `/download/` aus, nur gegen ein Token, siehe
 - **Hinter einem Proxy ohne Adresse:** Lauscht der Webserver intern, etwa
   auf `127.0.0.1:8082`, und leitet ein Proxy auf dem Spielrechner
   `/download/` von Port 8080 dorthin weiter, nennt `public-port: 8080` dem
-  Mod den Port des Proxys. Eine Adresse braucht es so nicht.
+  Mod den Port des Proxys. Eine Adresse braucht es so nicht. Für die Bilder
+  der Ebenen im Mod muss der Proxy auch `/tiles/` durchreichen, siehe
+  [Ebenen](ebenen.md), „Bilder im Mod“.
 - **Warnung:** Lauscht der Webserver ohne `url` und ohne `public-port`
   nur auf `127.0.0.1`, `[::1]` oder `localhost`, steht beim Start im Log,
   dass Spieler ihn so nicht erreichen.

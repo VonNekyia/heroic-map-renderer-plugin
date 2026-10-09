@@ -1,5 +1,6 @@
 package com.nekyia.heroicmap;
 
+import com.google.gson.JsonObject;
 import com.nekyia.heroicmap.api.HeroicMapApi;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -86,7 +87,9 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
                 getLogger().info(geladen);
             }
         });
-        fuerMod = new EbenenFuerMod(EbenenFuerMod.adresse(konf.webserver()));
+        // Die Adresse erst, wenn der Webserver bereit ist, wie bei freigabe.
+        var webKonf = konf.webserver();
+        fuerMod = new EbenenFuerMod(() -> webserver != null && webserver.bereit() ? EbenenFuerMod.adresse(webKonf) : new JsonObject());
         getServer().getAsyncScheduler().runAtFixedRate(this, t -> {
             ebenen.takt();
             fuerMod.bereite(ebenen.stand());
@@ -141,15 +144,13 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
 
     /** Im Hauptthread, jede Sekunde: jedem Spieler mit offenem Kanal die Ebenen, die er sehen darf. Siehe docs/ebenen.md, „Mod“. */
     private void ebenenAnMod() {
-        var stand = ebenen.stand();
         long jetzt = Instant.now().getEpochSecond();
         for (Player p : getServer().getOnlinePlayers()) {
             if (!p.getListeningPluginChannels().contains(Download.KANAL)) {
                 fuerMod.vergiss(p.getUniqueId());
                 continue;
             }
-            boolean alle = p.hasPermission(LAYERS);
-            for (String n : fuerMod.nachrichten(p.getUniqueId(), perm -> alle && (perm == null || p.hasPermission(perm)), stand, jetzt)) {
+            for (String n : fuerMod.nachrichten(p.getUniqueId(), p.hasPermission(LAYERS), p::hasPermission, jetzt)) {
                 p.sendPluginMessage(this, Download.KANAL, n.getBytes(StandardCharsets.UTF_8));
             }
         }

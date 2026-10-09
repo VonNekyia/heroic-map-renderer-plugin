@@ -14,6 +14,7 @@ code:
   - src/test/java/com/nekyia/heroicmap/EbenenPruefungTest.java
   - src/test/java/com/nekyia/heroicmap/EbenenTest.java
   - src/test/java/com/nekyia/heroicmap/EbenenSchreiberTest.java
+  - src/test/java/com/nekyia/heroicmap/EbenenFuerModTest.java
   - src/test/java/com/nekyia/heroicmap/EbenenApiTest.java
   - api/build.gradle.kts
   - jitpack.yml
@@ -150,6 +151,11 @@ Laufzeit packt das Plugin das passende aus, siehe
 - **`EbenenSchreiberTest`:** Liste, Ebenen und Bilder für die Webkarte,
   Aufräumen in der Reihenfolge Ebenen vor Bildern, gleiche Bytes nicht neu,
   nie durch eine Junction (Windows) oder einen Symlink.
+- **`EbenenFuerModTest`:** die grösste erlaubte Region als ein Teil, ein
+  Objekt über 1 MiB als Fehler, 1000 Nadeln in Teilen der Reihe nach, nur
+  Nadeln, Regionen und Kreise ohne Tafel, der Hauptthread rechnet nicht,
+  Rechte samt `heroicmap.layers`, die Adresse und ihr späteres Kommen,
+  höchstens 1 MiB je Tick.
 - **`EbenenApiTest`:** die Kennung aus dem Namen des Plugins, Prüfen beim
   Aufruf, alle Arten und Bausteine als gültiges JSON, Bilder je Besitzer,
   `permission`, Löschen und ein Plugin, das geht, Vorrang vor der Datei.

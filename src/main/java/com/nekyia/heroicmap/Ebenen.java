@@ -70,6 +70,8 @@ final class Ebenen {
     /** Die Ebenen aus den Dateien; mit denen der API zusammen ergeben sie den Stand. */
     private volatile List<Ebene> ausDateien = List.of();
     private volatile List<Ebene> stand = List.of();
+    /** Die modname, deren Ordner zuletzt nicht zu lesen war; null: der Ordner ebenen selbst. */
+    private volatile Set<String> nichtGelesen = Set.of();
     private final AtomicBoolean geaendert = new AtomicBoolean();
     private boolean schreibenScheiterte;
     private Set<String> verdeckt = Set.of();
@@ -96,12 +98,24 @@ final class Ebenen {
         var g = lade(ordner, dimension);
         g.fehler().forEach(f -> log.warning("Ebenen: " + f));
         if (g.nichtGelesen() == null) {
+            // Ein früherer Stand gilt weiter; ohne ihn rührt das Schreiben layers/ nicht an.
+            if (ausDateien.isEmpty()) {
+                nichtGelesen = null;
+                geaendert.set(true);
+            }
             return "Ebenen: nicht gelesen, es gilt der alte Stand, siehe Log";
         }
         var neu = new ArrayList<>(g.ebenen());
         ausDateien.stream().filter(e -> g.nichtGelesen().contains(e.modname())).forEach(neu::add);
         neu.sort(Comparator.comparing(Ebene::id));
+        // Erst zusammenführen, dann schneiden: Auch alte Ebenen eines unlesbaren Mods zählen zu den 64.
+        if (neu.size() > HOECHSTENS) {
+            log.warning("Ebenen: mehr als 64 Ebenen; es gelten die ersten 64 nach id, ohne: "
+                    + neu.subList(HOECHSTENS, neu.size()).stream().map(Ebene::id).toList());
+            neu = new ArrayList<>(neu.subList(0, HOECHSTENS));
+        }
         ausDateien = List.copyOf(neu);
+        nichtGelesen = g.nichtGelesen();
         geaendert.set(true);
         return "Ebenen: " + g.ebenen().size() + " geladen"
                 + (g.fehler().isEmpty() ? "" : ", Fehler, siehe Log");
@@ -118,7 +132,7 @@ final class Ebenen {
         }
         stand = vereine(ausDateien, api.ebenen());
         try {
-            schreiber.schreibe(stand);
+            schreiber.schreibe(stand, nichtGelesen);
             if (schreibenScheiterte) {
                 log.info("Ebenen: wieder für die Webkarte geschrieben");
                 schreibenScheiterte = false;
