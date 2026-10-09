@@ -94,7 +94,7 @@ final class Staedte {
         HeroicMapApi api = Bukkit.getServicesManager().load(HeroicMapApi.class);
         Layer staedte = api.layer(plugin, "staedte");
         staedte.name("Städte", "Towns");
-        // Städte als Banner ihrer Nation, höchstens 32 × 64 Pixel; Banner einer Nation teilen ihr Bild.
+        // Städte als Banner ihrer Nation, ab 0.4.0; höchstens 32 × 64 Pixel, Banner einer Nation teilen ihr Bild.
         staedte.image("images/nordreich.png", bannerAlsPng("nordreich"));
         staedte.put(MapObject.Banner.at("stadt-17", 120.5, -340.5, "images/nordreich.png")
                 .withName("Hafenstadt"));

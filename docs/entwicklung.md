@@ -171,13 +171,16 @@ Plugin es aus, siehe [Konfiguration](konfiguration.md), „Das Binär“.
 - **`EbenenSchreiberTest`:** Liste, Ebenen und Bilder für die Webkarte,
   Aufräumen in der Reihenfolge Ebenen vor Bildern, gleiche Bytes nicht neu,
   nie durch eine Junction (Windows) oder einen Symlink.
-- **`EbenenFuerModTest`:** die grösste erlaubte Region als ein Teil, ein
-  Objekt über 1 MiB als Fehler, 1000 Nadeln in Teilen der Reihe nach, nur
-  Nadeln, Regionen und Kreise ohne Tafel, der Hauptthread rechnet nicht,
+- **`EbenenFuerModTest`:** die grösste erlaubte Region als ein Teil, eine
+  Region und eine Linie über 1 MiB als Fehler, 1000 Nadeln in Teilen der
+  Reihe nach, ebenso Linien und Kartenschrift, alle sechs Arten ohne Tafel,
+  der Hauptthread rechnet nicht,
   Rechte samt `heroicmap.layers`, die Adresse und ihr späteres Kommen,
   höchstens 1 MiB je Sekunde.
 - **`EbenenApiTest`:** die Kennung aus dem Namen des Plugins, Prüfen beim
-  Aufruf, alle Arten und Bausteine als gültiges JSON, Bilder je Besitzer,
+  Aufruf, Nadeln und Banner zusammen an der Grenze von 1000 mit Ersetzen
+  und Entfernen, alle Arten und Bausteine als gültiges JSON, Banner mit
+  geteiltem Bild, Bilder je Besitzer,
   `permission`, Löschen und ein Plugin, das geht, Vorrang vor der Datei.
 - **`TokenTest`:** stellt jedes gültige Token aus den Testvektoren des
   Renderers Zeichen für Zeichen gleich aus, lehnt ab, was kein gültiges

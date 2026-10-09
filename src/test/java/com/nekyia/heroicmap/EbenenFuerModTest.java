@@ -118,6 +118,9 @@ class EbenenFuerModTest {
         var e = ebene("beispiel:riesig", "{\"id\": \"r\", \"type\": \"region\", \"polygons\": [{\"outer\": [" + ring + "]}]}", "");
         assertTrue(EbenenPruefung.pruefe("beispiel:riesig", e.json(), keine()).fehler()
                 .contains("objects[0]: für den Mod grösser als 1 MiB"));
+        var linie = ebene("beispiel:riesig", "{\"id\": \"w\", \"type\": \"line\", \"points\": [" + ring + "]}", "");
+        assertTrue(EbenenPruefung.pruefe("beispiel:riesig", linie.json(), keine()).fehler()
+                .contains("objects[0]: für den Mod grösser als 1 MiB"), "Linien gehen jetzt auch an den Mod");
     }
 
     @Test

@@ -47,7 +47,7 @@ Bukkit, und in `Kanal`, der den Kanal und den Stand im Spieler bedient.
 | Mod → Server | `show` | `show`: `hidden` oder `simplevoicechat` | sobald der Kanal geht, und nach jeder Änderung der Wahl |
 | Server → Mod | `show` | `erlaubt`: `true` oder `false`; bei `false` `grund`: `permission` oder `simplevoicechat` | auf jede lesbare `show`, siehe [Mitspieler](mitspieler.md), „Die Wahl show“ |
 | Server → Mod | `ebenen` | die Ebenen, die der Spieler sehen darf, mit `version`, dazu `url` oder `port` | wenn sich für ihn etwas ändert, siehe [Ebenen](ebenen.md), „Mod“ |
-| Server → Mod | `ebene` | `id`, `version`, `teil`, `teile`, `objects`: Nadeln, Regionen und Kreise einer Ebene | nach `ebenen`, je neuer oder geänderter Ebene, siehe [Ebenen](ebenen.md), „Mod“ |
+| Server → Mod | `ebene` | `id`, `version`, `teil`, `teile`, `objects`: alle Objekte einer Ebene ohne Tafel | nach `ebenen`, je neuer oder geänderter Ebene, siehe [Ebenen](ebenen.md), „Mod“ |
 
 - **`spieler`** etwa so, `jetzt` wie in jeder Nachricht in Epoch s:
 

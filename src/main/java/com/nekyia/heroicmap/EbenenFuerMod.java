@@ -159,7 +159,7 @@ final class EbenenFuerMod {
         return new Teile(e.version(), List.copyOf(aus), summe + bytes);
     }
 
-    /** Ein Objekt, wie der Mod es bekommt: ohne panel, das holt er später. */
+    /** Ein Objekt, wie der Mod es bekommt: ohne panel; einen Weg, die Tafel zu holen, gibt es noch nicht. */
     static String fuerMod(JsonObject o) {
         if (!o.has("panel")) {
             return o.toString();

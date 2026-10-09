@@ -136,7 +136,7 @@ public sealed interface MapObject {
             return new Pin(id, at, dimension, y, name, size, symbol, c, panel);
         }
 
-        /** A copy with this panel, shown on click. */
+        /** A copy with this panel, shown when the pointer rests on the pin. */
         public Pin withPanel(Panel p) {
             return new Pin(id, at, dimension, y, name, size, symbol, color, p);
         }
@@ -266,7 +266,7 @@ public sealed interface MapObject {
             return new Region(id, polygons, dimension, name, fill, s, panel);
         }
 
-        /** A copy with this panel, shown on click. */
+        /** A copy with this panel, shown when the pointer rests on the region. */
         public Region withPanel(Panel p) {
             return new Region(id, polygons, dimension, name, fill, stroke, p);
         }
@@ -300,7 +300,7 @@ public sealed interface MapObject {
             return new Circle(id, center, radius, dimension, fill, s, panel);
         }
 
-        /** A copy with this panel, shown on click. */
+        /** A copy with this panel, shown when the pointer rests on the circle. */
         public Circle withPanel(Panel p) {
             return new Circle(id, center, radius, dimension, fill, stroke, p);
         }

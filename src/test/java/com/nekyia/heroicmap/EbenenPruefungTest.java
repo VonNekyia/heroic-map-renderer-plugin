@@ -218,13 +218,17 @@ class EbenenPruefungTest {
         enthaelt(EbenenPruefung.pruefe("beispiel:geheim", geheim, gelesen(bilder)).fehler(),
                 "eine Ebene mit permission hat keine Bilder");
 
-        enthaelt(fehler(j -> {
-            var o = j.getAsJsonArray("objects");
-            for (int i = 0; i < 999; i++) {
-                o.add(JsonParser.parseString("{\"id\": \"n" + i + "\", \"type\": \"pin\", \"at\": [0, 0]}"));
-            }
-            o.add(JsonParser.parseString(banner.formatted("nation.png")));
-        }, bilder), "mehr als 1000 Nadeln und Banner");
+        // staedte() hat schon 2 Nadeln: 997 + 1 Banner sind 1000, 998 + 1 Banner sind 1001.
+        for (int nadeln : List.of(997, 998)) {
+            var f = fehler(j -> {
+                var o = j.getAsJsonArray("objects");
+                for (int i = 0; i < nadeln; i++) {
+                    o.add(JsonParser.parseString("{\"id\": \"n" + i + "\", \"type\": \"pin\", \"at\": [0, 0]}"));
+                }
+                o.add(JsonParser.parseString(banner.formatted("nation.png")));
+            }, bilder);
+            assertEquals(nadeln == 998, f.contains("objects: mehr als 1000 Nadeln und Banner"), nadeln + " Nadeln: " + f);
+        }
     }
 
     @Test

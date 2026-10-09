@@ -151,10 +151,12 @@ Ausgeliefert werden die Dateien vom Server des Renderers
 
 Das Plugin schickt dem Mod jede Ebene, die der Spieler sehen darf, mit
 allen Objekten, über den Kanal `heroicmap:karte`: Nadeln, Banner,
-Kartenschrift, Regionen, Kreise und Linien. Tafeln schickt es nicht; die
-holt der Mod später. Ein Mod, der eine Art nicht kennt, übergeht sie, so
-wie es das Format verlangt. Banner, Kartenschrift und Linien gehen seit
-0.4.0 mit, auf Wunsch des Users. Der Code steht in `EbenenFuerMod` in
+Kartenschrift, Regionen, Kreise und Linien, wie es das Format unter
+[„An den Mod“](https://github.com/VonNekyia/heroic-map-renderer/blob/master/docs/benutzung/ebenen.md#an-den-mod)
+und
+[0097](https://github.com/VonNekyia/heroic-map-renderer/blob/master/docs/entscheidungen/0097-banner-feste-groesse-tafel-beim-zeigen.md)
+verlangt. Tafeln schickt es nicht; einen Weg, sie zu holen, gibt es noch
+nicht. Ein Mod, der eine Art nicht kennt, übergeht sie. Der Code steht in `EbenenFuerMod` in
 [`EbenenFuerMod.java`](../src/main/java/com/nekyia/heroicmap/EbenenFuerMod.java).
 
 | `typ` | Felder | Wann |
