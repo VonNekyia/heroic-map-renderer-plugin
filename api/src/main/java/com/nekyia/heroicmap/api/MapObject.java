@@ -84,7 +84,10 @@ public sealed interface MapObject {
     /** The symbol of a pin: image paths of the layer, {@code large} exactly 16 × 16 pixels, {@code medium} 9 × 9. */
     record Symbol(String large, String medium) {}
 
-    /** A contour around the letters of a label. */
+    /**
+     * A contour around the letters of a label; {@code width} in screen pixels, 0 means none. Without {@code color}
+     * the map takes {@code #F2E8D0}.
+     */
     record Outline(String color, Double width) {}
 
     /**

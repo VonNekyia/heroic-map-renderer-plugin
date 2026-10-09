@@ -37,7 +37,9 @@ final class EbenenApi implements HeroicMapApi, Listener {
     private final Map<String, ApiEbene> ebenen = new ConcurrentHashMap<>();
     /**
      * Die Bilder je modname; alle Ebenen eines Besitzers teilen sie, wie im Ordner images/. Nur {@link #layer}
-     * legt einen Pool an und nur {@link #entferne} nimmt ihn weg, beide unter der Sperre der API.
+     * legt einen Pool an und nur {@link #entferne} nimmt ihn weg, beide unter der Sperre der API. {@link #layer}
+     * legt ihn vor der Ebene an: Der Takt liest die Ebenen ohne diese Sperre, und sähe er eine Ebene ohne Pool,
+     * verlöre er sie bis zur nächsten Änderung.
      */
     private final Map<String, Map<String, byte[]>> bilder = new ConcurrentHashMap<>();
     private final AtomicBoolean geaendert = new AtomicBoolean();
@@ -85,9 +87,10 @@ final class EbenenApi implements HeroicMapApi, Listener {
         if (ebenen.size() + dateien >= Ebenen.HOECHSTENS) {
             throw new IllegalArgumentException("Ebene " + id + ": der Server hat schon 64 Ebenen");
         }
+        // Erst der Pool, dann die Ebene, siehe bilder.
+        bilder.computeIfAbsent(modname, k -> new TreeMap<>());
         e = new ApiEbene(modname, id);
         ebenen.put(id, e);
-        bilder.computeIfAbsent(modname, k -> new TreeMap<>());
         geaendert.set(true);
         return e;
     }
