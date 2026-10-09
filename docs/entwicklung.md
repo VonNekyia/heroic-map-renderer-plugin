@@ -3,6 +3,7 @@ title: Entwicklung
 description: Bauen und Testen mit Gradle 9.7.1 und Java 25, die API von Simple Voice Chat nur zum Übersetzen, was im Jar steckt, der Renderer im Jar mit Version und SHA-256, die Tests mit einem falschen Renderer, die Proben mit dem echten, auch zum Nachverdichten, die CI und das Release.
 code:
   - build.gradle.kts
+  - gradle.properties
   - .github/workflows/ci.yml
   - .github/workflows/release.yml
   - .github/pruefe-jar.sh
@@ -15,16 +16,22 @@ code:
   - src/test/java/com/nekyia/heroicmap/EbenenTest.java
   - src/test/java/com/nekyia/heroicmap/EbenenSchreiberTest.java
   - src/test/java/com/nekyia/heroicmap/EbenenFuerModTest.java
+  - src/test/java/com/nekyia/heroicmap/EbenenApiTest.java
+  - api/build.gradle.kts
+  - jitpack.yml
   - src/test/java/com/nekyia/heroicmap/MitspielerTest.java
   - src/test/java/com/nekyia/heroicmap/VorlageTest.java
 ---
 
 # Entwicklung
 
-`./gradlew build` baut das Jar nach `build/libs/` und führt die Tests aus.
-Gradle 9.7.1 kommt über den Wrapper, Java 25 über die Toolchain; Paper 26.2
-verlangt Java 25. Gebaut wird gegen die Paper-API `26.2.build.129-stable`,
-nur zum Übersetzen, ohne paperweight-userdev, siehe
+`./gradlew build` baut das Jar nach `build/libs/` und führt die Tests aus. Dazu baut es das Modul `api/`, die API für
+andere Plugins, nach `api/build/libs/`, mit Quellen und Javadoc; JitPack
+baut nur dieses Modul, siehe [API](api.md), „Einbinden“.
+Gradle 9.7.1 kommt über den Wrapper, Java 25 über die Toolchain, für das
+Plugin wie für `api/`; Paper 26.2 verlangt Java 25, und es muss auf dem
+Rechner liegen. Gebaut wird gegen die Paper-API `26.2.build.129-stable`
+aus `gradle.properties`, nur zum Übersetzen, ohne paperweight-userdev, siehe
 [0001](entscheidungen/0001-nur-die-paper-api.md). Ebenso nur zum Übersetzen
 die API von Simple Voice Chat 2.6.24, aus seinem Maven-Repository, siehe
 [0005](entscheidungen/0005-simple-voice-chat-api.md). Das Jar baut Shadow
@@ -92,8 +99,9 @@ Laufzeit packt das Plugin das passende aus, siehe
   Zips ein Name doppelt als UTF-8 kodiert; seit v0.2.1 gleichen sich beide
   bis auf die Zeilenenden (zuletzt am 09.10. mit v0.4.0 verglichen). `lizenzen.txt`
   im Archiv gehört zur Karte unter `web/` und kommt mit `-Pweb`.
-- **Grösse,** am 09.10. mit v0.4.0: das Jar ohne Karte 9 368 047 Byte
-  (lokal), mit der Karte aus dem Archiv 9 641 982 Byte (CI, Job „Jar“).
+- **Grösse,** am 09.10. mit v0.4.0 und der API (#39): das Jar ohne Karte
+  9 456 183 Byte (lokal), mit der Karte aus dem Archiv 9 727 787 Byte
+  (CI, Job „Jar“).
   Gepackt im Jar hat das Binär für Windows 4 710 353 Byte, das für Linux
   4 470 202. Die Grenze prüft die CI, siehe „CI“.
 - **Neue Version:** `renderer` und beide SHA-256 in `build.gradle.kts`
@@ -150,6 +158,9 @@ Laufzeit packt das Plugin das passende aus, siehe
   Nadeln, Regionen und Kreise ohne Tafel, der Hauptthread rechnet nicht,
   Rechte samt `heroicmap.layers`, die Adresse und ihr späteres Kommen,
   höchstens 1 MiB je Sekunde.
+- **`EbenenApiTest`:** die Kennung aus dem Namen des Plugins, Prüfen beim
+  Aufruf, alle Arten und Bausteine als gültiges JSON, Bilder je Besitzer,
+  `permission`, Löschen und ein Plugin, das geht, Vorrang vor der Datei.
 - **`TokenTest`:** stellt jedes gültige Token aus den Testvektoren des
   Renderers Zeichen für Zeichen gleich aus, lehnt ab, was kein gültiges
   ergäbe.
@@ -285,7 +296,8 @@ Build 129, eine Kopie der Testwelt, das Jar des Plugins unter `plugins/`,
   siehe „Der Renderer im Jar“, und dass keine Klasse unter `de/maxhenkel/`
   darin liegt, siehe [0005](entscheidungen/0005-simple-voice-chat-api.md).
   bStats muss umbenannt und mit Lizenz darin stehen, siehe
-  [Statistik](statistik.md), „Im Jar“. Das Jar muss unter 10 000 000 Byte bleiben; mehr nimmt Hangar je Datei
+  [Statistik](statistik.md), „Im Jar“, und die API für andere Plugins,
+  siehe [API](api.md). Das Jar muss unter 10 000 000 Byte bleiben; mehr nimmt Hangar je Datei
   nicht. Alles prüft [`.github/pruefe-jar.sh`](../.github/pruefe-jar.sh),
   auch beim Release.
 - **Doku:** Das Prüfskript des Renderers prüft Verweise, Links,

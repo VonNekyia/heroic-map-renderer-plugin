@@ -79,6 +79,9 @@ class EbenenSchreiberTest {
 
         schreiber.schreibe(List.of(staedte), Set.of());
         assertEquals(alt, Files.getLastModifiedTime(datei), "gleiche Bytes werden nicht neu geschrieben");
+        Files.delete(datei);
+        schreiber.schreibe(List.of(staedte), Set.of());
+        assertTrue(Files.isRegularFile(datei), "eine Datei, die fehlt, schreibt es neu, auch bei gleichem Hash");
         assertFalse(Files.exists(wurzel.resolve("layers/andere")), "Datei und leerer Ordner der entfernten Ebene");
         assertFalse(Files.exists(wurzel.resolve("layers/beispiel/.staedte.json.neu")), "liegen gebliebene halbe Datei");
         assertEquals(1, Ebenen.lies(Files.readString(wurzel.resolve("layers.json"))).getAsJsonArray("layers").size());
@@ -101,6 +104,13 @@ class EbenenSchreiberTest {
         assertEquals(2, Ebenen.lies(Files.readString(wurzel.resolve("layers.json"))).getAsJsonArray("layers").size());
         schreiber.schreibe(List.of(staedte()), Set.of());
         assertFalse(Files.exists(wurzel.resolve("layers/zweiter")), "wieder lesbar und ohne Ebene: weg");
+
+        schreiber.schreibe(List.of(staedte(), ebene("zweiter:karte", "", Map.of())), Set.of());
+        schreiber.schreibe(List.of(ebene("zweiter:neu", "", Map.of())), Set.of("zweiter"));
+        assertFalse(Files.exists(wurzel.resolve("layers/zweiter/karte.json")),
+                "ein modname mit Ebene im Stand ist nie unberührt, etwa eine Ebene der API");
+        assertEquals(List.of("zweiter:neu"), Ebenen.lies(Files.readString(wurzel.resolve("layers.json")))
+                .getAsJsonArray("layers").asList().stream().map(e -> e.getAsJsonObject().get("id").getAsString()).toList());
     }
 
     @Test

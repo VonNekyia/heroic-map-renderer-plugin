@@ -20,8 +20,9 @@ Ebenen legen Nadeln, Kartenschrift, Regionen, Kreise und Linien über die
 Karte (#35, heroic-map-renderer#219). Ihr Format beschreibt der Renderer:
 [Ebenen](https://github.com/VonNekyia/heroic-map-renderer/blob/master/docs/benutzung/ebenen.md).
 Diese Seite sagt, wie das Plugin sie lädt, prüft und für die Webkarte
-schreibt und dem Mod schickt. Heute kommen sie aus Dateien; die API für
-andere Plugins folgt in einer eigenen PR.
+schreibt und dem Mod schickt. Sie kommen aus Dateien und über die API für
+andere Plugins, siehe [API](api.md); hat ein `modname` Ebenen aus der API,
+gelten nur diese, siehe dort „Vorrang“.
 
 ## Dateien
 
@@ -126,7 +127,9 @@ Ebenen, neben `trees.json`:
   `layers.json`, zuletzt das Entfernen. So nennt `layers.json` nie eine
   Datei, die fehlt.
 - **Atomar:** jede Datei erst als `.<name>.neu`, dann umbenannt. Gleiche
-  Bytes schreibt das Plugin nicht neu.
+  Bytes schreibt das Plugin nicht neu. Dafür merkt es sich den SHA-256 des
+  zuletzt Geschriebenen je Datei und liest keine; nach einem Neustart
+  schreibt es jede Datei einmal, ebenso eine, die fehlt.
 - **Aufräumen:** Unter `layers/` entfernt es jede Datei, die keine Ebene
   mehr nennt, erst Ebenen, dann Bilder, dann leere Ordner, auch liegen
   gebliebene `.…neu`. Ohne Ebene für die Webkarte fehlt `layers.json`.
@@ -136,7 +139,8 @@ Ebenen, neben `trees.json`:
   stehen. Schreiben durch ihn wirft, und der Takt versucht es jede Sekunde
   wieder. Die Wurzel von `tiles` selbst darf ein Link sein.
 - **Im Takt:** jede Sekunde ausserhalb des Hauptthreads, nur nach einer
-  Änderung. Scheitert das Schreiben, versucht es das Plugin jede Sekunde
+  Änderung. Der Takt vereint Dateien und API zum Stand; erst dann sehen
+  ihn Webkarte, Mod und `/heroicmap status`. Scheitert das Schreiben, versucht es das Plugin jede Sekunde
   wieder; das Log nennt nur den ersten Fehlschlag und die Erholung.
 
 Ausgeliefert werden die Dateien vom Server des Renderers

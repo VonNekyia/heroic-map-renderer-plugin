@@ -84,6 +84,17 @@ class EbenenPruefungTest {
     }
 
     @Test
+    void rand_ab_breite_0_und_ohne_farbe() {
+        assertEquals(List.of(), fehler(j -> objekt(j, 2).getAsJsonObject("stroke").addProperty("width", 0)), "0 heisst ohne Rand");
+        enthaelt(fehler(j -> objekt(j, 2).getAsJsonObject("stroke").addProperty("width", -0.5)),
+                "objects[2].stroke.width: eine Zahl ab 0");
+        enthaelt(fehler(j -> objekt(j, 2).getAsJsonObject("stroke").addProperty("width", "2")),
+                "objects[2].stroke.width: eine Zahl ab 0");
+        assertEquals(List.of(), fehler(j -> objekt(j, 2).getAsJsonObject("stroke").remove("color")),
+                "ohne color: die Vorgabe setzt die Karte");
+    }
+
+    @Test
     void texte_haben_ihre_grenzen() {
         enthaelt(fehler(j -> objekt(j, 0).addProperty("name", "x".repeat(65))), "objects[0].name: länger als 64 Zeichen");
         enthaelt(fehler(j -> bausteine(j).get(0).getAsJsonObject().getAsJsonArray("columns").get(0).getAsJsonArray()

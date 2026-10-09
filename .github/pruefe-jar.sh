@@ -10,7 +10,8 @@ inhalt=$(unzip -Z1 "$jar")
 for datei in web/index.html web/lizenzen.txt web/seite.html web/robots.vorlage.txt \
     renderer/renderer.properties renderer/windows-x64/heroic-map-renderer.exe renderer/linux-x64/heroic-map-renderer \
     renderer/LICENSE renderer/NOTICE renderer/THIRD-PARTY-NOTICES renderer/COPYRIGHT-library.html \
-    com/nekyia/heroicmap/bstats/bukkit/Metrics.class META-INF/LICENSE-bstats.txt; do
+    com/nekyia/heroicmap/bstats/bukkit/Metrics.class META-INF/LICENSE-bstats.txt \
+    com/nekyia/heroicmap/api/HeroicMapApi.class; do
   grep -qx "$datei" <<< "$inhalt" || { echo "::error::$datei fehlt im Jar"; exit 1; }
 done
 

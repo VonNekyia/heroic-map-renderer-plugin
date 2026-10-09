@@ -23,11 +23,12 @@ repositories {
     maven("https://maven.maxhenkel.de/repository/public/") { content { includeGroup("de.maxhenkel.voicechat") } }
 }
 
-// Nur die API, ohne paperweight-userdev. Siehe docs/entscheidungen/0001-nur-die-paper-api.md.
-val paperApi = "io.papermc.paper:paper-api:26.2.build.129-stable"
+// Steht in gradle.properties, für das Plugin und das Modul api/.
+val paperApi = providers.gradleProperty("paperApi").get()
 
 dependencies {
     compileOnly(paperApi)
+    implementation(project(":api"))
     // Nur zum Übersetzen, nicht im Jar und nicht in den Tests. Siehe docs/entscheidungen/0005-simple-voice-chat-api.md.
     compileOnly("de.maxhenkel.voicechat:voicechat-api:2.6.24")
     // Im Jar, umbenannt nach com.nekyia.heroicmap.bstats. Siehe docs/statistik.md.
