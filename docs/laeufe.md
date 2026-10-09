@@ -134,6 +134,13 @@ entschieden in [0003](entscheidungen/0003-live-render-ueber-autosave-und-zeitpla
   etwa dem Text der Zustimmung zum Client-Jar, siehe
   [Konfiguration](konfiguration.md), „Client-Jar“. Der nächste Baum läuft
   trotzdem.
+- **Neuer Renderer:** Ein Update auf einem Stand, den ein anderer Build des
+  Renderers schrieb, bricht ab, etwa nach einer neuen Version des Plugins.
+  Dann steht im Status statt des Texts „neuer Renderer: erst
+  /heroicmap render“; der volle Lauf zeichnet alles neu, danach gehen
+  Updates wieder. Erkannt am Wortlaut „stammt von einem anderen Build des
+  Renderers“ aus `stand_fuer_update` in `cli.rs` des Renderers; der ganze
+  Text steht weiter im Log.
 - **Faden:** ein eigener Faden `HeroicMap-Lauf`, nicht einer aus dem Pool
   des Schedulers, denn ein voller Lauf dauert Stunden.
 - **Hangar:** Der Scanner stuft `Runtime.exec` als `HIGHEST` ein,

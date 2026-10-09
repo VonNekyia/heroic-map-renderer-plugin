@@ -505,7 +505,7 @@ final class Laeufe {
             if (code != 0 && letzteZeile.contains("--download-client-jar")) {
                 hinweis("Zustimmen zum Client-Jar in config.yml: renderer.download-client-jar: true, siehe docs/konfiguration.md");
             }
-            return still ? NICHTS : code == 0 ? GEZEICHNET : "Fehler, Code " + code + (fehler == null ? "" : ": " + fehler);
+            return still ? NICHTS : code == 0 ? GEZEICHNET : "Fehler, Code " + code + (fehler == null ? "" : ": " + kurz(fehler));
         } catch (IOException | RuntimeException e) {
             // Ein abgebrochener Prozess kann die Leitung mitten in einer Zeile schliessen.
             if (istAbgebrochen()) {
@@ -564,6 +564,15 @@ final class Laeufe {
                 }
             }
         }
+    }
+
+    /**
+     * Die Zeile „Error: …“ für den Status; braucht ein Update erst einen vollen Lauf, weil der Stand von einem
+     * anderen Build des Renderers stammt, steht dort, was zu tun ist. Siehe docs/laeufe.md, „Der Kindprozess“.
+     */
+    static String kurz(String fehler) {
+        return fehler.contains("stammt von einem anderen Build des Renderers") ? "neuer Renderer: erst /heroicmap render"
+                : fehler;
     }
 
     /**
