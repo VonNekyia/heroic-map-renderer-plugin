@@ -1,6 +1,12 @@
 # JitPack baut nur die API, mit Java 25 aus SDKMAN wie das Plugin. Siehe docs/api.md, „Einbinden“.
+# Die Zeilen nach sdk use suchen, warum Builds unter /home/jitpack/build den Wrapper nicht öffnen;
+# sie lassen den Build nie scheitern. Sind sie geklärt, fallen sie weg.
 before_install:
   - sdk install java 25.0.2-tem
   - sdk use java 25.0.2-tem
+  - pwd; id; echo "JAVA_HOME=$JAVA_HOME"; command -v java; java -version 2>&1 || true
+  - ls -la gradle/wrapper; sha256sum gradle/wrapper/gradle-wrapper.jar || true
+  - git config --show-origin --get-regexp 'core\.|filter\.' || true
+  - jar tf gradle/wrapper/gradle-wrapper.jar > /dev/null && echo "Wrapper lesbar" || true
 install:
   - ./gradlew :api:publishToMavenLocal --console=plain
