@@ -175,7 +175,7 @@ final class EbenenPruefung {
         bild(symbol, "medium", s + ".symbol", 9, 9, true, false);
     }
 
-    /** Wie eine Nadel, mit einem Bild bis 32 × 64 statt des Schilds. Siehe docs/ebenen.md, „Banner“. */
+    /** Wie eine Nadel, mit einem Bild bis 32 × 64 statt des Schilds. Siehe docs/ebenen.md, „Prüfen“. */
     private void banner(JsonObject o, String s) {
         gemeinsam(o, s, true, "at", "y", "image", "name");
         punkt(o.get("at"), s + ".at");
