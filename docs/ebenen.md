@@ -1,12 +1,15 @@
 ---
 title: Ebenen
-description: Wie das Plugin Ebenen aus seinem Ordner lädt, gegen das Format des Renderers und eigene Regeln prüft und im Takt für die Webkarte neben trees.json schreibt, mit Bildern, version, Reihenfolge beim Schreiben und Aufräumen; dazu der Befehl zum Neuladen und die Lesarten von web und permission.
+description: Wie das Plugin Ebenen aus seinem Ordner lädt, gegen das Format des Renderers und eigene Regeln prüft, im Takt für die Webkarte neben trees.json schreibt und dem Mod in Teilen schickt, mit Bildern, version, Reihenfolge beim Schreiben, Aufräumen, Rechten je Ebene; dazu der Befehl zum Neuladen und die Lesarten von web und permission.
 code:
   - src/main/java/com/nekyia/heroicmap/Ebenen.java
   - src/main/java/com/nekyia/heroicmap/EbenenPruefung.java
   - src/main/java/com/nekyia/heroicmap/EbenenSchreiber.java
+  - src/main/java/com/nekyia/heroicmap/EbenenFuerMod.java
   - src/main/java/com/nekyia/heroicmap/HeroicMapPlugin.java
+  - src/main/resources/plugin.yml
   - src/test/java/com/nekyia/heroicmap/EbenenTest.java
+  - src/test/java/com/nekyia/heroicmap/EbenenFuerModTest.java
 ---
 
 # Ebenen
@@ -15,8 +18,8 @@ Ebenen legen Nadeln, Kartenschrift, Regionen, Kreise und Linien über die
 Karte (#35, heroic-map-renderer#219). Ihr Format beschreibt der Renderer:
 [Ebenen](https://github.com/VonNekyia/heroic-map-renderer/blob/master/docs/benutzung/ebenen.md).
 Diese Seite sagt, wie das Plugin sie lädt, prüft und für die Webkarte
-schreibt. Heute kommen sie aus Dateien. Die API für andere Plugins und der
-Weg zum Mod folgen in eigenen PRs.
+schreibt und dem Mod schickt. Heute kommen sie aus Dateien; die API für
+andere Plugins folgt in einer eigenen PR.
 
 ## Dateien
 
@@ -113,3 +116,48 @@ Ebenen, neben `trees.json`:
 
 Ausgeliefert werden die Dateien vom Server des Renderers
 (heroic-map-renderer#219, Teil 2).
+
+## Mod
+
+Das Plugin schickt dem Mod Nadeln, Regionen und Kreise jeder Ebene, die
+der Spieler sehen darf, über den Kanal `heroicmap:karte`. Kartenschrift,
+Linien und Tafeln schickt es nicht. Der Code steht in `EbenenFuerMod` in
+[`EbenenFuerMod.java`](../src/main/java/com/nekyia/heroicmap/EbenenFuerMod.java).
+
+| `typ` | Felder | Wann |
+|---|---|---|
+| `ebenen` | `ebenen`: je Ebene `id`, `name`, `visible`, `order`, `version` wie in `layers.json`; dazu `url` oder `port` wie in `freigabe`, ohne Webserver keins | sobald sich für den Spieler etwas ändert |
+| `ebene` | `id`, `version`, `teil` (ab 1), `teile`, `objects` | nach der Liste, je neuer oder geänderter Ebene alle Teile |
+
+Jede Nachricht trägt dazu `v` (1) und `jetzt`, wie alle des Servers, siehe
+[Download](download.md), „Kanal“. Etwa:
+
+```json
+{"v":1,"typ":"ebenen","jetzt":1760000000,"ebenen":[{"id":"beispiel:staedte","name":{"de":"Städte","en":"Towns"},"visible":true,"order":100,"version":"5f3a9c1e5f3a9c1e"}],"port":8080}
+{"v":1,"typ":"ebene","jetzt":1760000000,"id":"beispiel:staedte","version":"5f3a9c1e5f3a9c1e","teil":1,"teile":1,"objects":[{"id":"stadt-17","type":"pin","at":[120.5,-340.5],"name":"Hafenstadt"}]}
+```
+
+- **Wer was bekommt:** ein Spieler mit offenem Kanal und der Permission
+  `heroicmap.layers` (`default: true`) jede Ebene ohne `permission` und
+  jede, deren `permission` er hat. Der Mod schaltet Ebenen selbst an und
+  aus; der Server schickt alles, was er sehen darf.
+- **Die Liste** nennt immer alle Ebenen, die er sehen darf. Fehlt eine, ist
+  sie weg, etwa nach dem Entziehen der Permission oder dem Löschen der
+  Datei. Eine Ebene ohne Objekte ist ein Teil mit `objects: []`.
+- **Objekte** stehen wie in der Datei der Ebene, aus allen Dimensionen,
+  ohne `panel`, in ihrer Reihenfolge, über die Teile hinweg.
+- **Teile:** höchstens 64 KiB je Nachricht. Ein Objekt, das allein grösser
+  ist, geht allein in einem Teil; mehr als 1 MiB weist schon die Prüfung
+  der Ebene ab, denn mehr nimmt Paper je Nachricht nicht. Eine Region mit
+  10 000 Punkten hat je nach Stellen der Zahlen 176 KiB bis über 300 KiB.
+  Der Mod ersetzt eine Ebene erst, wenn alle Teile einer `version` da
+  sind.
+- **Im Takt:** jede Sekunde im Hauptthread, in
+  `HeroicMapPlugin.ebenenAnMod`, wie bei den Mitspielern. Je Spieler mit
+  offenem Kanal prüft er die Rechte und vergleicht Kennungen und `version`
+  mit dem, was der Spieler schon hat. Gleiches schickt er nicht noch
+  einmal; ohne Ebenen schickt er nie etwas. Die Teile einer `version`
+  rechnet der Takt für die Webkarte vor, ausserhalb des Hauptthreads, und
+  hält sie; der Hauptthread schickt sie nur noch.
+- **Vergessen:** beim Verlassen und wenn der Kanal zugeht. Danach bekommt
+  der Spieler alles neu.

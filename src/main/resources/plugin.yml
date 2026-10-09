@@ -15,6 +15,9 @@ permissions:
   heroicmap.admin:
     description: Läufe des Renderers starten und abbrechen
     default: op
+  heroicmap.layers:
+    description: Ebenen im Mod sehen, siehe docs/ebenen.md
+    default: true
   heroicmap.show:
     description: Mitspieler auf der Karte im Mod sehen und gesehen werden, siehe docs/mitspieler.md
     default: true

@@ -31,6 +31,8 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
     private static final List<String> BEFEHLE = List.of("render", "update", "compact", "status", "cancel");
     /** Wer sie hat, sieht Mitspieler und wird gesehen. Siehe docs/mitspieler.md, „Wer wen sieht“. */
     static final String SHOW = "heroicmap.show";
+    /** Wer sie hat, bekommt im Mod die Ebenen. Siehe docs/ebenen.md, „Mod“. */
+    static final String LAYERS = "heroicmap.layers";
     /** Die ID des Plugins auf bstats.org. Siehe docs/statistik.md. */
     private static final int BSTATS = 34598;
 
@@ -41,6 +43,7 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
     private boolean simpleVoiceChat;
 
     private Ebenen ebenen;
+    private EbenenFuerMod fuerMod;
     private Laeufe laeufe;
     private volatile Webserver webserver;
     /** Warum das Plugin ohne Renderer bleibt; null mit Renderer. Jeder Befehl nennt es. */
@@ -76,7 +79,12 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
         if (Files.isDirectory(ebenenOrdner)) {
             getLogger().info(geladen);
         }
-        getServer().getAsyncScheduler().runAtFixedRate(this, t -> ebenen.takt(), 1, 1, TimeUnit.SECONDS);
+        fuerMod = new EbenenFuerMod(EbenenFuerMod.adresse(konf.webserver()));
+        getServer().getAsyncScheduler().runAtFixedRate(this, t -> {
+            ebenen.takt();
+            fuerMod.bereite(ebenen.stand());
+        }, 1, 1, TimeUnit.SECONDS);
+        getServer().getGlobalRegionScheduler().runAtFixedRate(this, t -> ebenenAnMod(), 20, 20);
         try {
             konf = konf.mitRenderer(Binaer.waehle(konf.renderer(), getFile().toPath(), getDataFolder().toPath().resolve("bin"),
                     System.getProperty("os.name"), System.getProperty("os.arch")));
@@ -119,6 +127,25 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
     @EventHandler
     public void beimVerlassen(PlayerQuitEvent e) {
         mitspieler.vergiss(e.getPlayer().getUniqueId());
+        if (fuerMod != null) {
+            fuerMod.vergiss(e.getPlayer().getUniqueId());
+        }
+    }
+
+    /** Im Hauptthread, jede Sekunde: jedem Spieler mit offenem Kanal die Ebenen, die er sehen darf. Siehe docs/ebenen.md, „Mod“. */
+    private void ebenenAnMod() {
+        var stand = ebenen.stand();
+        long jetzt = Instant.now().getEpochSecond();
+        for (Player p : getServer().getOnlinePlayers()) {
+            if (!p.getListeningPluginChannels().contains(Download.KANAL)) {
+                fuerMod.vergiss(p.getUniqueId());
+                continue;
+            }
+            boolean alle = p.hasPermission(LAYERS);
+            for (String n : fuerMod.nachrichten(p.getUniqueId(), perm -> alle && (perm == null || p.hasPermission(perm)), stand, jetzt)) {
+                p.sendPluginMessage(this, Download.KANAL, n.getBytes(StandardCharsets.UTF_8));
+            }
+        }
     }
 
     /** Neue Schlüssel aus der Vorlage im Jar, nach einem Update. Siehe docs/konfiguration.md, „Nach einem Update“. */

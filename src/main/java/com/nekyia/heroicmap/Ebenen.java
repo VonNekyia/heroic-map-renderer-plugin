@@ -96,6 +96,10 @@ final class Ebenen {
         }
     }
 
+    List<Ebene> stand() {
+        return stand;
+    }
+
     String status() {
         var s = stand;
         return s.isEmpty() ? "Ebenen: keine"
