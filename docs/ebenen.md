@@ -82,7 +82,6 @@ Bausteine der Tafel und ihre Tiefe, die Bilder. Dazu eigene Regeln:
   dem Chunk `VP8L`. Symbole genau 16 × 16 (`large`) und 9 × 9 (`medium`),
   Bilder der Tafel höchstens 512 × 512, jedes höchstens 256 KiB,
   höchstens 200 je Ebene.
-- **Wertung:** `max` von 1 bis 100, `value` von 0 bis `max`.
 - **`holes`** darf fehlen; dann hat das Polygon keine Löcher.
 
 ## web und permission
