@@ -103,6 +103,25 @@ class EbenenSchreiberTest {
         assertFalse(Files.exists(wurzel.resolve("layers/zweiter")), "wieder lesbar und ohne Ebene: weg");
     }
 
+    @Test
+    void alte_eintraege_mit_deckel_und_nur_gueltige() throws IOException {
+        Path wurzel = tmp.resolve("tiles");
+        var schreiber = new EbenenSchreiber(wurzel, OBERWELT);
+        var viele = new java.util.ArrayList<Ebene>();
+        for (int i = 0; i < 64; i++) {
+            viele.add(ebene(String.format("b:x%02d", i), "", Map.of()));
+        }
+        Files.createDirectories(wurzel);
+        Files.writeString(wurzel.resolve("layers.json"),
+                "{\"layers\": [{\"id\": \"a:alt\"}, {\"id\": \"x\"}, {\"id\": 3}, [1], {\"id\": \"z:alt\"}]}");
+        schreiber.schreibe(viele, null);
+        var liste = Ebenen.lies(Files.readString(wurzel.resolve("layers.json"))).getAsJsonArray("layers");
+        assertEquals(64, liste.size(), "64 und alte Einträge: höchstens 64");
+        assertEquals("a:alt", liste.get(0).getAsJsonObject().get("id").getAsString(), "nach Kennung geschnitten");
+        assertTrue(liste.asList().stream().noneMatch(e -> e.getAsJsonObject().get("id").getAsString().equals("x")),
+                "Einträge ohne Kennung fallen weg, ohne Ausnahme");
+    }
+
     /** Lässt das Löschen von {@code bild} scheitern und prüft, dass die Datei der Ebene vorher weg ist. */
     private void ebeneVorBild(Path wurzel, Path bild, AutoCloseable sperre) throws Exception {
         try (sperre) {
