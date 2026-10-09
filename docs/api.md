@@ -28,14 +28,14 @@ deutsch wie das Log. Entschieden vom Reviewer am 09.10. (#35).
 ## Einbinden
 
 Die API ist ein eigenes Jar, das Modul `api/`. JitPack baut es aus jedem
-Tag des Repos, ohne Konto:
+Commit des Repos, ohne Konto:
 
 ```kotlin
 repositories {
     maven("https://jitpack.io")
 }
 dependencies {
-    compileOnly("com.github.VonNekyia:heroic-map-renderer-plugin:v0.3.0")
+    compileOnly("com.github.VonNekyia:heroic-map-renderer-plugin:9f5a87a857") // v0.3.1
 }
 ```
 
@@ -54,8 +54,10 @@ dependencies:
       join-classpath: true
 ```
 
-- **Version:** ein Tag ab dem ersten Release mit der API, siehe
-  „Versionierung“.
+- **Version:** der Hash des Commits eines Releases ab dem ersten mit der
+  API, siehe „Versionierung“. Über den Tag selbst baut JitPack derzeit
+  nicht: In einem Teil seiner Umgebungen öffnet Java den Wrapper von
+  Gradle nicht, und Tags landen bisher immer dort (#43).
 - **`compileOnly`:** Die Klassen der API liegen im Jar des Plugins; das
   fremde Plugin bringt sie nicht mit.
 - **`softdepend`** oder `depend`, damit Paper HeroicMap vorher lädt. In
@@ -180,8 +182,7 @@ Optionale Felder sind null; `with…` gibt eine Kopie mit einem Feld mehr.
 ## Versionierung
 
 - **Die API folgt der Version des Plugins.** Das erste Release mit ihr ist
-  v0.3.0. Bis es erscheint, baut JitPack sie aus einem Commit von `main`,
-  mit dessen Hash als Version.
+  v0.3.1, auf dem Commit `9f5a87a857`.
 - **Neue Methoden** kommen nur in Minor-Versionen, etwa 0.4.0, nie in
   Patch-Versionen.
 - **Ein neues Feld eines Records** behält den alten Konstruktor als

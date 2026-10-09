@@ -108,10 +108,17 @@ Plugin es aus, siehe [Konfiguration](konfiguration.md), „Das Binär“.
   v0.4.0 ist nur in `NOTICE` der Absatz zur Schrift der Kartenschrift
   unter OFL neu). `lizenzen.txt`
   im Archiv gehört zur Karte unter `web/` und kommt mit `-Pweb`.
-- **Grösse,** am 09.10. mit v0.5.0, aus der CI, Job „Jar mit Karte“, mit
-  der Karte aus dem Archiv: GROESSE. Bis zu 0008 hatte das eine Jar mit
-  beiden Binärs 9 854 668 Byte. Beide Grössen nennt `pruefe-jar.sh`. Die
-  Grenze prüft die CI, siehe „CI“.
+- **Grösse,** am 09.10. mit v0.5.0, aus der CI, Job „Jar“ des Releases in
+  #42, mit der Karte aus dem Archiv:
+
+  | Jar | Byte | bis zur Grenze | Binär gepackt |
+  |---|---|---|---|
+  | `…-windows-x64.jar` | 5 382 538 | 4 617 462 | 4 709 943 |
+  | `…-linux-x64.jar` | 5 142 638 | 4 857 362 | 4 470 060 |
+
+  Bis zu [0008](entscheidungen/0008-jar-je-plattform.md) hatte das eine
+  Jar mit beiden Binärs 9 854 658 Byte (v0.3.1). Beide Grössen nennt
+  `pruefe-jar.sh`. Die Grenze prüft die CI, siehe „CI“.
 - **Neue Version:** `renderer` und beide SHA-256 in `build.gradle.kts`
   ändern, dann die Tabelle hier. Die SHA-256 selbst rechnen:
   `gh release download v<version> --repo VonNekyia/heroic-map-renderer`,

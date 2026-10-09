@@ -16,7 +16,7 @@ code:
 
 ## Anlass
 
-Hangar nimmt höchstens 10 000 000 Byte je Datei. Das Jar von v0.3.0 hatte
+Hangar nimmt höchstens 10 000 000 Byte je Datei. Das Jar von v0.3.1 hatte
 mit beiden Binärs und der Karte 9 854 658 Byte, nur 145 342 unter der
 Grenze. Mit dem Renderer v0.5.0 war es um 126 881 Byte gewachsen, vor
 allem durch die Karte mit Ebenen; eine Stufe wie diese reisst die Grenze.
