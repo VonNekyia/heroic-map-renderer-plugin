@@ -54,9 +54,8 @@ dependencies:
       join-classpath: true
 ```
 
-- **Ab v0.3.0:** Das erste Release mit der API ist v0.3.0. Bis es
-  erscheint, baut JitPack sie aus einem Commit von `main`, mit dessen Hash
-  als Version.
+- **Version:** ein Tag ab dem ersten Release mit der API, siehe
+  „Versionierung“.
 - **`compileOnly`:** Die Klassen der API liegen im Jar des Plugins; das
   fremde Plugin bringt sie nicht mit.
 - **`softdepend`** oder `depend`, damit Paper HeroicMap vorher lädt. In
@@ -140,12 +139,16 @@ Optionale Felder sind null; `with…` gibt eine Kopie mit einem Feld mehr.
 - **Nur im Speicher:** Wird das besitzende Plugin abgeschaltet
   (`PluginDisableEvent`), gehen seine Ebenen und Bilder mit. Beim nächsten
   Start legt es sie neu an. Nach `delete` und nach dem Abschalten wirft
-  jeder Aufruf an der alten Ebene `IllegalStateException`, ausser `delete`.
+  jeder Aufruf an der alten Ebene `IllegalStateException`, ausser `id()`
+  und `delete`.
 - **In `onDisable`:** Paper meldet `PluginDisableEvent` vor `onDisable`
   des Besitzers; dort sind seine Ebenen schon weg. `delete` bleibt dann
   ohne Wirkung, damit der Rest von `onDisable` läuft. `layer` wirft
   `IllegalStateException`, sobald der Besitzer abgeschaltet ist; eine
-  Ebene von dort fiele nie mehr weg.
+  Ebene von dort fiele nie mehr weg. Zwischen dem Ereignis und dem
+  Abschalten selbst gilt der Besitzer noch als an: Legt ein asynchroner
+  Task von ihm in diesem Fenster eine Ebene an, bleibt sie, bis er wieder
+  anläuft.
 - **Vorrang:** Hat ein `modname` Ebenen aus der API, gehört ihm
   `layers/<modname>/` ganz: Seine Ebenen aus Dateien fallen weg, das Log
   nennt jede einmal. Sonst überschrieben sich Bilder gleichen Pfads.
@@ -177,7 +180,8 @@ Optionale Felder sind null; `with…` gibt eine Kopie mit einem Feld mehr.
 ## Versionierung
 
 - **Die API folgt der Version des Plugins.** Das erste Release mit ihr ist
-  v0.3.0.
+  v0.3.0. Bis es erscheint, baut JitPack sie aus einem Commit von `main`,
+  mit dessen Hash als Version.
 - **Neue Methoden** kommen nur in Minor-Versionen, etwa 0.4.0, nie in
   Patch-Versionen.
 - **Ein neues Feld eines Records** behält den alten Konstruktor als
@@ -185,3 +189,6 @@ Optionale Felder sind null; `with…` gibt eine Kopie mit einem Feld mehr.
 - **Die stabile Oberfläche** sind die Fabriken wie `Pin.at` und die
   Methoden `with…`. Wer sie nutzt statt des kanonischen Konstruktors,
   merkt von neuen Feldern nichts.
+- **Nicht stabil** sind Record-Muster und erschöpfende `switch` über die
+  `sealed` Typen `MapObject` und `Panel.Block`: Ein neues Feld oder eine
+  neue Art bricht sie.

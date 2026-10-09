@@ -34,6 +34,7 @@ tasks.withType<Javadoc>().configureEach {
         encoding = "UTF-8"
         // Die Felder der Records beschreibt ihr Typ; @param je Feld wäre nur Wiederholung.
         addBooleanOption("Xdoclint:all,-missing", true)
+        addBooleanOption("Werror", true)
     }
 }
 

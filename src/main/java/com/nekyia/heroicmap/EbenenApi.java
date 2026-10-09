@@ -35,7 +35,10 @@ import org.bukkit.plugin.Plugin;
 final class EbenenApi implements HeroicMapApi, Listener {
 
     private final Map<String, ApiEbene> ebenen = new ConcurrentHashMap<>();
-    /** Die Bilder je modname; alle Ebenen eines Besitzers teilen sie, wie im Ordner images/. */
+    /**
+     * Die Bilder je modname; alle Ebenen eines Besitzers teilen sie, wie im Ordner images/. Nur {@link #layer}
+     * legt einen Pool an und nur {@link #entferne} nimmt ihn weg, beide unter der Sperre der API.
+     */
     private final Map<String, Map<String, byte[]>> bilder = new ConcurrentHashMap<>();
     private final AtomicBoolean geaendert = new AtomicBoolean();
     private final Supplier<List<Ebene>> ausDateien;
@@ -84,6 +87,7 @@ final class EbenenApi implements HeroicMapApi, Listener {
         }
         e = new ApiEbene(modname, id);
         ebenen.put(id, e);
+        bilder.computeIfAbsent(modname, k -> new TreeMap<>());
         geaendert.set(true);
         return e;
     }
@@ -114,6 +118,10 @@ final class EbenenApi implements HeroicMapApi, Listener {
 
     int anzahl() {
         return ebenen.size();
+    }
+
+    boolean hatBilder(String modname) {
+        return bilder.containsKey(modname);
     }
 
     /** Jede Ebene als {@link Ebene}, nach Kennung; nur geänderte werden neu gebaut. Nur der Takt ruft das. */
@@ -274,8 +282,13 @@ final class EbenenApi implements HeroicMapApi, Listener {
             }
         }
 
+        /** Die Bilder des Besitzers; fehlen sie, hat {@link #entferne} ihn schon abgemeldet. */
         private Map<String, byte[]> bilderVon() {
-            return bilder.computeIfAbsent(modname, k -> new TreeMap<>());
+            var pool = bilder.get(modname);
+            if (pool == null) {
+                throw new IllegalStateException("Ebene " + id + " ist gelöscht");
+            }
+            return pool;
         }
 
         @Override
@@ -401,7 +414,11 @@ final class EbenenApi implements HeroicMapApi, Listener {
                 // Erst zurücksetzen, dann kopieren: Was danach kommt, setzt veraltet wieder.
                 veraltet = false;
                 json = json(permission, objekte.values());
-                var b = bilderVon();
+                var b = bilder.get(modname);
+                if (b == null) {
+                    // entferne lief nach der Prüfung oben: Die Ebene ist weg, kein Pool kommt zurück.
+                    return null;
+                }
                 synchronized (b) {
                     pool = new HashMap<>(b);
                 }

@@ -65,8 +65,9 @@ public interface Layer {
     void clear();
 
     /**
-     * Removes the layer; any further call other than {@code delete} throws {@link IllegalStateException}. Deleting
-     * a deleted layer has no effect, so an owner may call it in {@code onDisable}, after its layers are gone.
+     * Removes the layer; any further call other than {@link #id()} and {@code delete} throws
+     * {@link IllegalStateException}. Deleting a deleted layer has no effect, so an owner may call it in
+     * {@code onDisable}, after its layers are gone.
      */
     void delete();
 }

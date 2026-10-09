@@ -381,6 +381,23 @@ class EbenenApiTest {
     }
 
     @Test
+    void nach_dem_abschalten_kein_pool() {
+        var a = api(0);
+        Layer l = a.layer("Beispiel", "eins");
+        l.image("images/s.png", png(16, 16));
+        var e = (EbenenApi.ApiEbene) l;
+        assertTrue(a.hatBilder("beispiel"));
+        a.entferne("Beispiel");
+        assertThrows(IllegalStateException.class, () -> l.image("images/t.png", png(16, 16)));
+        assertThrows(IllegalStateException.class, () -> l.put(Pin.at("p", 0, 0)));
+        assertEquals(null, e.schnappschuss());
+        assertFalse(a.hatBilder("beispiel"), "kein Aufruf legt den Pool wieder an");
+        assertEquals(List.of(), log, "keine falsche Warnung");
+        a.layer("Beispiel", "eins");
+        assertTrue(a.hatBilder("beispiel"), "erst eine neue Ebene des Plugins");
+    }
+
+    @Test
     void ein_modname_der_api_verdeckt_seine_dateien() throws IOException {
         Path ordner = ordnerMitStaedten(tmp);
         Path tiles = tmp.resolve("tiles");
@@ -411,16 +428,17 @@ class EbenenApiTest {
         }
         var e = new Ebenen(ordner, OBERWELT, new EbenenSchreiber(tmp.resolve("tiles"), OBERWELT), logger());
         e.ladeNeu();
-        e.api().layer("Beispiel", "eins").put(Pin.at("p", 0, 0));
-        assertThrows(IllegalArgumentException.class, () -> e.api().layer("Beispiel", "zwei"), "63 Dateien und eine der API");
+        // zeta sortiert nach datei: Ein Schnitt nach Kennung allein verlöre die Ebene der API.
+        e.api().layer("Zeta", "eins").put(Pin.at("p", 0, 0));
+        assertThrows(IllegalArgumentException.class, () -> e.api().layer("Zeta", "zwei"), "63 Dateien und eine der API");
         Files.writeString(d.resolve("e63.json"), "{\"id\": \"datei:e63\", \"name\": {\"de\": \"x\"}, \"objects\": []}");
         e.ladeNeu();
         e.takt();
         assertEquals(64, e.stand().size());
-        assertTrue(e.stand().stream().anyMatch(x -> x.id().equals("beispiel:eins")), "die Ebene der API bleibt");
+        assertTrue(e.stand().stream().anyMatch(x -> x.id().equals("zeta:eins")), "die Ebene der API bleibt");
         assertTrue(log.stream().anyMatch(z -> z.contains("ohne: [datei:e63]")), log.toString());
         e.takt();
-        e.api().layer("Beispiel", "eins").put(Pin.at("q", 0, 0));
+        e.api().layer("Zeta", "eins").put(Pin.at("q", 0, 0));
         e.takt();
         assertEquals(1, log.stream().filter(z -> z.contains("ohne: [datei:e63]")).count(), "das Log sagt es einmal");
     }
