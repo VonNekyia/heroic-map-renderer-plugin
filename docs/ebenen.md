@@ -20,8 +20,8 @@ Ebenen legen Nadeln, Kartenschrift, Regionen, Kreise und Linien über die
 Karte (#35, heroic-map-renderer#219). Ihr Format beschreibt der Renderer:
 [Ebenen](https://github.com/VonNekyia/heroic-map-renderer/blob/master/docs/benutzung/ebenen.md).
 Diese Seite sagt, wie das Plugin sie lädt, prüft und für die Webkarte
-schreibt und dem Mod schickt. Heute kommen sie aus Dateien; die API für
-andere Plugins folgt in einer eigenen PR.
+schreibt und dem Mod schickt. Sie kommen aus Dateien und über die API für
+andere Plugins, siehe [API](api.md); bei gleicher Kennung gilt die API.
 
 ## Dateien
 

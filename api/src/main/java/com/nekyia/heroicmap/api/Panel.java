@@ -67,7 +67,7 @@ public record Panel(List<Block> blocks) {
         }
     }
 
-    /** A row of a rating: {@code value} of {@code max} points; {@code color} may be null. */
+    /** A row of a rating: {@code value} of {@code max} points, {@code max} 1 to 20; {@code color} may be null. */
     public record Row(String label, int value, int max, String color) {}
 
     /** Rows of points, like a score. */

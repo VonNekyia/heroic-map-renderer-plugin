@@ -65,7 +65,10 @@ public sealed interface MapObject {
     /** A contour around the letters of a label. */
     record Outline(String color, Double width) {}
 
-    /** A point of the map as a shield with symbol and name. */
+    /**
+     * A point of the map as a shield with symbol and name. {@code color} tints the shield; its alpha has no effect
+     * there.
+     */
     record Pin(String id, Point at, String dimension, Integer y, String name, Size size, Symbol symbol, String color,
             Panel panel) implements MapObject {
         public Pin {

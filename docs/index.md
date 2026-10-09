@@ -19,6 +19,7 @@ Wie der Renderer arbeitet und was seine Schalter tun, steht in der
 - [Download](download.md): der Kanal `heroicmap:karte` zum Mod, Angebot, Anfrage, Manifest, Grenzen, Token, täglicher Abgleich, `abdeckt_bis`, Stand je Spieler, die Nachricht `spieler`.
 - [Mitspieler](mitspieler.md): die Wahl `show` im Mod und die Permission `heroicmap.show`, wer wen in Simple Voice Chat hört, mit Beleg, wer wen sieht, der Takt je Sekunde, die Brücke zu Simple Voice Chat und was ohne ihn geschieht.
 - [Ebenen](ebenen.md): Ebenen aus `plugins/HeroicMap/ebenen/`, geprüft gegen das Format des Renderers, für die Webkarte neben `trees.json` geschrieben und dem Mod in Teilen geschickt; `web` und `permission`, Bilder, `version`, Aufräumen, `heroicmap.layers`, `/heroicmap layers`.
+- [API für andere Plugins](api.md): der Service `HeroicMapApi` mit englischen Namen, über JitPack eingebunden, sofort geprüft, Ebenen und Bilder je Besitzer, nur im Speicher, Vorrang vor Dateien.
 - [Statistik](statistik.md): was das Plugin über bStats meldet, wohin und wie oft, Abschalten in `plugins/bStats/config.yml`, umbenannt im Jar, Lizenz und Grösse.
 
 ## Entwicklung

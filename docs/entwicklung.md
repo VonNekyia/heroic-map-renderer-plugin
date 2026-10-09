@@ -14,13 +14,18 @@ code:
   - src/test/java/com/nekyia/heroicmap/EbenenPruefungTest.java
   - src/test/java/com/nekyia/heroicmap/EbenenTest.java
   - src/test/java/com/nekyia/heroicmap/EbenenSchreiberTest.java
+  - src/test/java/com/nekyia/heroicmap/EbenenApiTest.java
+  - api/build.gradle.kts
+  - jitpack.yml
   - src/test/java/com/nekyia/heroicmap/MitspielerTest.java
   - src/test/java/com/nekyia/heroicmap/VorlageTest.java
 ---
 
 # Entwicklung
 
-`./gradlew build` baut das Jar nach `build/libs/` und führt die Tests aus.
+`./gradlew build` baut das Jar nach `build/libs/` und führt die Tests aus. Dazu baut es das Modul `api/`, die API für
+andere Plugins, nach `api/build/libs/`, mit Quellen und Javadoc; JitPack
+baut nur dieses Modul, siehe [API](api.md), „Einbinden“.
 Gradle 9.7.1 kommt über den Wrapper, Java 25 über die Toolchain; Paper 26.2
 verlangt Java 25. Gebaut wird gegen die Paper-API `26.2.build.129-stable`,
 nur zum Übersetzen, ohne paperweight-userdev, siehe
@@ -144,6 +149,9 @@ Laufzeit packt das Plugin das passende aus, siehe
 - **`EbenenSchreiberTest`:** Liste, Ebenen und Bilder für die Webkarte,
   Aufräumen in der Reihenfolge Ebenen vor Bildern, gleiche Bytes nicht neu,
   nie durch eine Junction (Windows) oder einen Symlink.
+- **`EbenenApiTest`:** die Kennung aus dem Namen des Plugins, Prüfen beim
+  Aufruf, alle Arten und Bausteine als gültiges JSON, Bilder je Besitzer,
+  `permission`, Löschen und ein Plugin, das geht, Vorrang vor der Datei.
 - **`TokenTest`:** stellt jedes gültige Token aus den Testvektoren des
   Renderers Zeichen für Zeichen gleich aus, lehnt ab, was kein gültiges
   ergäbe.
