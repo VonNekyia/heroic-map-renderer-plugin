@@ -1,5 +1,6 @@
 package com.nekyia.heroicmap;
 
+import com.google.gson.JsonObject;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -31,6 +32,8 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
     private static final List<String> BEFEHLE = List.of("render", "update", "compact", "status", "cancel");
     /** Wer sie hat, sieht Mitspieler und wird gesehen. Siehe docs/mitspieler.md, „Wer wen sieht“. */
     static final String SHOW = "heroicmap.show";
+    /** Wer sie hat, bekommt im Mod die Ebenen. Siehe docs/ebenen.md, „Mod“. */
+    static final String LAYERS = "heroicmap.layers";
     /** Die ID des Plugins auf bstats.org. Siehe docs/statistik.md. */
     private static final int BSTATS = 34598;
 
@@ -41,6 +44,7 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
     private boolean simpleVoiceChat;
 
     private Ebenen ebenen;
+    private EbenenFuerMod fuerMod;
     private Laeufe laeufe;
     private volatile Webserver webserver;
     /** Warum das Plugin ohne Renderer bleibt; null mit Renderer. Jeder Befehl nennt es. */
@@ -78,7 +82,14 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
                 getLogger().info(geladen);
             }
         });
-        getServer().getAsyncScheduler().runAtFixedRate(this, t -> ebenen.takt(), 1, 1, TimeUnit.SECONDS);
+        // Die Adresse erst, wenn der Webserver bereit ist, wie bei freigabe.
+        var webKonf = konf.webserver();
+        fuerMod = new EbenenFuerMod(() -> webserver != null && webserver.bereit() ? EbenenFuerMod.adresse(webKonf) : new JsonObject());
+        getServer().getAsyncScheduler().runAtFixedRate(this, t -> {
+            ebenen.takt();
+            fuerMod.bereite(ebenen.stand());
+        }, 1, 1, TimeUnit.SECONDS);
+        getServer().getGlobalRegionScheduler().runAtFixedRate(this, t -> ebenenAnMod(), 20, 20);
         try {
             konf = konf.mitRenderer(Binaer.waehle(konf.renderer(), getFile().toPath(), getDataFolder().toPath().resolve("bin"),
                     System.getProperty("os.name"), System.getProperty("os.arch")));
@@ -121,6 +132,23 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
     @EventHandler
     public void beimVerlassen(PlayerQuitEvent e) {
         mitspieler.vergiss(e.getPlayer().getUniqueId());
+        if (fuerMod != null) {
+            fuerMod.vergiss(e.getPlayer().getUniqueId());
+        }
+    }
+
+    /** Im Hauptthread, jede Sekunde: jedem Spieler mit offenem Kanal die Ebenen, die er sehen darf. Siehe docs/ebenen.md, „Mod“. */
+    private void ebenenAnMod() {
+        long jetzt = Instant.now().getEpochSecond();
+        for (Player p : getServer().getOnlinePlayers()) {
+            if (!p.getListeningPluginChannels().contains(Download.KANAL)) {
+                fuerMod.vergiss(p.getUniqueId());
+                continue;
+            }
+            for (String n : fuerMod.nachrichten(p.getUniqueId(), p.hasPermission(LAYERS), p::hasPermission, jetzt)) {
+                p.sendPluginMessage(this, Download.KANAL, n.getBytes(StandardCharsets.UTF_8));
+            }
+        }
     }
 
     /** Neue Schlüssel aus der Vorlage im Jar, nach einem Update. Siehe docs/konfiguration.md, „Nach einem Update“. */

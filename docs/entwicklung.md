@@ -14,6 +14,7 @@ code:
   - src/test/java/com/nekyia/heroicmap/EbenenPruefungTest.java
   - src/test/java/com/nekyia/heroicmap/EbenenTest.java
   - src/test/java/com/nekyia/heroicmap/EbenenSchreiberTest.java
+  - src/test/java/com/nekyia/heroicmap/EbenenFuerModTest.java
   - src/test/java/com/nekyia/heroicmap/MitspielerTest.java
   - src/test/java/com/nekyia/heroicmap/VorlageTest.java
 ---
@@ -144,6 +145,11 @@ Laufzeit packt das Plugin das passende aus, siehe
 - **`EbenenSchreiberTest`:** Liste, Ebenen und Bilder für die Webkarte,
   Aufräumen in der Reihenfolge Ebenen vor Bildern, gleiche Bytes nicht neu,
   nie durch eine Junction (Windows) oder einen Symlink.
+- **`EbenenFuerModTest`:** die grösste erlaubte Region als ein Teil, ein
+  Objekt über 1 MiB als Fehler, 1000 Nadeln in Teilen der Reihe nach, nur
+  Nadeln, Regionen und Kreise ohne Tafel, der Hauptthread rechnet nicht,
+  Rechte samt `heroicmap.layers`, die Adresse und ihr späteres Kommen,
+  höchstens 1 MiB je Sekunde.
 - **`TokenTest`:** stellt jedes gültige Token aus den Testvektoren des
   Renderers Zeichen für Zeichen gleich aus, lehnt ab, was kein gültiges
   ergäbe.

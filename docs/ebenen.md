@@ -1,14 +1,17 @@
 ---
 title: Ebenen
-description: Wie das Plugin Ebenen aus seinem Ordner lädt, gegen das Format des Renderers und eigene Regeln prüft und im Takt für die Webkarte neben trees.json schreibt, mit Bildern, version, Reihenfolge beim Schreiben und Aufräumen; dazu der Befehl zum Neuladen und die Lesarten von web und permission.
+description: Wie das Plugin Ebenen aus seinem Ordner lädt, gegen das Format des Renderers und eigene Regeln prüft, im Takt für die Webkarte neben trees.json schreibt und dem Mod in Teilen schickt, mit Bildern, version, Reihenfolge beim Schreiben, Aufräumen, Rechten je Ebene; dazu der Befehl zum Neuladen und die Lesarten von web und permission.
 code:
   - src/main/java/com/nekyia/heroicmap/Ebenen.java
   - src/main/java/com/nekyia/heroicmap/EbenenPruefung.java
   - src/main/java/com/nekyia/heroicmap/EbenenSchreiber.java
+  - src/main/java/com/nekyia/heroicmap/EbenenFuerMod.java
   - src/main/java/com/nekyia/heroicmap/HeroicMapPlugin.java
+  - src/main/resources/plugin.yml
   - src/test/java/com/nekyia/heroicmap/EbenenTest.java
   - src/test/java/com/nekyia/heroicmap/EbenenPruefungTest.java
   - src/test/java/com/nekyia/heroicmap/EbenenSchreiberTest.java
+  - src/test/java/com/nekyia/heroicmap/EbenenFuerModTest.java
 ---
 
 # Ebenen
@@ -17,8 +20,8 @@ Ebenen legen Nadeln, Kartenschrift, Regionen, Kreise und Linien über die
 Karte (#35, heroic-map-renderer#219). Ihr Format beschreibt der Renderer:
 [Ebenen](https://github.com/VonNekyia/heroic-map-renderer/blob/master/docs/benutzung/ebenen.md).
 Diese Seite sagt, wie das Plugin sie lädt, prüft und für die Webkarte
-schreibt. Heute kommen sie aus Dateien. Die API für andere Plugins und der
-Weg zum Mod folgen in eigenen PRs.
+schreibt und dem Mod schickt. Heute kommen sie aus Dateien; die API für
+andere Plugins folgt in einer eigenen PR.
 
 ## Dateien
 
@@ -138,3 +141,77 @@ Ebenen, neben `trees.json`:
 
 Ausgeliefert werden die Dateien vom Server des Renderers
 (heroic-map-renderer#219, Teil 2).
+
+## Mod
+
+Das Plugin schickt dem Mod Nadeln, Regionen und Kreise jeder Ebene, die
+der Spieler sehen darf, über den Kanal `heroicmap:karte`. Kartenschrift,
+Linien und Tafeln schickt es nicht. Der Code steht in `EbenenFuerMod` in
+[`EbenenFuerMod.java`](../src/main/java/com/nekyia/heroicmap/EbenenFuerMod.java).
+
+| `typ` | Felder | Wann |
+|---|---|---|
+| `ebenen` | `ebenen`: je Ebene derselbe Eintrag wie in `layers.json`; dazu `url` oder `port`, siehe „Bilder im Mod“ | sobald sich für den Spieler die Ebenen, eine `version` oder die Adresse ändern |
+| `ebene` | `id`, `version`, `teil` (ab 1), `teile`, `objects` | nach der Liste, je neuer oder geänderter Ebene alle Teile |
+
+Jede Nachricht trägt dazu `v` (1) und `jetzt`, wie alle des Servers, siehe
+[Download](download.md), „Kanal“. Etwa:
+
+```json
+{"v":1,"typ":"ebenen","jetzt":1760000000,"ebenen":[{"id":"beispiel:staedte","name":{"de":"Städte","en":"Towns"},"visible":true,"order":100,"version":"5f3a9c1e5f3a9c1e"}],"port":8080}
+{"v":1,"typ":"ebene","jetzt":1760000000,"id":"beispiel:staedte","version":"5f3a9c1e5f3a9c1e","teil":1,"teile":1,"objects":[{"id":"stadt-17","type":"pin","at":[120.5,-340.5],"name":"Hafenstadt"}]}
+```
+
+- **Wer was bekommt:** ein Spieler mit offenem Kanal und der Permission
+  `heroicmap.layers` (`default: true`) jede Ebene ohne `permission` und
+  jede, deren `permission` er hat. Der Mod schaltet Ebenen selbst an und
+  aus; der Server schickt alles, was er sehen darf.
+- **Die Liste** nennt immer alle Ebenen, die er sehen darf. Fehlt eine, ist
+  sie weg, etwa nach dem Entziehen der Permission oder dem Löschen der
+  Datei. Eine Ebene ohne Objekte ist ein Teil mit `objects: []`.
+- **Objekte** stehen wie in der Datei der Ebene, aus allen Dimensionen,
+  ohne `panel`, in ihrer Reihenfolge, über die Teile hinweg.
+- **Teile:** höchstens 64 KiB je Nachricht. Ein Objekt, das allein grösser
+  ist, geht allein in einem Teil; mehr als 1 MiB weist schon die Prüfung
+  der Ebene ab, denn mehr nimmt Paper je Nachricht nicht. Eine Region mit
+  10 000 Punkten hat je nach Stellen der Zahlen 176 KiB bis über 300 KiB.
+  Der Mod ersetzt eine Ebene erst, wenn alle Teile einer `version` da
+  sind.
+- **Vorbereitet:** Der Takt für die Webkarte, ausserhalb des Hauptthreads,
+  rechnet nach dem Schreiben die Teile jeder geänderten Ebene
+  (`EbenenFuerMod.bereite`) und veröffentlicht Stand und Teile zusammen
+  über ein volatile-Feld. Der Hauptthread liest nur diesen Stand und
+  rechnet nie selbst. Teile entfernter Ebenen fallen dabei weg.
+- **Im Takt:** jede Sekunde im Hauptthread, in
+  `HeroicMapPlugin.ebenenAnMod`, wie bei den Mitspielern. Je Spieler mit
+  offenem Kanal prüft `EbenenFuerMod.nachrichten` die Rechte und
+  vergleicht Kennungen, `version` und Adresse mit dem, was der Spieler
+  schon hat. Gleiches schickt er nicht noch einmal; ohne Ebenen schickt er
+  nie etwas.
+- **Höchstens 1 MiB je Spieler und Sekunde,** also je Lauf des Takts, an
+  Teilen, eine Ebene aber immer ganz. Was übrig ist, kommt in der nächsten
+  Sekunde. So bekommt ein Spieler beim Beitritt bei vollen Grenzen, 64
+  Ebenen zu 4 MiB, alles in rund vier Minuten statt in einem Tick.
+- **Vergessen:** beim Verlassen und wenn der Kanal zugeht. Danach bekommt
+  der Spieler alles neu.
+
+### Bilder im Mod
+
+Abgestimmt mit dem Mod am 09.10. (#37):
+
+- **Die Basis** ist die Wurzel der Kacheln am Server des Renderers. Die
+  Liste nennt sie als `url`, das ist `webserver.url` mit `/tiles`, etwa
+  `https://karte.example.org/tiles`. Ohne `webserver.url` nennt sie
+  `port`, den aus `public-port` oder `listen`, und der Mod baut
+  `http://<IP der Verbindung>:<port>/tiles`, IPv6 in `[…]`, wie bei
+  `freigabe`, siehe [Download](download.md), „Kanal“.
+- **Ein Bild** holt der Mod unter `<Basis>/layers/<modname>/<Feld>`; das
+  Feld beginnt mit `images/`, etwa
+  `<Basis>/layers/beispiel/images/burg_16.png`.
+- **Ohne bereiten Webserver** nennt die Liste weder `url` noch `port`, und
+  der Mod zeichnet die Nadel der Karte in `color`. Ebenso mit HTTPS ohne
+  `webserver.url`: Aus `port` baute der Mod `http://`, der Server spricht
+  dann aber nur HTTPS. Wird der Webserver
+  bereit, kommt die Liste neu, mit Adresse.
+- **Ein Proxy davor** muss `/tiles/` durchreichen, siehe
+  [Webserver](webserver.md), „Download“.
