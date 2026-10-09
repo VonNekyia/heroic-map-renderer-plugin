@@ -151,7 +151,7 @@ Linien und Tafeln schickt es nicht. Der Code steht in `EbenenFuerMod` in
 
 | `typ` | Felder | Wann |
 |---|---|---|
-| `ebenen` | `ebenen`: je Ebene `id`, `name`, `visible`, `order`, `version` wie in `layers.json`; dazu `url` oder `port` wie in `freigabe`, ohne Webserver keins | sobald sich für den Spieler etwas ändert |
+| `ebenen` | `ebenen`: je Ebene derselbe Eintrag wie in `layers.json`; dazu `url` oder `port`, siehe „Bilder im Mod“ | sobald sich für den Spieler die Ebenen, eine `version` oder die Adresse ändern |
 | `ebene` | `id`, `version`, `teil` (ab 1), `teile`, `objects` | nach der Liste, je neuer oder geänderter Ebene alle Teile |
 
 Jede Nachricht trägt dazu `v` (1) und `jetzt`, wie alle des Servers, siehe
@@ -177,12 +177,39 @@ Jede Nachricht trägt dazu `v` (1) und `jetzt`, wie alle des Servers, siehe
   10 000 Punkten hat je nach Stellen der Zahlen 176 KiB bis über 300 KiB.
   Der Mod ersetzt eine Ebene erst, wenn alle Teile einer `version` da
   sind.
+- **Vorbereitet:** Der Takt für die Webkarte, ausserhalb des Hauptthreads,
+  rechnet nach dem Schreiben die Teile jeder geänderten Ebene
+  (`EbenenFuerMod.bereite`) und veröffentlicht Stand und Teile zusammen
+  über ein volatile-Feld. Der Hauptthread liest nur diesen Stand und
+  rechnet nie selbst. Teile entfernter Ebenen fallen dabei weg.
 - **Im Takt:** jede Sekunde im Hauptthread, in
   `HeroicMapPlugin.ebenenAnMod`, wie bei den Mitspielern. Je Spieler mit
-  offenem Kanal prüft er die Rechte und vergleicht Kennungen und `version`
-  mit dem, was der Spieler schon hat. Gleiches schickt er nicht noch
-  einmal; ohne Ebenen schickt er nie etwas. Die Teile einer `version`
-  rechnet der Takt für die Webkarte vor, ausserhalb des Hauptthreads, und
-  hält sie; der Hauptthread schickt sie nur noch.
+  offenem Kanal prüft `EbenenFuerMod.nachrichten` die Rechte und
+  vergleicht Kennungen, `version` und Adresse mit dem, was der Spieler
+  schon hat. Gleiches schickt er nicht noch einmal; ohne Ebenen schickt er
+  nie etwas.
+- **Höchstens 1 MiB je Spieler und Tick** an Teilen, eine Ebene aber immer
+  ganz. Was übrig ist, kommt im nächsten Tick. So bekommt ein Spieler beim
+  Beitritt bei vollen Grenzen, 64 Ebenen zu 4 MiB, alles in rund vier
+  Minuten statt in einem Tick.
 - **Vergessen:** beim Verlassen und wenn der Kanal zugeht. Danach bekommt
   der Spieler alles neu.
+
+### Bilder im Mod
+
+Abgestimmt mit dem Mod am 09.10. (#37):
+
+- **Die Basis** ist die Wurzel der Kacheln am Server des Renderers. Die
+  Liste nennt sie als `url`, das ist `webserver.url` mit `/tiles`, etwa
+  `https://karte.example.org/tiles`. Ohne `webserver.url` nennt sie
+  `port`, den aus `public-port` oder `listen`, und der Mod baut
+  `http://<IP der Verbindung>:<port>/tiles`, IPv6 in `[…]`, wie bei
+  `freigabe`, siehe [Download](download.md), „Kanal“.
+- **Ein Bild** holt der Mod unter `<Basis>/layers/<modname>/<Feld>`; das
+  Feld beginnt mit `images/`, etwa
+  `<Basis>/layers/beispiel/images/burg_16.png`.
+- **Ohne bereiten Webserver** nennt die Liste weder `url` noch `port`, und
+  der Mod zeichnet die Nadel der Karte in `color`. Wird der Webserver
+  bereit, kommt die Liste neu, mit Adresse.
+- **Ein Proxy davor** muss `/tiles/` durchreichen, siehe
+  [Webserver](webserver.md), „Download“.

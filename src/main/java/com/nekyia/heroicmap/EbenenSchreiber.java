@@ -115,7 +115,8 @@ final class EbenenSchreiber {
         return o;
     }
 
-    private static JsonObject eintrag(Ebene e) {
+    /** Der Eintrag einer Ebene in layers.json, ebenso in der Liste an den Mod. */
+    static JsonObject eintrag(Ebene e) {
         var o = kopf(e);
         o.addProperty("version", e.version());
         return o;

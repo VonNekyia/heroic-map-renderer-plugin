@@ -116,7 +116,7 @@ final class EbenenPruefung {
                 case "line" -> linie(o, s);
                 default -> fehler.add(s + ".type: unbekannt: " + typ);
             }
-            String fuerMod = List.of("pin", "region", "circle").contains(typ) ? EbenenFuerMod.fuerMod(o) : null;
+            String fuerMod = EbenenFuerMod.ARTEN.contains(typ) ? EbenenFuerMod.fuerMod(o) : null;
             if (fuerMod != null && fuerMod.getBytes(StandardCharsets.UTF_8).length > EbenenFuerMod.OBJEKT) {
                 fehler.add(s + ": für den Mod grösser als 1 MiB");
             }
