@@ -29,7 +29,8 @@ ein Release auf GitHub veröffentlicht wird, oder von Hand mit dem Tag.
 | Hochladen | `POST /api/v1/projects/heroic-map/upload`, multipart: `versionUpload` als JSON mit Version, Kanal `Release`, Changelog, `platformDependencies` `{"PAPER": ["26.2", "26.3"]}` und einer Datei für `PAPER`; dazu das Jar unter `files` |
 
 - **Versionen:** `<version>-linux-x64` und `<version>-windows-x64`, etwa
-  `0.3.2-linux-x64`. Nur Tags wie `v1.2.3`; ein anderer Tag lässt den Lauf
+  `0.3.2-linux-x64`. Linux kommt als Zweites, denn Hangar bietet die
+  zuletzt hochgeladene Version als Download an; Wunsch des Users vom 09.10. Nur Tags wie `v1.2.3`; ein anderer Tag lässt den Lauf
   fallen.
 - **Schlüssel:** nur aus dem Secret `HANGAR_API_TOKEN`. Schlüssel und JWT
   sind mit `::add-mask::` maskiert und stehen nie im Log. Fehlt das Secret,
