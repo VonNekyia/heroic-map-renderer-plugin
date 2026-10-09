@@ -201,6 +201,9 @@ class EbenenApiTest {
         l.delete();
         assertThrows(IllegalStateException.class, () -> l.put(Pin.at("q", 0, 0)));
         assertEquals(List.of(), a.ebenen());
+        Layer neu = a.layer("Beispiel", "weg");
+        neu.put(Pin.at("q", 0, 0));
+        assertEquals(List.of("q"), ids(ebene(a, "beispiel:weg")), "nach delete legt layer eine neue Ebene an");
 
         Layer bleibt = a.layer("Andere", "bleibt");
         Layer eins = a.layer("Beispiel", "eins");

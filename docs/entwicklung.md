@@ -155,7 +155,7 @@ Laufzeit packt das Plugin das passende aus, siehe
   Objekt über 1 MiB als Fehler, 1000 Nadeln in Teilen der Reihe nach, nur
   Nadeln, Regionen und Kreise ohne Tafel, der Hauptthread rechnet nicht,
   Rechte samt `heroicmap.layers`, die Adresse und ihr späteres Kommen,
-  höchstens 1 MiB je Tick.
+  höchstens 1 MiB je Sekunde.
 - **`EbenenApiTest`:** die Kennung aus dem Namen des Plugins, Prüfen beim
   Aufruf, alle Arten und Bausteine als gültiges JSON, Bilder je Besitzer,
   `permission`, Löschen und ein Plugin, das geht, Vorrang vor der Datei.
