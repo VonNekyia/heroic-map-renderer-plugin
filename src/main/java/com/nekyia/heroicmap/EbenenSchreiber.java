@@ -6,14 +6,20 @@ import com.google.gson.JsonObject;
 import com.nekyia.heroicmap.Ebenen.Ebene;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
+import java.nio.file.LinkOption;
 import java.nio.file.Path;
+import java.nio.file.SimpleFileVisitor;
 import java.nio.file.StandardCopyOption;
+import java.nio.file.attribute.BasicFileAttributes;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
-import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * Schreibt die Ebenen für die Webkarte neben trees.json: Bilder, Dateien der Ebenen, layers.json, und
@@ -63,7 +69,7 @@ final class EbenenSchreiber {
             l.add("layers", liste);
             schreibe(layersJson, bytes(l));
         }
-        raeumeAuf(soll.keySet().stream().map(wurzel::resolve).toList());
+        raeumeAuf(soll.keySet().stream().map(wurzel::resolve).collect(Collectors.toSet()));
     }
 
     /** Die Datei der Ebene für die Webkarte: ohne web und permission, nur Objekte aus der Dimension der Wurzel. */
@@ -101,8 +107,9 @@ final class EbenenSchreiber {
     }
 
     /** Schreibt nur, was sich ändert: erst unter einem Namen mit . vorn, dann umbenannt. */
-    private static void schreibe(Path ziel, byte[] inhalt) throws IOException {
-        if (Files.isRegularFile(ziel) && Arrays.equals(Files.readAllBytes(ziel), inhalt)) {
+    private void schreibe(Path ziel, byte[] inhalt) throws IOException {
+        keinLink(ziel.getParent());
+        if (Files.isRegularFile(ziel, LinkOption.NOFOLLOW_LINKS) && Arrays.equals(Files.readAllBytes(ziel), inhalt)) {
             return;
         }
         Files.createDirectories(ziel.getParent());
@@ -111,28 +118,68 @@ final class EbenenSchreiber {
         Files.move(neu, ziel, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
     }
 
-    /** Entfernt unter layers/ jede Datei, die nicht in {@code soll} steht: erst Ebenen, dann Bilder, dann leere Ordner. */
-    private void raeumeAuf(List<Path> soll) throws IOException {
+    /**
+     * Wirft, wenn ein Ordner von der Wurzel bis {@code ordner} ein Link ist, unter Windows auch eine Junction:
+     * Durch ihn schriebe das Plugin ausserhalb von layers/. Die Wurzel selbst darf ein Link sein.
+     */
+    private void keinLink(Path ordner) throws IOException {
+        Path p = wurzel;
+        for (Path teil : wurzel.relativize(ordner)) {
+            if (teil.toString().isEmpty()) {
+                continue;
+            }
+            p = p.resolve(teil);
+            if (!Files.exists(p, LinkOption.NOFOLLOW_LINKS)) {
+                return;
+            }
+            var a = Files.readAttributes(p, BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS);
+            if (a.isSymbolicLink() || a.isOther()) {
+                throw new IOException(wurzel.relativize(p) + " ist ein Link; durch ihn schreibt das Plugin nicht");
+            }
+        }
+    }
+
+    /**
+     * Entfernt unter layers/ jede Datei, die nicht in {@code soll} steht: erst Ebenen, dann Bilder, dann leere
+     * Ordner. Einem Link, unter Windows auch einer Junction, folgt es nicht; er bleibt stehen.
+     */
+    private void raeumeAuf(Set<Path> soll) throws IOException {
         Path layers = wurzel.resolve("layers");
-        if (!Files.isDirectory(layers)) {
+        if (!Files.exists(layers, LinkOption.NOFOLLOW_LINKS)) {
             return;
         }
-        List<Path> alle;
-        try (var w = Files.walk(layers)) {
-            alle = w.toList();
-        }
-        var weg = alle.stream().filter(Files::isRegularFile).filter(p -> !soll.contains(p))
-                .sorted(Comparator.comparing((Path p) -> p.getParent().getFileName().toString().equals("images")))
-                .toList();
-        for (Path p : weg) {
+        keinLink(layers);
+        var ebenen = new ArrayList<Path>();
+        var bilder = new ArrayList<Path>();
+        var ordner = new ArrayList<Path>();
+        Files.walkFileTree(layers, new SimpleFileVisitor<>() {
+            @Override
+            public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes a) {
+                if (a.isSymbolicLink() || a.isOther()) {
+                    return FileVisitResult.SKIP_SUBTREE;
+                }
+                ordner.add(dir);
+                return FileVisitResult.CONTINUE;
+            }
+
+            @Override
+            public FileVisitResult visitFile(Path datei, BasicFileAttributes a) {
+                if (a.isRegularFile() && !soll.contains(datei)) {
+                    (datei.getParent().getFileName().toString().equals("images") ? bilder : ebenen).add(datei);
+                }
+                return FileVisitResult.CONTINUE;
+            }
+        });
+        for (Path p : ebenen) {
             Files.deleteIfExists(p);
         }
-        for (Path p : alle.reversed()) {
-            if (Files.isDirectory(p)) {
-                try (var inhalt = Files.list(p)) {
-                    if (inhalt.findAny().isEmpty()) {
-                        Files.delete(p);
-                    }
+        for (Path p : bilder) {
+            Files.deleteIfExists(p);
+        }
+        for (Path p : ordner.reversed()) {
+            try (var inhalt = Files.list(p)) {
+                if (inhalt.findAny().isEmpty()) {
+                    Files.delete(p);
                 }
             }
         }

@@ -7,6 +7,8 @@ code:
   - src/main/java/com/nekyia/heroicmap/EbenenSchreiber.java
   - src/main/java/com/nekyia/heroicmap/HeroicMapPlugin.java
   - src/test/java/com/nekyia/heroicmap/EbenenTest.java
+  - src/test/java/com/nekyia/heroicmap/EbenenPruefungTest.java
+  - src/test/java/com/nekyia/heroicmap/EbenenSchreiberTest.java
 ---
 
 # Ebenen
@@ -27,25 +29,37 @@ plugins/HeroicMap/ebenen/
     images/             ihre Bilder, etwa images/burg_16.png
 ```
 
-- **Kennung:** `modname` und `ebene` je 1 bis 64 Zeichen aus `a`–`z`,
-  `0`–`9`, `_`, `-` und `.`, nicht mit `.` am Anfang. Die Datei nennt ihre
-  Kennung in `id`, gleich wie Ordner und Datei.
+- **Namen:** `modname`, `ebene` und der Name eines Bilds ohne Endung je
+  1 bis 64 Zeichen aus `a`–`z`, `0`–`9`, `_`, `-` und `.`, ohne `.` vorn
+  oder hinten und kein Gerät von Windows wie `nul`, `con` oder `com1`, auch
+  nicht vor einer Endung wie in `nul.json`. Anders liefert der Server des
+  Renderers die Datei nicht aus, und die Ebene fehlte still auf der Karte.
+  Geprüft in `EbenenPruefung.teil` und `datei`.
+- **Kennung:** Die Datei nennt ihre Kennung `<modname>:<ebene>` in `id`,
+  gleich wie Ordner und Datei.
 - **Ohne Ordner `ebenen`** gibt es keine Ebenen, und das Log schweigt dazu.
 - **Höchstens 64 Ebenen.** Bei mehr lädt das Plugin die ersten 64 nach
   Kennung und nennt die übrigen im Log.
-- **Bilder** sind nur öffentlich, wenn eine Ebene sie nennt. Was sonst in
-  `images/` liegt, etwa ein Entwurf, kopiert das Plugin nicht.
+- **Bilder** liest und veröffentlicht das Plugin nur, wenn eine Ebene sie
+  nennt, und erst nach einem Blick auf die Grösse. Was sonst in `images/`
+  liegt, etwa ein grosser Entwurf, stört nicht und bleibt privat.
 
 ## Laden
 
-- **Beim Start** des Plugins und mit `/heroicmap layers`, ohne Neustart.
-  Beides geht auch ohne Renderer.
-- **Jede Datei für sich:** Eine kaputte Datei fehlt, die übrigen gelten.
-  Jeder Fehler steht mit Datei und Stelle im Log, etwa
+- **Beim Start** des Plugins und mit `/heroicmap layers`, ohne Neustart,
+  beides ausserhalb des Hauptthreads und nacheinander, nie zwei Ladungen
+  zugleich. Beides geht auch ohne Renderer.
+- **Jede Datei für sich:** Eine kaputte Datei fehlt, die übrigen gelten,
+  auch die anderer Mods. Jeder Fehler steht mit Datei und Stelle im Log,
+  etwa
   `Ebenen: beispiel/staedte.json: objects[0].symbol.large: images/burg.png hat 9 × 9 Pixel, erlaubt genau 16 × 16`.
-- **Der Befehl** antwortet mit der Zahl der geladenen Ebenen und der
-  Fehler; `/heroicmap status` nennt die Ebenen und wie viele davon auf der
-  Webkarte stehen.
+  Je Datei höchstens 20 Fehler, dann `und N weitere Fehler`.
+- **Ein Ordner, der nicht zu lesen ist,** behält seinen alten Stand: der
+  Ordner `ebenen` ganz, der Ordner eines `modname` für seine Ebenen. So
+  löscht ein Lesefehler nichts von der Webkarte.
+- **Der Befehl** antwortet mit der Zahl der geladenen Ebenen; `/heroicmap
+  status` nennt die Ebenen und wie viele davon auf der Webkarte stehen,
+  auch ohne Renderer.
 - **Streng:** JSON nach RFC 8259, ohne Kommentare und ohne Text danach,
   höchstens 4 MiB je Datei.
 
@@ -61,10 +75,13 @@ Bausteine der Tafel und ihre Tiefe, die Bilder. Dazu eigene Regeln:
 - **Texte ohne Grenze im Format** haben höchstens 64 Zeichen: Namen je
   Sprache, Namen von Regionen, `font`, `alt`, Labels einer Wertung.
   `permission` höchstens 128.
-- **Bilder:** Pfad `images/<name>.png` oder `.webp`, ohne Unterordner. Der
-  Kopf der Datei entscheidet: PNG, oder WebP nur mit dem Chunk `VP8L`.
-  Symbole genau 16 × 16 (`large`) und 9 × 9 (`medium`), Bilder der Tafel
-  höchstens 512 × 512, jedes höchstens 256 KiB, höchstens 200 je Ebene.
+- **Bilder:** Pfad `images/<name>.png` oder `.webp`, ohne Unterordner,
+  Namen wie unter „Dateien“. Der Kopf der Datei muss zur Endung passen,
+  denn der Server setzt den Typ nach der Endung: PNG mit allen acht Bytes
+  der Signatur und Breite und Höhe von 1 bis 2^31 − 1, oder WebP nur mit
+  dem Chunk `VP8L`. Symbole genau 16 × 16 (`large`) und 9 × 9 (`medium`),
+  Bilder der Tafel höchstens 512 × 512, jedes höchstens 256 KiB,
+  höchstens 200 je Ebene.
 - **Wertung:** `max` von 1 bis 100, `value` von 0 bis `max`.
 - **`holes`** darf fehlen; dann hat das Polygon keine Löcher.
 
@@ -95,9 +112,10 @@ Ebenen, neben `trees.json`:
 - **Nur die Dimension der Wurzel:** Die Datei für die Webkarte enthält nur
   Objekte mit der `dimension` der Welt aus `world` in `config.yml`,
   Vorgabe `minecraft:overworld`.
-- **`version`:** die ersten 16 Hexziffern eines SHA-256 über die Datei der
-  Ebene und ihre Bilder. Ändert sich ein Bild unter gleichem Namen, ändert
-  sich die `version` mit.
+- **`version`:** die ersten 16 Hexziffern eines SHA-256 über das JSON der
+  Ebene, die Dimension der Wurzel und ihre Bilder (`Ebenen.version`).
+  Ändert sich ein Bild unter gleichem Namen oder `world`, ändert sich die
+  `version` mit, und eine offene Karte lädt neu.
 - **Reihenfolge:** erst die Bilder, dann die Dateien der Ebenen, dann
   `layers.json`, zuletzt das Entfernen. So nennt `layers.json` nie eine
   Datei, die fehlt.
@@ -107,6 +125,10 @@ Ebenen, neben `trees.json`:
   mehr nennt, erst Ebenen, dann Bilder, dann leere Ordner, auch liegen
   gebliebene `.…neu`. Ohne Ebene für die Webkarte fehlt `layers.json`.
   `layers/` gehört ganz dem Plugin.
+- **Nie durch einen Link:** Einem symbolischen Link unter `layers/`, unter
+  Windows auch einer Junction, folgt das Aufräumen nicht; er bleibt
+  stehen. Schreiben durch ihn wirft, und der Takt versucht es jede Sekunde
+  wieder. Die Wurzel von `tiles` selbst darf ein Link sein.
 - **Im Takt:** jede Sekunde ausserhalb des Hauptthreads, nur nach einer
   Änderung. Scheitert das Schreiben, versucht es das Plugin jede Sekunde
   wieder; das Log nennt nur den ersten Fehlschlag und die Erholung.
