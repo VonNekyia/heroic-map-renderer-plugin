@@ -26,6 +26,10 @@ if grep -q '^org/bstats/' <<< "$inhalt"; then
   echo "::error::bStats im Jar nicht umbenannt"; exit 1
 fi
 
+# Die Binärs gepackt, für docs/entwicklung.md, „Grösse“.
+unzip -v "$jar" renderer/windows-x64/heroic-map-renderer.exe renderer/linux-x64/heroic-map-renderer \
+  | awk '$NF ~ /^renderer\// {print "Gepackt: " $NF ": " $3 " Byte"}'
+
 # Hangar nimmt höchstens 10 000 000 Byte je Datei. Siehe docs/entscheidungen/0004-renderer-im-jar.md.
 groesse=$(stat -c %s "$jar")
 echo "Jar: $groesse Byte"

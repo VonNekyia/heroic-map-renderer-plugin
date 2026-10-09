@@ -71,8 +71,8 @@ Laufzeit packt das Plugin das passende aus, siehe
 
 | Version | Archiv | SHA-256 |
 |---|---|---|
-| `0.4.0` | `heroic-map-renderer-windows-x64.zip` | `5a36dd40348dd6113bd9ebb12c283f913b1057d1b5801264cd16f8ef78623179` |
-| `0.4.0` | `heroic-map-renderer-linux-x64.tar.gz` | `9143a57fba4ed7e0995eb4f36ac22b8ce1f2081c4a1011221bfbe598bdad9225` |
+| `0.5.0` | `heroic-map-renderer-windows-x64.zip` | `b3b8ab01aee1223e2de2ec2fba74b5578196c2f80981025645c3d665b2340047` |
+| `0.5.0` | `heroic-map-renderer-linux-x64.tar.gz` | `f01ff907eeeeac51c34c5e807bf1063cf6940d8528fe8d9b804a99e49db949cf` |
 
 - **Laden:** von
   `https://github.com/VonNekyia/heroic-map-renderer/releases/download/v<version>/`
@@ -82,7 +82,7 @@ Laufzeit packt das Plugin das passende aus, siehe
 - **Prüfen:** Hat ein geladenes Archiv eine andere SHA-256 als in
   `build.gradle.kts`, oder antwortet GitHub nicht mit 200, scheitert der
   Build. `SHA256SUMS` aus dem Release liest er nicht.
-- **Ohne Netz,** auch mit `--offline`, warnt er „Renderer 0.4.0 nicht
+- **Ohne Netz,** auch mit `--offline`, warnt er „Renderer 0.5.0 nicht
   geladen, das Jar bleibt ohne Binärs“ und baut weiter. Der nächste Build
   versucht es wieder.
 - **Im Jar:**
