@@ -16,7 +16,7 @@ import java.util.UUID;
 import java.util.function.Function;
 import org.junit.jupiter.api.Test;
 
-/** Die Ebenen für den Mod: Teile, Liste, Rechte, Adresse, Budget je Tick und was ein Spieler wann bekommt. */
+/** Die Ebenen für den Mod: Teile, Liste, Rechte, Adresse, Budget je Sekunde und was ein Spieler wann bekommt. */
 class EbenenFuerModTest {
 
     private static final UUID SAM = new UUID(0, 1);
@@ -188,6 +188,9 @@ class EbenenFuerModTest {
                 new Konfiguration.Webserver(true, "0.0.0.0:8080", "https://karte.example.org", null, null, "", "", "", 0)).toString());
         assertEquals("{}", EbenenFuerMod.adresse(
                 new Konfiguration.Webserver(false, "0.0.0.0:8080", "", null, null, "", "", "", 0)).toString());
+        assertEquals("{}", EbenenFuerMod.adresse(new Konfiguration.Webserver(true, "0.0.0.0:8443", "",
+                java.nio.file.Path.of("cert.pem"), java.nio.file.Path.of("key.pem"), "", "", "", 0)).toString(),
+                "HTTPS ohne url: kein port, sonst holte der Mod per http://");
 
         var adresse = new JsonObject[] {new JsonObject()};
         var m = new EbenenFuerMod(() -> adresse[0]);
@@ -201,7 +204,7 @@ class EbenenFuerModTest {
     }
 
     @Test
-    void je_tick_hoechstens_1_mib_eine_ebene_aber_ganz() {
+    void je_sekunde_hoechstens_1_mib_eine_ebene_aber_ganz() {
         var ebenen = new ArrayList<Ebene>();
         for (int k = 0; k < 3; k++) {
             ebenen.add(ebene("beispiel:e" + k, String.join(",", groessteRegion("a"), groessteRegion("b"), groessteRegion("c"),
@@ -214,7 +217,7 @@ class EbenenFuerModTest {
         }
         assertEquals("ebenen", lies(ticks.get(0).getFirst()).get("typ").getAsString());
         assertEquals(1 + 5, ticks.get(0).size(), "Liste und eine ganze Ebene mit ihren fünf Teilen, auch über 1 MiB");
-        assertEquals(5, ticks.get(1).size(), "die nächste Ebene im nächsten Tick");
+        assertEquals(5, ticks.get(1).size(), "die nächste Ebene in der nächsten Sekunde");
         assertEquals(5, ticks.get(2).size());
         assertEquals(List.of(), ticks.get(3));
         assertTrue(ticks.get(1).stream().mapToInt(EbenenFuerModTest::bytes).sum() > 1 << 20, "eine Ebene über 1 MiB");

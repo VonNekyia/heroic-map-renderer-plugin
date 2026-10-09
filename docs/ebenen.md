@@ -188,10 +188,10 @@ Jede Nachricht trägt dazu `v` (1) und `jetzt`, wie alle des Servers, siehe
   vergleicht Kennungen, `version` und Adresse mit dem, was der Spieler
   schon hat. Gleiches schickt er nicht noch einmal; ohne Ebenen schickt er
   nie etwas.
-- **Höchstens 1 MiB je Spieler und Tick** an Teilen, eine Ebene aber immer
-  ganz. Was übrig ist, kommt im nächsten Tick. So bekommt ein Spieler beim
-  Beitritt bei vollen Grenzen, 64 Ebenen zu 4 MiB, alles in rund vier
-  Minuten statt in einem Tick.
+- **Höchstens 1 MiB je Spieler und Sekunde,** also je Lauf des Takts, an
+  Teilen, eine Ebene aber immer ganz. Was übrig ist, kommt in der nächsten
+  Sekunde. So bekommt ein Spieler beim Beitritt bei vollen Grenzen, 64
+  Ebenen zu 4 MiB, alles in rund vier Minuten statt in einem Tick.
 - **Vergessen:** beim Verlassen und wenn der Kanal zugeht. Danach bekommt
   der Spieler alles neu.
 
@@ -209,7 +209,9 @@ Abgestimmt mit dem Mod am 09.10. (#37):
   Feld beginnt mit `images/`, etwa
   `<Basis>/layers/beispiel/images/burg_16.png`.
 - **Ohne bereiten Webserver** nennt die Liste weder `url` noch `port`, und
-  der Mod zeichnet die Nadel der Karte in `color`. Wird der Webserver
+  der Mod zeichnet die Nadel der Karte in `color`. Ebenso mit HTTPS ohne
+  `webserver.url`: Aus `port` baute der Mod `http://`, der Server spricht
+  dann aber nur HTTPS. Wird der Webserver
   bereit, kommt die Liste neu, mit Adresse.
 - **Ein Proxy davor** muss `/tiles/` durchreichen, siehe
   [Webserver](webserver.md), „Download“.

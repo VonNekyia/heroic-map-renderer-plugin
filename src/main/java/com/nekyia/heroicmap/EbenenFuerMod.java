@@ -26,8 +26,8 @@ final class EbenenFuerMod {
     static final int TEIL = (64 << 10) - 1024;
     /** Ein Objekt für den Mod darf allein höchstens so gross sein, damit eine Nachricht unter 1 MiB bleibt. */
     static final int OBJEKT = (1 << 20) - 1024;
-    /** Je Spieler und Tick höchstens so viele Byte an Teilen; eine Ebene geht aber immer ganz. */
-    static final int JE_TICK = 1 << 20;
+    /** Je Spieler und Sekunde, also je Lauf des Takts, höchstens so viele Byte an Teilen; eine Ebene geht aber immer ganz. */
+    static final int JE_SEKUNDE = 1 << 20;
     /** Die Arten, die der Mod bekommt. */
     static final Set<String> ARTEN = Set.of("pin", "region", "circle");
 
@@ -70,7 +70,7 @@ final class EbenenFuerMod {
     /**
      * Im Hauptthread: die Nachrichten, die {@code spieler} jetzt braucht. Mit {@code alle} darf er Ebenen sehen,
      * dazu muss {@code hat} jede permission einer Ebene bejahen. Nichts, wenn sich für ihn nichts geändert hat;
-     * sonst die Liste und die Teile neuer oder geänderter Ebenen, je Tick höchstens {@link #JE_TICK} Byte.
+     * sonst die Liste und die Teile neuer oder geänderter Ebenen, je Aufruf höchstens {@link #JE_SEKUNDE} Byte.
      */
     List<String> nachrichten(UUID spieler, boolean alle, Predicate<String> hat, long jetzt) {
         var f = fertig;
@@ -94,13 +94,13 @@ final class EbenenFuerMod {
             g.liste = unterschrift;
         }
         g.ebenen.keySet().retainAll(sicht.stream().map(Ebene::id).toList());
-        long rest = JE_TICK;
+        long rest = JE_SEKUNDE;
         for (Ebene e : sicht) {
             var t = f.teile().get(e.id());
             if (e.version().equals(g.ebenen.get(e.id())) || t == null) {
                 continue;
             }
-            if (t.bytes() > rest && rest < JE_TICK) {
+            if (t.bytes() > rest && rest < JE_SEKUNDE) {
                 break;
             }
             for (int i = 0; i < t.teile().size(); i++) {
@@ -180,13 +180,14 @@ final class EbenenFuerMod {
 
     /**
      * url oder port wie in freigabe, siehe docs/download.md, „Kanal“: url ist die Wurzel der Kacheln,
-     * {@code webserver.url} mit /tiles. Ohne Webserver leer.
+     * {@code webserver.url} mit /tiles. Ohne Webserver leer, ebenso mit HTTPS ohne url: Aus port baute der Mod
+     * http://, und der Server spricht dann nur HTTPS.
      */
     static JsonObject adresse(Konfiguration.Webserver w) {
         var a = new JsonObject();
-        if (w.an() && w.url().isEmpty()) {
+        if (w.an() && w.url().isEmpty() && w.zertifikat() == null) {
             a.addProperty("port", w.portFuerMod());
-        } else if (w.an()) {
+        } else if (w.an() && !w.url().isEmpty()) {
             a.addProperty("url", w.url() + "/tiles");
         }
         return a;

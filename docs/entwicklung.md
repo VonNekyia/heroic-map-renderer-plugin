@@ -149,7 +149,7 @@ Laufzeit packt das Plugin das passende aus, siehe
   Objekt über 1 MiB als Fehler, 1000 Nadeln in Teilen der Reihe nach, nur
   Nadeln, Regionen und Kreise ohne Tafel, der Hauptthread rechnet nicht,
   Rechte samt `heroicmap.layers`, die Adresse und ihr späteres Kommen,
-  höchstens 1 MiB je Tick.
+  höchstens 1 MiB je Sekunde.
 - **`TokenTest`:** stellt jedes gültige Token aus den Testvektoren des
   Renderers Zeichen für Zeichen gleich aus, lehnt ab, was kein gültiges
   ergäbe.
