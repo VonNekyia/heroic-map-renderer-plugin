@@ -22,6 +22,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -67,8 +68,8 @@ final class Laeufe {
     private final Map<String, Letzter> letzte = new LinkedHashMap<>();
     private final Map<String, Instant> erfolgreich = new LinkedHashMap<>();
 
-    /** Läuft nach jedem Baum, dessen Prozess fertig wurde, auch ohne Änderung, im Faden des Laufs. */
-    private volatile Runnable nachLauf = () -> {};
+    /** Laufen nach jedem Baum, dessen Prozess fertig wurde, auch ohne Änderung, im Faden des Laufs. */
+    private final List<Runnable> nachLauf = new CopyOnWriteArrayList<>();
 
     private volatile String letzteZeile = "";
     private volatile String fortschritt = "";
@@ -201,15 +202,7 @@ final class Laeufe {
     /** Die Schalter des Renderers für einen Baum. */
     List<String> befehl(Konfiguration.Baum baum, Art art, boolean resume) {
         List<String> b = new ArrayList<>(List.of(konf.renderer().toString(), "--world", konf.welt().toString()));
-        konf.assets().forEach(p -> b.addAll(List.of("--assets", p.toString())));
-        konf.daten().forEach(p -> b.addAll(List.of("--data", p.toString())));
-        // Nur mit Zustimmung des Betreibers. Siehe docs/konfiguration.md, „Client-Jar“.
-        if (konf.clientJar().zugestimmt()) {
-            b.addAll(List.of("--download-client-jar", "--cache-dir", cache.toString()));
-            if (!konf.clientJar().version().isEmpty()) {
-                b.addAll(List.of("--client-version", konf.clientJar().version()));
-            }
-        }
+        b.addAll(quellen());
         b.addAll(List.of("--tiles", konf.kacheln().toString()));
         // --flat geht nicht mit --camera und --direction. Siehe docs/konfiguration.md, „Bäume“.
         b.addAll(baum.flat() ? List.of("--flat") : List.of("--camera", baum.kamera(), "--direction", baum.richtung()));
@@ -235,6 +228,21 @@ final class Laeufe {
         }
         if (resume) {
             b.add("--resume");
+        }
+        return b;
+    }
+
+    /** Assets, Daten und das Client-Jar, für jeden Lauf und für --banners gleich. */
+    List<String> quellen() {
+        var b = new ArrayList<String>();
+        konf.assets().forEach(p -> b.addAll(List.of("--assets", p.toString())));
+        konf.daten().forEach(p -> b.addAll(List.of("--data", p.toString())));
+        // Nur mit Zustimmung des Betreibers. Siehe docs/konfiguration.md, „Client-Jar“.
+        if (konf.clientJar().zugestimmt()) {
+            b.addAll(List.of("--download-client-jar", "--cache-dir", cache.toString()));
+            if (!konf.clientJar().version().isEmpty()) {
+                b.addAll(List.of("--client-version", konf.clientJar().version()));
+            }
         }
         return b;
     }
@@ -337,8 +345,9 @@ final class Laeufe {
         return s < 3600 ? s / 60 + " min " + s % 60 + " s" : s / 3600 + " h " + s % 3600 / 60 + " min";
     }
 
+    /** Eins mehr, das nach jedem Baum läuft, siehe {@link #nachLauf}. */
     void nachLauf(Runnable r) {
-        nachLauf = r;
+        nachLauf.add(r);
     }
 
     /**
@@ -460,7 +469,7 @@ final class Laeufe {
                 // Gleich nach dem Baum, nicht nach allen: sein Manifest kann neu sein, auch nach einem
                 // Update ohne Änderung, das ein fehlendes schrieb.
                 if (ausgang.equals(GEZEICHNET) || ausgang.equals(NICHTS) || ausgang.equals(VERDICHTET)) {
-                    nachLauf.run();
+                    nachLauf.forEach(Runnable::run);
                 }
                 ergebnisse.add(a.baum() + " " + ausgang);
                 if (istAbgebrochen()) {

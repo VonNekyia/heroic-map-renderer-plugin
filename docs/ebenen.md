@@ -113,13 +113,13 @@ Zwei Lesarten, die das Format offenlässt, abgestimmt mit dem Reviewer am
   sie nach `layers/<modname>/images/`, damit der Mod sie über den Server
   holen kann. Wer ein Bild nicht zeigen will, legt es nicht ab. Eine Ebene
   mit `permission` hat darum gar keine Bilder.
-- **Banner mit `permission`** gehen nur aus einem Entwurf, ohne Bild. Ihr
-  gezeichnetes Banner bekommt der Mod künftig über den Kanal, siehe im
-  Renderer
+- **Banner mit `permission`** gehen nur aus einem Entwurf, ohne Bild. Das
+  Plugin lässt sie mit `--banners` zeichnen, nur im Satz `oben` und in
+  seinen Datenordner, siehe [Läufe](laeufe.md), „Banner“. Über den Kanal
+  an den Mod kommen sie in einem späteren Schritt, siehe im Renderer
   [0100](https://github.com/VonNekyia/heroic-map-renderer/blob/master/docs/entscheidungen/0100-der-renderer-zeichnet-die-banner.md).
-  Bis das Plugin `--banners` ruft, haben sie weder Sprite noch Bild, und
-  der Mod übergeht sie. Ein Plugin für Städte kann dort also vorerst kein
-  Banner zeigen.
+  Bis dahin übergeht der Mod sie, und ein Plugin für Städte kann dort
+  vorerst kein Banner zeigen.
 
 ## Webkarte
 
@@ -131,6 +131,7 @@ Ebenen, neben `trees.json`:
 | `layers.json` | je Ebene mit `web` `id`, `name`, `visible`, `order`, `version` |
 | `layers/<modname>/<ebene>.json` | Kopf samt `designs` und Objekte der Ebene, ohne `web` und `permission` |
 | `layers/<modname>/images/…` | die Bilder, die eine Ebene nennt |
+| `layers/<modname>/banner/…` | die Sprites der Banner; sie schreibt der Renderer, siehe [Läufe](laeufe.md), „Banner“ |
 
 - **Nur die Dimension der Wurzel:** Die Datei für die Webkarte enthält nur
   Objekte mit der `dimension` der Welt aus `world` in `config.yml`,
@@ -138,7 +139,9 @@ Ebenen, neben `trees.json`:
 - **`version`:** die ersten 16 Hexziffern eines SHA-256 über das JSON der
   Ebene, die Dimension der Wurzel und ihre Bilder (`Ebenen.version`).
   Ändert sich ein Bild unter gleichem Namen oder `world`, ändert sich die
-  `version` mit, und eine offene Karte lädt neu.
+  `version` mit, und eine offene Karte lädt neu. Hat die Ebene Sprites der
+  Banner, geht ihr Stand mit ein (`Ebenen.mitSprites`): Zeichnet
+  `--banners` neu, ändert sich die `version` ebenso.
 - **Reihenfolge:** erst die Bilder, dann die Dateien der Ebenen, dann
   `layers.json`, zuletzt das Entfernen. So nennt `layers.json` nie eine
   Datei, die fehlt.
@@ -149,7 +152,8 @@ Ebenen, neben `trees.json`:
 - **Aufräumen:** Unter `layers/` entfernt es jede Datei, die keine Ebene
   mehr nennt, erst Ebenen, dann Bilder, dann leere Ordner, auch liegen
   gebliebene `.…neu`. Ohne Ebene für die Webkarte fehlt `layers.json`.
-  `layers/` gehört ganz dem Plugin.
+  `layers/` gehört dem Plugin, ausser `layers/<modname>/banner/`: Das
+  schreibt und räumt der Renderer.
 - **Nie durch einen Link:** Einem symbolischen Link unter `layers/`, unter
   Windows auch einer Junction, folgt das Aufräumen nicht; er bleibt
   stehen. Schreiben durch ihn wirft, und der Takt versucht es jede Sekunde

@@ -248,4 +248,38 @@ class EbenenTest {
         assertNotEquals(v, Ebenen.version(json, bilder(), OBERWELT));
         assertEquals(16, v.length());
     }
+
+    /**
+     * Der Stand der Sprites aus --banners geht in die version ein, gleicher Stand, gleiche version. Der Haken für
+     * --banners läuft beim ersten Schreiben und nach neuen Entwürfen, nicht nach neuen Sprites.
+     */
+    @Test
+    void sprites_heben_die_version_und_entwuerfe_rufen_banner() throws IOException {
+        Path ordner = Files.createDirectories(tmp.resolve("ebenen/beispiel"));
+        String kopf = "{\"id\": \"beispiel:fahnen\", \"name\": {\"de\": \"F\"}, \"designs\": {\"weiss\": {\"base\": \"%s\"}}, \"objects\": []}";
+        Files.writeString(ordner.resolve("fahnen.json"), String.format(kopf, "white"));
+        var e = new Ebenen(tmp.resolve("ebenen"), OBERWELT, new EbenenSchreiber(tmp.resolve("tiles"), OBERWELT), still());
+        var gerufen = new java.util.concurrent.atomic.AtomicInteger();
+        e.nachEntwuerfen(gerufen::incrementAndGet);
+        e.ladeNeu();
+        e.takt();
+        assertEquals(1, gerufen.get(), "beim ersten Schreiben");
+        String ohne = e.stand().getFirst().version();
+
+        e.sprites(java.util.Map.of("beispiel:fahnen", "abc"));
+        e.takt();
+        String mit = e.stand().getFirst().version();
+        assertNotEquals(ohne, mit);
+        assertEquals(16, mit.length());
+        assertTrue(Files.readString(tmp.resolve("tiles/layers.json")).contains(mit), "die Webkarte lädt neu");
+        assertEquals(1, gerufen.get(), "neue Sprites rufen --banners nicht");
+        e.sprites(java.util.Map.of("beispiel:fahnen", "abc"));
+        e.takt();
+        assertEquals(mit, e.stand().getFirst().version());
+
+        Files.writeString(ordner.resolve("fahnen.json"), String.format(kopf, "black"));
+        e.ladeNeu();
+        e.takt();
+        assertEquals(2, gerufen.get(), "ein neuer Entwurf");
+    }
 }

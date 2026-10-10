@@ -102,6 +102,24 @@ class EbenenSchreiberTest {
         assertFalse(Files.exists(wurzel.resolve("layers")));
     }
 
+    /** Die Sprites unter layers/<modname>/banner/ räumt --banners auf; das Schreiben lässt sie stehen, auch ohne Ebene. */
+    @Test
+    void schreiben_laesst_die_sprites_der_banner_stehen() throws IOException {
+        var staedte = staedte();
+        Path wurzel = tmp.resolve("tiles");
+        Path sprite = wurzel.resolve("layers/beispiel/banner/staedte/oben/nordreich.png");
+        Path fremd = wurzel.resolve("layers/andere/banner/wege/oben/alt.png");
+        for (Path p : List.of(sprite, fremd)) {
+            Files.createDirectories(p.getParent());
+            Files.write(p, png(2, 2));
+        }
+        var schreiber = new EbenenSchreiber(wurzel, OBERWELT);
+        schreiber.schreibe(List.of(staedte), Set.of());
+        schreiber.schreibe(List.of(), Set.of());
+        assertTrue(Files.isRegularFile(sprite));
+        assertTrue(Files.isRegularFile(fremd), "auch unter einem modname ohne Ebene");
+    }
+
     @Test
     void unberuehrte_mods_bleiben_mit_ihrem_eintrag() throws IOException {
         Path wurzel = tmp.resolve("tiles");

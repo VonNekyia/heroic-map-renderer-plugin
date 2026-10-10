@@ -207,7 +207,8 @@ final class EbenenSchreiber {
 
     /**
      * Entfernt unter layers/ jede Datei, die nicht in {@code soll} steht: erst Ebenen, dann Bilder, dann leere
-     * Ordner. Einem Link, unter Windows auch einer Junction, folgt es nicht; er bleibt stehen.
+     * Ordner. Einem Link, unter Windows auch einer Junction, folgt es nicht; er bleibt stehen. Die Sprites unter
+     * layers/&lt;modname&gt;/banner/ räumt --banners auf, nicht dieses. Siehe docs/laeufe.md, „Banner“.
      */
     private void raeumeAuf(Set<Path> soll, Predicate<String> unberuehrt) throws IOException {
         Path layers = wurzel.resolve("layers");
@@ -225,6 +226,10 @@ final class EbenenSchreiber {
                     return FileVisitResult.SKIP_SUBTREE;
                 }
                 if (dir.getParent().equals(layers) && unberuehrt.test(dir.getFileName().toString())) {
+                    return FileVisitResult.SKIP_SUBTREE;
+                }
+                Path oben = dir.getParent().getParent();
+                if (layers.equals(oben) && dir.getFileName().toString().equals("banner")) {
                     return FileVisitResult.SKIP_SUBTREE;
                 }
                 ordner.add(dir);

@@ -14,6 +14,8 @@ code:
   - src/test/java/com/nekyia/heroicmap/LaeufeTest.java
   - src/test/java/com/nekyia/heroicmap/KonfigurationTest.java
   - src/test/java/com/nekyia/heroicmap/FalscherRenderer.java
+  - src/test/java/com/nekyia/heroicmap/BannerTest.java
+  - src/test/resources/banner-assets/minecraft/blockstates/white_banner.json
   - src/test/java/com/nekyia/heroicmap/WebserverTest.java
   - src/test/java/com/nekyia/heroicmap/BinaerTest.java
   - src/test/java/com/nekyia/heroicmap/EbenenPruefungTest.java
@@ -81,8 +83,8 @@ Plugin das seiner Plattform aus, siehe [Konfiguration](konfiguration.md),
 
 | Version | Archiv | SHA-256 |
 |---|---|---|
-| `0.7.0` | `heroic-map-renderer-windows-x64.zip` | `ba7d32e5f1cbf81eee89dbbf87a72c81f6f4341ae277f39d90087d22db30cea0` |
-| `0.7.0` | `heroic-map-renderer-linux-x64.tar.gz` | `1847c09b6a2b9be01a2726e326fec7a272c108d66b580b1fde47942d6ea0e877` |
+| `0.8.0` | `heroic-map-renderer-windows-x64.zip` | `cf4bfea5d8febfe78718e1bceed50a101970a34db556223253c286b8b5ca2888` |
+| `0.8.0` | `heroic-map-renderer-linux-x64.tar.gz` | `3947698852c5c7d687b440fe0838f85326aa5a68d3d2c96a470449565b21a372` |
 
 - **Laden:** von
   `https://github.com/VonNekyia/heroic-map-renderer/releases/download/v<version>/`
@@ -92,7 +94,7 @@ Plugin das seiner Plattform aus, siehe [Konfiguration](konfiguration.md),
 - **Prüfen:** Hat ein geladenes Archiv eine andere SHA-256 als in
   `build.gradle.kts`, oder antwortet GitHub nicht mit 200, scheitert der
   Build. `SHA256SUMS` aus dem Release liest er nicht.
-- **Ohne Netz,** auch mit `--offline`, warnt er „Renderer 0.7.0 nicht
+- **Ohne Netz,** auch mit `--offline`, warnt er „Renderer 0.8.0 nicht
   geladen, das Jar bleibt ohne Binärs“ und baut weiter. Der nächste Build
   versucht es wieder.
 - **Mit xz:** `holeRenderer` packt jedes Binär mit xz, mit den Parametern
@@ -186,10 +188,22 @@ Plugin das seiner Plattform aus, siehe [Konfiguration](konfiguration.md),
   Server sie ausliefert, Bildköpfe von PNG und WebP `VP8L` samt Endung.
 - **`EbenenTest`:** Laden je Datei und je Mod, nur genannte Bilder nach
   ihrer Grösse, die ersten 64 nach Kennung, der alte Stand bei einem
-  unlesbaren Ordner, der Deckel fürs Log, `version` mit Dimension.
+  unlesbaren Ordner, der Deckel fürs Log, `version` mit Dimension und mit
+  dem Stand der Sprites, der Aufruf von `--banners` nach neuen Entwürfen.
 - **`EbenenSchreiberTest`:** Liste, Ebenen und Bilder für die Webkarte,
   Aufräumen in der Reihenfolge Ebenen vor Bildern, gleiche Bytes nicht neu,
-  nie durch eine Junction (Windows) oder einen Symlink.
+  nie durch eine Junction (Windows) oder einen Symlink, die Sprites unter
+  `layers/<modname>/banner/` bleiben.
+- **`BannerTest`:** `--banners` mit `FalscherRenderer banners`: der Befehl
+  öffentlich mit `--tiles` und geheim ohne, nur Ebenen mit Entwürfen,
+  geheim nach `permission`, Dateien nur mit `id` und `designs`, `failed`
+  als Warnung, genau ein nachgereichter Aufruf, nach einem Lauf nur mit
+  neuer `trees.json`, die Meldung und der Stand der Sprites. Dazu einmal mit
+  dem echten Renderer und sechs kleinen, selbst gemalten Dateien aus den
+  Tests des Renderers unter `src/test/resources/banner-assets/`: beide
+  Sprites, `satz.json` und `.stempel` im Satz `oben`. Das Binär kommt aus
+  `holeRenderer` für die Plattform des Tests, mit
+  `-PrendererTest=<binär>` ein anderes; fehlen beide, fällt der Test aus.
 - **`EbenenFuerModTest`:** die grösste erlaubte Region als ein Teil, eine
   Region und eine Linie über 1 MiB als Fehler, 1000 Nadeln in Teilen der
   Reihe nach, ebenso Linien und Kartenschrift, alle sechs Arten ohne Tafel,

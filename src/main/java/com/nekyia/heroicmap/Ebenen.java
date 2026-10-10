@@ -80,6 +80,12 @@ final class Ebenen {
     /** Dateien, die der Stand zuletzt ohne sie bildete, für das Log: verdeckt von der API, geschnitten bei 64. */
     private Set<String> verdeckt = Set.of();
     private Set<String> geschnitten = Set.of();
+    /** Je Ebene der Stand ihrer Sprites, aus {@link Banner}; er geht in ihre version ein. */
+    private volatile Map<String, String> sprites = Map.of();
+    /** Läuft nach einem Schreiben, bei dem sich die Entwürfe änderten; setzt {@link Banner}. */
+    private volatile Runnable nachEntwuerfen = () -> {};
+    /** Die Entwürfe beim letzten Schreiben, siehe {@link #entwuerfe}; null vor dem ersten. */
+    private String entwuerfe;
 
     /** {@code dimension} ist die der Wurzel von tiles; sie geht in jede version ein. */
     Ebenen(Path ordner, String dimension, EbenenSchreiber schreiber, Logger log) {
@@ -135,12 +141,18 @@ final class Ebenen {
         if (!api.holeAenderung() && !dateien) {
             return;
         }
-        stand = vereine(ausDateien, api.ebenen());
+        stand = mitSprites(vereine(ausDateien, api.ebenen()), sprites);
         try {
             schreiber.schreibe(stand, nichtGelesen);
             if (schreibenScheiterte) {
                 log.info("Ebenen: wieder für die Webkarte geschrieben");
                 schreibenScheiterte = false;
+            }
+            // Auch beim ersten Mal, so räumt --banners beim Start auf. Siehe docs/laeufe.md, „Banner“.
+            String neu = entwuerfe(stand);
+            if (!neu.equals(entwuerfe)) {
+                entwuerfe = neu;
+                nachEntwuerfen.run();
             }
         } catch (IOException | UncheckedIOException e) {
             geaendert.set(true);
@@ -154,6 +166,40 @@ final class Ebenen {
 
     List<Ebene> stand() {
         return stand;
+    }
+
+    /** Was danach läuft, wenn sich beim Schreiben die Entwürfe änderten. */
+    void nachEntwuerfen(Runnable r) {
+        nachEntwuerfen = r;
+    }
+
+    /** Der Stand der Sprites je Ebene; ist er anders, schreibt der nächste Takt die neuen version. */
+    void sprites(Map<String, String> neu) {
+        if (!neu.equals(sprites)) {
+            sprites = Map.copyOf(neu);
+            geaendert.set(true);
+        }
+    }
+
+    /**
+     * Was --banners aus dem Stand braucht: je Ebene mit Entwürfen ihre Kennung, ob sie geheim ist, und die
+     * Entwürfe. Ändert sich das, zeichnet {@link Banner} neu.
+     */
+    static String entwuerfe(List<Ebene> ebenen) {
+        return ebenen.stream().filter(e -> e.json().has("designs"))
+                .map(e -> e.id() + (e.json().has("permission") ? " geheim " : " ") + e.json().get("designs"))
+                .collect(Collectors.joining("\n"));
+    }
+
+    /**
+     * Die Ebenen mit dem Stand ihrer Sprites in der version: Zeichnet --banners neu, laden Webkarte und Mod die
+     * Ebene neu. Siehe docs/ebenen.md, „Webkarte“.
+     */
+    static List<Ebene> mitSprites(List<Ebene> ebenen, Map<String, String> sprites) {
+        return ebenen.stream().map(e -> {
+            String s = sprites.get(e.id());
+            return s == null ? e : new Ebene(e.id(), e.json(), e.bilder(), kurz(e.version() + "|" + s));
+        }).toList();
     }
 
     /**
@@ -324,6 +370,15 @@ final class Ebenen {
             throw new JsonParseException("kein JSON-Objekt");
         }
         return o;
+    }
+
+    /** Die ersten 16 Hexziffern der SHA-256 eines Texts. */
+    private static String kurz(String text) {
+        try {
+            return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(text.getBytes(StandardCharsets.UTF_8)), 0, 8);
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException(e);
+        }
     }
 
     /**

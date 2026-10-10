@@ -7,6 +7,11 @@ Links und die Hinweise aus `NOTICE` setzt
 [`.github/notizen.sh`](.github/notizen.sh) dazu. Siehe
 [Entwicklung](docs/entwicklung.md), „Release“.
 
+## 0.7.0
+
+- **Banners drawn by the renderer:** every banner design of a layer now gets its sprite from the renderer, in each tree's camera, with and without the crown of a capital. The plugin calls the renderer's `--banners` at start, after design changes and after a run that adds a tree; a layer's `version` changes when its sprites do, so the web map reloads them. Banners of layers with `permission` are drawn too, but reach the mod only in a later release.
+- **Renderer 0.8.0** inside: banner sprites and the web map that shows them. Only trees with `flat: true` need one `/heroicmap render`; map and cinematic trees keep updating.
+
 ## 0.6.0
 
 - **Render one tree:** `/heroicmap render <tree>` renders only that tree, with tab completion. When a new renderer needs a full render, the status names each tree that needs one.
