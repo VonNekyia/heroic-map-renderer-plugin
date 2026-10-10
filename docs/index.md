@@ -22,6 +22,7 @@ Wie der Renderer arbeitet und was seine Schalter tun, steht in der
 - [API für andere Plugins](api.md): der Service `HeroicMapApi` mit englischen Namen, über JitPack eingebunden und ohne HeroicMap sicher geladen, sofort geprüft, Ebenen und Bilder je Besitzer, nur im Speicher, ein `modname` der API verdeckt seine Dateien, Versionierung.
 - [Statistik](statistik.md): was das Plugin über bStats meldet, wohin und wie oft, Abschalten in `plugins/bStats/config.yml`, umbenannt im Jar, Lizenz und Grösse.
 - [Hangar](hangar.md): das Projekt `Neky/heroic-map`, wie jedes Release als zwei Versionen dorthin kommt, die Einstellungen von Hand mit dem Schlüssel als Secret, und der englische Text der Projektseite.
+- [Modrinth](modrinth.md): das Projekt `heroic-map-plugin`, wie jedes Release ab 0.4.0 als eine Version dorthin kommt, mit dem Token als Secret und seinen drei Rechten.
 
 ## Entwicklung
 
@@ -44,3 +45,4 @@ Wie der Renderer arbeitet und was seine Schalter tun, steht in der
 - [0009: Hangar mit curl](entscheidungen/0009-hangar-mit-curl.md): ein Workflow lädt die Jars eines veröffentlichten Releases über die API von Hangar hoch, der Schlüssel nur aus einem Secret; das Gradle-Plugin für Hangar und Hochladen schon beim Entwurf verworfen; seit 0011 eine Version je Release.
 - [0010: Tafeln über den Kanal](entscheidungen/0010-tafeln-ueber-den-kanal.md): der Mod fragt die Tafel eines Objekts über den Kanal an, mit den Rechten wie bei `ebenen`, 20 Anfragen je Spieler und Sekunde, beantwortet ausserhalb des Hauptthreads und gleich geschickt im Budget der Sekunde; entschieden vom Reviewer.
 - [0011: Ein Jar, die Binärs mit xz](entscheidungen/0011-ein-jar-mit-xz.md): wieder ein Jar für Windows und Linux auf x86_64, die Binärs mit xz gepackt und zur Laufzeit mit XZ for Java ausgepackt, auf Hangar eine Version je Release; löst 0008 ab; Auftrag des Users.
+- [0012: Modrinth mit curl](entscheidungen/0012-modrinth-mit-curl.md): ein Workflow lädt das Jar eines veröffentlichten Releases über die API von Modrinth hoch, der Token nur aus einem Secret, wie bei Hangar; Projekt `heroic-map-plugin`, Entscheid des Users.
