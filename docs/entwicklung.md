@@ -115,23 +115,24 @@ Plugin das seiner Plattform aus, siehe [Konfiguration](konfiguration.md),
   v0.4.0 ist nur in `NOTICE` der Absatz zur Schrift der Kartenschrift
   unter OFL neu). `lizenzen.txt`
   im Archiv gehört zur Karte unter `web/` und kommt mit `-Pweb`.
-- **Grösse,** am 10.10. mit v0.6.0, aus der CI, Job „Jar“ des
-  Release-Workflows als Probe in #57, Version `0.0.0-probe`, mit der Karte
+- **Grösse,** am 10.10. mit v0.7.0, aus der CI, Job „Jar“ des
+  Release-Workflows als Probe in #55, Version `0.0.0-probe`, mit der Karte
   aus dem Archiv:
 
   | Eintrag | ausgepackt | mit xz | im Jar |
   |---|---|---|---|
-  | `heroic-map-renderer-plugin-0.0.0-probe.jar` | – | – | 7 664 129, bis zur Grenze 2 335 871 |
-  | `renderer/windows-x64/heroic-map-renderer.exe.xz` | 11 859 456 | 3 401 876 | 3 402 916 |
-  | `renderer/linux-x64/heroic-map-renderer.xz` | 10 469 800 | 3 412 808 | 3 413 853 |
+  | `heroic-map-renderer-plugin-0.0.0-probe.jar` | – | – | 7 671 918, bis zur Grenze 2 328 082 |
+  | `renderer/windows-x64/heroic-map-renderer.exe.xz` | 11 872 256 | 3 404 020 | 3 405 060 |
+  | `renderer/linux-x64/heroic-map-renderer.xz` | 10 480 232 | 3 417 596 | 3 418 641 |
   | XZ for Java, 62 Klassen unter `com/nekyia/heroicmap/xz/` | 146 583 | – | 71 191 |
 
   Alles in Byte. Im Jar liegen die `.xz` mit Deflate, das sie in
-  ungepackten Blöcken ablegt: je rund 1 040 Byte mehr. Mit Deflate allein,
-  wie bis v0.4.0, waren die Binärs im Jar 4 709 992 und 4 470 025 Byte
-  gross, zur Probe in #53. Python mit liblzma und denselben Parametern, wie
-  das Budget des Renderers misst, packt sie in 3 403 556 und 3 414 832
-  Byte, also 1 680 und 2 024 mehr als XZ for Java. Die Grössen mit xz und
+  ungepackten Blöcken ablegt: je rund 1 040 Byte mehr. Zum Vergleich an
+  v0.6.0: Mit Deflate allein, wie bis v0.4.0, waren die Binärs im Jar
+  4 709 992 und 4 470 025 Byte gross, zur Probe in #53. Python mit liblzma
+  und denselben Parametern, wie das Budget des Renderers misst, packte sie
+  in 3 403 556 und 3 414 832 Byte, also 1 680 und 2 024 mehr als XZ for
+  Java. Die Grössen mit xz und
   im Jar nennt `pruefe-jar.sh`. Die Grenze prüft die CI, siehe „CI“.
 - **Zeit:** Das Packen beider Binärs mit xz kostet `holeRenderer` rund
   30 s, nur nach einer neuen Version oder `clean`. Das Auspacken eines
