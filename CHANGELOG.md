@@ -7,6 +7,10 @@ Links und die Hinweise aus `NOTICE` setzt
 [`.github/notizen.sh`](.github/notizen.sh) dazu. Siehe
 [Entwicklung](docs/entwicklung.md), „Release“.
 
+## 0.8.0
+
+- **Banners of secret layers in the mod:** the mod asks for the sprite of a banner in a layer with `permission` over the plugin channel and gets it with the rights of the layer, at most 20 requests per player and second. The layer list marks such layers as `secret`.
+
 ## 0.7.0
 
 - **Banners drawn by the renderer:** every banner design of a layer now gets its sprite from the renderer, in each tree's camera, with and without the crown of a capital. The plugin calls the renderer's `--banners` at start, after design changes and after a run that adds a tree; a layer's `version` changes when its sprites do, so the web map reloads them. Banners of layers with `permission` are drawn too, but reach the mod only in a later release.

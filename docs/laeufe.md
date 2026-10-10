@@ -356,8 +356,8 @@ Die Sprites der Banner zu den Entwürfen der Ebenen zeichnet der Renderer mit
   auch nach einem Neustart.
 - **Stoppen:** `onDisable` beendet einen laufenden Aufruf. Eine PID-Datei
   gibt es nicht; ein Aufruf dauert Sekunden.
-- **Geheime Sprites** liegen vorerst nur im Datenordner. Über den Kanal an
-  den Mod kommen sie in einem späteren Schritt, siehe „Was noch fehlt“.
+- **Geheime Sprites** liegen nur im Datenordner. Der Mod fragt sie über den
+  Kanal an, siehe [Ebenen](ebenen.md), „Banner im Mod“.
 
 ## Keine verwaisten Prozesse
 
@@ -374,5 +374,3 @@ nicht; er läuft dann zu Ende.
 ## Was noch fehlt
 
 - Warnung mit Schätzung und Bestätigung: heroic-map-renderer#149.
-- Die Sprites geheimer Ebenen über den Kanal an den Mod, Schritt 2b zu
-  [0100](https://github.com/VonNekyia/heroic-map-renderer/blob/master/docs/entscheidungen/0100-der-renderer-zeichnet-die-banner.md).

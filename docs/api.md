@@ -246,8 +246,8 @@ der Ebene, entschieden im Renderer in
 - **Gezeichnet:** Das Plugin lässt jeden Entwurf vom Renderer zeichnen, mit
   `--banners`, siehe [Läufe](laeufe.md), „Banner“. Bis das Sprite da ist,
   zeigen Webkarte und Mod das Bild; ein Banner ohne Bild übergehen sie.
-  Banner geheimer Ebenen bekommt der Mod erst in einem späteren Schritt,
-  siehe [Ebenen](ebenen.md), „web und permission“.
+  Banner geheimer Ebenen bekommt der Mod über den Kanal, siehe
+  [Ebenen](ebenen.md), „Banner im Mod“.
 
 ## Versionierung
 

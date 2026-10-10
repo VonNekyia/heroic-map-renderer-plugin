@@ -115,11 +115,10 @@ Zwei Lesarten, die das Format offenlässt, abgestimmt mit dem Reviewer am
   mit `permission` hat darum gar keine Bilder.
 - **Banner mit `permission`** gehen nur aus einem Entwurf, ohne Bild. Das
   Plugin lässt sie mit `--banners` zeichnen, nur im Satz `oben` und in
-  seinen Datenordner, siehe [Läufe](laeufe.md), „Banner“. Über den Kanal
-  an den Mod kommen sie in einem späteren Schritt, siehe im Renderer
-  [0100](https://github.com/VonNekyia/heroic-map-renderer/blob/master/docs/entscheidungen/0100-der-renderer-zeichnet-die-banner.md).
-  Bis dahin übergeht der Mod sie, und ein Plugin für Städte kann dort
-  vorerst kein Banner zeigen.
+  seinen Datenordner, siehe [Läufe](laeufe.md), „Banner“. Der Mod fragt
+  sie über den Kanal an, siehe „Banner im Mod“, wie im Renderer
+  [0100](https://github.com/VonNekyia/heroic-map-renderer/blob/master/docs/entscheidungen/0100-der-renderer-zeichnet-die-banner.md)
+  beschreibt.
 - **Geheime Ebenen haben nur den Satz `oben`.** Der Mod zeigt ihre Banner
   darum auch in einem Baum `2:1` mit dem Sprite von vorn. Das ist gewollt,
   bis jemand mehr braucht.
@@ -257,6 +256,44 @@ Der Mod fragt die Tafel eines Objekts über den Kanal an. Warum so:
   passt, schickt der Takt in der nächsten Sekunde, vor neuen Ebenen.
 - **Im Mod:** Wann er fragt, wie viele Tafeln er behält und wie er Bilder
   der Tafel holt, steht in #35 und in der Doku des Mods.
+
+### Banner im Mod
+
+Die Sprites der Banner einer Ebene mit `permission` fragt der Mod über den
+Kanal an, je Sprite eins; die öffentlicher holt er per HTTP unter
+`layers/<modname>/banner/<ebene>/oben/`, siehe „Bilder im Mod“. Abgestimmt
+mit dem Mod am 10.10.
+
+```json
+{"v":1,"typ":"banner","ebene":"beispiel:geheim","version":"5f3a9c1e5f3a9c1e","entwurf":"nordreich","krone":false}
+{"v":1,"typ":"banner","jetzt":1760000000,"ebene":"beispiel:geheim","version":"5f3a9c1e5f3a9c1e","entwurf":"nordreich","krone":false,"satz":{"foot":[10,54],"angle":0.0},"png":"iVBORw0KGgo…"}
+```
+
+- **Woran der Mod sie erkennt:** Der Eintrag der Ebene in der Liste
+  `ebenen` hat `"secret": true`. Ohne das Feld ist sie öffentlich.
+- **Anfrage:** `ebene`, `version`, `entwurf`, der Name aus `design` des
+  Banners, und `krone`, sein `capital`.
+- **Antwort:** dieselben Felder, dazu `satz` wie `satz.json` mit `foot` und
+  `angle` und `png`, das Sprite aus dem Satz `oben` als Base64. Ist die
+  `version` alt, hat die Ebene den Entwurf nicht oder fehlt das Sprite noch,
+  kommt die Antwort ohne `satz` und `png`; der Mod fragt für diese `version`
+  dann nicht wieder. Die `version` ändert sich, wenn der Renderer die Sprites
+  neu zeichnet.
+- **Keine Antwort** für eine Ebene ohne `permission`, eine, die es nicht
+  gibt, oder eine unlesbare Anfrage. Die Rechte prüft das Plugin beim
+  Senden wie bei den Tafeln.
+- **Höchstens 20 Anfragen je Spieler und Sekunde,**
+  `EbenenFuerMod.BANNER_JE_SEKUNDE`, gezählt getrennt von den Tafeln. Das
+  Budget von 1 MiB je Spieler und Sekunde teilen sie mit Tafeln und Ebenen;
+  gezählt wird die Nachricht mit dem Base64.
+- **Ein Sprite über 256 KiB** (`EbenenFuerMod.SPRITE`) geht nicht hinaus;
+  die Antwort kommt ohne `png`, und das Log nennt es. Die Sprites sind
+  höchstens 32 × 64 Pixel, heute rund 1 KB.
+- **Nicht im Hauptthread:** wie bei den Tafeln, mit `EbenenFuerMod.banner`
+  aus `plugins/HeroicMap/banner/geheim/`.
+- **Im Mod:** Er fragt je Schlüssel aus Ebene, `version`, Entwurf und Krone
+  einmal je Verbindung, höchstens 8 zugleich; bis die Antwort da ist,
+  zeigt er nichts. Die Einzelheiten stehen in der Doku des Mods.
 
 ### Bilder im Mod
 

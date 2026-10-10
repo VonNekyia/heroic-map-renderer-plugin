@@ -90,7 +90,8 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
         });
         // Die Adresse erst, wenn der Webserver bereit ist, wie bei freigabe.
         var webKonf = konf.webserver();
-        fuerMod = new EbenenFuerMod(() -> webserver != null && webserver.bereit() ? EbenenFuerMod.adresse(webKonf) : new JsonObject());
+        fuerMod = new EbenenFuerMod(() -> webserver != null && webserver.bereit() ? EbenenFuerMod.adresse(webKonf) : new JsonObject(),
+                Banner.geheim(getDataFolder().toPath()), getLogger());
         getServer().getAsyncScheduler().runAtFixedRate(this, t -> {
             ebenen.takt();
             fuerMod.bereite(ebenen.stand());
@@ -139,7 +140,7 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
      */
     @Override
     public void onPluginMessageReceived(String channel, Player player, byte[] message) {
-        if (EbenenFuerMod.istTafel(message)) {
+        if (EbenenFuerMod.istTafel(message) || EbenenFuerMod.istBanner(message)) {
             if (fuerMod != null && fuerMod.frage(player.getUniqueId(), message, Instant.now().getEpochSecond())) {
                 getServer().getAsyncScheduler().runNow(this, t -> {
                     fuerMod.beantworte(Instant.now().getEpochSecond());

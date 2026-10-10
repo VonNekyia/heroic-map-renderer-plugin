@@ -71,7 +71,12 @@ final class Banner {
         this.sprites = sprites;
         Path banner = daten.resolve("banner");
         this.oeffentlich = new Ziel("öffentlich", true, banner.resolve("eingabe/oeffentlich"), konf.kacheln().resolve("layers"));
-        this.geheim = new Ziel("geheim", false, banner.resolve("eingabe/geheim"), banner.resolve("geheim"));
+        this.geheim = new Ziel("geheim", false, banner.resolve("eingabe/geheim"), geheim(daten));
+    }
+
+    /** --out der geheimen Ebenen im Datenordner; dort liest {@link EbenenFuerMod} ihre Sprites für den Mod. */
+    static Path geheim(Path daten) {
+        return daten.resolve("banner").resolve("geheim");
     }
 
     /** Bestellt einen Aufruf: sofort, oder nach dem, der gerade läuft. */

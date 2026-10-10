@@ -6,8 +6,12 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.google.gson.JsonPrimitive;
 import com.nekyia.heroicmap.Ebenen.Ebene;
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -17,11 +21,12 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
+import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 /**
  * Die Ebenen für den Mod: welche ein Spieler sehen darf, die Liste ebenen, jede Ebene in Teilen als ebene und auf
- * Anfrage die Tafel eines Objekts. Ausserhalb des Hauptthreads entstehen Teile und Antworten; der Hauptthread
+ * Anfrage die Tafel eines Objekts und das Sprite eines Banners einer geheimen Ebene. Ausserhalb des Hauptthreads entstehen Teile und Antworten; der Hauptthread
  * schickt nur noch. Ohne Bukkit.
  * Siehe docs/ebenen.md, „Mod“.
  */
@@ -35,6 +40,13 @@ final class EbenenFuerMod {
     static final int TAFELN_JE_SEKUNDE = 20;
     /** Je Spieler und Sekunde höchstens so viele Byte an Teilen und Antworten auf Tafeln; eine Ebene geht aber immer ganz. */
     static final int JE_SEKUNDE = 1 << 20;
+    /**
+     * Anfragen nach Bannern je Spieler und Sekunde, getrennt von den Tafeln gezählt; der Rest fällt weg. Siehe
+     * docs/ebenen.md, „Banner im Mod“.
+     */
+    static final int BANNER_JE_SEKUNDE = 20;
+    /** Ein Sprite über so vielen Byte geht nicht hinaus, wie die Grenze eines Bilds. */
+    static final int SPRITE = 256 << 10;
 
     /** Ein vorbereiteter Stand: die Ebenen und ihre Teile, je Kennung. */
     private record Fertig(List<Ebene> stand, Map<String, Teile> teile) {}
@@ -67,6 +79,11 @@ final class EbenenFuerMod {
     private final Map<UUID, Gesendet> gesendet = new HashMap<>();
     /** Nur im Hauptthread: je Spieler die Sekunde seiner letzten Anfrage nach einer Tafel und die Zahl darin. */
     private final Map<UUID, long[]> fenster = new HashMap<>();
+    /** Dasselbe für Anfragen nach Bannern. */
+    private final Map<UUID, long[]> bannerFenster = new HashMap<>();
+    /** Wo die Sprites geheimer Ebenen liegen, --out ihres Aufrufs, siehe {@link Banner}; null: keine. */
+    private final Path sprites;
+    private final Logger log;
     private final Queue<Frage> fragen = new ConcurrentLinkedQueue<>();
     private final Map<UUID, Queue<Antwort>> antworten = new ConcurrentHashMap<>();
 
@@ -76,7 +93,14 @@ final class EbenenFuerMod {
     record Antwort(String permission, String text, int bytes) {}
 
     EbenenFuerMod(Supplier<JsonObject> adresse) {
+        this(adresse, null, Logger.getLogger(EbenenFuerMod.class.getName()));
+    }
+
+    /** Mit {@code sprites}, dem Ordner der Sprites geheimer Ebenen, beantwortet es auch Anfragen nach Bannern. */
+    EbenenFuerMod(Supplier<JsonObject> adresse, Path sprites, Logger log) {
         this.adresse = adresse;
+        this.sprites = sprites;
+        this.log = log;
     }
 
     /**
@@ -98,6 +122,11 @@ final class EbenenFuerMod {
         return lies(nachricht, "tafel") != null;
     }
 
+    /** Ob {@code nachricht} eine Anfrage nach dem Sprite eines Banners ist. Siehe docs/ebenen.md, „Banner im Mod“. */
+    static boolean istBanner(byte[] nachricht) {
+        return lies(nachricht, "banner") != null;
+    }
+
     private static JsonObject lies(byte[] nachricht, String typ) {
         if (nachricht.length > Download.GROESSTE_ANFRAGE) {
             return null;
@@ -115,12 +144,13 @@ final class EbenenFuerMod {
      * {@code sekunde}; false, wenn sie wegfällt. Beantwortet wird sie in {@link #beantworte}.
      */
     boolean frage(UUID spieler, byte[] nachricht, long sekunde) {
-        long[] f = fenster.computeIfAbsent(spieler, k -> new long[2]);
+        boolean banner = istBanner(nachricht);
+        long[] f = (banner ? bannerFenster : fenster).computeIfAbsent(spieler, k -> new long[2]);
         if (f[0] != sekunde) {
             f[0] = sekunde;
             f[1] = 0;
         }
-        if (++f[1] > TAFELN_JE_SEKUNDE) {
+        if (++f[1] > (banner ? BANNER_JE_SEKUNDE : TAFELN_JE_SEKUNDE)) {
             return false;
         }
         fragen.add(new Frage(spieler, nachricht));
@@ -134,7 +164,8 @@ final class EbenenFuerMod {
     void beantworte(long jetzt) {
         var stand = fertig.stand();
         for (Frage q; (q = fragen.poll()) != null; ) {
-            var a = antwort(stand, q.nachricht(), jetzt);
+            var a = istBanner(q.nachricht()) ? banner(stand, q.nachricht(), jetzt, sprites, log)
+                    : antwort(stand, q.nachricht(), jetzt);
             if (a != null) {
                 antworten.computeIfAbsent(q.spieler(), k -> new ConcurrentLinkedQueue<>()).add(a);
             }
@@ -176,6 +207,60 @@ final class EbenenFuerMod {
             var p = e.json().get("permission");
             String text = a.toString();
             return new Antwort(p == null ? null : p.getAsString(), text, text.getBytes(StandardCharsets.UTF_8).length);
+        }
+        return null;
+    }
+
+    /**
+     * Die Antwort auf eine Anfrage nach einem Banner: {@code ebene}, {@code version}, {@code entwurf} und
+     * {@code krone} der Anfrage, dazu {@code satz} und {@code png} als Base64, wenn die version die aktuelle ist,
+     * die Ebene den Entwurf hat und das Sprite im Satz oben unter {@code sprites} liegt. Null für eine unlesbare
+     * Anfrage, eine Ebene, die es nicht gibt, und eine ohne permission: Deren Sprites holt der Mod per HTTP. Den
+     * Pfad bilden nur Namen, die die Ebene nennt. Siehe docs/ebenen.md, „Banner im Mod“.
+     */
+    static Antwort banner(List<Ebene> stand, byte[] nachricht, long jetzt, Path sprites, Logger log) {
+        var o = lies(nachricht, "banner");
+        String ebene = o == null ? null : text(o, "ebene");
+        String version = o == null ? null : text(o, "version");
+        String entwurf = o == null ? null : text(o, "entwurf");
+        Boolean krone = o != null && o.get("krone") instanceof JsonPrimitive p && p.isBoolean() ? p.getAsBoolean() : null;
+        if (ebene == null || version == null || entwurf == null || krone == null) {
+            return null;
+        }
+        for (Ebene e : stand) {
+            if (!e.id().equals(ebene)) {
+                continue;
+            }
+            var permission = e.json().get("permission");
+            if (permission == null) {
+                return null;
+            }
+            var a = kopf("banner", jetzt);
+            a.addProperty("ebene", ebene);
+            a.addProperty("version", version);
+            a.addProperty("entwurf", entwurf);
+            a.addProperty("krone", krone);
+            if (sprites != null && e.version().equals(version) && e.json().get("designs") instanceof JsonObject d
+                    && d.has(entwurf) && EbenenPruefung.teil(entwurf)) {
+                Path satz = sprites.resolve(e.modname()).resolve("banner").resolve(e.name()).resolve("oben");
+                Path png = (krone ? satz.resolve("krone") : satz).resolve(entwurf + ".png");
+                try {
+                    long groesse = Files.size(png);
+                    if (groesse > SPRITE) {
+                        log.warning("Banner für den Mod: " + ebene + ", " + entwurf + " hat " + groesse
+                                + " Byte, höchstens " + SPRITE);
+                    } else {
+                        var s = JsonParser.parseString(Files.readString(satz.resolve("satz.json"))).getAsJsonObject();
+                        a.add("satz", s);
+                        a.addProperty("png", Base64.getEncoder().encodeToString(Files.readAllBytes(png)));
+                    }
+                } catch (IOException | RuntimeException x) {
+                    // Noch kein Sprite: die Antwort ohne png, der Mod fragt für diese version nicht wieder.
+                    a.remove("satz");
+                }
+            }
+            String text = a.toString();
+            return new Antwort(permission.getAsString(), text, text.getBytes(StandardCharsets.UTF_8).length);
         }
         return null;
     }
@@ -264,13 +349,21 @@ final class EbenenFuerMod {
     void vergiss(UUID spieler) {
         gesendet.remove(spieler);
         fenster.remove(spieler);
+        bannerFenster.remove(spieler);
         antworten.remove(spieler);
     }
 
     private static String liste(List<Ebene> ebenen, JsonObject adresse, long jetzt) {
         var o = kopf("ebenen", jetzt);
         var l = new JsonArray();
-        ebenen.forEach(e -> l.add(EbenenSchreiber.eintrag(e)));
+        // secret: Die Sprites dieser Ebene kommen über den Kanal, nicht per HTTP. Siehe docs/ebenen.md, „Banner im Mod“.
+        for (Ebene e : ebenen) {
+            var eintrag = EbenenSchreiber.eintrag(e);
+            if (e.json().has("permission")) {
+                eintrag.addProperty("secret", true);
+            }
+            l.add(eintrag);
+        }
         o.add("ebenen", l);
         adresse.entrySet().forEach(a -> o.add(a.getKey(), a.getValue()));
         return o.toString();
