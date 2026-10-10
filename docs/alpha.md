@@ -16,25 +16,21 @@ die Läufe in [Läufe](laeufe.md).
 
 ## Welches Jar
 
-Ab v0.3.2 gibt es je Release ein Jar für jede Plattform, siehe
-[0008](entscheidungen/0008-jar-je-plattform.md). Bis v0.3.1 hatte das eine
-Jar beide Binärs.
+Ab v0.5.0 gibt es je Release wieder ein Jar für Windows und Linux auf
+x86_64, siehe [0011](entscheidungen/0011-ein-jar-mit-xz.md). v0.3.2 bis
+v0.4.0 hatten je Plattform eins, auf Hangar als Versionen
+`<version>-windows-x64` und `<version>-linux-x64`.
 
 | Server | auf GitHub | auf Hangar |
 |---|---|---|
-| Windows auf x86_64 | `heroic-map-renderer-plugin-<version>-windows-x64.jar` | Version `<version>-windows-x64` |
-| Linux auf x86_64 | `heroic-map-renderer-plugin-<version>-linux-x64.jar` | Version `<version>-linux-x64` |
-| andere, etwa ARM oder macOS | eins der beiden, dazu ein eigenes Binär in `renderer.binary` | ebenso |
-
-Mit dem Jar der anderen Plattform startet das Plugin ohne Renderer, und das
-Log nennt das passende Jar, siehe [Konfiguration](konfiguration.md), „Das
-Binär“.
+| Windows oder Linux auf x86_64 | `heroic-map-renderer-plugin-<version>.jar` | Version `<version>` |
+| andere, etwa ARM oder macOS | dasselbe Jar, dazu ein eigenes Binär in `renderer.binary` | ebenso |
 
 ## Was auf den Server kommt
 
 | Teil | Woher | Wohin |
 |---|---|---|
-| Plugin mit Karte und Renderer | ein Release, siehe „Welches Jar“; oder `./gradlew build -Pweb=<renderer>/web/dist` auf `main`, mit Netz, siehe [Entwicklung](entwicklung.md), „Im Jar“, und aus `build/libs/` das Jar der Plattform | `plugins/` des Servers |
+| Plugin mit Karte und Renderer | ein Release, siehe „Welches Jar“; oder `./gradlew build -Pweb=<renderer>/web/dist` auf `main`, mit Netz, siehe [Entwicklung](entwicklung.md), „Im Jar“, und das Jar aus `build/libs/` | `plugins/` des Servers |
 | Renderer, nur ohne Binär im Jar | `cargo build --release --locked` in `renderer/` des Renderers, für das Betriebssystem des Servers | ein Ordner neben dem Server, Pfad in `renderer.binary` |
 | Kacheln | entstehen beim ersten Lauf | `tiles`, auf einer Platte mit genug Platz, siehe „Schätzung“ |
 

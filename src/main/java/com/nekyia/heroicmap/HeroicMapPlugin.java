@@ -97,7 +97,7 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
         getServer().getGlobalRegionScheduler().runAtFixedRate(this, t -> ebenenAnMod(), 20, 20);
         try {
             konf = konf.mitRenderer(Binaer.waehle(konf.renderer(), getFile().toPath(), getDataFolder().toPath().resolve("bin"),
-                    System.getProperty("os.name"), System.getProperty("os.arch"), getPluginMeta().getVersion()));
+                    System.getProperty("os.name"), System.getProperty("os.arch")));
         } catch (IOException e) {
             ohneRenderer = "Kein Renderer: " + e.getMessage() + ". renderer.binary in config.yml setzen, siehe docs/konfiguration.md.";
             getLogger().log(Level.SEVERE, ohneRenderer, e);
