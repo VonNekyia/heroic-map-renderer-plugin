@@ -9,7 +9,7 @@ code:
 
 Das Plugin steht auf Hangar als
 [`Neky/heroic-map`](https://hangar.papermc.io/Neky/heroic-map). Jedes
-Release lädt ein Workflow dort hoch, je Plattform als eigene Version. Den
+Release lädt ein Workflow dort hoch, als eine Version. Den
 Text der Seite und die Einstellungen setzt der User einmal von Hand; beides
 steht hier. Die Seite ist englisch, wie auf Hangar üblich. Warum curl und
 kein Gradle-Plugin, steht in
@@ -22,16 +22,17 @@ ein Release auf GitHub veröffentlicht wird, oder von Hand mit dem Tag.
 
 | Schritt | Was |
 |---|---|
-| Jars holen | `*-x64.jar` und `SHA256SUMS` aus dem Release, mit `sha256sum -c` geprüft |
-| Changelog | je Plattform aus [`.github/notizen.sh`](../.github/notizen.sh), englisch, mit dem Verweis auf die Version der anderen Plattform, siehe [Entwicklung](entwicklung.md), „Release“ |
+| Jar holen | `heroic-map-renderer-plugin-<version>.jar` und `SHA256SUMS` aus dem Release, mit `sha256sum -c` geprüft |
+| Changelog | aus [`.github/notizen.sh`](../.github/notizen.sh), englisch, siehe [Entwicklung](entwicklung.md), „Release“ |
 | Anmelden | `POST /api/v1/authenticate?apiKey=…` gibt ein JWT |
-| Je Plattform | `GET /api/v1/projects/heroic-map/versions/<version>-<plattform>`: 200 überspringt, 404 lädt hoch, sonst ein neuer Versuch, siehe „Wiederholt“ |
+| Version | `GET /api/v1/projects/heroic-map/versions/<version>`: 200 überspringt, 404 lädt hoch, sonst ein neuer Versuch, siehe „Wiederholt“ |
 | Hochladen | `POST /api/v1/projects/heroic-map/upload`, multipart: `versionUpload` als JSON mit Version, Kanal `Release`, Changelog, `platformDependencies` `{"PAPER": ["26.2", "26.3"]}` und einer Datei für `PAPER`; dazu das Jar unter `files` |
 
-- **Versionen:** `<version>-linux-x64` und `<version>-windows-x64`, etwa
-  `0.3.2-linux-x64`. Linux kommt als Zweites, denn Hangar bietet die
-  zuletzt hochgeladene Version als Download an; Wunsch des Users vom 09.10. Nur Tags wie `v1.2.3`; ein anderer Tag lässt den Lauf
-  fallen.
+- **Version:** `<version>`, etwa `0.5.0`, mit dem Jar für Windows und
+  Linux, siehe [0011](entscheidungen/0011-ein-jar-mit-xz.md). v0.3.2 bis
+  v0.4.0 stehen je Plattform als `<version>-linux-x64` und
+  `<version>-windows-x64` dort, Linux zuletzt hochgeladen. Nur Tags wie
+  `v1.2.3`; ein anderer Tag lässt den Lauf fallen.
 - **Schlüssel:** nur aus dem Secret `HANGAR_API_TOKEN`. Schlüssel und JWT
   sind mit `::add-mask::` maskiert und stehen nie im Log. Fehlt das Secret,
   warnt der Lauf und bleibt grün.
@@ -42,8 +43,8 @@ ein Release auf GitHub veröffentlicht wird, oder von Hand mit dem Tag.
   mit dem Blick, ob es sie schon gibt. Kam ein Upload trotz Fehler an,
   etwa bei einem 502 wie am 10.10. mit `0.3.3-linux-x64`, gilt die Version
   dann als fertig.
-- **Releases bis v0.3.1** haben ein Jar für beide Plattformen; der Workflow
-  findet dort keine Jars je Plattform und fällt.
+- **Releases v0.3.2 bis v0.4.0** haben je Plattform ein Jar; der Workflow
+  findet dort kein `heroic-map-renderer-plugin-<version>.jar` und fällt.
 
 ## Einstellungen
 
@@ -104,14 +105,9 @@ play. Players see it in the browser and, with the companion mod, in game.
 
 ## Installation
 
-1. Pick the version for your server's operating system:
-
-   | Server | Version on Hangar |
-   |---|---|
-   | Linux on x86_64 | `<version>-linux-x64` |
-   | Windows on x86_64 | `<version>-windows-x64` |
-   | anything else, such as ARM or macOS | either, plus your own renderer binary in `renderer.binary` |
-
+1. Download the latest version. The jar runs on Linux and Windows on
+   x86_64; anywhere else, such as ARM or macOS, set your own renderer
+   binary in `renderer.binary`.
 2. Put the jar into `plugins/` of a Paper 26.2 or 26.3 server on Java 25
    and start the server once.
 3. Give the renderer the game's textures: point `renderer.assets` to them,
@@ -121,8 +117,7 @@ play. Players see it in the browser and, with the companion mod, in game.
    keeps the map up to date by itself.
 
 On Linux the renderer needs glibc 2.28 or newer; it does not start on musl,
-such as Alpine images. With the jar for the other platform the plugin
-starts without a renderer and names the jar you need in the log.
+such as Alpine images.
 
 ## Configuration
 

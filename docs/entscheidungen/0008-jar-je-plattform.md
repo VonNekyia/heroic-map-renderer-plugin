@@ -1,7 +1,7 @@
 ---
 title: "0008: Ein Jar je Plattform"
 description: Warum es je Plattform ein Jar gibt, für Windows und Linux auf x86_64, jedes mit der Karte und nur dem eigenen Binär, und wie das Plugin meldet, wenn das Jar nicht zur Plattform passt. Löst in 0004 die beiden Binärs in einem Jar ab. Verworfen sind die Karte aus dem Jar, das Binär zur Laufzeit laden, stärker packen und ein drittes Jar mit beiden Binärs.
-status: gilt
+status: abgelöst durch 0011
 date: 2026-10-09
 issues: []
 code:

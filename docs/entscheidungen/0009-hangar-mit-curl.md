@@ -1,7 +1,7 @@
 ---
 title: "0009: Hangar mit curl"
 description: Warum ein Workflow die Jars eines veröffentlichten Releases mit curl über die API von Hangar hochlädt, je Plattform als eigene Version, mit dem Schlüssel nur aus einem Secret. Verworfen sind das Gradle-Plugin für Hangar und das Hochladen schon beim Entwurf.
-status: gilt
+status: teilweise abgelöst durch 0011
 date: 2026-10-09
 issues: []
 code:

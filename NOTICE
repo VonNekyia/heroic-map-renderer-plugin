@@ -8,8 +8,8 @@ A jar built with the map contains, under web/, the built map of Heroic Map
 Renderer (Apache-2.0, same publisher). Its NOTICE, LICENSE and the licenses
 of the third-party code in it are in web/lizenzen.txt.
 
-A jar built with network access contains, under renderer/, the binary of
-Heroic Map Renderer for its platform, Windows or Linux (Apache-2.0, same
+A jar built with network access contains, under renderer/, the binaries of
+Heroic Map Renderer for Windows and Linux, packed with xz (Apache-2.0, same
 publisher), from the release named in renderer/renderer.properties. Its
 LICENSE and NOTICE and the licenses of the third-party code in it,
 THIRD-PARTY-NOTICES and COPYRIGHT-library.html, are in renderer/.
@@ -17,6 +17,9 @@ THIRD-PARTY-NOTICES and COPYRIGHT-library.html, are in renderer/.
 The jar contains, under com/nekyia/heroicmap/bstats/, bStats Metrics 3.2.1
 (MIT License, Copyright (c) 2021 Bastian Oppermann), renamed from
 org.bstats. Its license is in META-INF/LICENSE-bstats.txt.
+
+The jar contains, under com/nekyia/heroicmap/xz/, XZ for Java 1.12 (0BSD,
+The XZ for Java authors and contributors), renamed from org.tukaani.xz.
 
 NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH MOJANG
 OR MICROSOFT.

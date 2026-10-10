@@ -65,15 +65,14 @@ enabled: false
 
 - **Umbenannt:** bStats verlangt seine Klassen unter dem Paket des Plugins.
   Sonst wirft `MetricsBase` beim Start „bStats Metrics class has not been
-  relocated correctly!“, auch mit `enabled: false`. Die Basis der Jars
-  baut darum Shadow (`com.gradleup.shadow` 9.6.1) in `tasks.shadowJar` in
+  relocated correctly!“, auch mit `enabled: false`. Das Jar baut darum
+  Shadow (`com.gradleup.shadow` 9.6.1) in `tasks.shadowJar` in
   [`build.gradle.kts`](../build.gradle.kts) und benennt `org.bstats` in
-  `com.nekyia.heroicmap.bstats` um. Die Jars je Plattform entstehen aus
-  ihr, siehe [Entwicklung](entwicklung.md), „Der Renderer im Jar“.
+  `com.nekyia.heroicmap.bstats` um.
 - **Geprüft** in CI und Release von
   [`.github/pruefe-jar.sh`](../.github/pruefe-jar.sh):
   `com/nekyia/heroicmap/bstats/bukkit/Metrics.class` und
-  `META-INF/LICENSE-bstats.txt` liegen in jedem Jar, nichts unter
+  `META-INF/LICENSE-bstats.txt` liegen im Jar, nichts unter
   `org/bstats/`.
 - **Lizenz:** MIT, Copyright (c) 2021 Bastian Oppermann. Der Text liegt im
   Jar unter `META-INF/LICENSE-bstats.txt`, `NOTICE` nennt ihn.

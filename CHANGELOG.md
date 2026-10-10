@@ -2,10 +2,14 @@
 
 Was sich je Release ändert, englisch, für die Notizen auf GitHub und die
 Beschreibung der Versionen auf Hangar. Je Release ein Abschnitt
-`## <version>` mit Stichpunkten; den Hinweis auf die Jars je Plattform, die
+`## <version>` mit Stichpunkten; die Plattformen des Jars, die
 Links und die Hinweise aus `NOTICE` setzt
 [`.github/notizen.sh`](.github/notizen.sh) dazu. Siehe
 [Entwicklung](docs/entwicklung.md), „Release“.
+
+## 0.5.0
+
+- **One jar again** for Windows and Linux on x86_64, and one version per release on Hangar. The renderer inside is packed with xz and unpacked once per version, as before.
 
 ## 0.4.0
 

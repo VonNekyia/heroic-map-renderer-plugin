@@ -70,36 +70,37 @@ siehe [Mitspieler](mitspieler.md).
 Ist `renderer.binary` leer, nimmt das Plugin beim Start das Binär des
 Renderers aus dem Jar. Welche Version darin steckt und wie sie hineinkommt,
 steht in [Entwicklung](entwicklung.md), „Der Renderer im Jar“; warum so, in
-[0004](entscheidungen/0004-renderer-im-jar.md), und warum je Plattform ein
-Jar, in [0008](entscheidungen/0008-jar-je-plattform.md). Der Code steht in `Binaer`
-in [`Binaer.java`](../src/main/java/com/nekyia/heroicmap/Binaer.java).
+[0004](entscheidungen/0004-renderer-im-jar.md), und warum beide mit xz in
+einem Jar, in [0011](entscheidungen/0011-ein-jar-mit-xz.md). Der Code steht
+in `Binaer` in [`Binaer.java`](../src/main/java/com/nekyia/heroicmap/Binaer.java).
 
-| `os.name` | `os.arch` | Jar | Binär darin |
-|---|---|---|---|
-| beginnt mit `Windows` | `amd64` oder `x86_64` | `heroic-map-renderer-plugin-<version>-windows-x64.jar` | `renderer/windows-x64/heroic-map-renderer.exe` |
-| `Linux` | `amd64` oder `x86_64` | `heroic-map-renderer-plugin-<version>-linux-x64.jar` | `renderer/linux-x64/heroic-map-renderer` |
+| `os.name` | `os.arch` | im Jar |
+|---|---|---|
+| beginnt mit `Windows` | `amd64` oder `x86_64` | `renderer/windows-x64/heroic-map-renderer.exe.xz` |
+| `Linux` | `amd64` oder `x86_64` | `renderer/linux-x64/heroic-map-renderer.xz` |
 
-- **Auspacken:** nach `plugins/HeroicMap/bin/<version>/`, etwa
+- **Auspacken:** mit xz nach `plugins/HeroicMap/bin/<version>/`, etwa
   `bin/0.6.0/heroic-map-renderer`, nur wenn die Datei dort fehlt oder ihre
   SHA-256 nicht die aus dem Build ist. Sonst bleibt sie, wie sie ist; die
-  Prüfung liest sie einmal je Start.
-  - Erst in eine Datei daneben, `<name>.neu`, dann umbenannt. So liegt nie
-    ein halbes Binär unter dem Namen.
-  - Hat das Ausgepackte nicht die SHA-256 aus dem Build, wird es nicht
-    umbenannt, und die Datei daneben fällt weg.
+  Prüfung liest sie einmal je Start. Die SHA-256 gilt dem ausgepackten
+  Binär.
+  - Erst in eine Datei daneben, `<name><zufall>.neu`, dann umbenannt. So
+    liegt nie ein halbes Binär unter dem Namen, und zwei Prozesse, die in
+    dasselbe `bin/` auspacken, stören sich nicht.
+  - Hat das Ausgepackte nicht die SHA-256 aus dem Build, oder ist das
+    `.xz` kaputt, wird nichts umbenannt, und die Datei daneben fällt weg.
   - Ausführbar gesetzt wird es vor dem Umbenennen; unter Windows ändert
     das nichts.
 - **Alte Ordner** unter `bin/` bleiben liegen. Ein Lauf, der noch ein altes
   Binär nutzt, verliert es so nicht.
-- **Kein Binär:** Auf anderen Plattformen, etwa ARM oder macOS, mit dem
-  Jar der anderen Plattform, mit einem Jar, das ohne Netz gebaut wurde,
+- **Kein Binär:** Auf anderen Plattformen, etwa ARM oder macOS, mit einem
+  Jar, das ohne Netz gebaut wurde,
   oder wenn das Auspacken scheitert, lädt das Plugin, startet aber weder
   Läufe noch Webserver noch den Download. Log und jeder Befehl, auch
   `status`, nennen den Grund, etwa:
 
   ```
   Kein Renderer: das Jar hat kein Binär für Mac OS X aarch64. renderer.binary in config.yml setzen, siehe docs/konfiguration.md.
-  Kein Renderer: dieses Jar ist für windows-x64; für linux-x64 braucht es heroic-map-renderer-plugin-0.3.2-linux-x64.jar, auf Hangar die Version 0.3.2-linux-x64. renderer.binary in config.yml setzen, siehe docs/konfiguration.md.
   ```
 
 - **musl:** Unter Linux mit musl, etwa in einem Image mit Alpine, nimmt das

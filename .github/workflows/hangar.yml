@@ -1,9 +1,9 @@
 name: Hangar
 
-# Lädt die Jars eines veröffentlichten Releases auf Hangar, je Plattform als
-# eigene Version <version>-linux-x64 und <version>-windows-x64, mit den
-# Notizen aus notizen.sh, je Plattform. Von Hand mit dem Tag als Eingabe.
-# Siehe docs/entscheidungen/0009-hangar-mit-curl.md.
+# Lädt das Jar eines veröffentlichten Releases als Version <version> auf
+# Hangar, mit den Notizen aus notizen.sh. Von Hand mit dem Tag als Eingabe.
+# Siehe docs/entscheidungen/0009-hangar-mit-curl.md und
+# docs/entscheidungen/0011-ein-jar-mit-xz.md.
 on:
   release:
     types: [published]
@@ -57,41 +57,40 @@ jobs:
             || { echo "::error::$TAG ist kein Tag eines Releases wie v1.2.3"; exit 1; }
           version=${TAG#v}
 
-          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --dir dist --pattern '*-x64.jar' --pattern SHA256SUMS
+          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --dir dist \
+            --pattern "heroic-map-renderer-plugin-$version.jar" --pattern SHA256SUMS
+          [ -f "dist/heroic-map-renderer-plugin-$version.jar" ] \
+            || { echo "::error::$TAG hat kein Jar für Windows und Linux; v0.3.2 bis v0.4.0 hatten je Plattform eins"; exit 1; }
           (cd dist && sha256sum -c SHA256SUMS)
 
           jwt=$(curl -fsS --retry 3 --retry-delay 10 --retry-all-errors -X POST \
             "$HANGAR_API/authenticate?apiKey=$HANGAR_API_TOKEN" | jq -r .token)
           echo "::add-mask::$jwt"
-          # Linux zuletzt: Hangar bietet die zuletzt hochgeladene Version als Download an.
-          for plattform in windows-x64 linux-x64; do
-            name=$version-$plattform
-            bash .github/notizen.sh "$version" "$plattform" > beschreibung.md
-            jq -n --arg name "$name" --rawfile changelog beschreibung.md --argjson paper "$PAPER" \
-              '{version: $name, channel: "Release", description: $changelog,
-                platformDependencies: {PAPER: $paper}, files: [{platforms: ["PAPER"]}]}' > version.json
-            # Bis zu drei Versuche, jeder erst mit dem Blick, ob es die Version schon gibt: So scheitert weder ein
-            # zweiter Lauf noch ein Versuch nach einem Upload, der trotz Fehler bei Hangar ankam.
-            fertig=
-            for versuch in 1 2 3; do
-              status=$(curl -sS -o /dev/null -w '%{http_code}' -H "Authorization: Bearer $jwt" \
-                "$HANGAR_API/projects/$HANGAR_PROJEKT/versions/$name" || true)
-              if [ "$status" = 200 ]; then
-                echo "$name gibt es auf Hangar"
-                fertig=1
-                break
-              fi
-              if [ "$status" = 404 ] && curl -fsS -X POST -H "Authorization: Bearer $jwt" \
-                -F "versionUpload=@version.json;type=application/json" \
-                -F "files=@dist/heroic-map-renderer-plugin-$name.jar;type=application/java-archive" \
-                "$HANGAR_API/projects/$HANGAR_PROJEKT/upload"; then
-                echo
-                fertig=1
-                break
-              fi
-              if [ "$status" = 404 ]; then grund="der Upload scheiterte"; else grund="Hangar antwortet mit ${status:-nichts}"; fi
-              echo "::warning::$name, Versuch $versuch: $grund"
-              [ "$versuch" = 3 ] || sleep 10
-            done
-            [ -n "$fertig" ] || { echo "::error::$name nicht auf Hangar"; exit 1; }
+          bash .github/notizen.sh "$version" > beschreibung.md
+          jq -n --arg name "$version" --rawfile changelog beschreibung.md --argjson paper "$PAPER" \
+            '{version: $name, channel: "Release", description: $changelog,
+              platformDependencies: {PAPER: $paper}, files: [{platforms: ["PAPER"]}]}' > version.json
+          # Bis zu drei Versuche, jeder erst mit dem Blick, ob es die Version schon gibt: So scheitert weder ein
+          # zweiter Lauf noch ein Versuch nach einem Upload, der trotz Fehler bei Hangar ankam.
+          fertig=
+          for versuch in 1 2 3; do
+            status=$(curl -sS -o /dev/null -w '%{http_code}' -H "Authorization: Bearer $jwt" \
+              "$HANGAR_API/projects/$HANGAR_PROJEKT/versions/$version" || true)
+            if [ "$status" = 200 ]; then
+              echo "$version gibt es auf Hangar"
+              fertig=1
+              break
+            fi
+            if [ "$status" = 404 ] && curl -fsS -X POST -H "Authorization: Bearer $jwt" \
+              -F "versionUpload=@version.json;type=application/json" \
+              -F "files=@dist/heroic-map-renderer-plugin-$version.jar;type=application/java-archive" \
+              "$HANGAR_API/projects/$HANGAR_PROJEKT/upload"; then
+              echo
+              fertig=1
+              break
+            fi
+            if [ "$status" = 404 ]; then grund="der Upload scheiterte"; else grund="Hangar antwortet mit ${status:-nichts}"; fi
+            echo "::warning::$version, Versuch $versuch: $grund"
+            [ "$versuch" = 3 ] || sleep 10
           done
+          [ -n "$fertig" ] || { echo "::error::$version nicht auf Hangar"; exit 1; }
