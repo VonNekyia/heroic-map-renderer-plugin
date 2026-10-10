@@ -1,8 +1,8 @@
 name: Release
 
-# Auf einem Tag vX.Y.Z je Plattform ein Jar mit Karte und Renderer bauen und
-# als Entwurf eines GitHub-Releases ablegen. Ändert eine PR diese Datei, das
-# Prüfskript oder den Build, baut sie die Jars ohne Entwurf.
+# Auf einem Tag vX.Y.Z das Jar mit Karte und Renderer für Windows und Linux
+# bauen und als Entwurf eines GitHub-Releases ablegen. Ändert eine PR diese
+# Datei, das Prüfskript oder den Build, baut sie das Jar ohne Entwurf.
 # Siehe docs/entwicklung.md, „Release“.
 on:
   push:
@@ -44,8 +44,6 @@ jobs:
           echo "VERSION=$version" >> "$GITHUB_ENV"
           if [[ "$GITHUB_REF" == refs/tags/* ]]; then notizen=$version; else notizen=$(sed -n 's/^## //p' CHANGELOG.md | head -1); fi
           bash .github/notizen.sh "$notizen"
-          bash .github/notizen.sh "$notizen" linux-x64 > /dev/null
-          bash .github/notizen.sh "$notizen" windows-x64 > /dev/null
 
       # Binärs und Karte aus demselben Release des Renderers: holeRenderer lädt
       # und prüft die Archive, die Karte ist web/ im Archiv für Linux.
@@ -63,17 +61,15 @@ jobs:
 
       - name: Prüfen
         run: |
-          for p in windows-x64 linux-x64; do
-            jar=build/libs/heroic-map-renderer-plugin-$VERSION-$p.jar
-            bash .github/pruefe-jar.sh "$jar"
-            unzip -p "$jar" plugin.yml | grep -qx "version: '$VERSION'" \
-              || { echo "::error::plugin.yml in $jar nennt nicht die Version $VERSION"; exit 1; }
-          done
+          jar=build/libs/heroic-map-renderer-plugin-$VERSION.jar
+          bash .github/pruefe-jar.sh "$jar"
+          unzip -p "$jar" plugin.yml | grep -qx "version: '$VERSION'" \
+            || { echo "::error::plugin.yml in $jar nennt nicht die Version $VERSION"; exit 1; }
 
       - uses: actions/upload-artifact@v7
         with:
           name: jar
-          path: build/libs/heroic-map-renderer-plugin-${{ env.VERSION }}-*-x64.jar
+          path: build/libs/heroic-map-renderer-plugin-${{ env.VERSION }}.jar
           if-no-files-found: error
 
   release:
@@ -94,7 +90,7 @@ jobs:
 
       - name: Prüfsummen
         run: |
-          test "$(ls dist/*.jar | wc -l)" -eq 2 || { echo "::error::erwartet zwei Jars, je Plattform eins"; exit 1; }
+          test "$(ls dist/*.jar | wc -l)" -eq 1 || { echo "::error::erwartet ein Jar für beide Plattformen"; exit 1; }
           cd dist && sha256sum *.jar > SHA256SUMS && cat SHA256SUMS
 
       # Nur ein Entwurf: Veröffentlichen ist Sache des Maintainers. Die Notizen,

@@ -1,5 +1,6 @@
 package com.nekyia.heroicmap;
 
+import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -14,20 +15,18 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
 import java.util.Properties;
+import org.tukaani.xz.XZInputStream;
 
 /**
- * Das Binär des Renderers aus dem Jar: gewählt nach Plattform, ausgepackt nach {@code bin/<version>/},
+ * Das Binär des Renderers aus dem Jar: gewählt nach Plattform, mit xz ausgepackt nach {@code bin/<version>/},
  * geprüft mit der SHA-256 aus dem Build. Siehe docs/konfiguration.md, „Das Binär“.
  */
 final class Binaer {
 
     private Binaer() {}
 
-    /**
-     * {@code gesetzt} aus renderer.binary, sonst das Binär aus dem Jar für {@code os.name} und {@code os.arch}.
-     * {@code version} ist die des Plugins, für die Meldung beim Jar der anderen Plattform.
-     */
-    static Path waehle(Path gesetzt, Path jar, Path bin, String os, String arch, String version) throws IOException {
+    /** {@code gesetzt} aus renderer.binary, sonst das Binär aus dem Jar für {@code os.name} und {@code os.arch}. */
+    static Path waehle(Path gesetzt, Path jar, Path bin, String os, String arch) throws IOException {
         if (gesetzt != null) {
             return gesetzt;
         }
@@ -35,7 +34,7 @@ final class Binaer {
         if (plattform == null) {
             throw new IOException("das Jar hat kein Binär für " + os + " " + arch);
         }
-        return packeAus(jar, bin, plattform, version);
+        return packeAus(jar, bin, plattform);
     }
 
     /** Der Ordner im Jar für {@code os.name} und {@code os.arch}; null, wenn es keinen gibt. */
@@ -51,7 +50,7 @@ final class Binaer {
      * SHA-256 nicht die aus dem Build ist, und gibt seinen Pfad. Wirft, wenn das Jar keins hat oder das
      * Ausgepackte nicht passt; dann bleibt keine Datei daneben liegen.
      */
-    static Path packeAus(Path jar, Path bin, String plattform, String version) throws IOException {
+    static Path packeAus(Path jar, Path bin, String plattform) throws IOException {
         try (var fs = FileSystems.newFileSystem(jar)) {
             Path ordner = fs.getPath("/renderer");
             Path liste = ordner.resolve("renderer.properties");
@@ -63,23 +62,20 @@ final class Binaer {
             }
             String soll = props.getProperty(plattform);
             if (soll == null) {
-                // Ein Jar hat nur das Binär seiner Plattform, siehe docs/entscheidungen/0008-jar-je-plattform.md.
-                var andere = props.stringPropertyNames().stream().filter(k -> !k.equals("version")).sorted().toList();
-                throw new IOException(andere.isEmpty() ? "das Jar hat kein Binär für " + plattform
-                        : "dieses Jar ist für " + String.join(", ", andere) + "; für " + plattform + " braucht es "
-                                + "heroic-map-renderer-plugin-" + version + "-" + plattform + ".jar, auf Hangar die Version "
-                                + version + "-" + plattform);
+                throw new IOException("das Jar hat kein Binär für " + plattform);
             }
             String name = plattform.startsWith("windows") ? "heroic-map-renderer.exe" : "heroic-map-renderer";
             Path ziel = bin.resolve(props.getProperty("version")).resolve(name);
             if (Files.isRegularFile(ziel) && sha256(Files.newInputStream(ziel), null).equals(soll)) {
                 return ziel;
             }
-            // Erst daneben, dann umbenennen: So liegt nie ein halbes Binär unter dem Namen.
+            // Erst daneben, dann umbenennen: So liegt nie ein halbes Binär unter dem Namen. Je Auspacken ein eigener
+            // Name, damit sich zwei Prozesse in einem bin/ nicht stören.
             Files.createDirectories(ziel.getParent());
-            Path neu = ziel.resolveSibling(name + ".neu");
-            try {
-                String ist = sha256(Files.newInputStream(ordner.resolve(plattform).resolve(name)), neu);
+            Path neu = Files.createTempFile(ziel.getParent(), name, ".neu");
+            // Mit xz gepackt, die SHA-256 gilt dem Ausgepackten. Siehe docs/entscheidungen/0011-ein-jar-mit-xz.md.
+            try (InputStream xz = Files.newInputStream(ordner.resolve(plattform).resolve(name + ".xz"))) {
+                String ist = sha256(new XZInputStream(new BufferedInputStream(xz)), neu);
                 if (!ist.equals(soll)) {
                     throw new IOException(name + " im Jar hat SHA-256 " + ist + ", der Build nennt " + soll);
                 }

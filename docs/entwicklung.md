@@ -7,6 +7,7 @@ code:
   - .github/workflows/ci.yml
   - .github/workflows/release.yml
   - .github/pruefe-jar.sh
+  - .github/Auspacken.java
   - .github/notizen.sh
   - CHANGELOG.md
   - src/test/java/com/nekyia/heroicmap/LaeufeTest.java
@@ -27,7 +28,7 @@ code:
 
 # Entwicklung
 
-`./gradlew build` baut je Plattform ein Jar nach `build/libs/` und führt die Tests aus. Dazu baut es das Modul `api/`, die API für
+`./gradlew build` baut das Jar nach `build/libs/` und führt die Tests aus. Dazu baut es das Modul `api/`, die API für
 andere Plugins, nach `api/build/libs/`, mit Quellen und Javadoc; JitPack
 baut nur dieses Modul, siehe [API](api.md), „Einbinden“.
 Gradle 9.7.1 kommt über den Wrapper, Java 25 über die Toolchain, für das
@@ -36,11 +37,10 @@ Rechner liegen. Gebaut wird gegen die Paper-API `26.2.build.129-stable`
 aus `gradle.properties`, nur zum Übersetzen, ohne paperweight-userdev, siehe
 [0001](entscheidungen/0001-nur-die-paper-api.md). Ebenso nur zum Übersetzen
 die API von Simple Voice Chat 2.6.24, aus seinem Maven-Repository, siehe
-[0005](entscheidungen/0005-simple-voice-chat-api.md). Die Basis der Jars
-baut Shadow in `tasks.shadowJar` nach `build/basis/`, damit bStats darin
-unter eigenem Paket steht; `jar` ist aus, siehe
-[0007](entscheidungen/0007-bstats.md). Aus der Basis bauen `jar-windows-x64`
-und `jar-linux-x64` die Jars je Plattform, siehe „Der Renderer im Jar“.
+[0005](entscheidungen/0005-simple-voice-chat-api.md). Das Jar baut Shadow
+in `tasks.shadowJar`, damit bStats und XZ for Java darin unter eigenem
+Paket stehen; `jar` ist aus, siehe [0007](entscheidungen/0007-bstats.md)
+und [0011](entscheidungen/0011-ein-jar-mit-xz.md).
 
 ## Im Jar
 
@@ -48,10 +48,13 @@ und `jar-linux-x64` die Jars je Plattform, siehe „Der Renderer im Jar“.
 - `LICENSE` und `NOTICE` unter `META-INF/`;
 - bStats unter `com/nekyia/heroicmap/bstats/`, seine Lizenz unter
   `META-INF/LICENSE-bstats.txt`, siehe [Statistik](statistik.md), „Im Jar“;
+- XZ for Java 1.12 unter `com/nekyia/heroicmap/xz/`, ohne
+  `META-INF/versions/`, zum Auspacken der Binärs, siehe
+  [0011](entscheidungen/0011-ein-jar-mit-xz.md);
 - mit `-Pweb=<ordner>` die gebaute Karte unter `web/`, siehe
   [Webserver](webserver.md), „Die Karte im Jar“;
-- mit Netz das Binär des Renderers für die Plattform des Jars unter
-  `renderer/`, siehe „Der Renderer im Jar“.
+- mit Netz die Binärs des Renderers für Windows und Linux, mit xz gepackt,
+  unter `renderer/`, siehe „Der Renderer im Jar“.
 
 Die Karte ist `web/dist` des Renderers, gebaut so:
 
@@ -69,10 +72,11 @@ von Mojang und keine Klasse von Simple Voice Chat.
 
 Die Aufgabe `holeRenderer` in [`build.gradle.kts`](../build.gradle.kts)
 lädt die Archive eines Releases des Renderers, entschieden in
-[0004](entscheidungen/0004-renderer-im-jar.md). Je Plattform gibt es ein
-Jar mit nur ihrem Binär, entschieden in
-[0008](entscheidungen/0008-jar-je-plattform.md). Zur Laufzeit packt das
-Plugin es aus, siehe [Konfiguration](konfiguration.md), „Das Binär“.
+[0004](entscheidungen/0004-renderer-im-jar.md). Beide Binärs kommen mit
+xz gepackt in ein Jar, entschieden in
+[0011](entscheidungen/0011-ein-jar-mit-xz.md). Zur Laufzeit packt das
+Plugin das seiner Plattform aus, siehe [Konfiguration](konfiguration.md),
+„Das Binär“.
 
 | Version | Archiv | SHA-256 |
 |---|---|---|
@@ -90,17 +94,18 @@ Plugin es aus, siehe [Konfiguration](konfiguration.md), „Das Binär“.
 - **Ohne Netz,** auch mit `--offline`, warnt er „Renderer 0.6.0 nicht
   geladen, das Jar bleibt ohne Binärs“ und baut weiter. Der nächste Build
   versucht es wieder.
-- **Je Plattform:** `holeRenderer` legt unter
-  `build/renderer/jar/<plattform>/` ab, was ins Jar der Plattform kommt.
-  `jar-windows-x64` und `jar-linux-x64` packen die Basis aus Shadow und
-  diesen Ordner zu `heroic-map-renderer-plugin-<version>-<plattform>.jar`.
+- **Mit xz:** `holeRenderer` packt jedes Binär mit xz, mit den Parametern
+  aus [0011](entscheidungen/0011-ein-jar-mit-xz.md), und legt unter
+  `build/renderer/jar/` ab, was ins Jar kommt. `shadowJar` nimmt den
+  Ordner auf, in `heroic-map-renderer-plugin-<version>.jar`. Packen muss
+  der Build nur nach einer neuen Version des Renderers oder nach `clean`.
 - **Im Jar:**
 
   | Pfad | Inhalt |
   |---|---|
-  | `renderer/windows-x64/heroic-map-renderer.exe` | das Binär für Windows, nur im Jar für Windows |
-  | `renderer/linux-x64/heroic-map-renderer` | das Binär für Linux, nur im Jar für Linux |
-  | `renderer/renderer.properties` | `version` und die SHA-256 des Binärs, unter dem Namen seiner Plattform |
+  | `renderer/windows-x64/heroic-map-renderer.exe.xz` | das Binär für Windows, mit xz |
+  | `renderer/linux-x64/heroic-map-renderer.xz` | das Binär für Linux, mit xz |
+  | `renderer/renderer.properties` | `version` und die SHA-256 beider Binärs, ausgepackt, je unter dem Namen der Plattform |
   | `renderer/LICENSE`, `renderer/NOTICE`, `renderer/THIRD-PARTY-NOTICES`, `renderer/COPYRIGHT-library.html` | die Hinweise, die jeder Weitergabe des Binärs beiliegen, siehe im Renderer [Drittlizenzen](https://github.com/VonNekyia/heroic-map-renderer/blob/master/docs/entwicklung/drittlizenzen.md) |
 
 - **Die Hinweise aus dem tar.gz:** Beide Archive haben dieselben vier
@@ -111,17 +116,28 @@ Plugin es aus, siehe [Konfiguration](konfiguration.md), „Das Binär“.
   unter OFL neu). `lizenzen.txt`
   im Archiv gehört zur Karte unter `web/` und kommt mit `-Pweb`.
 - **Grösse,** am 10.10. mit v0.6.0, aus der CI, Job „Jar“ des
-  Release-Workflows als Probe in #53, Version `0.0.0-probe`, mit der Karte
+  Release-Workflows als Probe in #57, Version `0.0.0-probe`, mit der Karte
   aus dem Archiv:
 
-  | Jar | Byte | bis zur Grenze | Binär gepackt |
+  | Eintrag | ausgepackt | mit xz | im Jar |
   |---|---|---|---|
-  | `…-windows-x64.jar` | 5 389 947 | 4 610 053 | 4 709 992 |
-  | `…-linux-x64.jar` | 5 149 964 | 4 850 036 | 4 470 025 |
+  | `heroic-map-renderer-plugin-0.0.0-probe.jar` | – | – | 7 664 129, bis zur Grenze 2 335 871 |
+  | `renderer/windows-x64/heroic-map-renderer.exe.xz` | 11 859 456 | 3 401 876 | 3 402 916 |
+  | `renderer/linux-x64/heroic-map-renderer.xz` | 10 469 800 | 3 412 808 | 3 413 853 |
+  | XZ for Java, 62 Klassen unter `com/nekyia/heroicmap/xz/` | 146 583 | – | 71 191 |
 
-  Das eine Jar davor steht in [0008](entscheidungen/0008-jar-je-plattform.md),
-  „Anlass“. Beide Grössen nennt `pruefe-jar.sh`. Die Grenze prüft die CI,
-  siehe „CI“.
+  Alles in Byte. Im Jar liegen die `.xz` mit Deflate, das sie in
+  ungepackten Blöcken ablegt: je rund 1 040 Byte mehr. Mit Deflate allein,
+  wie bis v0.4.0, waren die Binärs im Jar 4 709 992 und 4 470 025 Byte
+  gross, zur Probe in #53. Python mit liblzma und denselben Parametern, wie
+  das Budget des Renderers misst, packt sie in 3 403 556 und 3 414 832
+  Byte, also 1 680 und 2 024 mehr als XZ for Java. Die Grössen mit xz und
+  im Jar nennt `pruefe-jar.sh`. Die Grenze prüft die CI, siehe „CI“.
+- **Zeit:** Das Packen beider Binärs mit xz kostet `holeRenderer` rund
+  30 s, nur nach einer neuen Version oder `clean`. Das Auspacken eines
+  Binärs dauerte am 10.10. lokal 288 bis 398 ms, mit Java 25.0.1 und den
+  Klassen aus dem Jar, also verlagert und ohne `META-INF/versions/`, je
+  dreimal gemessen.
 - **Neue Version:** `renderer` und beide SHA-256 in `build.gradle.kts`
   ändern, dann die Tabelle hier. Die SHA-256 selbst rechnen:
   `gh release download v<version> --repo VonNekyia/heroic-map-renderer`,
@@ -140,11 +156,12 @@ Plugin es aus, siehe [Konfiguration](konfiguration.md), „Das Binär“.
   Einrückung mit CRLF, ein Abschnitt, der keiner ist, ein Ergebnis, das
   kein gültiges YAML wäre, und dass die Datei nur geschrieben wird, wenn
   etwas fehlte. Jede von 11 Mutationen an `Vorlage` fiel darin (07.10.).
-- **`BinaerTest`:** an einem Jar, das der Test baut: die Wahl nach
+- **`BinaerTest`:** an einem Jar, das der Test mit xz baut: die Wahl nach
   `os.name` und `os.arch`, das Auspacken mit passender SHA-256, kein neues
   Schreiben, solange sie passt, neues, wenn die Datei sich änderte, eine
-  falsche SHA-256, die kein Binär liegen lässt, `renderer.binary`, das
-  überschreibt, und Plattformen ohne Binär, auch ein Jar ganz ohne.
+  falsche SHA-256 und ein kaputtes `.xz`, die kein Binär liegen lassen,
+  `renderer.binary`, das überschreibt, und Plattformen ohne Binär, auch
+  ein Jar ganz ohne und eins nur mit dem Binär für Windows.
 - **`LaeufeTest`, Planen:** die Schalter je Baum, wann ein Lauf `--resume`
   bekommt, wann ein Update einen Baum auslässt, der Kopf von
   `stand-neu.bin`, die Marke `nur-download`, `--compact` nur bei vollen
@@ -313,16 +330,18 @@ Build 129, eine Kopie der Testwelt, das Jar des Plugins unter `plugins/`,
   `renderer/tests/fixtures/` des Renderers. Der Job „Doku“ vergleicht sie
   mit `master` und fällt, wenn eine abweicht.
 - **Jar mit Karte:** baut die Karte aus `web/` des Renderers, Stand
-  `master`, packt sie mit `-Pweb` in beide Jars und prüft je Jar, dass `web/index.html`,
+  `master`, packt sie mit `-Pweb` ins Jar und prüft, dass `web/index.html`,
   `web/lizenzen.txt` und die Vorlagen `web/seite.html` und
-  `web/robots.vorlage.txt` darin stehen, ebenso alles unter `renderer/`
-  für seine Plattform, mit seiner SHA-256 in `renderer.properties`, und
-  nichts für die andere, siehe „Der Renderer im Jar“, und dass keine
-  Klasse unter `de/maxhenkel/`
-  darin liegt, siehe [0005](entscheidungen/0005-simple-voice-chat-api.md).
-  bStats muss umbenannt und mit Lizenz darin stehen, siehe
-  [Statistik](statistik.md), „Im Jar“, und die API für andere Plugins,
-  siehe [API](api.md). Jedes Jar muss unter 10 000 000 Byte bleiben; mehr
+  `web/robots.vorlage.txt` darin stehen, ebenso alles unter `renderer/`.
+  Jedes Binär packt sie mit dem Decoder aus dem Jar aus, wie das Plugin,
+  mit [`.github/Auspacken.java`](../.github/Auspacken.java), und
+  vergleicht seine SHA-256 mit `renderer.properties`, siehe „Der Renderer
+  im Jar“. Keine Klasse unter
+  `de/maxhenkel/` darf darin liegen, siehe
+  [0005](entscheidungen/0005-simple-voice-chat-api.md). bStats muss
+  umbenannt und mit Lizenz darin stehen, siehe [Statistik](statistik.md),
+  „Im Jar“, XZ for Java umbenannt, und die API für andere Plugins, siehe
+  [API](api.md). Das Jar muss unter 10 000 000 Byte bleiben; mehr
   nimmt Hangar je Datei nicht. Alles prüft [`.github/pruefe-jar.sh`](../.github/pruefe-jar.sh),
   auch beim Release.
 - **Doku:** Das Prüfskript des Renderers prüft Verweise, Links,
@@ -334,35 +353,34 @@ Build 129, eine Kopie der Testwelt, das Jar des Plugins unter `plugins/`,
 ## Release
 
 [`.github/workflows/release.yml`](../.github/workflows/release.yml) baut
-auf einem Tag `v<version>` die Jars je Plattform und legt einen Entwurf
+auf einem Tag `v<version>` das Jar und legt einen Entwurf
 eines Releases auf GitHub an. Den Tag und das Veröffentlichen übernimmt
 der Maintainer, Hangar danach ein eigener Workflow.
 
 - **Version** aus dem Tag ohne `v`, an Gradle mit `-Pversion`: im Namen
-  `heroic-map-renderer-plugin-<version>-<plattform>.jar` und in
-  `plugin.yml`. Ohne
+  `heroic-map-renderer-plugin-<version>.jar` und in `plugin.yml`. Ohne
   `-Pversion` bleibt `0.1.0-SNAPSHOT`. Ein Tag, der keine Version wie
   `v1.2.3` ist, lässt den Lauf fallen.
 - **Renderer und Karte aus demselben Release:** `holeRenderer` lädt und
   prüft die Archive wie in „Der Renderer im Jar“. Die Karte ist `web/` aus
   dem Archiv für Linux, nicht `master` wie im Job „Jar mit Karte“. Eine
   neue Version des Renderers in `build.gradle.kts` bringt so beide.
-- **Prüfen:** `./gradlew build` mit den Tests, dann je Jar
-  `.github/pruefe-jar.sh` wie in der CI; `plugin.yml` in jedem Jar muss die
+- **Prüfen:** `./gradlew build` mit den Tests, dann
+  `.github/pruefe-jar.sh` wie in der CI; `plugin.yml` im Jar muss die
   Version nennen.
 - **Notizen:** englisch, aus [`.github/notizen.sh`](../.github/notizen.sh):
   die Stichpunkte aus dem Abschnitt `## <version>` in
-  [`CHANGELOG.md`](../CHANGELOG.md), welches Jar wofür ist, die
+  [`CHANGELOG.md`](../CHANGELOG.md), die Plattformen des Jars, die
   [Konfiguration](konfiguration.md) am Tag, alle Releases und aus `NOTICE`
-  Herausgeber, Kontakt und den Hinweis zu Mojang. Für Hangar dieselben
-  Notizen je Plattform, mit dem Verweis auf die Version der anderen. Vor dem
+  Herausgeber, Kontakt und den Hinweis zu Mojang. Hangar bekommt dieselben
+  Notizen. Vor dem
   Tag kommt der Abschnitt in `CHANGELOG.md`; fehlt er, fällt der Lauf vor
   dem Bauen.
-- **Entwurf:** beide Jars, `SHA256SUMS` und die Notizen; ohne zwei Jars
-  fällt der Lauf. Nur dieser Job darf schreiben.
+- **Entwurf:** das Jar, `SHA256SUMS` und die Notizen; mit mehr oder weniger
+  als einem Jar fällt der Lauf. Nur dieser Job darf schreiben.
 - **Hangar:** Wird der Entwurf veröffentlicht, lädt
-  [`hangar.yml`](../.github/workflows/hangar.yml) beide Jars als zwei
-  Versionen auf Hangar, siehe [Hangar](hangar.md).
+  [`hangar.yml`](../.github/workflows/hangar.yml) das Jar als Version
+  `<version>` auf Hangar, siehe [Hangar](hangar.md).
 - **In einer PR,** die den Workflow, eins der beiden Skripte,
   `CHANGELOG.md` oder `build.gradle.kts` ändert, läuft alles ausser dem
   Entwurf, mit der Version `0.0.0-probe` und den Notizen zum neuesten

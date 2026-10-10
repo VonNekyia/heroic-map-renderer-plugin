@@ -1,3 +1,4 @@
+import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.IOException
 import java.net.HttpURLConnection
@@ -6,6 +7,17 @@ import java.security.MessageDigest
 import java.util.HexFormat
 import java.util.zip.GZIPInputStream
 import java.util.zip.ZipFile
+import org.tukaani.xz.FilterOptions
+import org.tukaani.xz.LZMA2Options
+import org.tukaani.xz.X86Options
+import org.tukaani.xz.XZ
+import org.tukaani.xz.XZOutputStream
+
+// xz packt beim Bauen die Binärs; im Jar packt dieselbe Bibliothek sie aus.
+buildscript {
+    repositories { mavenCentral() }
+    dependencies { classpath("org.tukaani:xz:1.12") }
+}
 
 plugins {
     java
@@ -33,6 +45,8 @@ dependencies {
     compileOnly("de.maxhenkel.voicechat:voicechat-api:2.6.24")
     // Im Jar, umbenannt nach com.nekyia.heroicmap.bstats. Siehe docs/statistik.md.
     implementation("org.bstats:bstats-bukkit:3.2.1")
+    // Im Jar, umbenannt nach com.nekyia.heroicmap.xz, packt die Binärs aus. Siehe docs/entscheidungen/0011-ein-jar-mit-xz.md.
+    implementation("org.tukaani:xz:1.12")
     testImplementation(paperApi)
     testImplementation(platform("org.junit:junit-bom:6.1.3"))
     testImplementation("org.junit.jupiter:junit-jupiter")
@@ -62,9 +76,9 @@ tasks.processResources {
     }
 }
 
-// Der Renderer im Jar, je Plattform ein Jar für Windows und Linux auf x86_64. Die SHA-256 der Archive stehen hier
-// fest, denn SHA256SUMS kommt von derselben Stelle wie die Archive. Siehe docs/entscheidungen/0004-renderer-im-jar.md
-// und docs/entscheidungen/0008-jar-je-plattform.md.
+// Der Renderer im Jar, für Windows und Linux auf x86_64 in einem Jar. Die SHA-256 der Archive stehen hier fest, denn
+// SHA256SUMS kommt von derselben Stelle wie die Archive. Siehe docs/entscheidungen/0004-renderer-im-jar.md und
+// docs/entscheidungen/0011-ein-jar-mit-xz.md.
 val renderer = "0.6.0"
 val rendererArchive = mapOf(
     "windows-x64" to "22c42b5dcb22e954d5122fdf001f53667ab267f75f57ca36dbd3df8a011da443",
@@ -73,6 +87,21 @@ val rendererArchive = mapOf(
 val rendererHinweise = listOf("LICENSE", "NOTICE", "THIRD-PARTY-NOTICES", "COPYRIGHT-library.html")
 
 fun sha256(b: ByteArray): String = HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(b))
+
+/**
+ * Packt mit xz wie das Budget des Renderers: BCJ x86, dann LZMA2 9e mit 8 MiB Wörterbuch, CRC64. 9e heisst Preset 9
+ * mit nice_len 273 und Tiefe 512. Siehe docs/entscheidungen/0011-ein-jar-mit-xz.md.
+ */
+fun xz(b: ByteArray): ByteArray {
+    val lzma2 = LZMA2Options(9).apply {
+        dictSize = 8 shl 20
+        niceLen = 273
+        depthLimit = 512
+    }
+    val aus = ByteArrayOutputStream()
+    XZOutputStream(aus, arrayOf<FilterOptions>(X86Options(), lzma2), XZ.CHECK_CRC64).use { it.write(b) }
+    return aus.toByteArray()
+}
 
 /** Lädt eine Datei; IOException ohne Netz, GradleException bei einer anderen Antwort als 200. */
 fun lade(adresse: String): ByteArray {
@@ -112,7 +141,7 @@ val holeRenderer = tasks.register("holeRenderer") {
     inputs.property("archive", rendererArchive)
     outputs.dir(ziel)
     // Ohne Netz bleibt der Ordner leer; dann versucht es der nächste Build wieder.
-    outputs.upToDateWhen { rendererArchive.keys.all { File(ziel, "$it/renderer/renderer.properties").isFile } }
+    outputs.upToDateWhen { File(ziel, "renderer/renderer.properties").isFile }
     doLast {
         ziel.deleteRecursively()
         val inhalte = mutableMapOf<String, Map<String, ByteArray>>()
@@ -135,44 +164,37 @@ val holeRenderer = tasks.register("holeRenderer") {
             }
             inhalte[plattform] = if (windows) ausZip(datei) else ausTarGz(datei)
         }
-        // Je Plattform ein Ordner mit ihrem Binär, den Hinweisen und renderer.properties; die Hinweise aus dem
+        // Je Plattform das Binär mit xz, in renderer.properties die SHA-256 des ausgepackten; die Hinweise aus dem
         // Archiv für Linux, siehe docs/entwicklung.md, „Der Renderer im Jar“.
-        val linux = inhalte.getValue("linux-x64")
+        val liste = mutableListOf("version=$renderer")
         for ((plattform, inhalt) in inhalte) {
             val stamm = "heroic-map-renderer-$plattform/"
             val binaer = "heroic-map-renderer" + if (plattform.startsWith("windows")) ".exe" else ""
             val b = inhalt[stamm + binaer] ?: throw GradleException("$stamm$binaer fehlt im Archiv")
-            val dateien = mapOf("renderer/$plattform/$binaer" to b) + rendererHinweise.associate { d ->
-                "renderer/$d" to (linux["heroic-map-renderer-linux-x64/$d"] ?: throw GradleException("$d fehlt im Archiv"))
-            }
-            for ((pfad, inhaltDerDatei) in dateien) {
-                val f = File(ziel, "$plattform/$pfad")
-                f.parentFile.mkdirs()
-                f.writeBytes(inhaltDerDatei)
-            }
-            File(ziel, "$plattform/renderer/renderer.properties").writeText("version=$renderer\n$plattform=${sha256(b)}\n")
+            File(ziel, "renderer/$plattform").mkdirs()
+            File(ziel, "renderer/$plattform/$binaer.xz").writeBytes(xz(b))
+            liste += "$plattform=${sha256(b)}"
         }
+        val linux = inhalte.getValue("linux-x64")
+        for (d in rendererHinweise) {
+            File(ziel, "renderer/$d").writeBytes(linux["heroic-map-renderer-linux-x64/$d"] ?: throw GradleException("$d fehlt im Archiv"))
+        }
+        File(ziel, "renderer/renderer.properties").writeText(liste.joinToString("\n", postfix = "\n"))
     }
 }
 
-// Die Basis des Jars baut Shadow: mit bStats unter eigenem Paket, wie bStats es verlangt. Ausgeliefert wird sie nicht,
-// sondern je Plattform ein Jar mit dem Binär dieser Plattform. Siehe docs/entscheidungen/0008-jar-je-plattform.md.
+// Das Jar baut Shadow, ein Jar für beide Plattformen: bStats und xz unter eigenem Paket, bStats verlangt es. Die
+// Klassen von xz für Java 9 und später bleiben draussen, denn das Jar ist kein Multi-Release-Jar.
+// Siehe docs/entscheidungen/0011-ein-jar-mit-xz.md.
 tasks.jar { enabled = false }
 
 tasks.shadowJar {
     archiveClassifier = ""
-    destinationDirectory = layout.buildDirectory.dir("basis")
     relocate("org.bstats", "com.nekyia.heroicmap.bstats")
+    relocate("org.tukaani.xz", "com.nekyia.heroicmap.xz")
+    exclude("META-INF/versions/**")
     metaInf { from("LICENSE", "NOTICE") }
+    from(holeRenderer)
 }
 
-for (plattform in rendererArchive.keys) {
-    val jarDerPlattform = tasks.register<Jar>("jar-$plattform") {
-        archiveClassifier = plattform
-        // Das Manifest schreibt diese Aufgabe selbst.
-        from(zipTree(tasks.shadowJar.flatMap { it.archiveFile })) { exclude("META-INF/MANIFEST.MF") }
-        from(layout.buildDirectory.dir("renderer/jar/$plattform"))
-        dependsOn(tasks.shadowJar, holeRenderer)
-    }
-    tasks.assemble { dependsOn(jarDerPlattform) }
-}
+tasks.assemble { dependsOn(tasks.shadowJar) }
