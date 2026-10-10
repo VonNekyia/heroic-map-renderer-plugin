@@ -266,7 +266,7 @@ mit dem Mod am 10.10.
 
 ```json
 {"v":1,"typ":"banner","ebene":"beispiel:geheim","version":"5f3a9c1e5f3a9c1e","entwurf":"nordreich","krone":false}
-{"v":1,"typ":"banner","jetzt":1760000000,"ebene":"beispiel:geheim","version":"5f3a9c1e5f3a9c1e","entwurf":"nordreich","krone":false,"satz":{"foot":[10,54],"angle":0.0},"png":"iVBORw0KGgo…"}
+{"v":1,"typ":"banner","jetzt":1760012345,"ebene":"beispiel:geheim","version":"5f3a9c1e5f3a9c1e","entwurf":"nordreich","krone":false,"satz":{"foot":[10,54],"angle":0.0},"png":"iVBORw0KGgo…"}
 ```
 
 - **Woran der Mod sie erkennt:** Der Eintrag der Ebene in der Liste
