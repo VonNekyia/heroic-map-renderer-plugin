@@ -126,8 +126,8 @@ final class Kanal implements Listener, PluginMessageListener {
 
     @Override
     public void onPluginMessageReceived(String channel, Player player, byte[] message) {
-        // show beantwortet HeroicMapPlugin; hier wäre sie eine unlesbare Anfrage.
-        if (!channel.equals(Download.KANAL) || Mitspieler.istShow(message)) {
+        // show und tafel beantwortet HeroicMapPlugin; hier wären sie unlesbare Anfragen.
+        if (!channel.equals(Download.KANAL) || Mitspieler.istShow(message) || EbenenFuerMod.istTafel(message)) {
             return;
         }
         gemessen("Anfrage von " + player.getName(), () -> {

@@ -155,8 +155,8 @@ Kartenschrift, Regionen, Kreise und Linien, wie es das Format unter
 [„An den Mod“](https://github.com/VonNekyia/heroic-map-renderer/blob/master/docs/benutzung/ebenen.md#an-den-mod)
 und
 [0097](https://github.com/VonNekyia/heroic-map-renderer/blob/master/docs/entscheidungen/0097-banner-feste-groesse-tafel-beim-zeigen.md)
-verlangt. Tafeln schickt es nicht; einen Weg, sie zu holen, gibt es noch
-nicht. Ein Mod, der eine Art nicht kennt, übergeht sie. Der Code steht in `EbenenFuerMod` in
+verlangt, ohne Tafeln; die fragt der Mod einzeln an, siehe „Tafeln“. Ein
+Mod, der eine Art nicht kennt, übergeht sie. Der Code steht in `EbenenFuerMod` in
 [`EbenenFuerMod.java`](../src/main/java/com/nekyia/heroicmap/EbenenFuerMod.java).
 
 | `typ` | Felder | Wann |
@@ -204,6 +204,37 @@ Jede Nachricht trägt dazu `v` (1) und `jetzt`, wie alle des Servers, siehe
   Ebenen zu 4 MiB, alles in rund vier Minuten statt in einem Tick.
 - **Vergessen:** beim Verlassen und wenn der Kanal zugeht. Danach bekommt
   der Spieler alles neu.
+
+### Tafeln
+
+Entschieden vom Reviewer am 10.10. (#35): Der Mod fragt die Tafel eines
+Objekts über den Kanal an, nicht per HTTP. So bekommen auch Ebenen mit
+`permission` ihre Tafeln.
+
+```json
+{"v":1,"typ":"tafel","ebene":"beispiel:staedte","version":"5f3a9c1e5f3a9c1e","id":"stadt-17"}
+{"v":1,"typ":"tafel","jetzt":1760000000,"ebene":"beispiel:staedte","version":"5f3a9c1e5f3a9c1e","id":"stadt-17","panel":{"blocks":[{"type":"title","text":"Hafenstadt"}]}}
+```
+
+- **Antwort:** `ebene`, `version` und `id` wie angefragt, dazu `panel`,
+  wenn das Objekt eine Tafel hat und `version` die aktuelle der Ebene ist.
+  Ist die `version` alt, hat das Objekt keine Tafel oder gibt es es nicht,
+  kommt die Antwort ohne `panel`; der Mod fragt für diese `version` dann
+  nicht wieder.
+- **Rechte:** wie bei `ebenen`, geprüft beim Senden. Für eine Ebene, die
+  der Spieler nicht sehen darf oder die es nicht gibt, und auf eine
+  unlesbare Anfrage antwortet das Plugin nicht.
+- **Höchstens 20 Anfragen je Spieler und Sekunde,**
+  `EbenenFuerMod.TAFELN_JE_SEKUNDE`; der Rest fällt ohne Antwort weg.
+- **Nicht im Hauptthread:** Der Hauptthread nimmt eine Anfrage nur an
+  (`EbenenFuerMod.frage`) und zählt sie. Eine Aufgabe ausserhalb sucht das
+  Objekt und baut die Antwort (`EbenenFuerMod.beantworte`).
+- **Im Takt der Ebenen:** Die Antworten gehen mit dem nächsten Lauf von
+  `ebenenAnMod`, also binnen einer Sekunde, vor neuen Ebenen und im selben
+  Budget von 1 MiB je Spieler und Sekunde. Was nicht mehr passt, kommt im
+  nächsten Takt.
+- **Im Mod:** Wann er fragt, wie viele Tafeln er behält und wie er Bilder
+  der Tafel holt, steht in #35 und in der Doku des Mods.
 
 ### Bilder im Mod
 

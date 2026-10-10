@@ -167,6 +167,103 @@ class EbenenFuerModTest {
         assertEquals(List.of("[]"), EbenenFuerMod.teile(ebene("beispiel:leer", "", "")).teile(), "eine leere Ebene ist ein leerer Teil");
     }
 
+    private static byte[] tafel(String ebene, String version, String id) {
+        return ("{\"v\": 1, \"typ\": \"tafel\", \"ebene\": \"" + ebene + "\", \"version\": \"" + version
+                + "\", \"id\": \"" + id + "\"}").getBytes(StandardCharsets.UTF_8);
+    }
+
+    /** Die Antworten auf Tafeln unter {@code nachrichten}. */
+    private static List<JsonObject> tafeln(List<String> nachrichten) {
+        return nachrichten.stream().map(EbenenFuerModTest::lies).filter(o -> o.get("typ").getAsString().equals("tafel")).toList();
+    }
+
+    @Test
+    void tafel_auf_anfrage_mit_den_rechten_der_ebene() {
+        var e = ebene("beispiel:a", """
+                {"id": "p", "type": "pin", "at": [0, 0], "panel": {"blocks": [{"type": "title", "text": "Hafen"}]}},
+                {"id": "q", "type": "pin", "at": [1, 1]}""", "");
+        var g = ebene("beispiel:geheim", """
+                {"id": "p", "type": "pin", "at": [0, 0], "panel": {"blocks": [{"type": "title", "text": "Geheim"}]}}""",
+                ", \"permission\": \"beispiel.karte\"");
+        var m = ohneAdresse(List.of(e, g));
+        m.nachrichten(SAM, true, p -> true, JETZT);
+
+        assertTrue(EbenenFuerMod.istTafel(tafel("beispiel:a", e.version(), "p")));
+        assertFalse(EbenenFuerMod.istTafel("{\"typ\": \"show\"}".getBytes(StandardCharsets.UTF_8)));
+        assertTrue(m.frage(SAM, tafel("beispiel:a", e.version(), "p"), JETZT));
+        assertEquals(List.of(), tafeln(m.nachrichten(SAM, true, p -> true, JETZT)), "erst beantworte rechnet, nicht der Hauptthread");
+
+        m.beantworte(JETZT);
+        var mitTafel = tafeln(m.nachrichten(SAM, true, p -> true, JETZT));
+        assertEquals(1, mitTafel.size());
+        var a = mitTafel.getFirst();
+        assertEquals("beispiel:a", a.get("ebene").getAsString());
+        assertEquals(e.version(), a.get("version").getAsString());
+        assertEquals("p", a.get("id").getAsString());
+        assertEquals("{\"blocks\":[{\"type\":\"title\",\"text\":\"Hafen\"}]}", a.get("panel").toString());
+        assertEquals(1, a.get("v").getAsInt());
+
+        m.frage(SAM, tafel("beispiel:a", "alt", "p"), JETZT);
+        m.frage(SAM, tafel("beispiel:a", e.version(), "q"), JETZT);
+        m.frage(SAM, tafel("beispiel:a", e.version(), "fehlt"), JETZT);
+        m.frage(SAM, tafel("beispiel:weg", e.version(), "p"), JETZT);
+        m.frage(SAM, "kein json".getBytes(StandardCharsets.UTF_8), JETZT);
+        m.frage(SAM, "{\"typ\": \"tafel\", \"ebene\": \"beispiel:a\"}".getBytes(StandardCharsets.UTF_8), JETZT);
+        m.beantworte(JETZT);
+        var ohne = tafeln(m.nachrichten(SAM, true, p -> true, JETZT));
+        assertEquals(List.of("p", "q", "fehlt"), ohne.stream().map(o -> o.get("id").getAsString()).toList(),
+                "alte version, Objekt ohne Tafel, unbekanntes Objekt; keine Antwort für eine fremde Ebene oder Unlesbares");
+        ohne.forEach(o -> assertFalse(o.has("panel"), o.toString()));
+
+        m.frage(SAM, tafel("beispiel:geheim", g.version(), "p"), JETZT);
+        m.frage(SAM, tafel("beispiel:a", e.version(), "p"), JETZT);
+        m.beantworte(JETZT);
+        assertEquals(List.of("beispiel:a"), tafeln(m.nachrichten(SAM, true, p -> false, JETZT)).stream()
+                .map(o -> o.get("ebene").getAsString()).toList(), "ohne die permission der Ebene keine Antwort");
+        m.frage(SAM, tafel("beispiel:a", e.version(), "p"), JETZT);
+        m.beantworte(JETZT);
+        assertEquals(List.of(), tafeln(m.nachrichten(SAM, false, p -> true, JETZT)), "ohne heroicmap.layers keine");
+        m.frage(SAM, tafel("beispiel:geheim", g.version(), "p"), JETZT);
+        m.beantworte(JETZT);
+        assertEquals("{\"blocks\":[{\"type\":\"title\",\"text\":\"Geheim\"}]}",
+                tafeln(m.nachrichten(SAM, true, p -> true, JETZT)).getFirst().get("panel").toString(), "mit der permission");
+    }
+
+    @Test
+    void hoechstens_20_tafeln_je_spieler_und_sekunde() {
+        var m = ohneAdresse(List.of());
+        for (int i = 0; i < EbenenFuerMod.TAFELN_JE_SEKUNDE; i++) {
+            assertTrue(m.frage(SAM, tafel("beispiel:a", "v", "p" + i), JETZT));
+        }
+        assertFalse(m.frage(SAM, tafel("beispiel:a", "v", "zu-viel"), JETZT), "die 21. fällt weg");
+        assertTrue(m.frage(new UUID(0, 2), tafel("beispiel:a", "v", "p"), JETZT), "je Spieler");
+        assertTrue(m.frage(SAM, tafel("beispiel:a", "v", "p"), JETZT + 1), "in der nächsten Sekunde wieder");
+    }
+
+    @Test
+    void antworten_zaehlen_ins_budget_je_sekunde() {
+        var objekte = new StringBuilder();
+        for (int i = 0; i < 20; i++) {
+            objekte.append(i == 0 ? "" : ",").append("{\"id\": \"p").append(i).append("\", \"type\": \"pin\", \"at\": [0, 0],")
+                    .append(" \"panel\": {\"blocks\": [{\"type\": \"lines\", \"lines\": [\"").append("x".repeat(100_000))
+                    .append("\"]}]}}");
+        }
+        var e = ebene("beispiel:gross", objekte.toString(), "");
+        var m = ohneAdresse(List.of(e));
+        m.nachrichten(SAM, true, p -> true, JETZT);
+        for (int i = 0; i < 20; i++) {
+            m.frage(SAM, tafel("beispiel:gross", e.version(), "p" + i), JETZT);
+        }
+        m.beantworte(JETZT);
+        var erste = m.nachrichten(SAM, true, p -> true, JETZT);
+        long bytes = erste.stream().mapToLong(EbenenFuerModTest::bytes).sum();
+        assertTrue(bytes <= EbenenFuerMod.JE_SEKUNDE, bytes + " Byte");
+        var zweite = m.nachrichten(SAM, true, p -> true, JETZT + 1);
+        assertTrue(erste.size() > 1 && erste.size() < 20, erste.size() + " in der ersten Sekunde");
+        assertEquals(20, tafeln(erste).size() + tafeln(zweite).size(), "der Rest im nächsten Takt");
+        assertEquals("p" + erste.size(), tafeln(zweite).getFirst().get("id").getAsString(), "in der Reihenfolge der Anfragen");
+    }
+
     @Test
     void der_hauptthread_rechnet_nicht() {
         var m = new EbenenFuerMod(JsonObject::new);

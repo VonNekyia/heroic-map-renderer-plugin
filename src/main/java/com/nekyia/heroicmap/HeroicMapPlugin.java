@@ -125,9 +125,18 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
         }
     }
 
-    /** Die Wahl show des Mods, im Hauptthread; die Antwort sagt, ob die Mitspieler hier gehen. */
+    /**
+     * Die Wahl show des Mods, im Hauptthread; die Antwort sagt, ob die Mitspieler hier gehen. Eine Anfrage nach einer
+     * Tafel nimmt fuerMod nur an; beantwortet wird sie gleich ausserhalb, geschickt im Takt der Ebenen.
+     */
     @Override
     public void onPluginMessageReceived(String channel, Player player, byte[] message) {
+        if (EbenenFuerMod.istTafel(message)) {
+            if (fuerMod != null && fuerMod.frage(player.getUniqueId(), message, Instant.now().getEpochSecond())) {
+                getServer().getAsyncScheduler().runNow(this, t -> fuerMod.beantworte(Instant.now().getEpochSecond()));
+            }
+            return;
+        }
         var antwort = mitspieler.show(message, player.getUniqueId(), player.hasPermission(SHOW), simpleVoiceChat, Instant.now());
         if (antwort != null) {
             player.sendPluginMessage(this, Download.KANAL, antwort.toString().getBytes(StandardCharsets.UTF_8));
