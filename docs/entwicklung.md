@@ -114,12 +114,13 @@ Plugin das seiner Plattform aus, siehe [Konfiguration](konfiguration.md),
   v0.4.0 ist nur in `NOTICE` der Absatz zur Schrift der Kartenschrift
   unter OFL neu). `lizenzen.txt`
   im Archiv gehört zur Karte unter `web/` und kommt mit `-Pweb`.
-- **Grösse,** am 10.10. mit v0.6.0, lokal gebaut wie im Job „Jar“ des
-  Release-Workflows, Version `0.0.0-probe`, mit der Karte aus dem Archiv:
+- **Grösse,** am 10.10. mit v0.6.0, aus der CI, Job „Jar“ des
+  Release-Workflows als Probe in #57, Version `0.0.0-probe`, mit der Karte
+  aus dem Archiv:
 
   | Eintrag | ausgepackt | mit xz | im Jar |
   |---|---|---|---|
-  | `heroic-map-renderer-plugin-0.0.0-probe.jar` | – | – | 7 664 156, bis zur Grenze 2 335 844 |
+  | `heroic-map-renderer-plugin-0.0.0-probe.jar` | – | – | 7 664 129, bis zur Grenze 2 335 871 |
   | `renderer/windows-x64/heroic-map-renderer.exe.xz` | 11 859 456 | 3 401 876 | 3 402 916 |
   | `renderer/linux-x64/heroic-map-renderer.xz` | 10 469 800 | 3 412 808 | 3 413 853 |
   | XZ for Java, 62 Klassen unter `com/nekyia/heroicmap/xz/` | 146 583 | – | 71 191 |
