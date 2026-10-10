@@ -1,5 +1,6 @@
 package com.nekyia.heroicmap;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -8,19 +9,32 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.nekyia.heroicmap.Ebenen.Ebene;
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Function;
+import java.util.logging.Handler;
+import java.util.logging.LogRecord;
+import java.util.logging.Logger;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 /** Die Ebenen für den Mod: Teile, Liste, Rechte, Adresse, Budget je Sekunde und was ein Spieler wann bekommt. */
 class EbenenFuerModTest {
 
     private static final UUID SAM = new UUID(0, 1);
     private static final long JETZT = 1_760_000_000;
+    private static final String ENTWURF = ", \"designs\": {\"nordreich\": {\"base\": \"white\"}}";
+
+    @TempDir
+    Path tmp;
 
     private static Ebene ebene(String id, String objekte, String extra) {
         var json = Ebenen.lies("{\"id\": \"" + id + "\", \"name\": {\"de\": \"E\"}" + extra + ", \"objects\": [" + objekte + "]}");
@@ -175,6 +189,114 @@ class EbenenFuerModTest {
     /** Die Antworten auf Tafeln unter {@code nachrichten}. */
     private static List<JsonObject> tafeln(List<String> nachrichten) {
         return nachrichten.stream().map(EbenenFuerModTest::lies).filter(o -> o.get("typ").getAsString().equals("tafel")).toList();
+    }
+
+    private static byte[] banner(String ebene, String version, String entwurf, boolean krone) {
+        return ("{\"v\": 1, \"typ\": \"banner\", \"ebene\": \"" + ebene + "\", \"version\": \"" + version
+                + "\", \"entwurf\": \"" + entwurf + "\", \"krone\": " + krone + "}").getBytes(StandardCharsets.UTF_8);
+    }
+
+    /** Die Antworten auf Banner unter {@code nachrichten}. */
+    private static List<JsonObject> banner(List<String> nachrichten) {
+        return nachrichten.stream().map(EbenenFuerModTest::lies).filter(o -> o.get("typ").getAsString().equals("banner")).toList();
+    }
+
+    /** Der Satz oben einer geheimen Ebene wie nach --banners: beide Sprites und satz.json. */
+    private Path sprites(String modname, String ebene, byte[] ohne, byte[] mit) throws IOException {
+        Path wurzel = tmp.resolve("geheim");
+        Path satz = Files.createDirectories(wurzel.resolve(modname + "/banner/" + ebene + "/oben/krone"));
+        Files.write(satz.getParent().resolve("nordreich.png"), ohne);
+        Files.write(satz.resolve("nordreich.png"), mit);
+        Files.writeString(satz.getParent().resolve("satz.json"), "{\"foot\": [10, 54], \"angle\": 0.0}");
+        return wurzel;
+    }
+
+    /**
+     * Banner geheimer Ebenen über den Kanal: mit satz und png, wenn version und Entwurf passen, sonst ohne; für
+     * eine öffentliche Ebene, eine fremde und Unlesbares keine Antwort; die Rechte beim Senden; secret im Eintrag
+     * der Liste. Siehe docs/ebenen.md, „Banner im Mod“.
+     */
+    @Test
+    void banner_auf_anfrage_nur_fuer_geheime_ebenen() throws IOException {
+        var g = ebene("beispiel:geheim", "", ENTWURF + ", \"permission\": \"beispiel.karte\"");
+        var o = ebene("beispiel:offen", "", ENTWURF);
+        byte[] ohne = {1, 2, 3};
+        byte[] mit = {4, 5, 6, 7};
+        var m = new EbenenFuerMod(JsonObject::new, sprites("beispiel", "geheim", ohne, mit), Logger.getAnonymousLogger());
+        m.bereite(List.of(g, o));
+        var liste = lies(m.nachrichten(SAM, true, p -> true, JETZT).getFirst()).getAsJsonArray("ebenen");
+        assertTrue(liste.get(0).getAsJsonObject().get("secret").getAsBoolean(), "geheim: über den Kanal");
+        assertFalse(liste.get(1).getAsJsonObject().has("secret"), "öffentlich: per HTTP");
+
+        assertTrue(EbenenFuerMod.istBanner(banner("beispiel:geheim", g.version(), "nordreich", false)));
+        assertFalse(EbenenFuerMod.istTafel(banner("beispiel:geheim", g.version(), "nordreich", false)));
+        m.frage(SAM, banner("beispiel:geheim", g.version(), "nordreich", false), JETZT);
+        m.frage(SAM, banner("beispiel:geheim", g.version(), "nordreich", true), JETZT);
+        m.frage(SAM, banner("beispiel:geheim", "alt", "nordreich", false), JETZT);
+        m.frage(SAM, banner("beispiel:geheim", g.version(), "fehlt", false), JETZT);
+        m.frage(SAM, banner("beispiel:geheim", g.version(), "../offen/oben/nordreich", false), JETZT);
+        m.frage(SAM, banner("beispiel:offen", o.version(), "nordreich", false), JETZT);
+        m.frage(SAM, banner("beispiel:weg", g.version(), "nordreich", false), JETZT);
+        m.frage(SAM, "{\"typ\": \"banner\", \"ebene\": \"beispiel:geheim\"}".getBytes(StandardCharsets.UTF_8), JETZT);
+        m.beantworte(JETZT);
+        var a = banner(m.nachrichten(SAM, true, p -> true, JETZT));
+        assertEquals(5, a.size(), "fünf für die geheime Ebene, keine für die öffentliche, eine fremde oder Unlesbares");
+        assertEquals("{\"foot\":[10,54],\"angle\":0.0}", a.get(0).get("satz").toString());
+        assertArrayEquals(ohne, Base64.getDecoder().decode(a.get(0).get("png").getAsString()));
+        assertFalse(a.get(0).get("krone").getAsBoolean());
+        assertArrayEquals(mit, Base64.getDecoder().decode(a.get(1).get("png").getAsString()), "mit Krone");
+        for (var x : a.subList(2, 5)) {
+            assertFalse(x.has("png") || x.has("satz"), "alte version, unbekannter Entwurf, kein Name eines Entwurfs: " + x);
+        }
+        assertEquals("nordreich", a.get(0).get("entwurf").getAsString());
+        assertEquals(g.version(), a.get(0).get("version").getAsString());
+
+        m.frage(SAM, banner("beispiel:geheim", g.version(), "nordreich", false), JETZT);
+        m.beantworte(JETZT);
+        assertEquals(List.of(), banner(m.nachrichten(SAM, true, p -> false, JETZT)), "ohne das Recht der Ebene keine Antwort");
+    }
+
+    /** Höchstens 20 Anfragen nach Bannern je Spieler und Sekunde, gezählt getrennt von den Tafeln. */
+    @Test
+    void hoechstens_20_banner_je_spieler_und_sekunde() {
+        var g = ebene("beispiel:geheim", "", ENTWURF + ", \"permission\": \"beispiel.karte\"");
+        var m = ohneAdresse(List.of(g));
+        for (int i = 0; i < EbenenFuerMod.BANNER_JE_SEKUNDE; i++) {
+            assertTrue(m.frage(SAM, banner("beispiel:geheim", g.version(), "nordreich", false), JETZT));
+        }
+        assertFalse(m.frage(SAM, banner("beispiel:geheim", g.version(), "nordreich", false), JETZT));
+        assertTrue(m.frage(SAM, tafel("beispiel:geheim", g.version(), "p"), JETZT), "die Tafeln zählen für sich");
+        assertTrue(m.frage(SAM, banner("beispiel:geheim", g.version(), "nordreich", false), JETZT + 1), "die nächste Sekunde");
+    }
+
+    /** Ein Sprite über 256 KiB geht nicht hinaus: die Antwort ohne png, eine Zeile im Log. */
+    @Test
+    void ein_zu_grosses_sprite_bleibt_daheim() throws IOException {
+        var g = ebene("beispiel:geheim", "", ENTWURF + ", \"permission\": \"beispiel.karte\"");
+        var log = new CopyOnWriteArrayList<String>();
+        var logger = Logger.getAnonymousLogger();
+        logger.setUseParentHandlers(false);
+        logger.addHandler(new Handler() {
+            @Override
+            public void publish(LogRecord r) {
+                log.add(r.getMessage());
+            }
+
+            @Override
+            public void flush() {}
+
+            @Override
+            public void close() {}
+        });
+        var m = new EbenenFuerMod(JsonObject::new,
+                sprites("beispiel", "geheim", new byte[EbenenFuerMod.SPRITE + 1], new byte[1]), logger);
+        m.bereite(List.of(g));
+        m.frage(SAM, banner("beispiel:geheim", g.version(), "nordreich", false), JETZT);
+        m.beantworte(JETZT);
+        var a = banner(m.nachrichten(SAM, true, p -> true, JETZT));
+        assertEquals(1, a.size());
+        assertFalse(a.getFirst().has("png"));
+        assertTrue(log.stream().anyMatch(z -> z.contains("höchstens " + EbenenFuerMod.SPRITE)), log::toString);
     }
 
     @Test
