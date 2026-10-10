@@ -243,10 +243,11 @@ der Ebene, entschieden im Renderer in
 - **Entfernen nur, wenn kein Banner ihn nennt:** `removeDesign` wirft
   `IllegalArgumentException`, solange ein Banner der Ebene den Entwurf
   nennt.
-- **Noch nicht gezeichnet:** Den Modus `--banners` des Renderers ruft das
-  Plugin erst in einem späteren Schritt. Bis dahin zeigen Webkarte und Mod
-  das Bild; ein Banner ohne Bild übergehen sie, siehe [Ebenen](ebenen.md),
-  „web und permission“.
+- **Gezeichnet:** Das Plugin lässt jeden Entwurf vom Renderer zeichnen, mit
+  `--banners`, siehe [Läufe](laeufe.md), „Banner“. Bis das Sprite da ist,
+  zeigen Webkarte und Mod das Bild; ein Banner ohne Bild übergehen sie.
+  Banner geheimer Ebenen bekommt der Mod erst in einem späteren Schritt,
+  siehe [Ebenen](ebenen.md), „web und permission“.
 
 ## Versionierung
 

@@ -48,6 +48,7 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
     private Ebenen ebenen;
     private EbenenFuerMod fuerMod;
     private Laeufe laeufe;
+    private Banner banner;
     private volatile Webserver webserver;
     /** Warum das Plugin ohne Renderer bleibt; null mit Renderer. Jeder Befehl nennt es. */
     private String ohneRenderer;
@@ -106,6 +107,12 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
         laeufe = new Laeufe(konf, getLogger(), getDataFolder().toPath());
         laeufe.raeumeAuf();
         laeufe.markiere();
+        // Die Sprites der Banner: nach dem ersten Schreiben der Ebenen, nach neuen Entwürfen und nach einem Lauf mit
+        // neuen Bäumen; nie vor dem ersten Laden. Siehe docs/laeufe.md, „Banner“.
+        banner = new Banner(konf, List.of(konf.renderer().toString()), laeufe.quellen(), getLogger(),
+                getDataFolder().toPath(), ebenen::stand, ebenen::sprites);
+        laeufe.nachLauf(banner::nachLauf);
+        ebenen.nachEntwuerfen(banner::bestelle);
         for (var w : getServer().getWorlds()) {
             if (!w.isAutoSave() && w.getWorldFolder().toPath().toAbsolutePath().normalize().equals(konf.welt().normalize())) {
                 getLogger().warning("Der Autosave der Welt " + w.getName() + " ist aus. Änderungen kommen erst beim "
@@ -249,6 +256,9 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
         }
         if (laeufe != null) {
             laeufe.stoppe();
+        }
+        if (banner != null) {
+            banner.stoppe();
         }
         if (webserver != null) {
             webserver.stoppe();

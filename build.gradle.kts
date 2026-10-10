@@ -79,10 +79,10 @@ tasks.processResources {
 // Der Renderer im Jar, für Windows und Linux auf x86_64 in einem Jar. Die SHA-256 der Archive stehen hier fest, denn
 // SHA256SUMS kommt von derselben Stelle wie die Archive. Siehe docs/entscheidungen/0004-renderer-im-jar.md und
 // docs/entscheidungen/0011-ein-jar-mit-xz.md.
-val renderer = "0.7.0"
+val renderer = "0.8.0"
 val rendererArchive = mapOf(
-    "windows-x64" to "ba7d32e5f1cbf81eee89dbbf87a72c81f6f4341ae277f39d90087d22db30cea0",
-    "linux-x64" to "1847c09b6a2b9be01a2726e326fec7a272c108d66b580b1fde47942d6ea0e877",
+    "windows-x64" to "cf4bfea5d8febfe78718e1bceed50a101970a34db556223253c286b8b5ca2888",
+    "linux-x64" to "3947698852c5c7d687b440fe0838f85326aa5a68d3d2c96a470449565b21a372",
 )
 val rendererHinweise = listOf("LICENSE", "NOTICE", "THIRD-PARTY-NOTICES", "COPYRIGHT-library.html")
 
@@ -181,6 +181,14 @@ val holeRenderer = tasks.register("holeRenderer") {
         }
         File(ziel, "renderer/renderer.properties").writeText(liste.joinToString("\n", postfix = "\n"))
     }
+}
+
+// Der echte Renderer für BannerTest: mit -PrendererTest=<binär> dieses, sonst das aus holeRenderer für die Plattform
+// des Tests. Ohne beide fällt der Test aus. Siehe docs/entwicklung.md, „Tests“.
+tasks.test {
+    dependsOn(holeRenderer)
+    systemProperty("heroicmap.renderer", providers.gradleProperty("rendererTest").getOrElse(""))
+    systemProperty("heroicmap.rendererJar", layout.buildDirectory.dir("renderer/jar").get().asFile.path)
 }
 
 // Das Jar baut Shadow, ein Jar für beide Plattformen: bStats und xz unter eigenem Paket, bStats verlangt es. Die

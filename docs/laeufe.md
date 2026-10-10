@@ -1,8 +1,10 @@
 ---
 title: Läufe
-description: Wie das Plugin den Renderer als Kindprozess startet, mit Befehlen, dem Zeitplan der Updates, einem Lauf zur Zeit und einem Thread. Dazu die Ausgabe im Log, Abbruch und Stoppen des Servers, das Fortsetzen nach einem Abbruch, kompakt packen und Nachverdichten mit /heroicmap compact und verwaiste Prozesse.
+description: Wie das Plugin den Renderer als Kindprozess startet, mit Befehlen, dem Zeitplan der Updates, einem Lauf zur Zeit und einem Thread. Dazu die Ausgabe im Log, Abbruch und Stoppen des Servers, das Fortsetzen nach einem Abbruch, kompakt packen und Nachverdichten mit /heroicmap compact, die Sprites der Banner mit --banners und verwaiste Prozesse.
 code:
   - src/main/java/com/nekyia/heroicmap/Laeufe.java
+  - src/main/java/com/nekyia/heroicmap/Banner.java
+  - src/test/java/com/nekyia/heroicmap/BannerTest.java
   - src/main/java/com/nekyia/heroicmap/HeroicMapPlugin.java
   - src/main/resources/plugin.yml
 ---
@@ -304,6 +306,59 @@ und in seiner Entscheidung 0093.
   Der Mod sieht danach den ganzen Baum als geändert, siehe
   [Download](download.md), „Manifest“.
 
+## Banner
+
+Die Sprites der Banner zu den Entwürfen der Ebenen zeichnet der Renderer mit
+`--banners`, siehe im Renderer
+[Plugin](https://github.com/VonNekyia/heroic-map-renderer/blob/master/docs/plugin.md),
+„Banner zeichnen: `--banners`“. Der Code steht in `Banner` in
+[`Banner.java`](../src/main/java/com/nekyia/heroicmap/Banner.java).
+
+- **Wann:**
+  - beim Start, aber erst nach dem ersten Laden der Dateien und dem
+    Schreiben danach (`Ebenen.nachEntwuerfen`): Ein Aufruf ohne sie räumte
+    jedes Sprite weg. Ein Takt davor, etwa nach einer Ebene der API, ruft
+    nicht. Ist der Ordner der Ebenen nicht zu lesen, ruft es gar nicht, so
+    wie das Schreiben dann `layers/` nicht anrührt;
+  - nach jedem Schreiben der Ebenen, bei dem sich die Entwürfe, die Ebenen
+    mit Entwürfen oder ihr `permission` änderten (`Ebenen.entwuerfe`);
+  - nach einem Lauf, wenn `trees.json` eine andere ist als beim letzten
+    Aufruf, denn jeder Satz gehört zu einem Baum.
+
+  Neue Sprites allein rufen ihn nicht.
+- **Zwei Aufrufe nacheinander:**
+
+  | Ziel | Ebenen | `--out` | `--tiles` |
+  |---|---|---|---|
+  | öffentlich | ohne `permission`, auch nur für den Mod | `layers/` unter `tiles` | `tiles` |
+  | geheim | mit `permission` | `plugins/HeroicMap/banner/geheim/` | ohne, also nur der Satz `oben` |
+
+  Je Ziel ein Aufruf mit allen seinen Ebenen: Unter `--out` räumt der
+  Renderer weg, was zu keiner übergebenen Ebene gehört.
+- **Eingabe:** je Ebene mit `designs` eine Datei nur mit `id` und
+  `designs`, unter
+  `plugins/HeroicMap/banner/eingabe/<oeffentlich|geheim>/<modname>/<ebene>.json`,
+  für Dateien und API gleich und vor jedem Aufruf neu. Eine Ebene ohne
+  Entwürfe fehlt dort, und ihre Sprites gehen.
+- **Neben den Läufen:** auf einem eigenen Faden, nicht im einen Platz der
+  Läufe. So bekommt ein neuer Entwurf sein Sprite auch während eines vollen
+  Laufs. Mit `--threads 1`, `--low-priority` und denselben Schaltern für
+  Assets, Daten und Client-Jar wie ein Lauf (`Laeufe.quellen`). Kommt ein
+  Auftrag, während einer läuft, folgt genau einer danach.
+- **Meldung:** die letzte Zeile, `{"changed": […], "failed": […]}`.
+  `failed` und ein Code ungleich 0 kommen als Warnung ins Log, mit der
+  übrigen Ausgabe des Aufrufs; sonst steht sie nur auf `fine`.
+- **`version`:** Nach jedem Aufruf liest das Plugin je Ebene den Stand
+  ihrer Sprites, einen Hash über `.stempel` und `satz.json` ihrer Sätze
+  (`Banner.stand`). Er geht in ihre `version` ein, siehe
+  [Ebenen](ebenen.md), „Webkarte“. Zeichnet der Renderer neu, laden
+  Webkarte und Mod die Ebene neu. Gleiche Sprites geben denselben Stand,
+  auch nach einem Neustart.
+- **Stoppen:** `onDisable` beendet einen laufenden Aufruf. Eine PID-Datei
+  gibt es nicht; ein Aufruf dauert Sekunden.
+- **Geheime Sprites** liegen vorerst nur im Datenordner. Über den Kanal an
+  den Mod kommen sie in einem späteren Schritt, siehe „Was noch fehlt“.
+
 ## Keine verwaisten Prozesse
 
 Solange der Renderer läuft, steht seine PID in
@@ -319,3 +374,5 @@ nicht; er läuft dann zu Ende.
 ## Was noch fehlt
 
 - Warnung mit Schätzung und Bestätigung: heroic-map-renderer#149.
+- Die Sprites geheimer Ebenen über den Kanal an den Mod, Schritt 2b zu
+  [0100](https://github.com/VonNekyia/heroic-map-renderer/blob/master/docs/entscheidungen/0100-der-renderer-zeichnet-die-banner.md).
