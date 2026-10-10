@@ -554,7 +554,7 @@ class LaeufeTest {
         var l = laeufe();
         l.starte("Update", List.of(new Auftrag("a", falscher("anderer-build"), false)));
         assertTrue(l.warte(30_000));
-        assertTrue(l.status().endsWith(", Fehler, Code 1: neuer Renderer: erst /heroicmap render"), l::status);
+        assertTrue(l.status().endsWith(", Fehler, Code 1: neuer Renderer: erst /heroicmap render a"), l::status);
         assertTrue(log.stream().anyMatch(z -> z.contains("stammt von einem anderen Build des Renderers")),
                 "der Text des Renderers steht weiter im Log");
     }
@@ -614,6 +614,15 @@ class LaeufeTest {
         Files.writeString(tmp.resolve("tiles/top-north-s-flat/map.json"), "{}");
         assertEquals(List.of(JAVA.toString(), "--compact-tree", tmp.resolve("tiles/top-north-s-flat").toString(),
                 "--threads", "6", "--low-priority"), kompakt(false, flat).plane(Art.VERDICHTEN).getFirst().befehl());
+    }
+
+    @Test
+    void render_mit_dem_ordner_nur_ueber_diesen_baum() {
+        var l = laeufe(KARTE, OBEN);
+        assertEquals(List.of("2x1-se", "top-north-s"), l.plane(Art.VOLL).stream().map(Auftrag::baum).toList());
+        assertEquals(List.of("top-north-s"), l.plane(Art.VOLL, "top-north-s").stream().map(Auftrag::baum).toList());
+        assertEquals("Keinen Baum top-north-s-flat in config.yml, nur 2x1-se, top-north-s", l.starte(Art.VOLL, "top-north-s-flat"));
+        assertEquals("Kein Lauf seit dem Start.", l.status(), "nichts gestartet");
     }
 
     @Test

@@ -9,7 +9,7 @@ softdepend: [voicechat]
 commands:
   heroicmap:
     description: Karte rendern, Update, Nachverdichten, Status, Abbruch, Ebenen neu laden
-    usage: /<command> render|update|compact|status|cancel|layers
+    usage: /<command> render [baum]|update|compact|status|cancel|layers
     permission: heroicmap.admin
 permissions:
   heroicmap.admin:

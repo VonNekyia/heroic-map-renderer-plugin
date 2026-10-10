@@ -91,11 +91,19 @@ final class Laeufe {
 
     /** Startet einen Lauf über alle Bäume und sagt, was geschah. */
     synchronized String starte(Art art) {
+        return starte(art, null);
+    }
+
+    /** Wie oben; mit {@code nur} nur für den Baum in diesem Ordner. Siehe docs/laeufe.md, „Befehle“. */
+    synchronized String starte(Art art, String nur) {
         if (faden != null) {
             return "Es läuft schon: " + laeuft;
         }
+        if (nur != null && !ordner().contains(nur)) {
+            return "Keinen Baum " + nur + " in config.yml, nur " + String.join(", ", ordner());
+        }
         markiere();
-        List<Auftrag> auftraege = plane(art);
+        List<Auftrag> auftraege = plane(art, nur);
         if (auftraege.isEmpty()) {
             return "Kein Baum zu rendern, Gründe im Log.";
         }
@@ -118,10 +126,23 @@ final class Laeufe {
         return name + " gestartet, die Ausgabe steht im Log.";
     }
 
+    /** Die Ordner der Bäume aus config.yml, wie render sie nimmt. */
+    List<String> ordner() {
+        return konf.baeume().stream().map(Konfiguration.Baum::ordner).toList();
+    }
+
     /** Je Baum ein Aufruf; was nicht geht, steht im Log. Siehe docs/laeufe.md, „Fortsetzen“. */
     List<Auftrag> plane(Art art) {
+        return plane(art, null);
+    }
+
+    /** Wie oben; mit {@code nur} nur für den Baum in diesem Ordner. */
+    List<Auftrag> plane(Art art, String nur) {
         List<Auftrag> auftraege = new ArrayList<>();
         for (Konfiguration.Baum baum : konf.baeume()) {
+            if (nur != null && !baum.ordner().equals(nur)) {
+                continue;
+            }
             Path ordner = konf.kacheln().resolve(baum.ordner());
             if (art == Art.VERDICHTEN) {
                 if (Files.exists(ordner.resolve("map.json"))) {
@@ -423,7 +444,7 @@ final class Laeufe {
                 var start = Instant.now();
                 long beginn = System.nanoTime();
                 boolean verdichten = a.befehl().contains("--compact-tree");
-                String ausgang = fuehreAus(a.befehl(), puffer);
+                String ausgang = fuehreAus(a.befehl(), a.baum(), puffer);
                 if (verdichten && ausgang.equals(GEZEICHNET)) {
                     ausgang = VERDICHTET;
                 }
@@ -473,7 +494,7 @@ final class Laeufe {
      * Mit Puffer kommt seine Ausgabe erst am Ende ins Log, und nur, wenn er etwas zeichnete oder
      * scheiterte. Siehe docs/laeufe.md, „Zeitplan“.
      */
-    private String fuehreAus(List<String> befehl, List<String> puffer) {
+    private String fuehreAus(List<String> befehl, String baum, List<String> puffer) {
         var pb = new ProcessBuilder(befehl).redirectErrorStream(true);
         Process p;
         synchronized (this) {
@@ -507,7 +528,7 @@ final class Laeufe {
             if (code != 0 && letzteZeile.contains("--download-client-jar")) {
                 hinweis("Zustimmen zum Client-Jar in config.yml: renderer.download-client-jar: true, siehe docs/konfiguration.md");
             }
-            return still ? NICHTS : code == 0 ? GEZEICHNET : "Fehler, Code " + code + (fehler == null ? "" : ": " + kurz(fehler));
+            return still ? NICHTS : code == 0 ? GEZEICHNET : "Fehler, Code " + code + (fehler == null ? "" : ": " + kurz(fehler, baum));
         } catch (IOException | RuntimeException e) {
             // Ein abgebrochener Prozess kann die Leitung mitten in einer Zeile schliessen.
             if (istAbgebrochen()) {
@@ -570,11 +591,12 @@ final class Laeufe {
 
     /**
      * Die Zeile „Error: …“ für den Status; braucht ein Update erst einen vollen Lauf, weil der Stand von einem
-     * anderen Build des Renderers stammt, steht dort, was zu tun ist. Siehe docs/laeufe.md, „Der Kindprozess“.
+     * anderen Build des Renderers stammt, steht dort, was zu tun ist, für genau diesen Baum. Siehe docs/laeufe.md,
+     * „Der Kindprozess“.
      */
-    static String kurz(String fehler) {
-        return fehler.contains("stammt von einem anderen Build des Renderers") ? "neuer Renderer: erst /heroicmap render"
-                : fehler;
+    static String kurz(String fehler, String baum) {
+        return fehler.contains("stammt von einem anderen Build des Renderers")
+                ? "neuer Renderer: erst /heroicmap render " + baum : fehler;
     }
 
     /**
