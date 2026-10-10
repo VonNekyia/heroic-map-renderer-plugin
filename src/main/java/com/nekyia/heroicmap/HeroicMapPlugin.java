@@ -257,7 +257,8 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
 
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
-        if (args.length != 1) {
+        // Nur render nimmt ein zweites Wort, den Ordner eines Baums. Siehe docs/laeufe.md, „Befehle“.
+        if (args.length != 1 && !(args.length == 2 && args[0].equals("render"))) {
             return false;
         }
         if (args[0].equals("layers")) {
@@ -273,7 +274,7 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
             return true;
         }
         String antwort = switch (args[0]) {
-            case "render" -> laeufe.starte(Laeufe.Art.VOLL);
+            case "render" -> laeufe.starte(Laeufe.Art.VOLL, args.length == 2 ? args[1] : null);
             case "update" -> laeufe.starte(Laeufe.Art.UPDATE);
             case "compact" -> laeufe.starte(Laeufe.Art.VERDICHTEN);
             case "status" -> laeufe.status() + (webserver != null ? "\n" + webserver.status() : "") + "\n" + ebenen.status();
@@ -289,6 +290,9 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
 
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String label, String[] args) {
+        if (args.length == 2 && args[0].equals("render") && laeufe != null) {
+            return laeufe.ordner().stream().filter(o -> o.startsWith(args[1])).toList();
+        }
         return args.length == 1 ? Stream.concat(BEFEHLE.stream(), Stream.of("layers"))
                 .filter(b -> b.startsWith(args[0])).toList() : List.of();
     }

@@ -23,7 +23,7 @@ ist die Entscheidung des Maintainers in heroic-map-renderer#153.
 
 | Befehl | Wirkung |
 |---|---|
-| `render` | voller Lauf über alle Bäume; setzt einen abgebrochenen fort |
+| `render [ordner]` | voller Lauf über alle Bäume, mit dem Ordner eines Baums nur über ihn, etwa `render top-north-s-flat`; Tab ergänzt die Ordner aus `config.yml`; setzt einen abgebrochenen fort |
 | `update` | Update über alle Bäume, `--update` |
 | `compact` | Nachverdichten über alle Bäume, `--compact-tree`, siehe „Kompakt“ |
 | `status` | was läuft, seit wann, mit PID und letzter Zeile; dazu je Baum Dauer und Ausgang des letzten Aufrufs, siehe „Status“ |
@@ -139,9 +139,10 @@ entschieden in [0003](entscheidungen/0003-live-render-ueber-autosave-und-zeitpla
   noch nach einem Release, das anders zeichnet, nicht nach jedem neuen
   Build; ein Stand von 0.4.0 oder 0.5.0 gilt weiter, siehe
   [0098](https://github.com/VonNekyia/heroic-map-renderer/blob/master/docs/entscheidungen/0098-der-zeichenstand-statt-des-builds.md)
-  des Renderers. Dann steht im Status statt des Texts „neuer Renderer: erst
-  /heroicmap render“; der volle Lauf zeichnet alles neu, danach gehen
-  Updates wieder. Erkannt am Wortlaut „stammt von einem anderen Build des
+  des Renderers. Dann steht im Status beim Baum statt des Texts „neuer
+  Renderer: erst /heroicmap render <ordner>“, bei mehreren Bäumen bei
+  jedem seiner. Der volle Lauf über diesen Baum zeichnet ihn neu, danach
+  gehen Updates wieder; die übrigen Bäume bleiben, wie sie sind. Erkannt am Wortlaut „stammt von einem anderen Build des
   Renderers“ aus `stand_fuer_update` in `cli.rs` des Renderers, seit 0.6.0
   mit „, der anders zeichnet“ dahinter; der ganze Text steht weiter im Log.
 - **Faden:** ein eigener Faden `HeroicMap-Lauf`, nicht einer aus dem Pool

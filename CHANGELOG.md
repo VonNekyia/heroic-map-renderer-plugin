@@ -9,6 +9,7 @@ Links und die Hinweise aus `NOTICE` setzt
 
 ## 0.6.0
 
+- **Render one tree:** `/heroicmap render <tree>` renders only that tree, with tab completion. When a new renderer needs a full render, the status names each tree that needs one.
 - **Banner designs** in layer files and in the [layer API](https://github.com/VonNekyia/heroic-map-renderer-plugin/blob/main/docs/api.md): a banner names a design of its layer, a base colour and up to 16 patterns as in the game, and may carry the crown of a capital. The renderer will draw such banners in a later release; until then the map shows the banner's image.
 
 ## 0.5.0
