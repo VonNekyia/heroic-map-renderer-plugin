@@ -15,11 +15,11 @@ for datei in web/index.html web/lizenzen.txt web/seite.html web/robots.vorlage.t
   grep -qx "$datei" <<< "$inhalt" || { echo "::error::$datei fehlt in $jar"; exit 1; }
 done
 
-# Je Plattform die SHA-256 des ausgepackten Binärs, sonst fände das Plugin am Server keins. xz prüft dabei
-# seine Prüfsumme. Siehe docs/entscheidungen/0011-ein-jar-mit-xz.md.
+# Je Plattform die SHA-256 des ausgepackten Binärs, sonst fände das Plugin am Server keins. Ausgepackt mit dem
+# Decoder aus dem Jar, so wie das Plugin es tut; er prüft dabei CRC64. Siehe docs/entscheidungen/0011-ein-jar-mit-xz.md.
 for p in windows-x64/heroic-map-renderer.exe linux-x64/heroic-map-renderer; do
   plattform=${p%%/*}
-  sha=$(unzip -p "$jar" "renderer/$p.xz" | xz -dc | sha256sum | cut -d' ' -f1)
+  sha=$(java -cp "$jar" "$(dirname "$0")/Auspacken.java" "$jar" "renderer/$p.xz" | sha256sum | cut -d' ' -f1)
   unzip -p "$jar" renderer/renderer.properties | grep -qx "$plattform=$sha" \
     || { echo "::error::renderer.properties in $jar nennt nicht $plattform=$sha"; exit 1; }
   # Mit xz und wie es im Jar liegt, für docs/entwicklung.md, „Der Renderer im Jar“.

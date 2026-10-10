@@ -19,7 +19,10 @@ import java.util.Map;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.tukaani.xz.FilterOptions;
 import org.tukaani.xz.LZMA2Options;
+import org.tukaani.xz.X86Options;
+import org.tukaani.xz.XZ;
 import org.tukaani.xz.XZOutputStream;
 
 class BinaerTest {
@@ -53,9 +56,10 @@ class BinaerTest {
         return jar("plugin.jar", "version=0.2.0\nwindows-x64=" + sha256("windows") + "\nlinux-x64=" + sha256("linux") + "\n");
     }
 
+    /** Mit xz wie der Build: BCJ x86, dann LZMA2, CRC64. */
     private static byte[] xz(String text) throws IOException {
         var aus = new ByteArrayOutputStream();
-        try (var x = new XZOutputStream(aus, new LZMA2Options())) {
+        try (var x = new XZOutputStream(aus, new FilterOptions[] {new X86Options(), new LZMA2Options()}, XZ.CHECK_CRC64)) {
             x.write(text.getBytes(StandardCharsets.UTF_8));
         }
         return aus.toByteArray();

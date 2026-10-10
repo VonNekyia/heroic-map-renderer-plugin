@@ -69,9 +69,10 @@ final class Binaer {
             if (Files.isRegularFile(ziel) && sha256(Files.newInputStream(ziel), null).equals(soll)) {
                 return ziel;
             }
-            // Erst daneben, dann umbenennen: So liegt nie ein halbes Binär unter dem Namen.
+            // Erst daneben, dann umbenennen: So liegt nie ein halbes Binär unter dem Namen. Je Auspacken ein eigener
+            // Name, damit sich zwei Prozesse in einem bin/ nicht stören.
             Files.createDirectories(ziel.getParent());
-            Path neu = ziel.resolveSibling(name + ".neu");
+            Path neu = Files.createTempFile(ziel.getParent(), name, ".neu");
             // Mit xz gepackt, die SHA-256 gilt dem Ausgepackten. Siehe docs/entscheidungen/0011-ein-jar-mit-xz.md.
             try (InputStream xz = Files.newInputStream(ordner.resolve(plattform).resolve(name + ".xz"))) {
                 String ist = sha256(new XZInputStream(new BufferedInputStream(xz)), neu);

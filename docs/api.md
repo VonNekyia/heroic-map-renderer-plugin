@@ -80,9 +80,19 @@ dependencies:
   Weil JitPack nur dieses eine Artefakt findet, nennt es es wie das Repo:
   `com.github.VonNekyia:heroic-map-renderer-plugin`, mit dem Tag als
   Version. Die Dateien baut der Release-Workflow, siehe
-  [Entwicklung](entwicklung.md), „Release“. ⟨GEPRUEFT⟩
-- **Warum nicht bauen:** Ein Teil der Rechner von JitPack hat ein Docker
-  vor 18.04, dessen seccomp `statx` mit EPERM ablehnt. Java ab 22 liest
+  [Entwicklung](entwicklung.md), „Release“. Das `.pom` legt das Skript
+  auch nach `api/build/publications/api/`, wie `publishToMavenLocal`:
+  Nur von dort aus findet JitPack das Artefakt unter `~/.m2`.
+- **Geprüft** am 10.10. mit zwei Tags zur Probe, Vorabversionen, die
+  wieder gelöscht sind. JitPack lieferte unter
+  `com.github.VonNekyia:heroic-map-renderer-plugin:v0.0.0-jitpack.2` Jar,
+  `.pom`, `.module`, Quellen und Javadoc, das Jar Byte für Byte wie im
+  Release; Gruppe und Version in `.pom` und `.module` schreibt es um. Ohne
+  das `.pom` im Projektordner fand es nichts.
+- **Warum nicht bauen:** Ein Teil der Rechner von JitPack lehnt `statx`
+  mit EPERM ab, wohl über die seccomp eines Dockers vor 18.04, das `statx`
+  noch nicht kannte. Einer davon meldet Linux 4.10; `statx` gibt es erst
+  ab 4.11. Java ab 22 liest
   Attribute einer Datei mit `statx` und fällt nicht auf `stat` zurück,
   siehe JDK-8337966. Dort öffnet Java kein Jar, auch nicht den Wrapper von
   Gradle. Builds landeten zufällig auf solchen Rechnern, mit Tags wie mit

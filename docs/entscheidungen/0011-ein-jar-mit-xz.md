@@ -8,6 +8,7 @@ code:
   - build.gradle.kts
   - src/main/java/com/nekyia/heroicmap/Binaer.java
   - .github/pruefe-jar.sh
+  - .github/Auspacken.java
   - .github/workflows/release.yml
   - .github/workflows/hangar.yml
 ---
@@ -33,8 +34,8 @@ nächste Version des Renderers könnte es darüber heben.
 - **xz beim Bauen:** `holeRenderer` packt jedes Binär mit xz: erst der
   Filter BCJ x86, dann LZMA2 mit Preset 9 extreme, also `nice_len` 273 und
   Tiefe 512, mit 8 MiB Wörterbuch und der Prüfsumme CRC64. Mit denselben
-  Parametern misst der Renderer sein Budget, abgestimmt mit dem Frontend am
-  10.10. Ins Jar kommt `renderer/<plattform>/<binär>.xz`.
+  Parametern misst der Renderer sein Budget seit renderer#251, abgestimmt
+  mit dem Frontend am 10.10. Ins Jar kommt `renderer/<plattform>/<binär>.xz`.
 - **Auspacken zur Laufzeit** wie bisher einmal je Version nach
   `bin/<version>/`, siehe [Konfiguration](../konfiguration.md), „Das
   Binär“, jetzt mit XZ for Java 1.12. Die SHA-256 aus dem Build gilt dem
@@ -48,12 +49,19 @@ nächste Version des Renderers könnte es darüber heben.
   wieder eine Version `<version>` je Release. Das löst in
   [0009](0009-hangar-mit-curl.md) die zwei Versionen ab; curl und das
   Secret bleiben.
-- **Die CI** packt beide Binärs mit `xz -dc` aus, vergleicht ihre SHA-256
-  mit `renderer.properties` und prüft die Grenze, siehe
+- **Die CI** packt beide Binärs mit dem Decoder aus, den das Jar
+  mitbringt, verlagert und ohne `META-INF/versions/`, vergleicht ihre
+  SHA-256 mit `renderer.properties` und prüft die Grenze, siehe
   [Entwicklung](../entwicklung.md), „CI“.
 
 Damit gilt in [0004](0004-renderer-im-jar.md) wieder ein Jar mit beiden
 Binärs; neu ist, wie sie darin liegen.
+
+0008 verwarf xz, weil das JDK es nicht auspackt und eine Bibliothek mehr
+ins Jar käme, für einen Gewinn, der nur einmal kommt. Das gilt nicht mehr:
+Der User will ein Jar, und nur xz bringt beide Binärs mit Luft hinein.
+Deflate auf Stufe 9 statt 6 spart an den Binärs von v0.6.0 zusammen nur
+38 695 Byte, xz rund 2,3 MB; XZ for Java kostet 71 KB im Jar.
 
 ## Verworfene Alternativen
 
@@ -78,6 +86,10 @@ Binärs; neu ist, wie sie darin liegen.
 
 - Der Betreiber nimmt dasselbe Jar unter Windows und Linux, siehe
   [Alpha einrichten](../alpha.md), „Welches Jar“.
+- **Kein Verschleiern:** Die `.xz` sind gewöhnliches xz. `xz -dc` packt
+  sie aus, und ihre SHA-256 steht in `renderer.properties`. Ausgepackt
+  sind sie Byte für Byte die Binärs aus dem Release des Renderers, dessen
+  Archive `build.gradle.kts` mit SHA-256 nennt.
 - Das Jar hat mit beiden Binärs rund 7,7 MB, rund 2,3 MB unter der
   Grenze, siehe [Entwicklung](../entwicklung.md), „Der Renderer im Jar“.
   XZ for Java kostet davon rund 0,07 MB.

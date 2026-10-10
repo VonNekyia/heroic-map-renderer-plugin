@@ -84,8 +84,9 @@ in `Binaer` in [`Binaer.java`](../src/main/java/com/nekyia/heroicmap/Binaer.java
   SHA-256 nicht die aus dem Build ist. Sonst bleibt sie, wie sie ist; die
   Prüfung liest sie einmal je Start. Die SHA-256 gilt dem ausgepackten
   Binär.
-  - Erst in eine Datei daneben, `<name>.neu`, dann umbenannt. So liegt nie
-    ein halbes Binär unter dem Namen.
+  - Erst in eine Datei daneben, `<name><zufall>.neu`, dann umbenannt. So
+    liegt nie ein halbes Binär unter dem Namen, und zwei Prozesse, die in
+    dasselbe `bin/` auspacken, stören sich nicht.
   - Hat das Ausgepackte nicht die SHA-256 aus dem Build, oder ist das
     `.xz` kaputt, wird nichts umbenannt, und die Datei daneben fällt weg.
   - Ausführbar gesetzt wird es vor dem Umbenennen; unter Windows ändert
