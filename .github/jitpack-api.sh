@@ -16,4 +16,20 @@ for datei in "api-$version.jar" "api-$version.pom" "api-$version.module" "api-$v
 done
 # Dieselben Bytes wie im Release, geprüft gegen dessen SHA256SUMS.
 (cd "$ziel" && sha256sum -c --ignore-missing SHA256SUMS && rm SHA256SUMS)
+# Die Liste, die auch publishToMavenLocal schreibt; ohne sie findet JitPack kein Artefakt.
+cat > "$ziel/../maven-metadata-local.xml" <<XML
+<?xml version="1.0" encoding="UTF-8"?>
+<metadata>
+  <groupId>com.nekyia</groupId>
+  <artifactId>api</artifactId>
+  <versioning>
+    <latest>$version</latest>
+    <release>$version</release>
+    <versions>
+      <version>$version</version>
+    </versions>
+    <lastUpdated>$(date -u +%Y%m%d%H%M%S)</lastUpdated>
+  </versioning>
+</metadata>
+XML
 ls -l "$ziel"
