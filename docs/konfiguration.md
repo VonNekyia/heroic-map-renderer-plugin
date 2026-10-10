@@ -80,7 +80,7 @@ in [`Binaer.java`](../src/main/java/com/nekyia/heroicmap/Binaer.java).
 | `Linux` | `amd64` oder `x86_64` | `heroic-map-renderer-plugin-<version>-linux-x64.jar` | `renderer/linux-x64/heroic-map-renderer` |
 
 - **Auspacken:** nach `plugins/HeroicMap/bin/<version>/`, etwa
-  `bin/0.5.0/heroic-map-renderer`, nur wenn die Datei dort fehlt oder ihre
+  `bin/0.6.0/heroic-map-renderer`, nur wenn die Datei dort fehlt oder ihre
   SHA-256 nicht die aus dem Build ist. Sonst bleibt sie, wie sie ist; die
   Prüfung liest sie einmal je Start.
   - Erst in eine Datei daneben, `<name>.neu`, dann umbenannt. So liegt nie
