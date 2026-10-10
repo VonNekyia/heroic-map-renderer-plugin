@@ -10,8 +10,8 @@ code:
 Das Plugin steht neben Hangar auch auf Modrinth als eigenes Projekt,
 [`heroic-map-plugin`](https://modrinth.com/plugin/heroic-map-plugin), so
 hat es der User entschieden. Jedes Release lädt ein Workflow dort hoch, als
-eine Version. Icon, Beschreibung, Lizenz und Links hat der User auf der
-Seite gesetzt. Warum curl und keine fremde Action, steht in
+eine Version. Icon, Beschreibung, Lizenz und Links sind auf der Seite von
+Hand gesetzt. Warum curl und keine fremde Action, steht in
 [0012](entscheidungen/0012-modrinth-mit-curl.md).
 
 ## Hochladen
@@ -30,6 +30,12 @@ wenn ein Release auf GitHub veröffentlicht wird, oder von Hand mit dem Tag
 - **Erst ab 0.4.0:** Davor hatte jedes Release je Plattform ein Jar, siehe
   [0011](entscheidungen/0011-ein-jar-mit-xz.md); die lädt der Workflow
   nicht. Ältere Releases ab 0.4.0 holt er von Hand nach, mit dem Tag.
+- **Keine Vorabversion:** Ein Release, das auf GitHub als Vorabversion
+  steht, lädt der Workflow nicht, wie bei Hangar; von Hand mit dem Tag
+  schon.
+- **Einer zur Zeit:** Release und „Run workflow“ für denselben Tag laufen
+  nacheinander (`concurrency`); der zweite findet die Version und lädt
+  nichts.
 - **Ohne Secret** warnt der Lauf nur, das Release bleibt grün.
 
 ## Token

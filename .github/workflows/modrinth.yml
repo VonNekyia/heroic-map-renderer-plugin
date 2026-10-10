@@ -16,6 +16,9 @@ on:
 permissions:
   contents: read
 
+# Release und Dispatch für denselben Tag laufen nacheinander, nie zugleich; sonst lüden beide hoch.
+concurrency: modrinth-${{ github.event.release.tag_name || inputs.tag }}
+
 env:
   # Das Projekt auf Modrinth: https://modrinth.com/plugin/heroic-map-plugin
   MODRINTH_PROJEKT: heroic-map-plugin
@@ -33,6 +36,8 @@ defaults:
 jobs:
   modrinth:
     name: Auf Modrinth
+    # Eine Vorabversion geht nicht nach Modrinth, wie nach Hangar; von Hand mit dem Tag schon.
+    if: github.event_name == 'workflow_dispatch' || !github.event.release.prerelease
     runs-on: ubuntu-latest
     timeout-minutes: 120
     steps:
@@ -79,7 +84,9 @@ jobs:
           [ -n "$projekt" ] && [ "$projekt" != null ] || { echo "::error::Projekt $MODRINTH_PROJEKT nicht gefunden"; exit 1; }
 
           # Gibt es die Version schon, etwa nach einem zweiten Lauf, lädt er nichts.
-          if api "$MODRINTH_API/project/$projekt/version" | jq -e --arg v "$version" 'any(.[]; .version_number == $v)' > /dev/null; then
+          # Erst die Liste, dann die Prüfung: Im if griffen set -e und pipefail nicht, ein Fehler hiesse „nicht da“.
+          liste=$(api "$MODRINTH_API/project/$projekt/version")
+          if jq -e --arg v "$version" 'any(.[]; .version_number == $v)' <<< "$liste" > /dev/null; then
             echo "$version gibt es auf Modrinth"
             exit 0
           fi
