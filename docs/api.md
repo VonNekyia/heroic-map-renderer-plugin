@@ -38,7 +38,7 @@ repositories {
     maven("https://jitpack.io")
 }
 dependencies {
-    compileOnly("com.github.VonNekyia:heroic-map-renderer-plugin:6f3a3c6b") // v0.4.0
+    compileOnly("com.github.VonNekyia:heroic-map-renderer-plugin:v0.5.0")
 }
 ```
 
@@ -84,7 +84,9 @@ dependencies:
   [Entwicklung](entwicklung.md), „Release“. Das `.pom` legt das Skript
   auch nach `api/build/publications/api/`, wie `publishToMavenLocal`:
   Nur von dort aus findet JitPack das Artefakt unter `~/.m2`.
-- **Geprüft** am 10.10. mit zwei Tags zur Probe, Vorabversionen, die
+- **Geprüft** am 10.10. mit v0.5.0: JitPack fand `com.nekyia:api:0.5.0`,
+  das Jar ist Byte für Byte das aus dem Release. Davor mit zwei Tags zur
+  Probe, Vorabversionen, die
   wieder gelöscht sind. JitPack lieferte unter
   `com.github.VonNekyia:heroic-map-renderer-plugin:v0.0.0-jitpack.2` Jar,
   `.pom`, `.module`, Quellen und Javadoc, das Jar Byte für Byte wie im
