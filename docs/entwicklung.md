@@ -211,7 +211,13 @@ Plugin das seiner Plattform aus, siehe [Konfiguration](konfiguration.md),
   Spieler und Sekunde, ihre Antworten im Budget, der Hauptthread rechnet
   nicht,
   Rechte samt `heroicmap.layers`, die Adresse und ihr späteres Kommen,
-  höchstens 1 MiB je Sekunde.
+  höchstens 1 MiB je Sekunde. Dazu Banner geheimer Ebenen auf Anfrage: mit
+  `satz` und `png` nur bei aktueller `version` und bekanntem Entwurf, ohne
+  bei alter `version`, fremdem Entwurf oder einem Pfad statt eines Namens,
+  keine Antwort für öffentliche, fremde oder unlesbare Anfragen, die Rechte
+  beim Senden, `secret` im Eintrag der Liste, höchstens 20 je Sekunde
+  getrennt von den Tafeln, ein Sprite über 256 KiB ohne `png` und mit
+  Zeile im Log.
 - **`EbenenApiTest`:** die Kennung aus dem Namen des Plugins, Prüfen beim
   Aufruf, Nadeln und Banner zusammen an der Grenze von 1000 mit Ersetzen
   und Entfernen, alle Arten und Bausteine als gültiges JSON, Banner mit
