@@ -602,6 +602,21 @@ class LaeufeTest {
     }
 
     @Test
+    void flat_statt_kamera_und_richtung() throws Exception {
+        var flat = new Konfiguration.Baum("top-north", "s", null, false, false, true, true);
+        var plan = new Laeufe(konf(JAVA, true, List.of(flat)), logger, tmp).plane(Art.VOLL);
+        assertEquals("top-north-s-flat", plan.getFirst().baum());
+        assertEquals(List.of("--tiles", tmp.resolve("tiles").toString(), "--flat", "--gpu", "auto",
+                "--threads", "1", "--low-priority", "--progress", "json"), ende(plan, 10));
+
+        // --compact-tree geht nicht mit --flat, wohl aber mit dem Ordner des Baums.
+        Files.createDirectories(tmp.resolve("tiles/top-north-s-flat"));
+        Files.writeString(tmp.resolve("tiles/top-north-s-flat/map.json"), "{}");
+        assertEquals(List.of(JAVA.toString(), "--compact-tree", tmp.resolve("tiles/top-north-s-flat").toString(),
+                "--threads", "6", "--low-priority"), kompakt(false, flat).plane(Art.VERDICHTEN).getFirst().befehl());
+    }
+
+    @Test
     void update_braucht_einen_vollen_lauf() throws Exception {
         var l = laeufe(KARTE);
         assertEquals(List.of(), l.plane(Art.UPDATE));

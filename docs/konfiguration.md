@@ -139,10 +139,11 @@ Jeder Eintrag unter `trees` ist ein Kachelbaum, siehe
 
 | Schlüssel | Vorgabe | Schalter |
 |---|---|---|
-| `camera` | Pflicht | `--camera` |
+| `camera` | Pflicht, ausser mit `flat` | `--camera` |
 | `direction` | `s` bei `top-north` und `north-45`, sonst `se` | `--direction` |
 | `scale` | die des Renderers | `--scale` |
 | `cinematic` | `false` | `--cinematic` |
+| `flat` | `false` | `--flat` |
 | `download` | `false` | – |
 | `web` | `true` | – |
 
@@ -152,10 +153,19 @@ Jeder Eintrag unter `trees` ist ein Kachelbaum, siehe
   siehe
   [map.json, „Liste der Bäume“](https://github.com/VonNekyia/heroic-map-renderer/blob/master/docs/benutzung/map-json.md#liste-der-bäume):
   `<kamera>-<richtung>`, `:` als `x`, W:H gekürzt, mit Cinematic
-  `-cinematic` dahinter. `"16:10"` liegt so in `8x5-se`, `top-north` in
-  `top-north-s`. In diesem Ordner sucht das Plugin `stand.bin` und
+  `-cinematic` dahinter, mit `flat` `-flat`. `"16:10"` liegt so in
+  `8x5-se`, `top-north` in `top-north-s`, `flat: true` in
+  `top-north-s-flat`. In diesem Ordner sucht das Plugin `stand.bin` und
   `stand-neu.bin`, siehe [Läufe](laeufe.md), „Fortsetzen“. Benennt der
   Renderer seine Ordner um, muss `Baum.ordner` mit.
+- **`flat: true`** ist die einfarbige Ansicht des Renderers, ab Renderer
+  0.7.0: von oben, genordet, ein Pixel je Block, siehe im Renderer
+  [Die einfarbige Ansicht](https://github.com/VonNekyia/heroic-map-renderer/blob/master/docs/renderer/einfarbig.md).
+  Das Plugin gibt `--flat` statt `--camera` und `--direction`; Kamera,
+  Richtung und scale setzt der Schalter selbst. Mit `camera`, `direction`,
+  `scale`, `cinematic` oder `download` meldet das Plugin einen Fehler, denn
+  der Renderer nimmt `--flat` mit keinem davon, und zum Download gibt es
+  nur scale 4. Die CPU zeichnet, auch mit `renderer.gpu: true`.
 - **`download: true`** bietet den Baum dem Mod zum Download an, nur mit
   `camera: "top-north"`, `scale: 4` und ohne `cinematic`, siehe
   [Download](download.md).

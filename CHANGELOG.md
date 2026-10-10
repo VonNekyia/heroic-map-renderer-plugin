@@ -7,6 +7,10 @@ Links und die Hinweise aus `NOTICE` setzt
 [`.github/notizen.sh`](.github/notizen.sh) dazu. Siehe
 [Entwicklung](docs/entwicklung.md), „Release“.
 
+## 0.5.0
+
+- **Flat view:** a tree with `flat: true` renders the flat map of the renderer: from above, one pixel per block, in its own folder `top-north-s-flat`.
+
 ## 0.4.0
 
 - **Banners:** a new object for places such as towns, an image of up to 32 × 64 pixels drawn pixel for pixel, with a panel; in layer files and through the [layer API](https://github.com/VonNekyia/heroic-map-renderer-plugin/blob/main/docs/api.md) as `MapObject.Banner`.

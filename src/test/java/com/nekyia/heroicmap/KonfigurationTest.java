@@ -353,6 +353,43 @@ class KonfigurationTest {
     }
 
     @Test
+    void flat_ein_eigener_baum_ohne_kamera() throws Exception {
+        Files.createFile(server.resolve("r"));
+        var k = Konfiguration.aus(yaml("""
+                renderer:
+                  binary: r
+                trees:
+                  - flat: true
+                  - camera: top-north
+                    flat: false
+                """), server, server);
+        assertEquals(List.of(new Baum("top-north", "s", null, false, false, true, true),
+                new Baum("top-north", "s", null, false, false, true)), k.baeume());
+        assertEquals(List.of("top-north-s-flat", "top-north-s"), k.baeume().stream().map(Baum::ordner).toList());
+
+        var e = assertThrows(IllegalArgumentException.class, () -> Konfiguration.aus(yaml("""
+                renderer:
+                  binary: r
+                trees:
+                  - flat: true
+                    camera: top-north
+                  - flat: true
+                    direction: s
+                  - flat: true
+                    scale: 1
+                  - flat: true
+                    cinematic: false
+                  - flat: true
+                    download: true
+                  - flat: true
+                    web: false
+                """), server, server));
+        String nur = "trees: flat nur ohne camera, direction, scale, cinematic und download";
+        assertEquals(String.join("; ", nur, nur, nur, nur, nur,
+                "trees: web: false nur mit download: true, sonst zeigt den Baum niemand"), e.getMessage());
+    }
+
+    @Test
     void alle_fehler_auf_einmal() throws Exception {
         var c = yaml("""
                 renderer:
