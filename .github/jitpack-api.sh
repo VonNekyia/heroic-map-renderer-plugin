@@ -16,7 +16,11 @@ for datei in "api-$version.jar" "api-$version.pom" "api-$version.module" "api-$v
 done
 # Dieselben Bytes wie im Release, geprüft gegen dessen SHA256SUMS.
 (cd "$ziel" && sha256sum -c --ignore-missing SHA256SUMS && rm SHA256SUMS)
-# Die Liste, die auch publishToMavenLocal schreibt; ohne sie findet JitPack kein Artefakt.
+# Wie bei publishToMavenLocal auch im Projektordner: Dort sucht JitPack das .pom und findet erst damit das
+# Artefakt unter ~/.m2. Dazu die Liste unter ~/.m2, die Gradle ebenso schreibt.
+mkdir -p api/build/publications/api
+cp "$ziel/api-$version.pom" api/build/publications/api/pom-default.xml
+cp "$ziel/api-$version.module" api/build/publications/api/module.json
 cat > "$ziel/../maven-metadata-local.xml" <<XML
 <?xml version="1.0" encoding="UTF-8"?>
 <metadata>
