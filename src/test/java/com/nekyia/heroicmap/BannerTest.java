@@ -127,6 +127,36 @@ class BannerTest {
                 () -> log.toString());
     }
 
+    /**
+     * Beim Start ruft --banners erst mit den geladenen Ebenen: vorher nicht, auch wenn der Haken schon steht, und
+     * steht er erst danach, gleich. Ein Aufruf ohne sie räumte jedes Sprite weg.
+     */
+    @Test
+    void erster_aufruf_erst_mit_den_ebenen() throws Exception {
+        Path ordner = Files.createDirectories(tmp.resolve("ebenen/beispiel"));
+        Files.writeString(ordner.resolve("staedte.json"),
+                "{\"id\": \"beispiel:staedte\", \"name\": {\"de\": \"S\"}, " + ENTWURF + ", \"objects\": []}");
+        Path alt = tmp.resolve("tiles/layers/beispiel/banner/staedte/oben/nordreich.png");
+        Files.createDirectories(alt.getParent());
+        Files.writeString(alt, "alt");
+        var e = new Ebenen(tmp.resolve("ebenen"), OBERWELT, new EbenenSchreiber(tmp.resolve("tiles"), OBERWELT), logger);
+        var b = new Banner(konf(JAVA, List.of()), falscher(), List.of(), logger, tmp.resolve("daten"), e::stand, e::sprites);
+        e.nachEntwuerfen(b::bestelle);
+        Thread.sleep(500);
+        assertEquals(0, aufrufe(b.oeffentlich), "vor dem ersten Laden kein Aufruf");
+        e.ladeNeu();
+        e.takt();
+        assertTrue(b.warte(30_000));
+        var erste = Files.readAllLines(b.oeffentlich.out().resolveSibling("layers-aufrufe.txt")).getFirst();
+        assertTrue(erste.contains("staedte.json"), erste);
+        assertTrue(Files.isRegularFile(alt), "die alten Sprites bleiben");
+
+        // Steht der Haken erst nach dem ersten Schreiben, ruft er gleich.
+        var spaet = new java.util.concurrent.atomic.AtomicInteger();
+        e.nachEntwuerfen(spaet::incrementAndGet);
+        assertEquals(1, spaet.get());
+    }
+
     /** Kommen Aufträge, während einer läuft, folgt genau einer danach. */
     @Test
     void nur_einer_wird_nachgereicht() throws Exception {

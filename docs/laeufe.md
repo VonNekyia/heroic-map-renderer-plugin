@@ -315,7 +315,10 @@ Die Sprites der Banner zu den Entwürfen der Ebenen zeichnet der Renderer mit
 [`Banner.java`](../src/main/java/com/nekyia/heroicmap/Banner.java).
 
 - **Wann:**
-  - beim Start;
+  - beim Start, aber erst nach dem ersten Laden und Schreiben der Ebenen
+    (`Ebenen.nachEntwuerfen`): Ein Aufruf ohne sie räumte jedes Sprite
+    weg. Ist der Ordner der Ebenen nicht zu lesen, ruft es gar nicht, so
+    wie das Schreiben dann `layers/` nicht anrührt;
   - nach jedem Schreiben der Ebenen, bei dem sich die Entwürfe, die Ebenen
     mit Entwürfen oder ihr `permission` änderten (`Ebenen.entwuerfe`);
   - nach einem Lauf, wenn `trees.json` eine andere ist als beim letzten

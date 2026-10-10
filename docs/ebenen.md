@@ -120,6 +120,9 @@ Zwei Lesarten, die das Format offenlässt, abgestimmt mit dem Reviewer am
   [0100](https://github.com/VonNekyia/heroic-map-renderer/blob/master/docs/entscheidungen/0100-der-renderer-zeichnet-die-banner.md).
   Bis dahin übergeht der Mod sie, und ein Plugin für Städte kann dort
   vorerst kein Banner zeigen.
+- **Geheime Ebenen haben nur den Satz `oben`.** Der Mod zeigt ihre Banner
+  darum auch in einem Baum `2:1` mit dem Sprite von vorn. Das ist gewollt,
+  bis jemand mehr braucht.
 
 ## Webkarte
 

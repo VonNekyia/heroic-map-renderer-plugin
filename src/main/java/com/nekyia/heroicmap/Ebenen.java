@@ -148,9 +148,10 @@ final class Ebenen {
                 log.info("Ebenen: wieder für die Webkarte geschrieben");
                 schreibenScheiterte = false;
             }
-            // Auch beim ersten Mal, so räumt --banners beim Start auf. Siehe docs/laeufe.md, „Banner“.
+            // Auch beim ersten Mal, so räumt --banners beim Start auf; nie, solange der Ordner der Ebenen nicht zu lesen
+            // war, denn dann fehlten seine Ebenen im Aufruf. Siehe docs/laeufe.md, „Banner“.
             String neu = entwuerfe(stand);
-            if (!neu.equals(entwuerfe)) {
+            if (nichtGelesen != null && !neu.equals(entwuerfe)) {
                 entwuerfe = neu;
                 nachEntwuerfen.run();
             }
@@ -168,9 +169,16 @@ final class Ebenen {
         return stand;
     }
 
-    /** Was danach läuft, wenn sich beim Schreiben die Entwürfe änderten. */
-    void nachEntwuerfen(Runnable r) {
+    /**
+     * Was danach läuft, wenn sich beim Schreiben die Entwürfe änderten. War das erste Schreiben schon, läuft es
+     * gleich; sonst erst nach ihm, nie mit einem Stand vor dem ersten Laden. Sonst räumte --banners beim Start jedes
+     * Sprite weg. Siehe docs/laeufe.md, „Banner“.
+     */
+    synchronized void nachEntwuerfen(Runnable r) {
         nachEntwuerfen = r;
+        if (entwuerfe != null) {
+            r.run();
+        }
     }
 
     /** Der Stand der Sprites je Ebene; ist er anders, schreibt der nächste Takt die neuen version. */
