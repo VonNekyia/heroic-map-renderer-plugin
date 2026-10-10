@@ -1,0 +1,103 @@
+name: Modrinth
+
+# Lädt das Jar eines veröffentlichten Releases als Version auf Modrinth, mit
+# den Notizen aus notizen.sh. Von Hand mit dem Tag als Eingabe. Erst ab
+# v0.4.0, dem ersten Release mit einem Jar für beide Plattformen. Siehe
+# docs/modrinth.md und docs/entscheidungen/0012-modrinth-mit-curl.md.
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Tag des Releases, etwa v0.5.0
+        required: true
+
+permissions:
+  contents: read
+
+# Release und Dispatch für denselben Tag laufen nacheinander, nie zugleich; sonst lüden beide hoch.
+concurrency: modrinth-${{ github.event.release.tag_name || inputs.tag }}
+
+env:
+  # Das Projekt auf Modrinth: https://modrinth.com/plugin/heroic-map-plugin
+  MODRINTH_PROJEKT: heroic-map-plugin
+  MODRINTH_API: https://api.modrinth.com/v2
+  # Die Server und Versionen, auf denen das Plugin läuft, siehe docs/alpha.md.
+  LOADER: '["paper", "purpur"]'
+  MINECRAFT: '["26.2", "26.3"]'
+  # Ab dieser Version lädt der Workflow hoch.
+  AB: 0.4.0
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  modrinth:
+    name: Auf Modrinth
+    # Eine Vorabversion geht nicht nach Modrinth, wie nach Hangar; von Hand mit dem Tag schon.
+    if: github.event_name == 'workflow_dispatch' || !github.event.release.prerelease
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      # CHANGELOG.md, NOTICE und notizen.sh so, wie sie am Tag stehen.
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.release.tag_name || inputs.tag }}
+
+      # Der Token kommt nur aus dem Secret und steht maskiert, nie im Log. Ohne
+      # Secret nur eine Warnung, das Release bleibt grün.
+      - name: Hochladen
+        timeout-minutes: 15
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
+          TAG: ${{ github.event.release.tag_name || inputs.tag }}
+        run: |
+          set -euo pipefail
+          if [ -z "$MODRINTH_TOKEN" ]; then
+            echo "::warning::Das Secret MODRINTH_TOKEN fehlt; nichts auf Modrinth hochgeladen"
+            exit 0
+          fi
+          echo "::add-mask::$MODRINTH_TOKEN"
+          [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] \
+            || { echo "::error::$TAG ist kein Tag eines Releases wie v1.2.3"; exit 1; }
+          version=${TAG#v}
+          if [ "$(printf '%s\n%s\n' "$AB" "$version" | sort -V | head -1)" != "$AB" ]; then
+            echo "::notice::$version liegt vor $AB; ältere Releases hatten je Plattform ein Jar, der Workflow lädt sie nicht"
+            exit 0
+          fi
+
+          jar=dist/heroic-map-renderer-plugin-$version.jar
+          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --dir dist \
+            --pattern "heroic-map-renderer-plugin-$version.jar" --pattern SHA256SUMS
+          [ -f "$jar" ] || { echo "::error::$TAG hat kein Jar für Windows und Linux"; exit 1; }
+          # Die Dateien der API stehen auch in SHA256SUMS; geprüft wird, was geholt ist.
+          (cd dist && sha256sum -c --ignore-missing SHA256SUMS)
+
+          agent="VonNekyia/heroic-map-renderer-plugin/$version (contact@mcterranova.com)"
+          api() { curl -fsS --retry 3 --retry-delay 10 --retry-all-errors -A "$agent" -H "Authorization: $MODRINTH_TOKEN" "$@"; }
+
+          # Solange das Projekt nicht freigegeben ist, antwortet die API nur mit Token; darum die ID erst hier.
+          projekt=$(api "$MODRINTH_API/project/$MODRINTH_PROJEKT" | jq -r .id)
+          [ -n "$projekt" ] && [ "$projekt" != null ] || { echo "::error::Projekt $MODRINTH_PROJEKT nicht gefunden"; exit 1; }
+
+          # Gibt es die Version schon, etwa nach einem zweiten Lauf, lädt er nichts.
+          # Erst die Liste, dann die Prüfung: Im if griffen set -e und pipefail nicht, ein Fehler hiesse „nicht da“.
+          liste=$(api "$MODRINTH_API/project/$projekt/version")
+          if jq -e --arg v "$version" 'any(.[]; .version_number == $v)' <<< "$liste" > /dev/null; then
+            echo "$version gibt es auf Modrinth"
+            exit 0
+          fi
+
+          bash .github/notizen.sh "$version" > beschreibung.md
+          jq -n --arg name "Heroic Map $version" --arg v "$version" --arg projekt "$projekt" \
+            --rawfile changelog beschreibung.md --argjson loader "$LOADER" --argjson minecraft "$MINECRAFT" \
+            '{name: $name, version_number: $v, changelog: $changelog, project_id: $projekt, dependencies: [],
+              game_versions: $minecraft, loaders: $loader, version_type: "beta",
+              featured: true, status: "listed", file_parts: ["jar"], primary_file: "jar"}' > version.json
+          # Kein --retry: Ein Upload, der trotz Fehler ankam, gäbe beim zweiten Versuch eine doppelte Version.
+          curl -fsS -A "$agent" -H "Authorization: $MODRINTH_TOKEN" -X POST "$MODRINTH_API/version" \
+            -F "data=<version.json;type=application/json" -F "jar=@$jar;type=application/java-archive" \
+            | jq '{id, version_number, files: [.files[].filename]}'
