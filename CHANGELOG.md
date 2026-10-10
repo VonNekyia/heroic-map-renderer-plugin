@@ -11,6 +11,7 @@ Links und die Hinweise aus `NOTICE` setzt
 
 - **Banners:** a new object for places such as towns, an image of up to 32 × 64 pixels drawn pixel for pixel, with a panel; in layer files and through the [layer API](https://github.com/VonNekyia/heroic-map-renderer-plugin/blob/main/docs/api.md) as `MapObject.Banner`.
 - **More for the companion mod:** banners, labels and lines now reach the mod as well.
+- **Panels in the mod:** the mod asks the server for the panel of an object when the pointer rests on it, also for layers with a permission.
 
 ## 0.3.3
 

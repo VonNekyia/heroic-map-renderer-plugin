@@ -48,6 +48,8 @@ Bukkit, und in `Kanal`, der den Kanal und den Stand im Spieler bedient.
 | Server → Mod | `show` | `erlaubt`: `true` oder `false`; bei `false` `grund`: `permission` oder `simplevoicechat` | auf jede lesbare `show`, siehe [Mitspieler](mitspieler.md), „Die Wahl show“ |
 | Server → Mod | `ebenen` | die Ebenen, die der Spieler sehen darf, mit `version`, dazu `url` oder `port` | wenn sich für ihn etwas ändert, siehe [Ebenen](ebenen.md), „Mod“ |
 | Server → Mod | `ebene` | `id`, `version`, `teil`, `teile`, `objects`: alle Objekte einer Ebene ohne Tafel | nach `ebenen`, je neuer oder geänderter Ebene, siehe [Ebenen](ebenen.md), „Mod“ |
+| Mod → Server | `tafel` | `ebene`, `version`, `id` | ruht der Zeiger auf einem Objekt, je Objekt und `version` einmal, siehe [Ebenen](ebenen.md), „Tafeln“ |
+| Server → Mod | `tafel` | `ebene`, `version`, `id`, dazu `panel`, wenn das Objekt eine Tafel hat und `version` die aktuelle ist | auf jede lesbare `tafel` einer Ebene, die der Spieler sehen darf, im Takt der Ebenen |
 
 - **`spieler`** etwa so, `jetzt` wie in jeder Nachricht in Epoch s:
 
@@ -64,8 +66,8 @@ Bukkit, und in `Kanal`, der den Kanal und den Stand im Spieler bedient.
   {"v":1,"typ":"show","jetzt":1760000000,"erlaubt":false,"grund":"permission"}
   ```
 
-  `Kanal` lässt `show` aus, sonst wäre es eine unlesbare `anfrage`; die
-  Antwort gibt `HeroicMapPlugin`.
+  `Kanal` lässt `show` und `tafel` aus, sonst wären sie unlesbare
+  `anfrage`; die Antworten gibt `HeroicMapPlugin`.
 - **`dimension`** im `angebot` folgt aus `world` in `config.yml`. Die
   Weltwurzel ist `minecraft:overworld`, ein Ordner `dimensions/<ns>/<name>`
   heisst `<ns>:<name>`. `map.json` nennt keine Dimension.

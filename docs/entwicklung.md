@@ -174,7 +174,9 @@ Plugin es aus, siehe [Konfiguration](konfiguration.md), „Das Binär“.
 - **`EbenenFuerModTest`:** die grösste erlaubte Region als ein Teil, eine
   Region und eine Linie über 1 MiB als Fehler, 1000 Nadeln in Teilen der
   Reihe nach, ebenso Linien und Kartenschrift, alle sechs Arten ohne Tafel,
-  der Hauptthread rechnet nicht,
+  Tafeln auf Anfrage mit den Rechten der Ebene, höchstens 20 Anfragen je
+  Spieler und Sekunde, ihre Antworten im Budget, der Hauptthread rechnet
+  nicht,
   Rechte samt `heroicmap.layers`, die Adresse und ihr späteres Kommen,
   höchstens 1 MiB je Sekunde.
 - **`EbenenApiTest`:** die Kennung aus dem Namen des Plugins, Prüfen beim

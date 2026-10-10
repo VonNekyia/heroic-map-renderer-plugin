@@ -125,9 +125,22 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
         }
     }
 
-    /** Die Wahl show des Mods, im Hauptthread; die Antwort sagt, ob die Mitspieler hier gehen. */
+    /**
+     * Die Wahl show des Mods, im Hauptthread; die Antwort sagt, ob die Mitspieler hier gehen. Eine Anfrage nach einer
+     * Tafel nimmt fuerMod nur an; beantwortet wird sie gleich ausserhalb, geschickt gleich danach im Hauptthread.
+     * Siehe docs/entscheidungen/0010-tafeln-ueber-den-kanal.md.
+     */
     @Override
     public void onPluginMessageReceived(String channel, Player player, byte[] message) {
+        if (EbenenFuerMod.istTafel(message)) {
+            if (fuerMod != null && fuerMod.frage(player.getUniqueId(), message, Instant.now().getEpochSecond())) {
+                getServer().getAsyncScheduler().runNow(this, t -> {
+                    fuerMod.beantworte(Instant.now().getEpochSecond());
+                    getServer().getGlobalRegionScheduler().execute(this, () -> tafelnAn(player));
+                });
+            }
+            return;
+        }
         var antwort = mitspieler.show(message, player.getUniqueId(), player.hasPermission(SHOW), simpleVoiceChat, Instant.now());
         if (antwort != null) {
             player.sendPluginMessage(this, Download.KANAL, antwort.toString().getBytes(StandardCharsets.UTF_8));
@@ -139,6 +152,16 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
         mitspieler.vergiss(e.getPlayer().getUniqueId());
         if (fuerMod != null) {
             fuerMod.vergiss(e.getPlayer().getUniqueId());
+        }
+    }
+
+    /** Im Hauptthread: die fertigen Antworten auf Tafeln an {@code p}, im Budget der laufenden Sekunde. */
+    private void tafelnAn(Player p) {
+        if (!p.isOnline() || !p.getListeningPluginChannels().contains(Download.KANAL)) {
+            return;
+        }
+        for (String n : fuerMod.tafeln(p.getUniqueId(), p.hasPermission(LAYERS), p::hasPermission, Instant.now().getEpochSecond())) {
+            p.sendPluginMessage(this, Download.KANAL, n.getBytes(StandardCharsets.UTF_8));
         }
     }
 
