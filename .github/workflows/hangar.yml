@@ -30,6 +30,8 @@ defaults:
 jobs:
   hangar:
     name: Auf Hangar
+    # Eine Vorabversion kommt nicht auf Hangar, etwa ein Tag zur Probe.
+    if: github.event_name == 'workflow_dispatch' || !github.event.release.prerelease
     runs-on: ubuntu-latest
     timeout-minutes: 120
     steps:
@@ -59,7 +61,7 @@ jobs:
 
           gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --dir dist \
             --pattern "heroic-map-renderer-plugin-$version.jar" --pattern SHA256SUMS
-          (cd dist && sha256sum -c SHA256SUMS)
+          (cd dist && sha256sum -c --ignore-missing SHA256SUMS)
 
           jwt=$(curl -fsS --retry 3 --retry-delay 10 --retry-all-errors -X POST \
             "$HANGAR_API/authenticate?apiKey=$HANGAR_API_TOKEN" | jq -r .token)
