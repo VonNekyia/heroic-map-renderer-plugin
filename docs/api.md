@@ -36,7 +36,7 @@ repositories {
     maven("https://jitpack.io")
 }
 dependencies {
-    compileOnly("com.github.VonNekyia:heroic-map-renderer-plugin:9f5a87a857") // v0.3.1
+    compileOnly("com.github.VonNekyia:heroic-map-renderer-plugin:6f3a3c6b") // v0.4.0
 }
 ```
 
@@ -59,7 +59,10 @@ dependencies:
   API, siehe „Versionierung“. Über den Tag selbst baut JitPack derzeit
   nicht: In einem Teil seiner Umgebungen darf Java die Attribute einer
   Datei nicht lesen und öffnet darum kein Jar, auch nicht den Wrapper von
-  Gradle. Tags landeten bisher immer dort, Hashes meist nicht (#43).
+  Gradle. Tags landeten bisher immer dort, Hashes meist nicht (#43). Für
+  v0.4.0 scheiterten am 10.10. `6f3a3c6b77`, der ganze Hash und `b847699`
+  mit demselben Baum; `6f3a3c6b` und `6f3a3c6b77df` bauten. Jede andere
+  Länge des Hashes baut JitPack neu.
 - **`compileOnly`:** Die Klassen der API liegen im Jar des Plugins; das
   fremde Plugin bringt sie nicht mit.
 - **`softdepend`** oder `depend`, damit Paper HeroicMap vorher lädt. In
@@ -73,7 +76,7 @@ dependencies:
   SDKMAN, siehe [`jitpack.yml`](../jitpack.yml). Weil es nur dieses eine
   Artefakt findet, nennt es es wie das Repo:
   `com.github.VonNekyia:heroic-map-renderer-plugin`, mit dem Tag als
-  Version. Geprüft am 09.10. an `ba81cd1e83`: Das Jar enthält nur
+  Version. Geprüft am 10.10. an `6f3a3c6b`: Das Jar enthält nur
   `com/nekyia/heroicmap/api/`, übersetzt für Java 25.
 - **Java 25:** Das Modul baut gegen dieselbe Paper-API wie das Plugin, aus
   [`gradle.properties`](../gradle.properties), und nutzt davon nur
