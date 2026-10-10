@@ -379,8 +379,9 @@ class EbenenFuerModTest {
         }
         var m = ohneAdresse(ebenen);
         var ticks = new ArrayList<List<String>>();
+        // Der Takt läuft einmal je Sekunde; das Budget gilt je Sekunde, siehe docs/entscheidungen/0010-tafeln-ueber-den-kanal.md.
         for (int i = 0; i < 4; i++) {
-            ticks.add(m.nachrichten(SAM, true, p -> true, JETZT));
+            ticks.add(m.nachrichten(SAM, true, p -> true, JETZT + i));
         }
         assertEquals("ebenen", lies(ticks.get(0).getFirst()).get("typ").getAsString());
         assertEquals(1 + 5, ticks.get(0).size(), "Liste und eine ganze Ebene mit ihren fünf Teilen, auch über 1 MiB");
