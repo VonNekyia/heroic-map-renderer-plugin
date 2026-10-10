@@ -2,6 +2,7 @@ package com.nekyia.heroicmap;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import com.nekyia.heroicmap.api.BannerDesign;
 import com.nekyia.heroicmap.api.MapObject;
 import com.nekyia.heroicmap.api.MapObject.Banner;
 import com.nekyia.heroicmap.api.MapObject.Circle;
@@ -44,6 +45,10 @@ final class ApiJson {
                 o.addProperty("type", "banner");
                 o.add("at", punkt(b.at()));
                 o.addProperty("y", b.y());
+                o.addProperty("design", b.design());
+                if (b.capital()) {
+                    o.addProperty("capital", true);
+                }
                 o.addProperty("image", b.image());
                 o.addProperty("name", b.name());
                 tafel(o, b.panel());
@@ -208,5 +213,20 @@ final class ApiJson {
             a.add(o);
         }
         return a;
+    }
+
+    /** Ein Entwurf am Kopf der Ebene; die Farbstoffe klein mit Unterstrich wie im Spiel, LIGHT_BLUE als light_blue. */
+    static JsonObject json(BannerDesign d) {
+        var o = new JsonObject();
+        o.addProperty("base", d.base().name().toLowerCase(Locale.ROOT));
+        var lagen = new JsonArray();
+        for (var l : d.layers()) {
+            var lage = new JsonObject();
+            lage.addProperty("pattern", l.pattern());
+            lage.addProperty("color", l.color().name().toLowerCase(Locale.ROOT));
+            lagen.add(lage);
+        }
+        o.add("layers", lagen);
+        return o;
     }
 }

@@ -91,6 +91,14 @@ Bausteine der Tafel und ihre Tiefe, die Bilder. Dazu eigene Regeln:
   Bilder eines Banners höchstens 32 × 64, Bilder der Tafel höchstens
   512 × 512, jedes höchstens 256 KiB, höchstens 200 je Ebene.
 - **Nadeln und Banner** zählen zusammen gegen die 1000 einer Ebene.
+- **Entwürfe** der Banner am Kopf, `designs`: höchstens 200 je Ebene,
+  Namen wie unter „Dateien“, je Entwurf `base` und höchstens 16 `layers`
+  aus `pattern` und `color`. Farben sind nur die 16 Namen der Farbstoffe,
+  Muster nur in der Form `namespace:pfad`; welche Muster es gibt, weiss
+  nur der Renderer.
+- **Ein Banner** mit `design` braucht einen Entwurf derselben Ebene und
+  kein Bild; mit beidem ist das Bild Ersatz. `capital` ohne `design` ist
+  kein Fehler, nur ohne Wirkung.
 - **`holes`** darf fehlen; dann hat das Polygon keine Löcher.
 
 ## web und permission
@@ -105,6 +113,13 @@ Zwei Lesarten, die das Format offenlässt, abgestimmt mit dem Reviewer am
   sie nach `layers/<modname>/images/`, damit der Mod sie über den Server
   holen kann. Wer ein Bild nicht zeigen will, legt es nicht ab. Eine Ebene
   mit `permission` hat darum gar keine Bilder.
+- **Banner mit `permission`** gehen nur aus einem Entwurf, ohne Bild. Ihr
+  gezeichnetes Banner bekommt der Mod künftig über den Kanal, siehe im
+  Renderer
+  [0100](https://github.com/VonNekyia/heroic-map-renderer/blob/master/docs/entscheidungen/0100-der-renderer-zeichnet-die-banner.md).
+  Bis das Plugin `--banners` ruft, haben sie weder Sprite noch Bild, und
+  der Mod übergeht sie. Ein Plugin für Städte kann dort also vorerst kein
+  Banner zeigen.
 
 ## Webkarte
 
@@ -114,7 +129,7 @@ Ebenen, neben `trees.json`:
 | Datei | Inhalt |
 |---|---|
 | `layers.json` | je Ebene mit `web` `id`, `name`, `visible`, `order`, `version` |
-| `layers/<modname>/<ebene>.json` | Kopf und Objekte der Ebene, ohne `web` und `permission` |
+| `layers/<modname>/<ebene>.json` | Kopf samt `designs` und Objekte der Ebene, ohne `web` und `permission` |
 | `layers/<modname>/images/…` | die Bilder, die eine Ebene nennt |
 
 - **Nur die Dimension der Wurzel:** Die Datei für die Webkarte enthält nur

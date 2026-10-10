@@ -4,6 +4,7 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.nekyia.heroicmap.Ebenen.Ebene;
 import com.nekyia.heroicmap.api.HeroicMapApi;
+import com.nekyia.heroicmap.api.BannerDesign;
 import com.nekyia.heroicmap.api.Layer;
 import com.nekyia.heroicmap.api.MapObject;
 import java.nio.charset.StandardCharsets;
@@ -156,6 +157,8 @@ final class EbenenApi implements HeroicMapApi, Listener {
         private Integer order;
         private Boolean web;
         private String permission;
+        /** Die Entwürfe der Banner am Kopf, Name → Entwurf als JSON. */
+        private Map<String, JsonObject> entwuerfe = new LinkedHashMap<>();
         private final LinkedHashMap<String, JsonObject> objekte = new LinkedHashMap<>();
         /** Die Bilder, die ein Objekt nennt, je id; nur Objekte mit Bildern. */
         private final Map<String, Set<String>> bilderJeObjekt = new HashMap<>();
@@ -231,16 +234,46 @@ final class EbenenApi implements HeroicMapApi, Listener {
                 throw new IllegalArgumentException("Ebene " + id + ": eine Ebene mit permission kommt nie auf die Webkarte");
             }
             // Ganz geprüft: Mit permission darf kein Objekt ein Bild nennen.
+            pruefeGanz(p, entwuerfe);
+            permission = p;
+            geaendert();
+        }
+
+        @Override
+        public synchronized void design(String name, BannerDesign design) {
+            lebt();
+            Objects.requireNonNull(name);
+            var neu = new LinkedHashMap<>(entwuerfe);
+            neu.put(name, ApiJson.json(Objects.requireNonNull(design)));
+            pruefeGanz(permission, neu);
+            entwuerfe = neu;
+            geaendert();
+        }
+
+        @Override
+        public synchronized void removeDesign(String name) {
+            lebt();
+            if (!entwuerfe.containsKey(name)) {
+                return;
+            }
+            var neu = new LinkedHashMap<>(entwuerfe);
+            neu.remove(name);
+            // Ganz geprüft: Nennt ein Banner den Entwurf noch, wirft es.
+            pruefeGanz(permission, neu);
+            entwuerfe = neu;
+            geaendert();
+        }
+
+        /** Prüft die ganze Ebene mit {@code p} und den Entwürfen {@code d}; wirft mit allen Fehlern. */
+        private void pruefeGanz(String p, Map<String, JsonObject> d) {
             var pool = bilderVon();
             List<String> f;
             synchronized (pool) {
-                f = EbenenPruefung.pruefe(id, json(p, objekte.values()), aus(pool)).fehler();
+                f = EbenenPruefung.pruefe(id, json(p, d, objekte.values()), aus(pool)).fehler();
             }
             if (!f.isEmpty()) {
                 throw new IllegalArgumentException("Ebene " + id + ": " + fehler(f));
             }
-            permission = p;
-            geaendert();
         }
 
         @Override
@@ -390,6 +423,11 @@ final class EbenenApi implements HeroicMapApi, Listener {
 
         /** Die Ebene als JSON im Format einer Datei; die Objekte nicht kopiert, denn niemand ändert sie. */
         private JsonObject json(String p, Iterable<JsonObject> mitObjekten) {
+            return json(p, entwuerfe, mitObjekten);
+        }
+
+        /** Wie oben, mit den Entwürfen {@code d}; ohne Entwurf ohne designs. */
+        private JsonObject json(String p, Map<String, JsonObject> d, Iterable<JsonObject> mitObjekten) {
             var o = new JsonObject();
             o.addProperty("id", id);
             o.add("name", name.deepCopy());
@@ -398,6 +436,11 @@ final class EbenenApi implements HeroicMapApi, Listener {
             o.addProperty("web", web);
             o.addProperty("permission", p);
             o.entrySet().removeIf(e -> e.getValue().isJsonNull());
+            if (!d.isEmpty()) {
+                var designs = new JsonObject();
+                d.forEach((n, j) -> designs.add(n, j.deepCopy()));
+                o.add("designs", designs);
+            }
             var a = new JsonArray();
             mitObjekten.forEach(a::add);
             o.add("objects", a);

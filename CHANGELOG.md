@@ -7,6 +7,10 @@ Links und die Hinweise aus `NOTICE` setzt
 [`.github/notizen.sh`](.github/notizen.sh) dazu. Siehe
 [Entwicklung](docs/entwicklung.md), „Release“.
 
+## 0.6.0
+
+- **Banner designs** in layer files and in the [layer API](https://github.com/VonNekyia/heroic-map-renderer-plugin/blob/main/docs/api.md): a banner names a design of its layer, a base colour and up to 16 patterns as in the game, and may carry the crown of a capital. The renderer will draw such banners in a later release; until then the map shows the banner's image.
+
 ## 0.5.0
 
 - **One jar again** for Windows and Linux on x86_64, and one version per release on Hangar. The renderer inside is packed with xz and unpacked once per version, as before.

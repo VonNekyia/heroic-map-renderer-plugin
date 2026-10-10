@@ -231,6 +231,102 @@ class EbenenPruefungTest {
         }
     }
 
+    /** Die Ebene mit zwei Entwürfen am Kopf und {@code banner} als letztem Objekt, objects[6]. */
+    private static Consumer<JsonObject> mitEntwurf(String banner) {
+        return j -> {
+            j.add("designs", JsonParser.parseString("""
+                    {"nordreich": {"base": "white", "layers": [
+                       {"pattern": "minecraft:stripe_bottom", "color": "red"},
+                       {"pattern": "minecraft:globe", "color": "light_blue"}]},
+                     "123e4567-e89b-12d3-a456-426614174000": {"base": "black"}}"""));
+            if (banner != null) {
+                j.getAsJsonArray("objects").add(JsonParser.parseString(banner));
+            }
+        };
+    }
+
+    @Test
+    void banner_aus_einem_entwurf_der_ebene() {
+        var bilder = new HashMap<>(bilder());
+        bilder.put("images/nation.png", png(22, 40));
+        String bn = "{\"id\": \"bn\", \"type\": \"banner\", \"at\": [0, 0], %s}";
+        assertEquals(List.of(), fehler(mitEntwurf(bn.formatted("\"design\": \"nordreich\", \"capital\": true")), bilder),
+                "mit design ohne image");
+        assertEquals(List.of(), fehler(mitEntwurf(bn.formatted("\"design\": \"123e4567-e89b-12d3-a456-426614174000\"")), bilder),
+                "die UUID einer Nation als Name");
+        assertEquals(List.of(), fehler(mitEntwurf(bn.formatted("\"design\": \"nordreich\", \"image\": \"images/nation.png\"")),
+                bilder), "beides: ältere Ansichten zeigen das Bild");
+        assertEquals(List.of(), fehler(mitEntwurf(bn.formatted("\"image\": \"images/nation.png\", \"capital\": true")), bilder),
+                "capital ohne design ist ohne Wirkung, kein Fehler");
+        enthaelt(fehler(mitEntwurf(bn.formatted("\"design\": \"suedreich\"")), bilder), "objects[6].design: kein Entwurf dieser Ebene: suedreich");
+        enthaelt(fehler(j -> j.getAsJsonArray("objects").add(JsonParser.parseString(bn.formatted("\"design\": \"nordreich\""))), bilder),
+                "objects[6].design: kein Entwurf dieser Ebene: nordreich");
+        enthaelt(fehler(mitEntwurf(bn.formatted("\"design\": \"nordreich\", \"capital\": \"ja\"")), bilder), "objects[6].capital: true oder false");
+        enthaelt(fehler(mitEntwurf(bn.formatted("\"capital\": true")), bilder), "objects[6].image: fehlt");
+
+        var geheim = JsonParser.parseString("""
+                {"id": "beispiel:geheim", "name": {"de": "Geheim"}, "permission": "beispiel.karte",
+                 "designs": {"nordreich": {"base": "white"}},
+                 "objects": [{"id": "b", "type": "banner", "at": [0, 0], "design": "nordreich"}]}""").getAsJsonObject();
+        assertEquals(List.of(), EbenenPruefung.pruefe("beispiel:geheim", geheim, gelesen(bilder)).fehler(),
+                "mit permission ein Banner nur aus dem Entwurf");
+        objekt(geheim, 0).addProperty("image", "images/nation.png");
+        enthaelt(EbenenPruefung.pruefe("beispiel:geheim", geheim, gelesen(bilder)).fehler(), "eine Ebene mit permission hat keine Bilder");
+    }
+
+    @Test
+    void entwuerfe_mit_ihren_grenzen() {
+        assertEquals(List.of(), fehler(mitEntwurf(null)));
+        enthaelt(fehler(j -> j.add("designs", new JsonArray())), "designs: kein Objekt");
+        enthaelt(fehler(j -> j.add("designs", JsonParser.parseString("{\"Nord Reich\": {\"base\": \"white\"}}"))),
+                "designs.Nord Reich: kein Name wie ein Teil der Kennung");
+        enthaelt(fehler(j -> j.add("designs", JsonParser.parseString("{\"" + "a".repeat(65) + "\": {\"base\": \"white\"}}"))),
+                ": kein Name wie ein Teil der Kennung");
+        enthaelt(fehler(j -> j.add("designs", JsonParser.parseString("{\"x\": 1}"))), "designs.x: kein Objekt");
+        enthaelt(fehler(j -> j.add("designs", JsonParser.parseString("{\"x\": {}}"))), "designs.x.base: fehlt");
+        enthaelt(fehler(j -> j.add("designs", JsonParser.parseString("{\"x\": {\"base\": \"rot\"}}"))),
+                "designs.x.base: eins von white, orange, magenta, light_blue");
+        enthaelt(fehler(j -> j.add("designs", JsonParser.parseString("{\"x\": {\"base\": \"white\", \"glow\": true}}"))),
+                "designs.x.glow: unbekanntes Feld");
+        enthaelt(fehler(j -> j.add("designs", JsonParser.parseString("{\"x\": {\"base\": \"white\", \"layers\": {}}}"))),
+                "designs.x.layers: keine Liste");
+        enthaelt(fehler(j -> j.add("designs", JsonParser.parseString(
+                "{\"x\": {\"base\": \"white\", \"layers\": [{\"pattern\": \"globe\", \"color\": \"rose\"}]}}"))),
+                "designs.x.layers[0].pattern: keine ID wie minecraft:globe");
+        enthaelt(fehler(j -> j.add("designs", JsonParser.parseString(
+                "{\"x\": {\"base\": \"white\", \"layers\": [{\"pattern\": \"globe\", \"color\": \"rose\"}]}}"))),
+                "designs.x.layers[0].color: eins von");
+        enthaelt(fehler(j -> j.add("designs", JsonParser.parseString(
+                "{\"x\": {\"base\": \"white\", \"layers\": [{\"pattern\": \"minecraft:globe\"}]}}"))),
+                "designs.x.layers[0].color: fehlt");
+
+        for (int lagen : List.of(16, 17)) {
+            var l = new JsonArray();
+            for (int i = 0; i < lagen; i++) {
+                l.add(JsonParser.parseString("{\"pattern\": \"beispiel:muster_" + i + "\", \"color\": \"red\"}"));
+            }
+            var f = fehler(j -> {
+                var d = new JsonObject();
+                var e = new JsonObject();
+                e.addProperty("base", "white");
+                e.add("layers", l);
+                d.add("x", e);
+                j.add("designs", d);
+            });
+            assertEquals(lagen == 17, f.contains("designs.x.layers: mehr als 16 Lagen"), lagen + " Lagen: " + f);
+        }
+        for (int anzahl : List.of(200, 201)) {
+            var f = fehler(j -> {
+                var d = new JsonObject();
+                for (int i = 0; i < anzahl; i++) {
+                    d.add("n" + i, JsonParser.parseString("{\"base\": \"white\"}"));
+                }
+                j.add("designs", d);
+            });
+            assertEquals(anzahl == 201, f.contains("designs: mehr als 200 Entwürfe"), anzahl + " Entwürfe: " + f);
+        }
+    }
+
     @Test
     void grenzen_der_objekte_und_punkte() {
         enthaelt(fehler(j -> {

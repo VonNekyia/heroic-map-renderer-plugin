@@ -55,6 +55,21 @@ public interface Layer {
      */
     void removeImage(String path);
 
+    /**
+     * Adds or replaces a banner design of this layer, such as the banner of a nation; at most 200 per layer.
+     * Banners of this layer name it with {@link MapObject.Banner#withDesign}, and the renderer draws them from it.
+     * Designs belong to their layer: two layers may use one name for different designs.
+     *
+     * @param name like the {@code name} of {@link HeroicMapApi#layer}, such as the UUID of a nation
+     */
+    void design(String name, BannerDesign design);
+
+    /**
+     * Removes a design of this layer, if there is one. Throws {@link IllegalArgumentException} while a banner of
+     * this layer names it.
+     */
+    void removeDesign(String name);
+
     /** Adds the object, or replaces the one with the same id. */
     void put(MapObject object);
 
