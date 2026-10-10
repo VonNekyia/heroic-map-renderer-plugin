@@ -189,7 +189,9 @@ final class Laeufe {
                 b.addAll(List.of("--client-version", konf.clientJar().version()));
             }
         }
-        b.addAll(List.of("--tiles", konf.kacheln().toString(), "--camera", baum.kamera(), "--direction", baum.richtung()));
+        b.addAll(List.of("--tiles", konf.kacheln().toString()));
+        // --flat geht nicht mit --camera und --direction. Siehe docs/konfiguration.md, „Bäume“.
+        b.addAll(baum.flat() ? List.of("--flat") : List.of("--camera", baum.kamera(), "--direction", baum.richtung()));
         if (baum.scale() != null) {
             b.addAll(List.of("--scale", baum.scale().toString()));
         }

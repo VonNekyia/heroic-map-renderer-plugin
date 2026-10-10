@@ -10,6 +10,9 @@ Links und die Hinweise aus `NOTICE` setzt
 ## 0.5.0
 
 - **One jar again** for Windows and Linux on x86_64, and one version per release on Hangar. The renderer inside is packed with xz and unpacked once per version, as before.
+- **Flat view:** a tree with `flat: true` renders the flat map of the renderer: from above, one pixel per block, in its own folder `top-north-s-flat`.
+- **Renderer 0.7.0** inside: the flat view, the ground under mangrove roots stays visible, and the web map writes names in its map font with panels dark like in the mod.
+- **Full render needed:** renderer 0.7.0 draws differently. After the update, every tree needs one `/heroicmap render`; until then updates stop, and `/heroicmap status` says so.
 - **Layer API on JitPack under the release tag,** such as `v0.5.0`: JitPack now takes the files from the GitHub release instead of building them, so it no longer fails at random.
 
 ## 0.4.0

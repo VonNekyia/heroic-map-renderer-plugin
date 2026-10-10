@@ -36,13 +36,18 @@ record Konfiguration(
 
     /**
      * Ein Kachelbaum, mit Kamera und Richtung, wie der Renderer sie schreibt; mit {@code download} für
-     * den Mod angeboten, ohne {@code web} nicht auf der Webkarte.
+     * den Mod angeboten, ohne {@code web} nicht auf der Webkarte; mit {@code flat} die einfarbige Ansicht.
      */
-    record Baum(String kamera, String richtung, Integer scale, boolean cinematic, boolean download, boolean web) {
+    record Baum(String kamera, String richtung, Integer scale, boolean cinematic, boolean download, boolean web,
+            boolean flat) {
+
+        Baum(String kamera, String richtung, Integer scale, boolean cinematic, boolean download, boolean web) {
+            this(kamera, richtung, scale, cinematic, download, web, false);
+        }
 
         /** Der Ordner unter der Wurzel, wie `baum_name` im Renderer. Siehe docs/konfiguration.md, „Bäume“. */
         String ordner() {
-            return kamera.replace(':', 'x') + "-" + richtung + (cinematic ? "-cinematic" : "");
+            return kamera.replace(':', 'x') + "-" + richtung + (cinematic ? "-cinematic" : flat ? "-flat" : "");
         }
     }
 
@@ -132,7 +137,13 @@ record Konfiguration(
 
         List<Baum> baeume = new ArrayList<>();
         for (Map<?, ?> m : c.getMapList("trees")) {
-            if (!(m.get("camera") instanceof String kamera)) {
+            // --flat setzt top-north bei scale 1 selbst. Siehe docs/konfiguration.md, „Bäume“.
+            boolean flat = Boolean.TRUE.equals(m.get("flat"));
+            if (flat && List.of("camera", "direction", "scale", "cinematic", "download").stream().anyMatch(m::containsKey)) {
+                fehler.add("trees: flat nur ohne camera, direction, scale, cinematic und download");
+                continue;
+            }
+            if (!((flat ? "top-north" : m.get("camera")) instanceof String kamera)) {
                 // Ohne Anführungszeichen liest YAML 2:1 als Zahl zur Basis 60.
                 fehler.add("trees: camera als Text in Anführungszeichen, etwa \"2:1\"");
                 continue;
@@ -155,7 +166,7 @@ record Konfiguration(
                 fehler.add("trees: download nur mit camera \"top-north\", scale 4 und ohne cinematic");
                 continue;
             }
-            baeume.add(new Baum(kamera, richtung, (Integer) scale, cinematic, download, web));
+            baeume.add(new Baum(kamera, richtung, (Integer) scale, cinematic, download, web, flat));
         }
         if (baeume.isEmpty() && fehler.isEmpty()) {
             fehler.add("trees: kein Baum");
