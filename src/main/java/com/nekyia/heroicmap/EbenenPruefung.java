@@ -30,6 +30,11 @@ final class EbenenPruefung {
     private static final int PUNKTE = 10_000;
     private static final int LOECHER = 100;
     private static final int BILDER = 200;
+    private static final int ENTWUERFE = 200;
+    private static final int LAGEN = 16;
+    /** Die 16 Farbstoffe des Spiels, wie in einem Entwurf. */
+    private static final String[] FARBSTOFFE = {"white", "orange", "magenta", "light_blue", "yellow", "lime", "pink",
+        "gray", "light_gray", "cyan", "purple", "blue", "brown", "green", "red", "black"};
     private static final int BAUSTEINE = 64;
 
     /** Die Fehler, leer für eine gültige Ebene, und die Bilder, die sie nennt. */
@@ -42,6 +47,8 @@ final class EbenenPruefung {
     private final Set<String> benutzt = new TreeSet<>();
     private final Function<String, Bild> vorhanden;
     private boolean mitPermission;
+    /** Die Namen der Entwürfe am Kopf; leer ohne designs. */
+    private Set<String> entwuerfe = Set.of();
     private int bausteine;
 
     private EbenenPruefung(Function<String, Bild> vorhanden) {
@@ -65,7 +72,7 @@ final class EbenenPruefung {
     }
 
     private void ebene(String id, JsonObject e) {
-        erlaubt(e, "", "id", "name", "visible", "order", "web", "permission", "objects");
+        erlaubt(e, "", "id", "name", "visible", "order", "web", "permission", "designs", "objects");
         if (!(e.get("id") instanceof JsonPrimitive i && i.isString() && i.getAsString().equals(id))) {
             fehler.add("id: muss " + id + " heissen, wie Ordner und Datei");
         }
@@ -81,6 +88,8 @@ final class EbenenPruefung {
         if (mitPermission && e.get("web") instanceof JsonPrimitive w && w.isBoolean() && w.getAsBoolean()) {
             fehler.add("web: true mit permission; eine Ebene mit permission kommt nie auf die Webkarte");
         }
+        // Vor den Objekten: Ein Banner nennt einen Entwurf des Kopfs.
+        entwuerfe(e);
         if (!(e.get("objects") instanceof JsonArray objekte)) {
             fehler.add("objects: fehlt oder ist keine Liste");
             return;
@@ -175,13 +184,84 @@ final class EbenenPruefung {
         bild(symbol, "medium", s + ".symbol", 9, 9, true, false);
     }
 
-    /** Wie eine Nadel, mit einem Bild bis 32 × 64 statt des Schilds. Siehe docs/ebenen.md, „Prüfen“. */
+    /**
+     * Die Entwürfe der Banner am Kopf: je Name base und bis zu 16 Lagen aus pattern und color. Siehe docs/ebenen.md,
+     * „Prüfen“.
+     */
+    private void entwuerfe(JsonObject e) {
+        if (!e.has("designs")) {
+            return;
+        }
+        if (!(e.get("designs") instanceof JsonObject d)) {
+            fehler.add("designs: kein Objekt");
+            return;
+        }
+        if (d.size() > ENTWUERFE) {
+            fehler.add("designs: mehr als 200 Entwürfe");
+        }
+        for (var eintrag : d.entrySet()) {
+            String s = "designs." + eintrag.getKey();
+            if (!teil(eintrag.getKey())) {
+                fehler.add(s + ": kein Name wie ein Teil der Kennung");
+            }
+            if (!(eintrag.getValue() instanceof JsonObject entwurf)) {
+                fehler.add(s + ": kein Objekt");
+                continue;
+            }
+            erlaubt(entwurf, s, "base", "layers");
+            farbstoff(entwurf, "base", s);
+            if (!entwurf.has("layers")) {
+                continue;
+            }
+            if (!(entwurf.get("layers") instanceof JsonArray lagen)) {
+                fehler.add(s + ".layers: keine Liste");
+                continue;
+            }
+            if (lagen.size() > LAGEN) {
+                fehler.add(s + ".layers: mehr als 16 Lagen");
+            }
+            for (int i = 0; i < lagen.size(); i++) {
+                String l = s + ".layers[" + i + "]";
+                if (!(lagen.get(i) instanceof JsonObject lage)) {
+                    fehler.add(l + ": kein Objekt");
+                    continue;
+                }
+                erlaubt(lage, l, "pattern", "color");
+                // Dieselbe Form wie eine Dimension; welche Muster es gibt, weiss nur der Renderer.
+                String muster = text(lage, "pattern", l, 128, true);
+                if (muster != null && !DIMENSION.matcher(muster).matches()) {
+                    fehler.add(l + ".pattern: keine ID wie minecraft:globe");
+                }
+                farbstoff(lage, "color", l);
+            }
+        }
+        entwuerfe = Set.copyOf(d.keySet());
+    }
+
+    private void farbstoff(JsonObject o, String feld, String s) {
+        if (!o.has(feld)) {
+            fehler.add(stelle(s, feld) + ": fehlt");
+        } else {
+            auswahl(o, feld, s, FARBSTOFFE);
+        }
+    }
+
+    /**
+     * Wie eine Nadel, aus einem Entwurf der Ebene oder mit einem Bild bis 32 × 64 statt des Schilds; ohne Entwurf
+     * ist das Bild Pflicht. Siehe docs/ebenen.md, „Prüfen“.
+     */
     private void banner(JsonObject o, String s) {
-        gemeinsam(o, s, true, "at", "y", "image", "name");
+        gemeinsam(o, s, true, "at", "y", "design", "capital", "image", "name");
         punkt(o.get("at"), s + ".at");
         ganz(o, "y", s, -4096, 4096, false);
         text(o, "name", s, 64, false);
-        bild(o, "image", s, 32, 64, false, true);
+        String design = text(o, "design", s, 64, false);
+        if (design != null && !entwuerfe.contains(design)) {
+            fehler.add(s + ".design: kein Entwurf dieser Ebene: " + design);
+        }
+        // Ohne design ohne Wirkung, aber kein Fehler.
+        wahr(o, "capital", s);
+        bild(o, "image", s, 32, 64, false, !o.has("design"));
     }
 
     private void schrift(JsonObject o, String s) {

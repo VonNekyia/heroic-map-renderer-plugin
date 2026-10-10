@@ -13,6 +13,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.google.gson.JsonObject;
 import com.nekyia.heroicmap.Ebenen.Ebene;
+import com.nekyia.heroicmap.api.BannerDesign;
 import com.nekyia.heroicmap.api.Layer;
 import com.nekyia.heroicmap.api.MapObject.Banner;
 import com.nekyia.heroicmap.api.MapObject.Circle;
@@ -42,6 +43,7 @@ import java.util.logging.Handler;
 import java.util.logging.LogRecord;
 import java.util.logging.Logger;
 import org.bukkit.Bukkit;
+import org.bukkit.DyeColor;
 import org.bukkit.Server;
 import org.bukkit.event.server.PluginDisableEvent;
 import org.bukkit.plugin.Plugin;
@@ -365,6 +367,47 @@ class EbenenApiTest {
         offen.web(true);
         assertThrows(IllegalArgumentException.class, () -> offen.permission("beispiel.karte"));
         assertThrows(IllegalArgumentException.class, () -> offen.name(null, null), "mindestens de oder en");
+    }
+
+    @Test
+    void entwuerfe_und_banner_daraus() {
+        var a = api(0);
+        Layer l = a.layer("Beispiel", "staedte");
+        var nation = BannerDesign.of(DyeColor.WHITE).with("minecraft:globe", DyeColor.LIGHT_BLUE);
+        assertThrows(IllegalArgumentException.class, () -> l.put(Banner.at("b", 0, 0).withDesign("nordreich")),
+                "erst der Entwurf, dann das Banner");
+        l.design("nordreich", nation);
+        l.put(Banner.at("b", 0, 0).withDesign("nordreich").withCapital(true));
+        l.image("images/nation.png", png(22, 40));
+        l.put(Banner.at("c", 1, 1, "images/nation.png").withDesign("nordreich"));
+        assertThrows(IllegalArgumentException.class, () -> l.put(Banner.at("d", 0, 0)), "ohne Entwurf und Bild");
+
+        var json = ebene(a, "beispiel:staedte").json();
+        assertEquals("{\"base\":\"white\",\"layers\":[{\"pattern\":\"minecraft:globe\",\"color\":\"light_blue\"}]}",
+                json.getAsJsonObject("designs").get("nordreich").toString());
+        var b = json.getAsJsonArray("objects").get(0).getAsJsonObject();
+        assertEquals("nordreich", b.get("design").getAsString());
+        assertTrue(b.get("capital").getAsBoolean());
+        var c = json.getAsJsonArray("objects").get(1).getAsJsonObject();
+        assertEquals("images/nation.png", c.get("image").getAsString(), "beides: ältere Ansichten zeigen das Bild");
+        assertFalse(c.has("capital"), "capital nur, wenn true");
+
+        var e = assertThrows(IllegalArgumentException.class, () -> l.removeDesign("nordreich"));
+        assertTrue(e.getMessage().contains("kein Entwurf dieser Ebene: nordreich"), e.getMessage());
+        assertThrows(IllegalArgumentException.class, () -> l.design("Nord Reich", nation), "der Name wie ein Teil der Kennung");
+        assertThrows(IllegalArgumentException.class, () -> l.design("x", nation.with("globe", DyeColor.RED)), "Muster als namespace:pfad");
+        l.removeDesign("gibt-es-nicht");
+        l.remove("b");
+        l.remove("c");
+        l.removeDesign("nordreich");
+        assertFalse(ebene(a, "beispiel:staedte").json().has("designs"), "ohne Entwurf ohne designs");
+
+        Layer geheim = a.layer("Beispiel", "geheim");
+        geheim.permission("beispiel.karte");
+        geheim.design("nordreich", nation);
+        geheim.put(Banner.at("b", 0, 0).withDesign("nordreich"));
+        assertThrows(IllegalArgumentException.class, () -> geheim.put(Banner.at("c", 0, 0, "images/nation.png").withDesign("nordreich")),
+                "mit permission kein Bild");
     }
 
     @Test
