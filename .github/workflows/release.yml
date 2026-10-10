@@ -66,10 +66,26 @@ jobs:
           unzip -p "$jar" plugin.yml | grep -qx "version: '$VERSION'" \
             || { echo "::error::plugin.yml in $jar nennt nicht die Version $VERSION"; exit 1; }
 
+      # Die API für JitPack, das sie aus dem Release lädt. Siehe docs/api.md, „Einbinden“.
+      - name: API
+        run: |
+          ./gradlew :api:publishApiPublicationToReleaseRepository -Pversion="$VERSION" --console=plain
+          mkdir -p build/api
+          for d in .jar .pom .module -sources.jar -javadoc.jar; do
+            cp "api/build/release/com/nekyia/api/$VERSION/api-$VERSION$d" build/api/
+          done
+          ls -l build/api
+
       - uses: actions/upload-artifact@v7
         with:
           name: jar
           path: build/libs/heroic-map-renderer-plugin-${{ env.VERSION }}.jar
+          if-no-files-found: error
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: api
+          path: build/api/
           if-no-files-found: error
 
   release:
@@ -88,10 +104,16 @@ jobs:
           name: jar
           path: dist
 
+      - uses: actions/download-artifact@v8
+        with:
+          name: api
+          path: dist
+
       - name: Prüfsummen
         run: |
-          test "$(ls dist/*.jar | wc -l)" -eq 1 || { echo "::error::erwartet ein Jar für beide Plattformen"; exit 1; }
-          cd dist && sha256sum *.jar > SHA256SUMS && cat SHA256SUMS
+          test "$(ls dist/heroic-map-renderer-plugin-*.jar | wc -l)" -eq 1 || { echo "::error::erwartet ein Jar für beide Plattformen"; exit 1; }
+          test "$(ls dist/api-* | wc -l)" -eq 5 || { echo "::error::erwartet fünf Dateien der API"; exit 1; }
+          cd dist && sha256sum -- * > SHA256SUMS && cat SHA256SUMS
 
       # Nur ein Entwurf: Veröffentlichen ist Sache des Maintainers. Die Notizen,
       # englisch, schreibt notizen.sh aus CHANGELOG.md und NOTICE.
@@ -101,4 +123,4 @@ jobs:
         run: |
           bash .github/notizen.sh "${GITHUB_REF_NAME#v}" > notizen.md
           gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --draft \
-            --title "$GITHUB_REF_NAME" --notes-file notizen.md dist/*.jar dist/SHA256SUMS
+            --title "$GITHUB_REF_NAME" --notes-file notizen.md dist/*

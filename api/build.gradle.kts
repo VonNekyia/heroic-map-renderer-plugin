@@ -45,4 +45,11 @@ publishing {
             from(components["java"])
         }
     }
+    // Für das Release: dieselben Dateien wie in ~/.m2, unter build/release. Siehe docs/api.md, „Einbinden“.
+    repositories {
+        maven {
+            name = "release"
+            url = uri(layout.buildDirectory.dir("release"))
+        }
+    }
 }

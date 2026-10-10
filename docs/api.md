@@ -13,6 +13,7 @@ code:
   - src/main/java/com/nekyia/heroicmap/HeroicMapPlugin.java
   - gradle.properties
   - jitpack.yml
+  - .github/jitpack-api.sh
   - src/test/java/com/nekyia/heroicmap/EbenenApiTest.java
 ---
 
@@ -28,8 +29,8 @@ deutsch wie das Log. Entschieden vom Reviewer am 09.10. (#35).
 
 ## Einbinden
 
-Die API ist ein eigenes Jar, das Modul `api/`. JitPack baut es aus jedem
-Commit des Repos, ohne Konto:
+Die API ist ein eigenes Jar, das Modul `api/`. JitPack bietet es an, ohne
+Konto, ab v0.5.0 unter dem Tag eines Releases:
 
 ```kotlin
 repositories {
@@ -55,14 +56,10 @@ dependencies:
       join-classpath: true
 ```
 
-- **Version:** der Hash des Commits eines Releases ab dem ersten mit der
-  API, siehe „Versionierung“. Über den Tag selbst baut JitPack derzeit
-  nicht: In einem Teil seiner Umgebungen darf Java die Attribute einer
-  Datei nicht lesen und öffnet darum kein Jar, auch nicht den Wrapper von
-  Gradle. Tags landeten bisher immer dort, Hashes meist nicht (#43). Für
-  v0.4.0 scheiterten am 10.10. `6f3a3c6b77`, der ganze Hash und `b847699`
-  mit demselben Baum; `6f3a3c6b` und `6f3a3c6b77df` bauten. Jede andere
-  Länge des Hashes baut JitPack neu.
+- **Version:** ab v0.5.0 der Tag eines Releases, etwa `v0.5.0`, siehe
+  „Versionierung“. Ein Hash geht dann nicht mehr. Für ältere Releases
+  bleiben die Hashes, unter denen JitPack sie noch selbst baute:
+  `6f3a3c6b` für v0.4.0, `9f5a87a857` für v0.3.1.
 - **`compileOnly`:** Die Klassen der API liegen im Jar des Plugins; das
   fremde Plugin bringt sie nicht mit.
 - **`softdepend`** oder `depend`, damit Paper HeroicMap vorher lädt. In
@@ -72,12 +69,34 @@ dependencies:
   `NoClassDefFoundError`, kein `null` vom `ServicesManager`. Darum erst
   `isPluginEnabled("HeroicMap")` prüfen und alles, was die API nennt, in
   eine eigene Klasse legen, die erst danach lädt, siehe „Benutzen“.
-- **JitPack** baut nur `:api:publishToMavenLocal`, mit Java 25 aus
-  SDKMAN, siehe [`jitpack.yml`](../jitpack.yml). Weil es nur dieses eine
-  Artefakt findet, nennt es es wie das Repo:
+- **JitPack baut nicht,** es führt nur
+  [`.github/jitpack-api.sh`](../.github/jitpack-api.sh) aus, siehe
+  [`jitpack.yml`](../jitpack.yml), ohne Java:
+  - Es lädt Jar, `.pom`, `.module`, Quellen und Javadoc der API aus dem
+    Release des Tags, den JitPack in `VERSION` nennt.
+  - Es prüft sie gegen `SHA256SUMS` des Releases.
+  - Es legt sie nach `~/.m2/repository/com/nekyia/api/<version>/`.
+
+  Weil JitPack nur dieses eine Artefakt findet, nennt es es wie das Repo:
   `com.github.VonNekyia:heroic-map-renderer-plugin`, mit dem Tag als
-  Version. Geprüft am 10.10. an `6f3a3c6b`: Das Jar enthält nur
-  `com/nekyia/heroicmap/api/`, übersetzt für Java 25.
+  Version. Die Dateien baut der Release-Workflow, siehe
+  [Entwicklung](entwicklung.md), „Release“. Das `.pom` legt das Skript
+  auch nach `api/build/publications/api/`, wie `publishToMavenLocal`:
+  Nur von dort aus findet JitPack das Artefakt unter `~/.m2`.
+- **Geprüft** am 10.10. mit zwei Tags zur Probe, Vorabversionen, die
+  wieder gelöscht sind. JitPack lieferte unter
+  `com.github.VonNekyia:heroic-map-renderer-plugin:v0.0.0-jitpack.2` Jar,
+  `.pom`, `.module`, Quellen und Javadoc, das Jar Byte für Byte wie im
+  Release; Gruppe und Version in `.pom` und `.module` schreibt es um. Ohne
+  das `.pom` im Projektordner fand es nichts.
+- **Warum nicht bauen:** Ein Teil der Rechner von JitPack lehnt `statx`
+  mit EPERM ab, wohl über die seccomp eines Dockers vor 18.04, das `statx`
+  noch nicht kannte. Einer davon meldet Linux 4.10; `statx` gibt es erst
+  ab 4.11. Java ab 22 liest
+  Attribute einer Datei mit `statx` und fällt nicht auf `stat` zurück,
+  siehe JDK-8337966. Dort öffnet Java kein Jar, auch nicht den Wrapper von
+  Gradle. Builds landeten zufällig auf solchen Rechnern, mit Tags wie mit
+  Hashes (#43).
 - **Java 25:** Das Modul baut gegen dieselbe Paper-API wie das Plugin, aus
   [`gradle.properties`](../gradle.properties), und nutzt davon nur
   `org.bukkit.plugin.Plugin`. Wer die API einbindet, übersetzt darum mit
