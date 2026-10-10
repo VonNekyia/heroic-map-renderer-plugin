@@ -2,7 +2,7 @@ name: Modrinth
 
 # Lädt das Jar eines veröffentlichten Releases als Version auf Modrinth, mit
 # den Notizen aus notizen.sh. Von Hand mit dem Tag als Eingabe. Erst ab
-# v0.4.0, dem ersten Release mit einem Jar für beide Plattformen. Siehe
+# v0.5.0, dem ersten Release mit einem Jar für beide Plattformen. Siehe
 # docs/modrinth.md und docs/entscheidungen/0012-modrinth-mit-curl.md.
 on:
   release:
@@ -27,7 +27,7 @@ env:
   LOADER: '["paper", "purpur"]'
   MINECRAFT: '["26.2", "26.3"]'
   # Ab dieser Version lädt der Workflow hoch.
-  AB: 0.4.0
+  AB: 0.5.0
 
 defaults:
   run:

@@ -22,7 +22,7 @@ Wie der Renderer arbeitet und was seine Schalter tun, steht in der
 - [API für andere Plugins](api.md): der Service `HeroicMapApi` mit englischen Namen, über JitPack eingebunden und ohne HeroicMap sicher geladen, sofort geprüft, Ebenen und Bilder je Besitzer, nur im Speicher, ein `modname` der API verdeckt seine Dateien, Versionierung.
 - [Statistik](statistik.md): was das Plugin über bStats meldet, wohin und wie oft, Abschalten in `plugins/bStats/config.yml`, umbenannt im Jar, Lizenz und Grösse.
 - [Hangar](hangar.md): das Projekt `Neky/heroic-map`, wie jedes Release als zwei Versionen dorthin kommt, die Einstellungen von Hand mit dem Schlüssel als Secret, und der englische Text der Projektseite.
-- [Modrinth](modrinth.md): das Projekt `heroic-map-plugin`, wie jedes Release ab 0.4.0 als eine Version dorthin kommt, mit dem Token als Secret und seinen drei Rechten.
+- [Modrinth](modrinth.md): das Projekt `heroic-map-plugin`, wie jedes Release ab 0.5.0 als eine Version dorthin kommt, mit dem Token als Secret und seinen drei Rechten.
 
 ## Entwicklung
 
