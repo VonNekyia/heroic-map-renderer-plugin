@@ -6,6 +6,7 @@ code:
   - gradle.properties
   - .github/workflows/ci.yml
   - .github/workflows/release.yml
+  - .github/workflows/basis.yml
   - .github/pruefe-jar.sh
   - .github/Auspacken.java
   - .github/notizen.sh
@@ -350,6 +351,12 @@ Build 129, eine Kopie der Testwelt, das Jar des Plugins unter `plugins/`,
   in [`AGENTS.md`](../AGENTS.md) beschrieben, und nimmt
   `src/test/resources/*.json` aus: Die Kopien der Testvektoren sind
   wörtlich und zeigen auf `docs/plugin.md` des Renderers.
+- **Basis aktuell:** [`basis.yml`](../.github/workflows/basis.yml) lässt
+  jede PR fallen, deren Basis nicht `main` ist oder der Commits von `main`
+  fehlen. Eine gestapelte PR bleibt darum Entwurf, bis ihr Vorgänger
+  gemergt ist; dann kommt sie auf `main` und bekommt `main`. Den Merge
+  sperrt der Check erst, wenn er in den Regeln des Branches `main` Pflicht
+  ist; das stellt der User ein. Wunsch des Users vom 10.10.
 
 ## Release
 
