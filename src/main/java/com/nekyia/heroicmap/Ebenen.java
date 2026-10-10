@@ -86,6 +86,11 @@ final class Ebenen {
     private volatile Runnable nachEntwuerfen = () -> {};
     /** Die Entwürfe beim letzten Schreiben, siehe {@link #entwuerfe}; null vor dem ersten. */
     private String entwuerfe;
+    /**
+     * Ob {@link #ladeNeu} die Dateien einmal gelesen hat. Ein Takt vorher, etwa nach einer Ebene der API, schreibt
+     * einen Stand ohne sie; dann ruft er --banners nicht.
+     */
+    private boolean geladen;
 
     /** {@code dimension} ist die der Wurzel von tiles; sie geht in jede version ein. */
     Ebenen(Path ordner, String dimension, EbenenSchreiber schreiber, Logger log) {
@@ -127,6 +132,7 @@ final class Ebenen {
         }
         ausDateien = List.copyOf(neu);
         nichtGelesen = g.nichtGelesen();
+        geladen = true;
         geaendert.set(true);
         return "Ebenen: " + g.ebenen().size() + " geladen"
                 + (g.fehler().isEmpty() ? "" : ", Fehler, siehe Log");
@@ -148,10 +154,11 @@ final class Ebenen {
                 log.info("Ebenen: wieder für die Webkarte geschrieben");
                 schreibenScheiterte = false;
             }
-            // Auch beim ersten Mal, so räumt --banners beim Start auf; nie, solange der Ordner der Ebenen nicht zu lesen
-            // war, denn dann fehlten seine Ebenen im Aufruf. Siehe docs/laeufe.md, „Banner“.
+            // Auch beim ersten Mal, so räumt --banners beim Start auf; nie vor dem ersten Laden der Dateien und nie,
+            // solange ihr Ordner nicht zu lesen war, denn dann fehlten ihre Ebenen im Aufruf.
+            // Siehe docs/laeufe.md, „Banner“.
             String neu = entwuerfe(stand);
-            if (nichtGelesen != null && !neu.equals(entwuerfe)) {
+            if (geladen && nichtGelesen != null && !neu.equals(entwuerfe)) {
                 entwuerfe = neu;
                 nachEntwuerfen.run();
             }

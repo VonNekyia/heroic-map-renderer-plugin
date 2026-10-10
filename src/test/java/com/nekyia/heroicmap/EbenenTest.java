@@ -250,6 +250,27 @@ class EbenenTest {
     }
 
     /**
+     * Ein Takt vor dem ersten Laden der Dateien schreibt einen Stand ohne sie, etwa nach einer Änderung der API; er
+     * ruft --banners nicht. Erst der Takt nach dem Laden ruft.
+     */
+    @Test
+    void kein_aufruf_vor_dem_ersten_laden() throws IOException {
+        Path ordner = Files.createDirectories(tmp.resolve("ebenen/beispiel"));
+        Files.writeString(ordner.resolve("fahnen.json"),
+                "{\"id\": \"beispiel:fahnen\", \"name\": {\"de\": \"F\"}, \"designs\": {\"weiss\": {\"base\": \"white\"}}, \"objects\": []}");
+        var e = new Ebenen(tmp.resolve("ebenen"), OBERWELT, new EbenenSchreiber(tmp.resolve("tiles"), OBERWELT), still());
+        var gerufen = new java.util.concurrent.atomic.AtomicInteger();
+        e.nachEntwuerfen(gerufen::incrementAndGet);
+        // Wie eine Ebene der API vor dem Ende von ladeNeu: Der Takt schreibt, ohne die Dateien.
+        e.sprites(java.util.Map.of("andere:x", "1"));
+        e.takt();
+        assertEquals(0, gerufen.get(), "vor dem ersten Laden");
+        e.ladeNeu();
+        e.takt();
+        assertEquals(1, gerufen.get());
+    }
+
+    /**
      * Der Stand der Sprites aus --banners geht in die version ein, gleicher Stand, gleiche version. Der Haken für
      * --banners läuft beim ersten Schreiben und nach neuen Entwürfen, nicht nach neuen Sprites.
      */
