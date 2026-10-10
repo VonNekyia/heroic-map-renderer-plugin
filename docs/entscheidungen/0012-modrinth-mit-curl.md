@@ -33,4 +33,5 @@ nur dieser Schritt, aus dem Secret `MODRINTH_TOKEN`.
   der Workflow holt die ID darum zur Laufzeit, und der Token braucht die
   Rechte Create versions, Read projects und Read versions, siehe
   [Modrinth](../modrinth.md), „Token“.
-- Erst ab 0.4.0, dem ersten Release mit einem Jar für beide Plattformen.
+- Erst ab 0.5.0, dem ersten Release mit einem Jar für beide Plattformen;
+  v0.4.0 hatte noch je Plattform eins.

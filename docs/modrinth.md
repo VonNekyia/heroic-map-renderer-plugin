@@ -1,6 +1,6 @@
 ---
 title: Modrinth
-description: Das Projekt auf Modrinth, heroic-map-plugin — wie jedes Release ab 0.4.0 dorthin kommt, mit dem Token als Secret und den drei Rechten, die er braucht.
+description: Das Projekt auf Modrinth, heroic-map-plugin — wie jedes Release ab 0.5.0 dorthin kommt, mit dem Token als Secret und den drei Rechten, die er braucht.
 code:
   - .github/workflows/modrinth.yml
 ---
@@ -27,9 +27,10 @@ wenn ein Release auf GitHub veröffentlicht wird, oder von Hand mit dem Tag
 | Schon da? | Gibt es die `version_number` schon, lädt er nichts; so scheitert kein zweiter Lauf |
 | Hochladen | `POST /v2/version` mit curl: Loader `paper` und `purpur`, Minecraft 26.2 und 26.3, Beta, ohne Abhängigkeit, die Notizen aus `.github/notizen.sh` als Changelog; ohne `--retry`, sonst entstünde eine Version doppelt |
 
-- **Erst ab 0.4.0:** Davor hatte jedes Release je Plattform ein Jar, siehe
+- **Erst ab 0.5.0:** v0.3.2 bis v0.4.0 hatten je Plattform ein Jar, siehe
   [0011](entscheidungen/0011-ein-jar-mit-xz.md); die lädt der Workflow
-  nicht. Ältere Releases ab 0.4.0 holt er von Hand nach, mit dem Tag.
+  nicht. Ein Release ab 0.5.0, das vor dem Token kam, etwa v0.5.0, holt er
+  von Hand nach, mit dem Tag.
 - **Keine Vorabversion:** Ein Release, das auf GitHub als Vorabversion
   steht, lädt der Workflow nicht, wie bei Hangar; von Hand mit dem Tag
   schon.
