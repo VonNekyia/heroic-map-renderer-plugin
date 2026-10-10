@@ -48,6 +48,7 @@ final class Laeufe {
     private static final String NICHTS = "nichts zu zeichnen";
     private static final String GEZEICHNET = "Kacheln gezeichnet";
     private static final String VERDICHTET = "verdichtet";
+    private static final String BODEN = "Boden geschrieben";
     /** Die Zeile, mit der der Renderer ein Update ohne Änderung meldet. */
     private static final Pattern NICHTS_ZEILE = Pattern.compile("Update:\\s+nichts zu zeichnen");
 
@@ -58,6 +59,8 @@ final class Laeufe {
     private final Path cache;
     /** Hinweise aus dem Plan, jeder einmal je Start; der Zeitplan fragt alle paar Minuten. */
     private final Set<String> gemeldet = ConcurrentHashMap.newKeySet();
+    /** Die Bäume, vor deren Update seit dem Start schon ein --heights stand; je Start einmal. */
+    private final Set<String> bodenGeplant = ConcurrentHashMap.newKeySet();
 
     // Geschützt durch this.
     private Thread faden;
@@ -168,6 +171,10 @@ final class Laeufe {
                 hinweis(baum.ordner() + ": noch kein voller Lauf, erst /heroicmap render");
                 continue;
             }
+            // Ein Update lässt map.json ohne ground, wie sie ist. Siehe docs/laeufe.md, „Boden ohne Laub“.
+            if (art == Art.UPDATE && ohneBoden(ordner) && bodenGeplant.add(baum.ordner())) {
+                auftraege.add(new Auftrag(baum.ordner(), boden(ordner), false));
+            }
             auftraege.add(new Auftrag(baum.ordner(), befehl(baum, art, resume), art == Art.UPDATE));
         }
         return auftraege;
@@ -269,6 +276,24 @@ final class Laeufe {
             b.add("--manifest");
         }
         return b;
+    }
+
+    /**
+     * Höhen, Boden ohne Laub und Felder mit --heights, ohne Kacheln; liest die ganze Welt, daher mit Threads wie
+     * ein voller Lauf. Siehe docs/laeufe.md, „Boden ohne Laub“.
+     */
+    List<String> boden(Path ordner) {
+        return List.of(konf.renderer().toString(), "--world", konf.welt().toString(), "--heights", ordner.toString(),
+                "--threads", Integer.toString(threads(Art.VOLL)), "--low-priority");
+    }
+
+    /** Ob die map.json des Baums lesbar ist und den Boden nicht nennt. */
+    static boolean ohneBoden(Path ordner) {
+        try {
+            return !JsonParser.parseString(Files.readString(ordner.resolve("map.json"))).getAsJsonObject().has("ground");
+        } catch (IOException | RuntimeException e) {
+            return false;
+        }
     }
 
     /** Wie ein Baum packt, aus seiner map.json: kompakt oder schnell; null ohne lesbare map.json. */
@@ -456,6 +481,10 @@ final class Laeufe {
                 String ausgang = fuehreAus(a.befehl(), a.baum(), puffer);
                 if (verdichten && ausgang.equals(GEZEICHNET)) {
                     ausgang = VERDICHTET;
+                }
+                // Kein Ausgang, der zählt oder die Hooks ruft: Keine Kachel ist neu.
+                if (a.befehl().contains("--heights") && ausgang.equals(GEZEICHNET)) {
+                    ausgang = BODEN;
                 }
                 var letzter = new Letzter(name, Instant.now(), Duration.ofNanos(System.nanoTime() - beginn), ausgang);
                 synchronized (this) {

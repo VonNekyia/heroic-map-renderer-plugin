@@ -1,6 +1,6 @@
 ---
 title: Läufe
-description: Wie das Plugin den Renderer als Kindprozess startet, mit Befehlen, dem Zeitplan der Updates, einem Lauf zur Zeit und einem Thread. Dazu die Ausgabe im Log, Abbruch und Stoppen des Servers, das Fortsetzen nach einem Abbruch, kompakt packen und Nachverdichten mit /heroicmap compact, die Sprites der Banner mit --banners und verwaiste Prozesse.
+description: Wie das Plugin den Renderer als Kindprozess startet, mit Befehlen, dem Zeitplan der Updates, einem Lauf zur Zeit und einem Thread. Dazu die Ausgabe im Log, Abbruch und Stoppen des Servers, das Fortsetzen nach einem Abbruch, kompakt packen und Nachverdichten mit /heroicmap compact, der Boden ohne Laub mit einem --heights je Baum, die Sprites der Banner mit --banners und verwaiste Prozesse.
 code:
   - src/main/java/com/nekyia/heroicmap/Laeufe.java
   - src/main/java/com/nekyia/heroicmap/Banner.java
@@ -305,6 +305,39 @@ und in seiner Entscheidung 0093.
 - **Für den Download:** Jede Kachel bekommt neue Bytes und ein neues ETag.
   Der Mod sieht danach den ganzen Baum als geändert, siehe
   [Download](download.md), „Manifest“.
+
+## Boden ohne Laub
+
+Ab Renderer 0.9.0 schreibt jeder Lauf neben den Höhen den Boden ohne Laub.
+Auf ihn legt die Webkarte Regionen, Kreise und Linien, siehe im Renderer
+[map.json, „Höhen“](https://github.com/VonNekyia/heroic-map-renderer/blob/master/docs/benutzung/map-json.md#höhen)
+und seine Entscheidung 0103. `map.json` nennt ihn als `ground` erst nach
+einem Lauf über die ganze Welt oder nach `--heights`; ein Update lässt das
+Feld, wie es ist. Ein Baum von vorher bekäme ihn also erst mit dem nächsten
+`/heroicmap render`.
+
+- **Einmal je Start:** Vor dem Update eines Baums, dessen `map.json` lesbar
+  ist und kein `ground` nennt, ruft das Plugin `--heights <ordner>` auf. Der
+  Aufruf liest die ganze Welt und schreibt Höhen, Boden und Felder, keine
+  Kachel. Je Start und Baum geschieht das einmal, auch wenn er scheitert
+  oder ein älterer Renderer das Feld nicht setzt; so wird daraus keine
+  Schleife.
+- **Je Baum:** Unter einer Wurzel teilen die Bäume die Dateien, aber jede
+  `map.json` braucht das Feld.
+- **Schalter:** `--world`, `--threads` mit `renderer.full-run-threads` wie
+  ein voller Lauf, dazu `--low-priority`. Assets und Client-Jar braucht
+  `--heights` nicht.
+- **Dauer:** auf der grossen Welt rund 50 s je Baum mit allen Kernen, so
+  lange wie `--heights` in der Messung des Renderers vom 28.09.,
+  [Höhen je Region](https://github.com/VonNekyia/heroic-map-renderer/blob/master/docs/messungen/2026-09-28-hoehen.md).
+  Gemessen ist das ohne den Boden, der geschätzt kaum mehr kostet; mit
+  weniger Threads dauert es länger. So lange wartet das Update des Baums.
+- **Voller Lauf und `--resume`** brauchen das nicht, sie setzen das Feld
+  selbst.
+- **Ausgang:** „Boden geschrieben“. Er zählt nicht für `abdeckt_bis` und
+  stösst weder die Banner noch den Kanal an, denn keine Kachel ist neu. Das
+  Log zeigt die Ausgabe; das Update danach bleibt leise, wenn es nichts
+  zeichnet.
 
 ## Banner
 
