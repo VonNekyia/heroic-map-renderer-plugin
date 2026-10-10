@@ -110,14 +110,14 @@ Plugin es aus, siehe [Konfiguration](konfiguration.md), „Das Binär“.
   v0.4.0 ist nur in `NOTICE` der Absatz zur Schrift der Kartenschrift
   unter OFL neu). `lizenzen.txt`
   im Archiv gehört zur Karte unter `web/` und kommt mit `-Pweb`.
-- **Grösse,** am 09.10. mit v0.5.0, aus der CI, Job „Jar“ des
-  Release-Workflows als Probe in #42, Version `0.0.0-probe`, mit der Karte
+- **Grösse,** am 10.10. mit v0.6.0, aus der CI, Job „Jar“ des
+  Release-Workflows als Probe in #53, Version `0.0.0-probe`, mit der Karte
   aus dem Archiv:
 
   | Jar | Byte | bis zur Grenze | Binär gepackt |
   |---|---|---|---|
-  | `…-windows-x64.jar` | 5 382 538 | 4 617 462 | 4 709 943 |
-  | `…-linux-x64.jar` | 5 142 638 | 4 857 362 | 4 470 060 |
+  | `…-windows-x64.jar` | 5 389 947 | 4 610 053 | 4 709 992 |
+  | `…-linux-x64.jar` | 5 149 964 | 4 850 036 | 4 470 025 |
 
   Das eine Jar davor steht in [0008](entscheidungen/0008-jar-je-plattform.md),
   „Anlass“. Beide Grössen nennt `pruefe-jar.sh`. Die Grenze prüft die CI,
