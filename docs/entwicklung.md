@@ -7,6 +7,7 @@ code:
   - .github/workflows/ci.yml
   - .github/workflows/release.yml
   - .github/pruefe-jar.sh
+  - .github/Auspacken.java
   - .github/notizen.sh
   - CHANGELOG.md
   - src/test/java/com/nekyia/heroicmap/LaeufeTest.java
@@ -134,7 +135,8 @@ Plugin das seiner Plattform aus, siehe [Konfiguration](konfiguration.md),
   im Jar nennt `pruefe-jar.sh`. Die Grenze prüft die CI, siehe „CI“.
 - **Zeit:** Das Packen beider Binärs mit xz kostet `holeRenderer` rund
   30 s, nur nach einer neuen Version oder `clean`. Das Auspacken eines
-  Binärs in Java dauerte am 10.10. lokal, mit Java 26, 280 bis 391 ms, je
+  Binärs dauerte am 10.10. lokal 288 bis 398 ms, mit Java 25.0.1 und den
+  Klassen aus dem Jar, also verlagert und ohne `META-INF/versions/`, je
   dreimal gemessen.
 - **Neue Version:** `renderer` und beide SHA-256 in `build.gradle.kts`
   ändern, dann die Tabelle hier. Die SHA-256 selbst rechnen:
@@ -331,8 +333,10 @@ Build 129, eine Kopie der Testwelt, das Jar des Plugins unter `plugins/`,
   `master`, packt sie mit `-Pweb` ins Jar und prüft, dass `web/index.html`,
   `web/lizenzen.txt` und die Vorlagen `web/seite.html` und
   `web/robots.vorlage.txt` darin stehen, ebenso alles unter `renderer/`.
-  Jedes Binär packt sie mit `xz -dc` aus und vergleicht seine SHA-256 mit
-  `renderer.properties`, siehe „Der Renderer im Jar“. Keine Klasse unter
+  Jedes Binär packt sie mit dem Decoder aus dem Jar aus, wie das Plugin,
+  mit [`.github/Auspacken.java`](../.github/Auspacken.java), und
+  vergleicht seine SHA-256 mit `renderer.properties`, siehe „Der Renderer
+  im Jar“. Keine Klasse unter
   `de/maxhenkel/` darf darin liegen, siehe
   [0005](entscheidungen/0005-simple-voice-chat-api.md). bStats muss
   umbenannt und mit Lizenz darin stehen, siehe [Statistik](statistik.md),

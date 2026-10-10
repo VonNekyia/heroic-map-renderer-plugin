@@ -19,7 +19,8 @@ cat <<EOF
 **What's new in $version**
 
 $punkte
-- **One jar for Windows and Linux** on x86_64. On other platforms, set \`renderer.binary\` in the configuration.
+
+**Platforms:** Windows and Linux on x86_64. Anywhere else, set \`renderer.binary\` in the configuration.
 
 [Configuration]($repo/blob/v$version/docs/konfiguration.md) · [All releases on GitHub]($repo/releases)
 
