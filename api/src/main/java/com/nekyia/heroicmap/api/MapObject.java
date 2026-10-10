@@ -143,15 +143,21 @@ public sealed interface MapObject {
     }
 
     /**
-     * A place of the map as an image, such as a town with the banner of its nation. The image is drawn pixel for
-     * pixel, the same on every zoom level, standing on the point.
+     * A place of the map as a banner, such as a town with the banner of its nation, standing on the point and drawn
+     * pixel for pixel, the same on every zoom level. With a {@code design} of its layer the renderer draws it, with a
+     * crown if {@code capital}; otherwise, and as long as there is no drawn banner yet, the view shows the
+     * {@code image}. A banner needs a design or an image; on a layer with a permission only a design.
      */
-    record Banner(String id, Point at, String dimension, Integer y, String image, String name, Panel panel)
-            implements MapObject {
+    record Banner(String id, Point at, String dimension, Integer y, String image, String name, Panel panel,
+            String design, boolean capital) implements MapObject {
         public Banner {
             Objects.requireNonNull(id);
             Objects.requireNonNull(at);
-            Objects.requireNonNull(image);
+        }
+
+        /** As before 0.6.0: a banner with an image, without a design. */
+        public Banner(String id, Point at, String dimension, Integer y, String image, String name, Panel panel) {
+            this(id, at, dimension, y, image, name, panel, null, false);
         }
 
         /**
@@ -162,29 +168,44 @@ public sealed interface MapObject {
             return new Banner(id, new Point(x, z), null, null, image, null, null);
         }
 
+        /** A banner at {@code x}, {@code z} without an image; give it a design with {@link #withDesign}. */
+        public static Banner at(String id, double x, double z) {
+            return at(id, x, z, null);
+        }
+
         /** A copy in this dimension. */
         public Banner withDimension(String d) {
-            return new Banner(id, at, d, y, image, name, panel);
+            return new Banner(id, at, d, y, image, name, panel, design, capital);
         }
 
         /** A copy standing on this block. */
         public Banner withY(int blockY) {
-            return new Banner(id, at, dimension, blockY, image, name, panel);
+            return new Banner(id, at, dimension, blockY, image, name, panel, design, capital);
         }
 
-        /** A copy with this image. */
+        /** A copy with this image; with a design, it is shown only as long as there is no drawn banner. */
         public Banner withImage(String i) {
-            return new Banner(id, at, dimension, y, i, name, panel);
+            return new Banner(id, at, dimension, y, i, name, panel, design, capital);
         }
 
         /** A copy with this name. */
         public Banner withName(String n) {
-            return new Banner(id, at, dimension, y, image, n, panel);
+            return new Banner(id, at, dimension, y, image, n, panel, design, capital);
         }
 
         /** A copy with this panel, shown when the pointer rests on the banner. */
         public Banner withPanel(Panel p) {
-            return new Banner(id, at, dimension, y, image, name, p);
+            return new Banner(id, at, dimension, y, image, name, p, design, capital);
+        }
+
+        /** A copy drawn from this design of its layer, set with {@link Layer#design}; several banners may share one. */
+        public Banner withDesign(String d) {
+            return new Banner(id, at, dimension, y, image, name, panel, d, capital);
+        }
+
+        /** A copy with or without the crown of a capital; without a design it has no effect. */
+        public Banner withCapital(boolean c) {
+            return new Banner(id, at, dimension, y, image, name, panel, design, c);
         }
     }
 

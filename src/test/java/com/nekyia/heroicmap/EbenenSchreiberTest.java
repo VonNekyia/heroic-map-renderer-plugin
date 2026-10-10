@@ -67,6 +67,17 @@ class EbenenSchreiberTest {
     }
 
     @Test
+    void entwuerfe_in_der_datei_nicht_in_der_liste() throws IOException {
+        var e = ebene("beispiel:staedte", ", \"designs\": {\"nordreich\": {\"base\": \"white\"}}", Map.of());
+        Path wurzel = tmp.resolve("tiles");
+        new EbenenSchreiber(wurzel, OBERWELT).schreibe(List.of(e), Set.of());
+        var datei = Ebenen.lies(Files.readString(wurzel.resolve("layers/beispiel/staedte.json")));
+        assertEquals("{\"nordreich\":{\"base\":\"white\"}}", datei.get("designs").toString(), "für Webkarte und --banners");
+        var eintrag = Ebenen.lies(Files.readString(wurzel.resolve("layers.json"))).getAsJsonArray("layers").get(0).getAsJsonObject();
+        assertFalse(eintrag.has("designs"));
+    }
+
+    @Test
     void schreiben_raeumt_auf_und_laesst_gleiches_stehen() throws IOException {
         var staedte = staedte();
         Path wurzel = tmp.resolve("tiles");

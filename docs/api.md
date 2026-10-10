@@ -6,6 +6,7 @@ code:
   - api/src/main/java/com/nekyia/heroicmap/api/HeroicMapApi.java
   - api/src/main/java/com/nekyia/heroicmap/api/Layer.java
   - api/src/main/java/com/nekyia/heroicmap/api/MapObject.java
+  - api/src/main/java/com/nekyia/heroicmap/api/BannerDesign.java
   - api/src/main/java/com/nekyia/heroicmap/api/Panel.java
   - src/main/java/com/nekyia/heroicmap/EbenenApi.java
   - src/main/java/com/nekyia/heroicmap/ApiJson.java
@@ -37,7 +38,7 @@ repositories {
     maven("https://jitpack.io")
 }
 dependencies {
-    compileOnly("com.github.VonNekyia:heroic-map-renderer-plugin:6f3a3c6b") // v0.4.0
+    compileOnly("com.github.VonNekyia:heroic-map-renderer-plugin:v0.5.0")
 }
 ```
 
@@ -83,7 +84,9 @@ dependencies:
   [Entwicklung](entwicklung.md), „Release“. Das `.pom` legt das Skript
   auch nach `api/build/publications/api/`, wie `publishToMavenLocal`:
   Nur von dort aus findet JitPack das Artefakt unter `~/.m2`.
-- **Geprüft** am 10.10. mit zwei Tags zur Probe, Vorabversionen, die
+- **Geprüft** am 10.10. mit v0.5.0: JitPack fand `com.nekyia:api:0.5.0`,
+  das Jar ist Byte für Byte das aus dem Release. Davor mit zwei Tags zur
+  Probe, Vorabversionen, die
   wieder gelöscht sind. JitPack lieferte unter
   `com.github.VonNekyia:heroic-map-renderer-plugin:v0.0.0-jitpack.2` Jar,
   `.pom`, `.module`, Quellen und Javadoc, das Jar Byte für Byte wie im
@@ -116,9 +119,15 @@ final class Staedte {
         HeroicMapApi api = Bukkit.getServicesManager().load(HeroicMapApi.class);
         Layer staedte = api.layer(plugin, "staedte");
         staedte.name("Städte", "Towns");
-        // Städte als Banner ihrer Nation, ab 0.4.0; höchstens 32 × 64 Pixel, Banner einer Nation teilen ihr Bild.
+        // Städte als Banner ihrer Nation: ab 0.6.0 aus einem Entwurf der Ebene, mit Krone für die Hauptstadt.
+        staedte.design("nordreich", BannerDesign.of(DyeColor.WHITE)
+                .with("minecraft:stripe_bottom", DyeColor.RED)
+                .with("minecraft:globe", DyeColor.LIGHT_BLUE));
+        // Das Bild, höchstens 32 × 64 Pixel, zeigen Ansichten, solange es kein gezeichnetes Banner gibt.
         staedte.image("images/nordreich.png", bannerAlsPng("nordreich"));
         staedte.put(MapObject.Banner.at("stadt-17", 120.5, -340.5, "images/nordreich.png")
+                .withDesign("nordreich")
+                .withCapital(true)
                 .withName("Hafenstadt"));
         // Wegpunkte als Nadel.
         staedte.put(MapObject.Pin.at("hafen", 130.5, -330.5)
@@ -134,6 +143,7 @@ final class Staedte {
 | `HeroicMapApi.layer(plugin, name)` | die Ebene `<modname>:<name>`, beim ersten Aufruf angelegt |
 | `Layer.name(de, en)`, `visible`, `order`, `web`, `permission` | der Kopf, wie in der Datei |
 | `Layer.image(pfad, bytes)`, `removeImage(pfad)` | ein Bild des Besitzers, siehe „Bilder“ |
+| `Layer.design(name, entwurf)`, `removeDesign(name)` | ein Entwurf der Banner am Kopf der Ebene, siehe „Entwürfe“ |
 | `Layer.put(objekt)` | setzt ein Objekt oder ersetzt das mit gleicher `id` |
 | `Layer.remove(id)`, `clear()`, `delete()` | entfernt ein Objekt, alle oder die Ebene |
 
@@ -187,7 +197,8 @@ Optionale Felder sind null; `with…` gibt eine Kopie mit einem Feld mehr.
   Datei, die so wegfällt, einmal. `layer` zählt genauso: die Ebenen der
   API und die Dateien der übrigen `modname`.
 - **`permission`** wie in der Datei: ohne `web` gilt `web: false`, mit
-  `web: true` wirft der Aufruf, und die Ebene nennt keine Bilder.
+  `web: true` wirft der Aufruf, und die Ebene nennt keine Bilder. Banner
+  hat sie nur aus einem Entwurf, siehe „Entwürfe“.
 
 ## Bilder
 
@@ -205,6 +216,37 @@ Optionale Felder sind null; `with…` gibt eine Kopie mit einem Feld mehr.
   für Städte, räumt so auf. Entschieden vom Reviewer am 09.10. (#39).
 - **Öffentlich,** sobald eine Ebene ein Bild nennt, unter
   `layers/<modname>/images/`, auch bei `web: false`.
+
+## Entwürfe
+
+Seit 0.6.0 zeichnet ein Banner auf Wunsch der Renderer, aus einem Entwurf
+der Ebene, entschieden im Renderer in
+[0100](https://github.com/VonNekyia/heroic-map-renderer/blob/master/docs/entscheidungen/0100-der-renderer-zeichnet-die-banner.md).
+
+- **Je Ebene:** `design(name, entwurf)` legt einen Entwurf am Kopf der
+  Ebene an oder ersetzt ihn, höchstens 200 je Ebene. Zwei Ebenen dürfen
+  denselben Namen für verschiedene Entwürfe nutzen. Der Name folgt der
+  Regel aus [Ebenen](ebenen.md), „Dateien“, etwa die UUID einer Nation.
+- **`BannerDesign`:** `of(base)`, dazu `with(pattern, color)` je Lage von
+  unten nach oben, höchstens 16. Die Farben sind die 16 `DyeColor` von
+  Bukkit, im JSON klein mit Unterstrich, `LIGHT_BLUE` als `light_blue`.
+  Ein Muster prüft das Plugin nur auf die Form `namespace:pfad`; eines,
+  das der Renderer nicht kennt, lässt er weg.
+- **Banner aus dem Entwurf:** `Banner.at(id, x, z).withDesign(name)`, mit
+  `withCapital(true)` die Krone einer Hauptstadt; ohne Entwurf bleibt
+  `capital` ohne Wirkung. `put` wirft, wenn `design` keinen Entwurf der
+  Ebene nennt.
+- **Mit Bild:** Ein Banner darf `design` und `image` tragen. Das Bild ist
+  dann Ersatz, solange es kein gezeichnetes Banner gibt, und ältere
+  Webkarten und Mods, die `design` nicht kennen, zeigen es weiter. Ohne
+  `design` bleibt das Bild Pflicht.
+- **Entfernen nur, wenn kein Banner ihn nennt:** `removeDesign` wirft
+  `IllegalArgumentException`, solange ein Banner der Ebene den Entwurf
+  nennt.
+- **Noch nicht gezeichnet:** Den Modus `--banners` des Renderers ruft das
+  Plugin erst in einem späteren Schritt. Bis dahin zeigen Webkarte und Mod
+  das Bild; ein Banner ohne Bild übergehen sie, siehe [Ebenen](ebenen.md),
+  „web und permission“.
 
 ## Versionierung
 

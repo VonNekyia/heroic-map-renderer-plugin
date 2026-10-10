@@ -126,9 +126,15 @@ final class EbenenSchreiber {
         return i > 0 && EbenenPruefung.teil(id.substring(0, i)) && EbenenPruefung.teil(id.substring(i + 1));
     }
 
-    /** Die Datei der Ebene für die Webkarte: ohne web und permission, nur Objekte aus der Dimension der Wurzel. */
+    /**
+     * Die Datei der Ebene für die Webkarte: ohne web und permission, mit den Entwürfen, nur Objekte aus der
+     * Dimension der Wurzel.
+     */
     private JsonObject fuerWebkarte(Ebene e) {
         var o = kopf(e);
+        if (e.json().has("designs")) {
+            o.add("designs", e.json().get("designs"));
+        }
         var objekte = new JsonArray();
         for (JsonElement x : e.json().getAsJsonArray("objects")) {
             var d = x.getAsJsonObject().get("dimension");
