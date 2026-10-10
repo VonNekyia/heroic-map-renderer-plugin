@@ -198,8 +198,8 @@ Jede Nachricht trägt dazu `v` (1) und `jetzt`, wie alle des Servers, siehe
   vergleicht Kennungen, `version` und Adresse mit dem, was der Spieler
   schon hat. Gleiches schickt er nicht noch einmal; ohne Ebenen schickt er
   nie etwas.
-- **Höchstens 1 MiB je Spieler und Sekunde,** also je Lauf des Takts, an
-  Teilen, eine Ebene aber immer ganz. Was übrig ist, kommt in der nächsten
+- **Höchstens 1 MiB je Spieler und Sekunde,** an Teilen und Antworten auf
+  Tafeln zusammen, eine Ebene aber immer ganz. Was übrig ist, kommt in der nächsten
   Sekunde. So bekommt ein Spieler beim Beitritt bei vollen Grenzen, 64
   Ebenen zu 4 MiB, alles in rund vier Minuten statt in einem Tick.
 - **Vergessen:** beim Verlassen und wenn der Kanal zugeht. Danach bekommt
@@ -207,9 +207,8 @@ Jede Nachricht trägt dazu `v` (1) und `jetzt`, wie alle des Servers, siehe
 
 ### Tafeln
 
-Entschieden vom Reviewer am 10.10. (#35): Der Mod fragt die Tafel eines
-Objekts über den Kanal an, nicht per HTTP. So bekommen auch Ebenen mit
-`permission` ihre Tafeln.
+Der Mod fragt die Tafel eines Objekts über den Kanal an. Warum so:
+[0010](entscheidungen/0010-tafeln-ueber-den-kanal.md).
 
 ```json
 {"v":1,"typ":"tafel","ebene":"beispiel:staedte","version":"5f3a9c1e5f3a9c1e","id":"stadt-17"}
@@ -229,10 +228,11 @@ Objekts über den Kanal an, nicht per HTTP. So bekommen auch Ebenen mit
 - **Nicht im Hauptthread:** Der Hauptthread nimmt eine Anfrage nur an
   (`EbenenFuerMod.frage`) und zählt sie. Eine Aufgabe ausserhalb sucht das
   Objekt und baut die Antwort (`EbenenFuerMod.beantworte`).
-- **Im Takt der Ebenen:** Die Antworten gehen mit dem nächsten Lauf von
-  `ebenenAnMod`, also binnen einer Sekunde, vor neuen Ebenen und im selben
-  Budget von 1 MiB je Spieler und Sekunde. Was nicht mehr passt, kommt im
-  nächsten Takt.
+- **Gleich geschickt:** Nach dem Beantworten schickt ein Auftrag im
+  Hauptthread die Antwort (`HeroicMapPlugin.tafelnAn`,
+  `EbenenFuerMod.tafeln`), im Budget der laufenden Sekunde. Das Budget von
+  1 MiB je Spieler und Sekunde teilen Antworten und Ebenen. Was nicht mehr
+  passt, schickt der Takt in der nächsten Sekunde, vor neuen Ebenen.
 - **Im Mod:** Wann er fragt, wie viele Tafeln er behält und wie er Bilder
   der Tafel holt, steht in #35 und in der Doku des Mods.
 

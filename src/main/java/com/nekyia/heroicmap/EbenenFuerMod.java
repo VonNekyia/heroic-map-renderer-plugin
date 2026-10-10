@@ -33,7 +33,7 @@ final class EbenenFuerMod {
     static final int OBJEKT = (1 << 20) - 1024;
     /** Anfragen nach Tafeln je Spieler und Sekunde; der Rest fällt weg. Siehe docs/ebenen.md, „Tafeln“. */
     static final int TAFELN_JE_SEKUNDE = 20;
-    /** Je Spieler und Sekunde, also je Lauf des Takts, höchstens so viele Byte an Teilen; eine Ebene geht aber immer ganz. */
+    /** Je Spieler und Sekunde höchstens so viele Byte an Teilen und Antworten auf Tafeln; eine Ebene geht aber immer ganz. */
     static final int JE_SEKUNDE = 1 << 20;
 
     /** Ein vorbereiteter Stand: die Ebenen und ihre Teile, je Kennung. */
@@ -46,6 +46,18 @@ final class EbenenFuerMod {
     private static final class Gesendet {
         private String liste = "";
         private final Map<String, String> ebenen = new HashMap<>();
+        /** Die Sekunde und was darin schon ging: Takt und Antworten auf Tafeln teilen das Budget. */
+        private long sekunde;
+        private long verbraucht;
+
+        /** Was in der Sekunde {@code jetzt} noch geht; negativ, wenn eine Ebene allein grösser war. */
+        long rest(long jetzt) {
+            if (sekunde != jetzt) {
+                sekunde = jetzt;
+                verbraucht = 0;
+            }
+            return JE_SEKUNDE - verbraucht;
+        }
     }
 
     /** url oder port wie in freigabe; leer, solange kein Webserver bereit ist. */
@@ -116,8 +128,8 @@ final class EbenenFuerMod {
     }
 
     /**
-     * Ausserhalb des Hauptthreads: beantwortet jede offene Anfrage aus dem veröffentlichten Stand. Der Takt schickt
-     * die Antworten im Budget je Sekunde.
+     * Ausserhalb des Hauptthreads: beantwortet jede offene Anfrage aus dem veröffentlichten Stand. Geschickt werden
+     * die Antworten gleich danach mit {@link #tafeln}, was nicht passt, im Takt.
      */
     void beantworte(long jetzt) {
         var stand = fertig.stand();
@@ -176,8 +188,8 @@ final class EbenenFuerMod {
      * Im Hauptthread: die Nachrichten, die {@code spieler} jetzt braucht. Mit {@code alle} darf er Ebenen sehen,
      * dazu muss {@code hat} jede permission einer Ebene bejahen. Nichts, wenn sich für ihn nichts geändert hat;
      * sonst die Liste und die Teile neuer oder geänderter Ebenen, je Aufruf höchstens {@link #JE_SEKUNDE} Byte.
-     * Zuerst die Antworten auf Anfragen nach Tafeln, mit derselben Prüfung der Rechte; was nicht ins Budget passt,
-     * kommt im nächsten Takt.
+     * Zuerst noch offene Antworten auf Tafeln, mit derselben Prüfung der Rechte. Das Budget teilt er mit
+     * {@link #tafeln} in derselben Sekunde.
      */
     List<String> nachrichten(UUID spieler, boolean alle, Predicate<String> hat, long jetzt) {
         var f = fertig;
@@ -201,18 +213,8 @@ final class EbenenFuerMod {
             g.liste = unterschrift;
         }
         g.ebenen.keySet().retainAll(sicht.stream().map(Ebene::id).toList());
-        long rest = JE_SEKUNDE;
-        var offen = antworten.get(spieler);
-        for (Antwort a; offen != null && (a = offen.peek()) != null; ) {
-            if (a.bytes() > rest && rest < JE_SEKUNDE) {
-                break;
-            }
-            offen.poll();
-            if (alle && (a.permission() == null || hat.test(a.permission()))) {
-                aus.add(a.text());
-                rest -= a.bytes();
-            }
-        }
+        antworten(spieler, g, alle, hat, jetzt, aus);
+        long rest = g.rest(jetzt);
         for (Ebene e : sicht) {
             var t = f.teile().get(e.id());
             if (e.version().equals(g.ebenen.get(e.id())) || t == null) {
@@ -227,7 +229,35 @@ final class EbenenFuerMod {
             rest -= t.bytes();
             g.ebenen.put(e.id(), e.version());
         }
+        g.verbraucht = JE_SEKUNDE - rest;
         return aus;
+    }
+
+    /**
+     * Im Hauptthread, gleich nach {@link #beantworte}: die Antworten auf Tafeln, die ins Budget der laufenden
+     * Sekunde passen; der Rest bleibt für den Takt. Siehe docs/entscheidungen/0010-tafeln-ueber-den-kanal.md.
+     */
+    List<String> tafeln(UUID spieler, boolean alle, Predicate<String> hat, long jetzt) {
+        var aus = new ArrayList<String>();
+        antworten(spieler, gesendet.computeIfAbsent(spieler, k -> new Gesendet()), alle, hat, jetzt, aus);
+        return aus;
+    }
+
+    /** Hängt Antworten auf Tafeln an, solange sie ins Budget passen; die Rechte wie bei ebenen. */
+    private void antworten(UUID spieler, Gesendet g, boolean alle, Predicate<String> hat, long jetzt, List<String> aus) {
+        var offen = antworten.get(spieler);
+        long rest = g.rest(jetzt);
+        for (Antwort x; offen != null && (x = offen.peek()) != null; ) {
+            if (x.bytes() > rest && rest < JE_SEKUNDE) {
+                break;
+            }
+            offen.poll();
+            if (alle && (x.permission() == null || hat.test(x.permission()))) {
+                aus.add(x.text());
+                rest -= x.bytes();
+            }
+        }
+        g.verbraucht = JE_SEKUNDE - rest;
     }
 
     /** Nach dem Verlassen oder ohne offenen Kanal: beim nächsten Mal bekommt er alles neu. */

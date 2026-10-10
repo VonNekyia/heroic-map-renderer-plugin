@@ -265,6 +265,43 @@ class EbenenFuerModTest {
     }
 
     @Test
+    void tafel_gleich_nach_beantworte_im_budget_der_sekunde() {
+        var objekte = new StringBuilder();
+        for (int i = 0; i < 20; i++) {
+            objekte.append(i == 0 ? "" : ",").append("{\"id\": \"p").append(i).append("\", \"type\": \"pin\", \"at\": [0, 0],")
+                    .append(" \"panel\": {\"blocks\": [{\"type\": \"lines\", \"lines\": [\"").append("x".repeat(100_000))
+                    .append("\"]}]}}");
+        }
+        var e = ebene("beispiel:gross", objekte.toString(), "");
+        var g = ebene("beispiel:geheim", "{\"id\": \"p\", \"type\": \"pin\", \"at\": [0, 0], \"panel\": {\"blocks\": []}}",
+                ", \"permission\": \"beispiel.karte\"");
+        var m = ohneAdresse(List.of(e, g));
+        m.nachrichten(SAM, true, p -> true, JETZT);
+
+        m.frage(SAM, tafel("beispiel:gross", e.version(), "p0"), JETZT + 1);
+        m.beantworte(JETZT + 1);
+        assertEquals(List.of("p0"), tafeln(m.tafeln(SAM, true, p -> true, JETZT + 1)).stream()
+                .map(o -> o.get("id").getAsString()).toList(), "gleich, ohne auf den Takt zu warten");
+
+        m.frage(SAM, tafel("beispiel:geheim", g.version(), "p"), JETZT + 1);
+        m.beantworte(JETZT + 1);
+        assertEquals(List.of(), m.tafeln(SAM, true, p -> false, JETZT + 1), "dieselben Rechte wie bei ebenen");
+
+        for (int i = 1; i < 20; i++) {
+            m.frage(SAM, tafel("beispiel:gross", e.version(), "p" + i), i < 19 ? JETZT + 1 : JETZT + 2);
+        }
+        m.beantworte(JETZT + 1);
+        var gleich = m.tafeln(SAM, true, p -> true, JETZT + 1);
+        long bytes = gleich.stream().mapToLong(EbenenFuerModTest::bytes).sum();
+        assertTrue(bytes + 100_000 <= EbenenFuerMod.JE_SEKUNDE, "p0 und diese zusammen im Budget der Sekunde: " + bytes);
+        assertTrue(gleich.size() > 0 && gleich.size() < 19, "nicht alles in der ersten Sekunde: " + gleich.size());
+        assertEquals(List.of(), m.tafeln(SAM, true, p -> true, JETZT + 1), "ohne Budget in derselben Sekunde nichts mehr");
+        assertEquals(List.of(), tafeln(m.nachrichten(SAM, true, p -> true, JETZT + 1)), "der Takt derselben Sekunde auch nicht");
+        var spaeter = tafeln(m.nachrichten(SAM, true, p -> true, JETZT + 2));
+        assertEquals(19, gleich.size() + spaeter.size(), "der Rest im Takt der nächsten Sekunde");
+    }
+
+    @Test
     void der_hauptthread_rechnet_nicht() {
         var m = new EbenenFuerMod(JsonObject::new);
         assertEquals(List.of(), m.nachrichten(SAM, true, p -> true, JETZT), "ohne bereite gibt es nichts zu schicken");
