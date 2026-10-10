@@ -468,6 +468,42 @@ class LaeufeTest {
     }
 
     @Test
+    void boden_einmal_je_start_vor_dem_update_eines_baums_ohne_ground() throws Exception {
+        var l = kompakt(false, KARTE, OBEN);
+        Files.createFile(baum().resolve("stand.bin"));
+        assertEquals(1, l.plane(Art.UPDATE).size(), "ohne map.json nicht; OBEN ohne vollen Lauf");
+        Files.writeString(baum().resolve("map.json"), "{\"heights\":\"../heights/{x}.{z}.bin\"}");
+        var plan = l.plane(Art.UPDATE);
+        assertEquals(List.of("2x1-se", "2x1-se"), plan.stream().map(Auftrag::baum).toList());
+        assertEquals(List.of(JAVA.toString(), "--world", tmp.resolve("world").toString(), "--heights", baum().toString(),
+                "--threads", "6", "--low-priority"), plan.getFirst().befehl(), "Threads wie ein voller Lauf");
+        assertFalse(plan.getFirst().leise(), "einmal, also ins Log");
+        assertTrue(plan.get(1).befehl().contains("--update"));
+        assertEquals(1, l.plane(Art.UPDATE).size(), "je Start einmal, auch wenn ground noch fehlt");
+        assertEquals(2, kompakt(false, KARTE).plane(Art.UPDATE).size(), "nach einem Neustart wieder");
+        assertTrue(kompakt(false, KARTE).plane(Art.VOLL).stream().noneMatch(a -> a.befehl().contains("--heights")),
+                "ein voller Lauf setzt ground selbst");
+        Files.writeString(baum().resolve("map.json"), "{\"ground\":\"../ground/{x}.{z}.bin\"}");
+        assertEquals(1, kompakt(false, KARTE).plane(Art.UPDATE).size(), "mit ground nicht");
+        Files.writeString(baum().resolve("map.json"), "kaputt");
+        assertEquals(1, kompakt(false, KARTE).plane(Art.UPDATE).size(), "unlesbar nicht");
+    }
+
+    @Test
+    void boden_zaehlt_nicht_als_stand_und_ruft_keine_hooks() throws Exception {
+        var l = laeufe();
+        int[] nachLauf = {0};
+        l.nachLauf(() -> nachLauf[0]++);
+        var befehl = new ArrayList<>(falscher("exit", "0"));
+        befehl.add("--heights");
+        l.starte("Update", List.of(new Auftrag("a", befehl, false)));
+        assertTrue(l.warte(30_000));
+        assertTrue(l.status().endsWith(", Boden geschrieben"), l::status);
+        assertTrue(l.erfolgreichSeit("a").isEmpty(), "keine Kachel ist neu");
+        assertEquals(0, nachLauf[0], "weder Banner noch Kanal");
+    }
+
+    @Test
     void status_nennt_die_packung() throws Exception {
         assertEquals("Kein Lauf seit dem Start.", kompakt(false, KARTE, OBEN).status(), "ohne map.json nichts");
         Files.writeString(baum().resolve("map.json"), "{\"minZoom\":0}");
