@@ -12,9 +12,12 @@ mkdir -p "$ziel"
 
 curl -fsSL --retry 3 -o "$ziel/SHA256SUMS" "$quelle/SHA256SUMS"
 for datei in "api-$version.jar" "api-$version.pom" "api-$version.module" "api-$version-sources.jar" "api-$version-javadoc.jar"; do
+  # --ignore-missing unten prüft nur, was SHA256SUMS nennt; darum muss jede Datei darin stehen.
+  awk -v d="$datei" '$2 == d || $2 == "*" d {f = 1} END {exit !f}' "$ziel/SHA256SUMS" \
+    || { echo "$datei fehlt in SHA256SUMS des Releases $tag" >&2; exit 1; }
   curl -fsSL --retry 3 -o "$ziel/$datei" "$quelle/$datei"
 done
-# Dieselben Bytes wie im Release, geprüft gegen dessen SHA256SUMS.
+# Dieselben Bytes wie im Release, geprüft gegen dessen SHA256SUMS; das Jar des Plugins lädt das Skript nicht.
 (cd "$ziel" && sha256sum -c --ignore-missing SHA256SUMS && rm SHA256SUMS)
 # Wie bei publishToMavenLocal auch im Projektordner: Dort sucht JitPack das .pom und findet erst damit das
 # Artefakt unter ~/.m2. Dazu die Liste unter ~/.m2, die Gradle ebenso schreibt.
