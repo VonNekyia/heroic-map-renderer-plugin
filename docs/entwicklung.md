@@ -376,8 +376,13 @@ der Maintainer, Hangar danach ein eigener Workflow.
   Notizen. Vor dem
   Tag kommt der Abschnitt in `CHANGELOG.md`; fehlt er, fällt der Lauf vor
   dem Bauen.
-- **Entwurf:** das Jar, `SHA256SUMS` und die Notizen; mit mehr oder weniger
-  als einem Jar fällt der Lauf. Nur dieser Job darf schreiben.
+- **API für JitPack:** `:api:publishApiPublicationToReleaseRepository`
+  legt Jar, `.pom`, `.module`, Quellen und Javadoc der API mit der Version
+  aus dem Tag nach `api/build/release/`. Sie kommen mit ins Release; JitPack
+  lädt sie dort, siehe [API](api.md), „Einbinden“.
+- **Entwurf:** das Jar, die fünf Dateien der API, `SHA256SUMS` über alle
+  und die Notizen. Mit mehr oder weniger als einem Jar des Plugins oder
+  fünf Dateien der API fällt der Lauf. Nur dieser Job darf schreiben.
 - **Hangar:** Wird der Entwurf veröffentlicht, lädt
   [`hangar.yml`](../.github/workflows/hangar.yml) das Jar als Version
   `<version>` auf Hangar, siehe [Hangar](hangar.md).

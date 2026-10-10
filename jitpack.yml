@@ -1,6 +1,3 @@
-# JitPack baut nur die API, mit Java 25 aus SDKMAN wie das Plugin. Siehe docs/api.md, „Einbinden“.
-before_install:
-  - sdk install java 25.0.2-tem
-  - sdk use java 25.0.2-tem
+# JitPack baut nichts, es legt die API aus dem Release des Tags ab, ohne Java. Siehe docs/api.md, „Einbinden“.
 install:
-  - ./gradlew :api:publishToMavenLocal --console=plain
+  - bash .github/jitpack-api.sh

@@ -10,6 +10,7 @@ Links und die Hinweise aus `NOTICE` setzt
 ## 0.5.0
 
 - **One jar again** for Windows and Linux on x86_64, and one version per release on Hangar. The renderer inside is packed with xz and unpacked once per version, as before.
+- **Layer API on JitPack under the release tag,** such as `v0.5.0`: JitPack now takes the files from the GitHub release instead of building them, so it no longer fails at random.
 
 ## 0.4.0
 

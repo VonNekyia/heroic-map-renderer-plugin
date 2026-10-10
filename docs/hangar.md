@@ -22,7 +22,7 @@ ein Release auf GitHub veröffentlicht wird, oder von Hand mit dem Tag.
 
 | Schritt | Was |
 |---|---|
-| Jar holen | `heroic-map-renderer-plugin-<version>.jar` und `SHA256SUMS` aus dem Release, mit `sha256sum -c` geprüft |
+| Jar holen | `heroic-map-renderer-plugin-<version>.jar` und `SHA256SUMS` aus dem Release, mit `sha256sum -c --ignore-missing` geprüft; die Dateien der API bleiben im Release |
 | Changelog | aus [`.github/notizen.sh`](../.github/notizen.sh), englisch, siehe [Entwicklung](entwicklung.md), „Release“ |
 | Anmelden | `POST /api/v1/authenticate?apiKey=…` gibt ein JWT |
 | Version | `GET /api/v1/projects/heroic-map/versions/<version>`: 200 überspringt, 404 lädt hoch, sonst ein neuer Versuch, siehe „Wiederholt“ |
@@ -43,6 +43,9 @@ ein Release auf GitHub veröffentlicht wird, oder von Hand mit dem Tag.
   mit dem Blick, ob es sie schon gibt. Kam ein Upload trotz Fehler an,
   etwa bei einem 502 wie am 10.10. mit `0.3.3-linux-x64`, gilt die Version
   dann als fertig.
+- **Vorabversionen,** etwa ein Tag zur Probe, kommen nicht auf Hangar: Der
+  Job läuft beim Veröffentlichen nur, wenn das Release keine Vorabversion
+  ist. Von Hand läuft er immer.
 - **Releases v0.3.2 bis v0.4.0** haben je Plattform ein Jar; der Workflow
   findet dort kein `heroic-map-renderer-plugin-<version>.jar` und fällt.
 
