@@ -278,6 +278,9 @@ und in seiner Entscheidung 0093.
   Lauf, dazu `--low-priority`; mit `download: true` dazu `--manifest`,
   sonst entfernte der Renderer das Manifest. Ein Baum ohne `map.json` fällt aus, das Log sagt
   einmal: „noch kein Baum zum Nachverdichten, erst /heroicmap render“.
+  Auch einen Baum mit `flat: true` packt `--compact-tree` über seinen
+  Ordner nach; `--flat` braucht es dafür nicht, und mit ihm ginge der
+  Schalter nicht.
 - **Dauer:** Der Renderer mass rund 13,5 ms je Kachel auf einem Thread,
   für die grosse Welt hochgerechnet rund 12 CPU-Stunden, geteilt durch die
   Threads. So lange fallen die Updates aus, siehe „Zeitplan“. Mit

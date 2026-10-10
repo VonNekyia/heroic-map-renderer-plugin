@@ -43,6 +43,8 @@ update-minutes: 2
 # download: true bietet einen Baum dem Mod zum Download an,
 # nur mit camera "top-north", scale 4 und ohne cinematic.
 # web: false nimmt einen Baum zum Download von der Webkarte.
+# flat: true statt camera ist die einfarbige Ansicht, ein Pixel je Block,
+# ohne direction, scale, cinematic und download.
 trees:
   - camera: "2:1"
 

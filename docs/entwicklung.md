@@ -80,8 +80,8 @@ Plugin das seiner Plattform aus, siehe [Konfiguration](konfiguration.md),
 
 | Version | Archiv | SHA-256 |
 |---|---|---|
-| `0.6.0` | `heroic-map-renderer-windows-x64.zip` | `22c42b5dcb22e954d5122fdf001f53667ab267f75f57ca36dbd3df8a011da443` |
-| `0.6.0` | `heroic-map-renderer-linux-x64.tar.gz` | `a85c9105c00d854987afb8f723ba94210ecfe65cc4f7924c4ce227474746dc7a` |
+| `0.7.0` | `heroic-map-renderer-windows-x64.zip` | `ba7d32e5f1cbf81eee89dbbf87a72c81f6f4341ae277f39d90087d22db30cea0` |
+| `0.7.0` | `heroic-map-renderer-linux-x64.tar.gz` | `1847c09b6a2b9be01a2726e326fec7a272c108d66b580b1fde47942d6ea0e877` |
 
 - **Laden:** von
   `https://github.com/VonNekyia/heroic-map-renderer/releases/download/v<version>/`
@@ -91,7 +91,7 @@ Plugin das seiner Plattform aus, siehe [Konfiguration](konfiguration.md),
 - **Prüfen:** Hat ein geladenes Archiv eine andere SHA-256 als in
   `build.gradle.kts`, oder antwortet GitHub nicht mit 200, scheitert der
   Build. `SHA256SUMS` aus dem Release liest er nicht.
-- **Ohne Netz,** auch mit `--offline`, warnt er „Renderer 0.6.0 nicht
+- **Ohne Netz,** auch mit `--offline`, warnt er „Renderer 0.7.0 nicht
   geladen, das Jar bleibt ohne Binärs“ und baut weiter. Der nächste Build
   versucht es wieder.
 - **Mit xz:** `holeRenderer` packt jedes Binär mit xz, mit den Parametern
@@ -115,23 +115,24 @@ Plugin das seiner Plattform aus, siehe [Konfiguration](konfiguration.md),
   v0.4.0 ist nur in `NOTICE` der Absatz zur Schrift der Kartenschrift
   unter OFL neu). `lizenzen.txt`
   im Archiv gehört zur Karte unter `web/` und kommt mit `-Pweb`.
-- **Grösse,** am 10.10. mit v0.6.0, aus der CI, Job „Jar“ des
-  Release-Workflows als Probe in #57, Version `0.0.0-probe`, mit der Karte
+- **Grösse,** am 10.10. mit v0.7.0, aus der CI, Job „Jar“ des
+  Release-Workflows als Probe in #55, Version `0.0.0-probe`, mit der Karte
   aus dem Archiv:
 
   | Eintrag | ausgepackt | mit xz | im Jar |
   |---|---|---|---|
-  | `heroic-map-renderer-plugin-0.0.0-probe.jar` | – | – | 7 664 129, bis zur Grenze 2 335 871 |
-  | `renderer/windows-x64/heroic-map-renderer.exe.xz` | 11 859 456 | 3 401 876 | 3 402 916 |
-  | `renderer/linux-x64/heroic-map-renderer.xz` | 10 469 800 | 3 412 808 | 3 413 853 |
+  | `heroic-map-renderer-plugin-0.0.0-probe.jar` | – | – | 7 671 918, bis zur Grenze 2 328 082 |
+  | `renderer/windows-x64/heroic-map-renderer.exe.xz` | 11 872 256 | 3 404 020 | 3 405 060 |
+  | `renderer/linux-x64/heroic-map-renderer.xz` | 10 480 232 | 3 417 596 | 3 418 641 |
   | XZ for Java, 62 Klassen unter `com/nekyia/heroicmap/xz/` | 146 583 | – | 71 191 |
 
   Alles in Byte. Im Jar liegen die `.xz` mit Deflate, das sie in
-  ungepackten Blöcken ablegt: je rund 1 040 Byte mehr. Mit Deflate allein,
-  wie bis v0.4.0, waren die Binärs im Jar 4 709 992 und 4 470 025 Byte
-  gross, zur Probe in #53. Python mit liblzma und denselben Parametern, wie
-  das Budget des Renderers misst, packt sie in 3 403 556 und 3 414 832
-  Byte, also 1 680 und 2 024 mehr als XZ for Java. Die Grössen mit xz und
+  ungepackten Blöcken ablegt: je rund 1 040 Byte mehr. Zum Vergleich an
+  v0.6.0: Mit Deflate allein, wie bis v0.4.0, waren die Binärs im Jar
+  4 709 992 und 4 470 025 Byte gross, zur Probe in #53. Python mit liblzma
+  und denselben Parametern, wie das Budget des Renderers misst, packte sie
+  in 3 403 556 und 3 414 832 Byte, also 1 680 und 2 024 mehr als XZ for
+  Java. Die Grössen mit xz und
   im Jar nennt `pruefe-jar.sh`. Die Grenze prüft die CI, siehe „CI“.
 - **Zeit:** Das Packen beider Binärs mit xz kostet `holeRenderer` rund
   30 s, nur nach einer neuen Version oder `clean`. Das Auspacken eines
