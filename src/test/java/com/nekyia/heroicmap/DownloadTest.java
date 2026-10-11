@@ -106,12 +106,12 @@ class DownloadTest {
         assertFalse(download().angebot(JETZT).has("server"), "ohne download.server-name fehlt das Feld ganz");
         String label = "a".repeat(63);
         String lang = String.join(".", label, label, label, "a".repeat(61));
-        for (String gut : List.of("mcterranova.com", "localhost", "a-b.c0", "0", lang)) {
+        for (String gut : List.of("play.example.net", "localhost", "a-b.c0", "0", lang)) {
             server = gut;
             assertEquals(gut, download().angebot(JETZT).get("server").getAsString(), gut);
         }
-        for (String falsch : List.of(".", "..", "../x", "a..b", ".a", "a.", "-a.de", "a-.de", "mc terranova.com",
-                "mc_terranova.com", "mcterranova.com/", "ä.de", "a".repeat(64), lang + "a")) {
+        for (String falsch : List.of(".", "..", "../x", "a..b", ".a", "a.", "-a.de", "a-.de", "play example.net",
+                "play_example.net", "play.example.net/", "ä.de", "a".repeat(64), lang + "a")) {
             server = falsch;
             assertFalse(download().angebot(JETZT).has("server"), falsch);
         }
@@ -121,7 +121,7 @@ class DownloadTest {
     @Test
     void warnung_nur_fuer_einen_namen_der_kein_hostname_ist() {
         assertTrue(Download.warnung(new Konfiguration.Download(10, 5, 1, LocalTime.MIDNIGHT, 10, "")).isEmpty(), "leer");
-        assertTrue(Download.warnung(new Konfiguration.Download(10, 5, 1, LocalTime.MIDNIGHT, 10, "mcterranova.com")).isEmpty());
+        assertTrue(Download.warnung(new Konfiguration.Download(10, 5, 1, LocalTime.MIDNIGHT, 10, "play.example.net")).isEmpty());
         assertTrue(Download.warnung(new Konfiguration.Download(10, 5, 1, LocalTime.MIDNIGHT, 10, "..")).orElseThrow()
                 .startsWith("download.server-name: \"..\" ist kein Hostname"));
     }

@@ -61,7 +61,7 @@ Bukkit, und in `Kanal`, der den Kanal und den Stand im Spieler bedient.
   `download: true` gibt es kein `angebot` und damit keinen Namen.
 
   ```json
-  {"v":1,"typ":"angebot","jetzt":1760012345,"server":"mcterranova.com","baeume":[…]}
+  {"v":1,"typ":"angebot","jetzt":1760012345,"server":"play.example.net","baeume":[…]}
   ```
 - **`spieler`** etwa so, `jetzt` wie in jeder Nachricht in Epoch s:
 

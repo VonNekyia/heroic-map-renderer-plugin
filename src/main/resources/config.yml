@@ -82,6 +82,6 @@ download:
   abgleich-ab: "00:00"
   # Was die Kacheln sicher abdecken: Beginn des letzten Laufs minus so viele Minuten.
   reserve-minuten: 10
-  # Der Name des Servers, unter dem der Mod die Karten ablegt, etwa "mcterranova.com"; nur ein Hostname.
+  # Der Name des Servers, unter dem der Mod die Karten ablegt, etwa "play.example.net"; nur ein Hostname.
   # Leer: kein Name, der Mod nimmt die Adresse, die der Spieler eingetippt hat.
   server-name: ""

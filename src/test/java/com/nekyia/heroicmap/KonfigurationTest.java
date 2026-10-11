@@ -324,10 +324,10 @@ class KonfigurationTest {
     void server_name_ohne_leerraum_und_klein() throws Exception {
         var c = vorgabe();
         assertEquals("", Konfiguration.aus(c, server, server).download().server(), "Vorgabe: kein Name");
-        c.set("download.server-name", "  MCTerranova.com ");
-        assertEquals("mcterranova.com", Konfiguration.aus(c, server, server).download().server());
-        c.set("download.server-name", "mc terranova");
-        assertEquals("mc terranova", Konfiguration.aus(c, server, server).download().server(),
+        c.set("download.server-name", "  Play.Example.NET ");
+        assertEquals("play.example.net", Konfiguration.aus(c, server, server).download().server());
+        c.set("download.server-name", "play example");
+        assertEquals("play example", Konfiguration.aus(c, server, server).download().server(),
                 "kein Fehler beim Laden; Download.server prüft und lässt ihn weg");
     }
 
