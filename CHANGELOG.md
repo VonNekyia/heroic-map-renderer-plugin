@@ -9,7 +9,7 @@ Links und die Hinweise aus `NOTICE` setzt
 
 ## 0.9.2
 
-- **Server name for the mod:** with `download.server-name`, such as `mcterranova.com`, the plugin tells the mod a fixed name, and the mod keeps its maps under that name instead of the address the player typed. Only a hostname is accepted; anything else is left out with a line in the log.
+- **Server name for the mod:** with `download.server-name`, such as `play.example.net`, the plugin tells the mod a fixed name, and the mod keeps its maps under that name instead of the address the player typed. Only a hostname is accepted; anything else is left out with a line in the log.
 
 ## 0.9.1
 

@@ -185,7 +185,7 @@ final class Download {
     /** Die Zeile fürs Log, wenn {@code download.server-name} gesetzt, aber kein Hostname ist. */
     static Optional<String> warnung(Konfiguration.Download d) {
         return d.server().isEmpty() || server(d).isPresent() ? Optional.empty()
-                : Optional.of("download.server-name: \"" + d.server() + "\" ist kein Hostname, etwa \"mcterranova.com\": "
+                : Optional.of("download.server-name: \"" + d.server() + "\" ist kein Hostname, etwa \"play.example.net\": "
                         + "a-z, 0-9 und Bindestrich, Teile bis 63 Zeichen durch Punkte getrennt, zusammen bis 253; "
                         + "der Mod bekommt keinen Namen");
     }
