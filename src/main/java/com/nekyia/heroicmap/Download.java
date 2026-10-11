@@ -26,6 +26,7 @@ import java.util.UUID;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.logging.Logger;
+import java.util.regex.Pattern;
 
 /**
  * Der Kartendownload für den Mod: Angebot, Anfrage, Grenzen, Token und der tägliche Abgleich.
@@ -161,8 +162,32 @@ final class Download {
             baeume.add(o);
         }
         var a = nachricht("angebot", jetzt);
+        server(konf.download()).ifPresent(n -> a.addProperty("server", n));
         a.add("baeume", baeume);
         return a;
+    }
+
+    /**
+     * Ein Hostname, wie der Mod ihn als Ordner nimmt: Teile aus a-z, 0-9 und Bindestrich, nicht am Rand, bis 63
+     * Zeichen, durch einzelne Punkte getrennt, zusammen bis 253. So gibt es kein „.“ und kein „..“.
+     */
+    private static final Pattern HOSTNAME =
+            Pattern.compile("(?=.{1,253}$)[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)*");
+
+    /**
+     * Der Name des Servers für den Mod, falls {@code download.server-name} ein Hostname ist.
+     * Siehe docs/download.md, „Kanal“.
+     */
+    static Optional<String> server(Konfiguration.Download d) {
+        return HOSTNAME.matcher(d.server()).matches() ? Optional.of(d.server()) : Optional.empty();
+    }
+
+    /** Die Zeile fürs Log, wenn {@code download.server-name} gesetzt, aber kein Hostname ist. */
+    static Optional<String> warnung(Konfiguration.Download d) {
+        return d.server().isEmpty() || server(d).isPresent() ? Optional.empty()
+                : Optional.of("download.server-name: \"" + d.server() + "\" ist kein Hostname, etwa \"mcterranova.com\": "
+                        + "a-z, 0-9 und Bindestrich, Teile bis 63 Zeichen durch Punkte getrennt, zusammen bis 253; "
+                        + "der Mod bekommt keinen Namen");
     }
 
     /**

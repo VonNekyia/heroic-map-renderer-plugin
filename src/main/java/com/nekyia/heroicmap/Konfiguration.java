@@ -8,6 +8,7 @@ import java.time.LocalTime;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.regex.Pattern;
 import org.bukkit.configuration.ConfigurationSection;
@@ -51,8 +52,12 @@ record Konfiguration(
         }
     }
 
-    /** Die Grenzen und Zeiten des Kartendownloads. Siehe docs/download.md, „Grenzen“. */
-    record Download(int vollJe10Min, int vollJeWoche, int abgleichJeTag, LocalTime abgleichAb, int reserveMinuten) {}
+    /**
+     * Die Grenzen und Zeiten des Kartendownloads, siehe docs/download.md, „Grenzen“; dazu {@code server}, der Name
+     * des Servers für den Mod, ohne Leerraum und klein, noch ungeprüft; prüfen tut {@code Download.server}.
+     */
+    record Download(int vollJe10Min, int vollJeWoche, int abgleichJeTag, LocalTime abgleichAb, int reserveMinuten,
+                    String server) {}
 
     /** Der Server des Renderers; ohne Zertifikat HTTP; {@code url} die Adresse für Spieler. Siehe docs/webserver.md. */
     record Webserver(boolean an, String adresse, String url, Path zertifikat, Path schluessel, String titel,
@@ -255,7 +260,8 @@ record Konfiguration(
                 vollThreads,
                 minuten,
                 List.copyOf(baeume),
-                new Download(grenzen[0], grenzen[1], grenzen[2], ab, grenzen[3]),
+                new Download(grenzen[0], grenzen[1], grenzen[2], ab, grenzen[3],
+                        c.getString("download.server-name", "").strip().toLowerCase(Locale.ROOT)),
                 new Webserver(webserver, adresse, url,
                         cert.isBlank() ? null : server.resolve(cert), key.isBlank() ? null : server.resolve(key),
                         titel, beschreibung, bild, oeffentlich),

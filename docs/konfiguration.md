@@ -42,6 +42,7 @@ Die Statistik über bStats hat hier keinen Schlüssel; sie schaltet
 | `download.abgleich-je-tag` | `1` | – | Abgleiche je Spieler in 24 h, von Hand und der tägliche zusammen |
 | `download.abgleich-ab` | `"00:00"` | – | ab dieser Uhrzeit des Servers holt der erste Join den täglichen Abgleich |
 | `download.reserve-minuten` | `10` | – | Reserve für `abdeckt_bis` |
+| `download.server-name` | leer | – | der Name des Servers für den Mod, etwa `mcterranova.com`; der Mod legt die Karten unter ihm ab statt unter der eingetippten Adresse. Nur ein Hostname, klein geschrieben; sonst meldet das Plugin keinen und schreibt eine Zeile ins Log, siehe [Download](download.md), „Kanal“ |
 | `webserver.enabled` | `true` | – | ob das Plugin den Server des Renderers startet |
 | `webserver.listen` | `"0.0.0.0:8080"` | `--listen` | Adresse und Port, IPv6 in `[…]`; Pflicht, wenn der Webserver an ist |
 | `webserver.url` | leer | – | optional: wie Spieler den Webserver erreichen, `http://` oder `https://`, ohne `/` am Ende; nur für einen anderen Host, HTTPS oder einen Proxy davor; mit HTTPS und einem Baum zum Download Pflicht. Ohne sie baut der Mod die Adresse selbst, siehe [Webserver](webserver.md), „Download“ |
