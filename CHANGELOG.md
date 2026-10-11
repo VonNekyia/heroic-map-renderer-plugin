@@ -7,6 +7,10 @@ Links und die Hinweise aus `NOTICE` setzt
 [`.github/notizen.sh`](.github/notizen.sh) dazu. Siehe
 [Entwicklung](docs/entwicklung.md), „Release“.
 
+## 0.9.1
+
+- **Downloads and the web map stay fast under load:** the web server no longer runs at the lowest priority. On a busy machine the map download in the mod dropped to under 1 MB/s; at normal priority it stays near 90 MB/s. Renders still run at the lowest priority.
+
 ## 0.9.0
 
 - **Shapes on the ground under leaves:** renderer 0.9.0 writes the ground without leaves next to the heights, and the web map lays regions, circles and lines on it, so they no longer float above forests. At the first update after start, the plugin calls `--heights` once for every tree that does not have it yet, about a minute per tree on a large world; no tile changes.

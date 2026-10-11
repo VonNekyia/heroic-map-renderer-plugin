@@ -64,7 +64,9 @@ final class Webserver {
         if (web != null) {
             b.addAll(List.of("--web", web.toString()));
         }
-        b.addAll(List.of("--listen", w.adresse(), "--exit-with-stdin", "--threads", "1", "--low-priority"));
+        // Ohne --low-priority, anders als die Läufe: Unter Volllast bekäme der Server sonst kaum CPU.
+        // Siehe docs/webserver.md, „Aufruf“.
+        b.addAll(List.of("--listen", w.adresse(), "--exit-with-stdin", "--threads", "1"));
         if (w.zertifikat() != null) {
             b.addAll(List.of("--tls-cert", w.zertifikat().toString(), "--tls-key", w.schluessel().toString()));
         }
