@@ -7,6 +7,11 @@ Links und die Hinweise aus `NOTICE` setzt
 [`.github/notizen.sh`](.github/notizen.sh) dazu. Siehe
 [Entwicklung](docs/entwicklung.md), „Release“.
 
+## 0.9.0
+
+- **Shapes on the ground under leaves:** renderer 0.9.0 writes the ground without leaves next to the heights, and the web map lays regions, circles and lines on it, so they no longer float above forests. At the first update after start, the plugin calls `--heights` once for every tree that does not have it yet, about a minute per tree on a large world; no tile changes.
+- **Renderer 0.9.0** inside.
+
 ## 0.8.0
 
 - **Banners of secret layers in the mod:** the mod asks for the sprite of a banner in a layer with `permission` over the plugin channel and gets it with the rights of the layer, at most 20 requests per player and second. The layer list marks such layers as `secret`.
