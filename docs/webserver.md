@@ -22,16 +22,19 @@ Der Code steht in `Webserver` in
 
 ```
 <binär> --serve <tiles> --web plugins/HeroicMap/web --listen <webserver.listen>
-    --exit-with-stdin --threads 1 [--tls-cert <datei> --tls-key <datei>]
+    --exit-with-stdin --threads 4 [--tls-cert <datei> --tls-key <datei>]
     [--secret-file plugins/HeroicMap/token.geheimnis]
     [--site-url <url> --site-title <title> --site-description <description> [--site-image <image>]]
 ```
 
 - **`<binär>`** ist `renderer.binary` oder das Binär aus dem Jar, siehe
   [Konfiguration](konfiguration.md), „Das Binär“.
-- **Ein Thread** für Verbindungen und Dateien, unabhängig von
+- **Vier Threads** für Verbindungen und Dateien, unabhängig von
   `renderer.threads` und `renderer.full-run-threads`. Der Server liest
-  kleine Dateien und braucht kaum CPU, 0,2 bis 0,4 ms je Kachel.
+  kleine Dateien und braucht kaum CPU, 0,2 bis 0,4 ms je Kachel. Mit einem
+  Thread las er nur eine Kachel zur Zeit; Kacheln, die nicht im Cache des
+  Betriebssystems lagen, kamen so einzeln von der Platte, und der Download
+  einer grossen Karte zog sich (heroic-map-renderer#289); darum seit dem 11.10. vier.
 - **Normale Priorität,** anders als die Läufe, die mit `--low-priority`
   hinter dem Server laufen, siehe [Läufe](laeufe.md), „Der Kindprozess“.
   Mit niedrigster Priorität bekam der Server unter Volllast kaum CPU: Am
