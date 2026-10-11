@@ -7,6 +7,10 @@ Links und die Hinweise aus `NOTICE` setzt
 [`.github/notizen.sh`](.github/notizen.sh) dazu. Siehe
 [Entwicklung](docs/entwicklung.md), „Release“.
 
+## 0.9.2
+
+- **Server name for the mod:** with `download.server-name`, such as `mcterranova.com`, the plugin tells the mod a fixed name, and the mod keeps its maps under that name instead of the address the player typed. Only a hostname is accepted; anything else is left out with a line in the log.
+
 ## 0.9.1
 
 - **Downloads and the web map stay fast under load:** the web server no longer runs at the lowest priority. On a busy machine the map download in the mod dropped to under 1 MB/s; at normal priority it stays near 90 MB/s. Renders still run at the lowest priority.

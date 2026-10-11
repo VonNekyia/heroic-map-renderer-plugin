@@ -39,6 +39,8 @@ class DownloadTest {
     private Optional<Download.Ziel> webserver = Optional.of(new Download.Ziel("http://karte.test:8100", 0));
     private Optional<Instant> erfolgreich = Optional.empty();
     private Satz satz;
+    /** {@code download.server-name} für {@link #download}. */
+    private String server = "";
 
     @BeforeEach
     void baum() throws Exception {
@@ -48,7 +50,7 @@ class DownloadTest {
 
     private Download download(LocalTime abgleichAb, int abgleichJeTag) {
         var konf = new Konfiguration(tmp.resolve("r"), tmp.resolve("welt"), tmp, List.of(), List.of(), false, 1, 1, 2,
-                List.of(KARTE, OBEN), new Konfiguration.Download(10, 5, abgleichJeTag, abgleichAb, 10),
+                List.of(KARTE, OBEN), new Konfiguration.Download(10, 5, abgleichJeTag, abgleichAb, 10, server),
                 new Konfiguration.Webserver(false, "", "", null, null, "", "", "", 0), Konfiguration.ClientJar.OHNE, false);
         var d = new Download(konf, new byte[32], () -> webserver, b -> erfolgreich, ZoneOffset.UTC);
         d.saetze(Map.of("top-north-s", satz));
@@ -97,6 +99,31 @@ class DownloadTest {
         assertEquals(6, m.getAsJsonObject("4").get("kacheln").getAsInt());
         assertEquals(1_600, m.getAsJsonObject("2").get("bytes").getAsLong());
         assertEquals(600, m.getAsJsonObject("1").get("bytes").getAsLong());
+    }
+
+    @Test
+    void angebot_nennt_den_server_nur_als_hostnamen() {
+        assertFalse(download().angebot(JETZT).has("server"), "ohne download.server-name fehlt das Feld ganz");
+        String label = "a".repeat(63);
+        String lang = String.join(".", label, label, label, "a".repeat(61));
+        for (String gut : List.of("mcterranova.com", "localhost", "a-b.c0", "0", lang)) {
+            server = gut;
+            assertEquals(gut, download().angebot(JETZT).get("server").getAsString(), gut);
+        }
+        for (String falsch : List.of(".", "..", "../x", "a..b", ".a", "a.", "-a.de", "a-.de", "mc terranova.com",
+                "mc_terranova.com", "mcterranova.com/", "ä.de", "a".repeat(64), lang + "a")) {
+            server = falsch;
+            assertFalse(download().angebot(JETZT).has("server"), falsch);
+        }
+        assertEquals(253, lang.length());
+    }
+
+    @Test
+    void warnung_nur_fuer_einen_namen_der_kein_hostname_ist() {
+        assertTrue(Download.warnung(new Konfiguration.Download(10, 5, 1, LocalTime.MIDNIGHT, 10, "")).isEmpty(), "leer");
+        assertTrue(Download.warnung(new Konfiguration.Download(10, 5, 1, LocalTime.MIDNIGHT, 10, "mcterranova.com")).isEmpty());
+        assertTrue(Download.warnung(new Konfiguration.Download(10, 5, 1, LocalTime.MIDNIGHT, 10, "..")).orElseThrow()
+                .startsWith("download.server-name: \"..\" ist kein Hostname"));
     }
 
     @Test
@@ -338,7 +365,7 @@ class DownloadTest {
     @Test
     void abgeschaltete_grenzen() {
         var konf = new Konfiguration(tmp.resolve("r"), tmp.resolve("welt"), tmp, List.of(), List.of(), false, 1, 1, 2,
-                List.of(OBEN), new Konfiguration.Download(10, 0, 0, LocalTime.MIDNIGHT, 10), new Konfiguration.Webserver(false, "", "", null, null, "", "", "", 0), Konfiguration.ClientJar.OHNE, false);
+                List.of(OBEN), new Konfiguration.Download(10, 0, 0, LocalTime.MIDNIGHT, 10, ""), new Konfiguration.Webserver(false, "", "", null, null, "", "", "", 0), Konfiguration.ClientJar.OHNE, false);
         var d = new Download(konf, new byte[32], () -> webserver, b -> erfolgreich, ZoneOffset.UTC);
         d.saetze(Map.of("top-north-s", satz));
         var stand = new Download.Spielerstand();

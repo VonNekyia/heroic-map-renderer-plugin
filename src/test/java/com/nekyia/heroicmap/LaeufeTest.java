@@ -27,7 +27,7 @@ import org.junit.jupiter.api.io.TempDir;
 class LaeufeTest {
 
     private static final Path JAVA = Path.of(ProcessHandle.current().info().command().orElseThrow());
-    static final Konfiguration.Download DOWNLOAD = new Konfiguration.Download(10, 5, 20, java.time.LocalTime.MIDNIGHT, 10);
+    static final Konfiguration.Download DOWNLOAD = new Konfiguration.Download(10, 5, 20, java.time.LocalTime.MIDNIGHT, 10, "");
     private static final Konfiguration.Baum KARTE = new Konfiguration.Baum("2:1", "se", null, false, false, true);
 
     @TempDir

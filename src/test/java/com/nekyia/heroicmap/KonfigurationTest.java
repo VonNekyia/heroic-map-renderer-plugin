@@ -53,7 +53,7 @@ class KonfigurationTest {
         assertEquals(2, k.updateMinuten());
         assertEquals(List.of(new Baum("2:1", "se", null, false, false, true)), k.baeume());
         assertEquals("2x1-se", k.baeume().getFirst().ordner());
-        assertEquals(new Konfiguration.Download(10, 5, 1, java.time.LocalTime.MIDNIGHT, 10), k.download());
+        assertEquals(new Konfiguration.Download(10, 5, 1, java.time.LocalTime.MIDNIGHT, 10, ""), k.download());
         assertEquals("minecraft:overworld", k.dimension());
         assertEquals(new Konfiguration.Webserver(true, "0.0.0.0:8080", "", null, null, "", "", "", 0), k.webserver());
         assertEquals(Konfiguration.ClientJar.OHNE, k.clientJar(), "ohne Zustimmung");
@@ -318,6 +318,17 @@ class KonfigurationTest {
         assertNull(k.renderer(), "das Binär aus dem Jar; ohne Assets bricht erst der Lauf ab, mit dem Text der Zustimmung");
         assertEquals(server.resolve("r"), k.mitRenderer(server.resolve("r")).renderer());
         assertEquals(k, k.mitRenderer(server.resolve("r")).mitRenderer(null), "sonst bleibt alles");
+    }
+
+    @Test
+    void server_name_ohne_leerraum_und_klein() throws Exception {
+        var c = vorgabe();
+        assertEquals("", Konfiguration.aus(c, server, server).download().server(), "Vorgabe: kein Name");
+        c.set("download.server-name", "  MCTerranova.com ");
+        assertEquals("mcterranova.com", Konfiguration.aus(c, server, server).download().server());
+        c.set("download.server-name", "mc terranova");
+        assertEquals("mc terranova", Konfiguration.aus(c, server, server).download().server(),
+                "kein Fehler beim Laden; Download.server prüft und lässt ihn weg");
     }
 
     @Test

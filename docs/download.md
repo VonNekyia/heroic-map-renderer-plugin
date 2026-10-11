@@ -39,7 +39,7 @@ Bukkit, und in `Kanal`, der den Kanal und den Stand im Spieler bedient.
 
 | Richtung | `typ` | Felder | Wann |
 |---|---|---|---|
-| Server → Mod | `angebot` | `baeume`: je Baum `id`, `name`, `dimension`, `stand` (Epoch s), `abdeckt_bis` (Epoch s, falls bekannt), `massstaebe`: je `"1"`, `"2"`, `"4"` `bytes` und `kacheln` | sobald der Mod den Kanal anmeldet, und nach jedem Lauf, der Kacheln gezeichnet hat |
+| Server → Mod | `angebot` | `server` (optional, der Name des Servers), `baeume`: je Baum `id`, `name`, `dimension`, `stand` (Epoch s), `abdeckt_bis` (Epoch s, falls bekannt), `massstaebe`: je `"1"`, `"2"`, `"4"` `bytes` und `kacheln` | sobald der Mod den Kanal anmeldet, und nach jedem Lauf, der Kacheln gezeichnet hat |
 | Mod → Server | `anfrage` | `baum`, `massstab` (1, 2 oder 4), `art`: `voll` oder `abgleich`, `neu` (optional, `true`: ein voller Download ohne Stand zum Fortsetzen) | der Spieler wählt |
 | Server → Mod | `freigabe` | `baum`, `massstab`, `art`, `abdeckt_bis` (falls bekannt), `url` oder `port`, `token`, `ablauf` (Epoch s), `manifest_sha256`, `bytes` | auf eine `anfrage`, oder von selbst beim täglichen Abgleich |
 | Server → Mod | `abgelehnt` | `baum`, `art`, `grund` (Text für den Spieler), `wieder` (Epoch s, falls bekannt) | siehe „Anfrage“ |
@@ -51,6 +51,18 @@ Bukkit, und in `Kanal`, der den Kanal und den Stand im Spieler bedient.
 | Mod → Server | `tafel` | `ebene`, `version`, `id` | ruht der Zeiger auf einem Objekt, je Objekt und `version` einmal, siehe [Ebenen](ebenen.md), „Tafeln“ |
 | Server → Mod | `tafel` | `ebene`, `version`, `id`, dazu `panel`, wenn das Objekt eine Tafel hat und `version` die aktuelle ist | auf jede lesbare `tafel` einer Ebene, die der Spieler sehen darf, im Takt der Ebenen |
 
+- **`server`** im `angebot` ist `download.server-name`, wenn er ein
+  Hostname ist: Teile aus a–z, 0–9 und Bindestrich, nicht am Rand, je
+  höchstens 63 Zeichen, durch einzelne Punkte getrennt, zusammen höchstens
+  253. Damit gibt es kein `.` und kein `..`. Sonst fehlt das Feld ganz, auch
+  ohne Konfiguration. Der Mod legt die Karten dann unter diesem Namen ab
+  statt unter der Adresse, die der Spieler eingetippt hat, und prüft den
+  Namen selbst noch einmal (heroic-map-renderer-mod#113). Ohne Baum mit
+  `download: true` gibt es kein `angebot` und damit keinen Namen.
+
+  ```json
+  {"v":1,"typ":"angebot","jetzt":1760012345,"server":"mcterranova.com","baeume":[…]}
+  ```
 - **`spieler`** etwa so, `jetzt` wie in jeder Nachricht in Epoch s:
 
   ```json
