@@ -204,6 +204,8 @@ Plugin das seiner Plattform aus, siehe [Konfiguration](konfiguration.md),
   Sprites, `satz.json` und `.stempel` im Satz `oben`. Das Binär kommt aus
   `holeRenderer` für die Plattform des Tests, mit
   `-PrendererTest=<binär>` ein anderes; fehlen beide, fällt der Test aus.
+  Version und Hashes des Pins sind Eingaben des Test-Tasks: Nach einem
+  neuen Pin laufen die Tests neu, statt als aktuell zu gelten.
 - **`EbenenFuerModTest`:** die grösste erlaubte Region als ein Teil, eine
   Region und eine Linie über 1 MiB als Fehler, 1000 Nadeln in Teilen der
   Reihe nach, ebenso Linien und Kartenschrift, alle sechs Arten ohne Tafel,
