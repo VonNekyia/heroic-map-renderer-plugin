@@ -7,6 +7,10 @@ Links und die Hinweise aus `NOTICE` setzt
 [`.github/notizen.sh`](.github/notizen.sh) dazu. Siehe
 [Entwicklung](docs/entwicklung.md), „Release“.
 
+## 0.9.4
+
+- **Renderer 0.9.2** inside: in the tilted views of the web map, regions no longer show fog inside their edge; only the edge and the wall remain. Seen from above, regions keep their fill. No full render needed.
+
 ## 0.9.3
 
 - **Renderer 0.9.1** inside, with a smoother web map: edges and lines of regions no longer jump up and down over houses and walls, and a short stretch behind a house stays solid instead of dashed. The fog at the edge of a region is a band 16 blocks wide inside the edge, with a fixed pattern. No full render needed.
