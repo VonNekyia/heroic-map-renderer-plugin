@@ -9,7 +9,9 @@ Links und die Hinweise aus `NOTICE` setzt
 
 ## 0.10.0
 
+- **Renderer 0.10.0** inside: the companion mod can now download a whole map in one stream instead of tile by tile, which is much faster behind a proxy and can resume after an interruption.
 - **Faster map downloads:** the built-in web server now reads tiles with four threads instead of one, so tiles that are not cached by the system no longer come from the disk one by one.
+- **No full render needed:** maps rendered with renderer 0.9.2 keep updating.
 
 ## 0.9.4
 

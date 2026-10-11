@@ -173,6 +173,27 @@ Eine Ablehnung zählt nicht und ändert den Stand nicht. Sie nennt `baum` und
 weiss der Mod auch bei zwei offenen Anfragen, welchen Baum ein `wieder`
 sperrt. Nur einer unlesbaren Anfrage fehlen beide.
 
+## Als Strom
+
+Ab Renderer 0.10.0 lädt der Mod einen Baum mit einer Anfrage statt einer je
+Kachel (heroic-map-renderer#289). Hinter einem Proxy, der je Anfrage eine
+neue Verbindung öffnet, dauerte eine grosse Karte Kachel für Kachel rund
+20 min oder brach ab.
+
+- **Pfad:** `GET /download/<baum>.zip` mit dem Token der `freigabe`, wie
+  bei den Einzelabrufen. `?nach=<z>/<x>/<y>` setzt nach einem Abbruch
+  hinter dieser Kachel fort. Die `freigabe` bleibt, wie sie ist; der Mod
+  baut den Pfad aus ihrer Adresse.
+- **Im Plugin** ändert sich an Angebot, Anfrage, Grenzen und Token nichts.
+  Der Server prüft das Token und bucht je Eintrag gegen den Deckel wie bei
+  den Einzelabrufen.
+- **Was der Strom enthält,** in welcher Reihenfolge, mit welchen Antworten
+  und Grenzen, steht im Renderer unter
+  [Server, „Download als Strom“](https://github.com/VonNekyia/heroic-map-renderer/blob/master/docs/benutzung/server.md#download-als-strom).
+- **Updates** holt der Mod weiter einzeln, mit ETag.
+- **Ein älterer Renderer** antwortet mit 404; dann lädt der Mod Kachel für
+  Kachel wie bisher.
+
 ## Grenzen
 
 | Grenze | Vorgabe | Fenster | Schlüssel in `config.yml` |
