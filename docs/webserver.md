@@ -48,7 +48,9 @@ Der Code steht in `Webserver` in
   `/tiles/`; das Log sagt es beim Start.
 - **Ausgabe:** stdout und stderr ins Log des Servers. Der Server schreibt
   keine Zeile je Anfrage, nur seine Startzeile, das Neuladen eines
-  Zertifikats und Fehler.
+  Zertifikats, Fehler und ab Renderer 0.10.0 je Download als Strom eine
+  Zeile `Download:`, wenn er endet, siehe [Download](download.md), „Als
+  Strom“.
 
 ## Die Karte im Jar
 
