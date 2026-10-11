@@ -77,7 +77,7 @@ class WebserverTest {
                 tmp.resolve("schluessel.pem"), "", "", "", 0);
         assertEquals(List.of(tmp.resolve("r").toString(), "--serve", tmp.resolve("tiles").toString(),
                 "--web", tmp.resolve("web").toString(), "--listen", "0.0.0.0:8443", "--exit-with-stdin",
-                "--threads", "1",
+                "--threads", "4",
                 "--tls-cert", tmp.resolve("kette.pem").toString(), "--tls-key", tmp.resolve("schluessel.pem").toString(),
                 "--secret-file", tmp.resolve("token.geheimnis").toString()),
                 Webserver.befehl(konf(w), tmp.resolve("web"), tmp.resolve("token.geheimnis")));
@@ -104,8 +104,8 @@ class WebserverTest {
     void befehl_ohne_karte_und_mit_http() {
         var w = new Konfiguration.Webserver(true, "127.0.0.1:8080", "", null, null, "", "", "", 0);
         assertEquals(List.of(tmp.resolve("r").toString(), "--serve", tmp.resolve("tiles").toString(),
-                "--listen", "127.0.0.1:8080", "--exit-with-stdin", "--threads", "1"),
-                Webserver.befehl(konf(w), null, null), "ein Thread, nicht renderer.threads; ohne Geheimnis kein Download");
+                "--listen", "127.0.0.1:8080", "--exit-with-stdin", "--threads", "4"),
+                Webserver.befehl(konf(w), null, null), "vier Threads, nicht renderer.threads; ohne Geheimnis kein Download");
     }
 
     @Test

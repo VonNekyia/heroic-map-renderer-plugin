@@ -7,6 +7,10 @@ Links und die Hinweise aus `NOTICE` setzt
 [`.github/notizen.sh`](.github/notizen.sh) dazu. Siehe
 [Entwicklung](docs/entwicklung.md), „Release“.
 
+## 0.10.0
+
+- **Faster map downloads:** the built-in web server now reads tiles with four threads instead of one, so tiles that are not cached by the system no longer come from the disk one by one.
+
 ## 0.9.4
 
 - **Renderer 0.9.2** inside: in the tilted views of the web map, regions no longer show fog inside their edge; only the edge and the wall remain. Seen from above, regions keep their fill. No full render needed.
