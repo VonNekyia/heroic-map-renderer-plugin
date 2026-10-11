@@ -187,6 +187,9 @@ val holeRenderer = tasks.register("holeRenderer") {
 // des Tests. Ohne beide fällt der Test aus. Siehe docs/entwicklung.md, „Tests“.
 tasks.test {
     dependsOn(holeRenderer)
+    // Der Pin als Eingabe: Sonst hielte Gradle die Tests nach einem neuen Renderer für aktuell.
+    inputs.property("renderer", renderer)
+    inputs.property("rendererArchive", rendererArchive)
     systemProperty("heroicmap.renderer", providers.gradleProperty("rendererTest").getOrElse(""))
     systemProperty("heroicmap.rendererJar", layout.buildDirectory.dir("renderer/jar").get().asFile.path)
 }
