@@ -118,15 +118,15 @@ Plugin das seiner Plattform aus, siehe [Konfiguration](konfiguration.md),
   v0.4.0 ist nur in `NOTICE` der Absatz zur Schrift der Kartenschrift
   unter OFL neu). `lizenzen.txt`
   im Archiv gehört zur Karte unter `web/` und kommt mit `-Pweb`.
-- **Grösse,** am 10.10. mit v0.7.0, aus der CI, Job „Jar“ des
-  Release-Workflows als Probe in #55, Version `0.0.0-probe`, mit der Karte
+- **Grösse,** am 11.10. mit v0.10.0, aus der CI, Job „Jar“ des
+  Release-Workflows als Probe in #76, Version `0.0.0-probe`, mit der Karte
   aus dem Archiv:
 
   | Eintrag | ausgepackt | mit xz | im Jar |
   |---|---|---|---|
-  | `heroic-map-renderer-plugin-0.0.0-probe.jar` | – | – | 7 671 918, bis zur Grenze 2 328 082 |
-  | `renderer/windows-x64/heroic-map-renderer.exe.xz` | 11 872 256 | 3 404 020 | 3 405 060 |
-  | `renderer/linux-x64/heroic-map-renderer.xz` | 10 480 232 | 3 417 596 | 3 418 641 |
+  | `heroic-map-renderer-plugin-0.0.0-probe.jar` | – | – | 7 947 840, bis zur Grenze 2 052 160 |
+  | `renderer/windows-x64/heroic-map-renderer.exe.xz` | 12 366 848 | 3 530 040 | 3 531 120 |
+  | `renderer/linux-x64/heroic-map-renderer.xz` | 10 887 376 | 3 544 940 | 3 546 025 |
   | XZ for Java, 62 Klassen unter `com/nekyia/heroicmap/xz/` | 146 583 | – | 71 191 |
 
   Alles in Byte. Im Jar liegen die `.xz` mit Deflate, das sie in
