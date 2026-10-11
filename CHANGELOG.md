@@ -7,6 +7,10 @@ Links und die Hinweise aus `NOTICE` setzt
 [`.github/notizen.sh`](.github/notizen.sh) dazu. Siehe
 [Entwicklung](docs/entwicklung.md), „Release“.
 
+## 0.9.3
+
+- **Renderer 0.9.1** inside, with a smoother web map: edges and lines of regions no longer jump up and down over houses and walls, and a short stretch behind a house stays solid instead of dashed. The fog at the edge of a region is a band 16 blocks wide inside the edge, with a fixed pattern. No full render needed.
+
 ## 0.9.2
 
 - **Server name for the mod:** with `download.server-name`, such as `play.example.net`, the plugin tells the mod a fixed name, and the mod keeps its maps under that name instead of the address the player typed. Only a hostname is accepted; anything else is left out with a line in the log.
