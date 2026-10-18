@@ -7,6 +7,11 @@ code:
   - api/src/main/java/com/nekyia/heroicmap/api/Layer.java
   - api/src/main/java/com/nekyia/heroicmap/api/MapObject.java
   - api/src/main/java/com/nekyia/heroicmap/api/BannerDesign.java
+  - api/src/main/java/com/nekyia/heroicmap/api/PlayerLayer.java
+  - api/src/main/java/com/nekyia/heroicmap/api/MapButton.java
+  - api/src/main/java/com/nekyia/heroicmap/api/MapButtonClickEvent.java
+  - src/main/java/com/nekyia/heroicmap/Knoepfe.java
+  - src/test/java/com/nekyia/heroicmap/KnoepfeTest.java
   - api/src/main/java/com/nekyia/heroicmap/api/Panel.java
   - src/main/java/com/nekyia/heroicmap/EbenenApi.java
   - src/main/java/com/nekyia/heroicmap/ApiJson.java
@@ -144,6 +149,8 @@ final class Staedte {
 | `Layer.name(de, en)`, `visible`, `order`, `web`, `permission` | der Kopf, wie in der Datei |
 | `Layer.image(pfad, bytes)`, `removeImage(pfad)` | ein Bild des Besitzers, siehe „Bilder“ |
 | `Layer.design(name, entwurf)`, `removeDesign(name)` | ein Entwurf der Banner am Kopf der Ebene, siehe „Entwürfe“ |
+| `Layer.forPlayer(uuid)` | die eigenen Objekte eines Spielers; macht die Ebene zur Aktionsebene, siehe „Aktionsebenen und Knöpfe“ |
+| `HeroicMapApi.button(plugin, name, de, en)` | ein Knopf unter der Tafel von Objekten, an oder aus je Spieler, siehe „Aktionsebenen und Knöpfe“ |
 | `Layer.put(objekt)` | setzt ein Objekt oder ersetzt das mit gleicher `id` |
 | `Layer.remove(id)`, `clear()`, `delete()` | entfernt ein Objekt, alle oder die Ebene |
 
@@ -248,6 +255,66 @@ der Ebene, entschieden im Renderer in
   zeigen Webkarte und Mod das Bild; ein Banner ohne Bild übergehen sie.
   Banner geheimer Ebenen bekommt der Mod über den Kanal, siehe
   [Ebenen](ebenen.md), „Banner im Mod“.
+
+## Aktionsebenen und Knöpfe
+
+Ein Plugin zeigt jedem Spieler eigene Objekte und hängt Knöpfe an Objekte,
+auch an die einer fremden Ebene; ein Klick ist ein Ereignis. So schaltet
+ein Spieler etwa an jeder Stadt den Knopf „Schiff“, und ein Plugin für
+Schiffsreisen zeigt ihm die Routen zwischen seinen Städten (#294 im
+Renderer). Das Format steht im Renderer unter
+[Ebenen, „Aktionsebenen und Knöpfe“](https://github.com/VonNekyia/heroic-map-renderer/blob/master/docs/benutzung/ebenen.md#aktionsebenen-und-knöpfe),
+die Entscheidung in
+[0107](https://github.com/VonNekyia/heroic-map-renderer/blob/master/docs/entscheidungen/0107-aktionsebenen.md).
+
+```java
+// Die Routen eines Spielers, nur er sieht sie.
+Layer routen = api.layer(plugin, "routen");
+routen.forPlayer(spieler).put(MapObject.Line.through("hafen-a-b", List.of(a, b)));
+
+// Ein Knopf an der Stadt einer fremden Ebene, nach Absprache mit ihrem Besitzer.
+MapButton schiff = api.button(plugin, "schiff", "Schiff", "Ship");
+schiff.attach("nations:staedte", stadtId);
+
+// In einem Listener, als EventHandler:
+void klick(MapButtonClickEvent e) {
+    if (e.button() != schiff) return;
+    schiff.state(e.player(), e.layer(), e.object(), !e.on());
+}
+```
+
+- **Aktionsebene:** Mit dem ersten `forPlayer` wird eine Ebene der API zur
+  Aktionsebene, für immer. Jeder Spieler sieht die Objekte, die alle sehen,
+  und seine eigenen (`PlayerLayer.put`, `remove`, `clear`).
+  - Eigene Objekte nennen keine Bilder; ihre `id` ist keine, die alle sehen,
+    und umgekehrt.
+  - Grenzen je Spieler 1000 Objekte und 1 MiB, mit denen, die alle sehen,
+    zusammen die Grenzen einer Ebene.
+  - `Layer.clear()` lässt die eigenen Objekte stehen.
+- **Im Mod** ist eine Aktionsebene eine gewöhnliche Ebene, je Spieler mit
+  eigener `version`, siehe [Ebenen](ebenen.md), „Mod“. **Auf der Webkarte**
+  fehlt sie, bis das Plugin die Anmeldung dort kann; nie steht sie unter
+  `layers/`.
+- **Knopf:** `HeroicMapApi.button` legt ihn beim ersten Aufruf an, mit
+  Label `de` und/oder `en`, je höchstens 32 Zeichen, höchstens 64 je
+  Plugin. `attach(ebene, objekt)` hängt ihn unter die Tafel eines Objekts,
+  höchstens 4 je Objekt; nur Nadeln, Banner, Regionen und Kreise haben eine.
+  `state(spieler, ebene, objekt, an)` setzt den Zustand je Spieler, Vorgabe
+  aus; erst nach `attach`.
+- **Fremde Objekte:** Jedes Plugin darf an jedes Objekt hängen, nach
+  Absprache mit dem Besitzer der Ebene; geprüft wird das nicht, wie beim
+  Besitz („Regeln“). Entschieden vom Reviewer am 18.10. (#294).
+- **Ereignis:** `MapButtonClickEvent` im Hauptthread, mit dem Knopf, der
+  UUID des Spielers, Ebene, Objekt und dem Zustand beim Klick. Geprüft hat
+  HeroicMap vorher: Der Knopf hängt an diesem Objekt, und der Spieler sieht
+  dessen Ebene. Was der Klick tut, entscheidet der Besitzer des Knopfs;
+  von selbst ändert sich nichts. Die UUID, kein `Player`, denn ein Klick
+  von der Webkarte kann von einem Spieler kommen, der nicht online ist.
+- **Nur im Speicher:** Eigene Objekte und Zustände gehen mit dem Besitzer,
+  wenn er abgeschaltet wird; sein `onEnable` setzt sie neu. Eigene Objekte
+  bleiben, bis er sie entfernt, auch wenn der Spieler geht.
+- **Ebenen mit `permission`:** Knöpfe und eigene Objekte dort gibt es nur
+  im Mod, nie auf der Webkarte (E2 in #294).
 
 ## Versionierung
 

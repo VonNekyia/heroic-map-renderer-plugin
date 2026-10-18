@@ -25,6 +25,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -41,8 +42,26 @@ final class Ebenen {
     /** So viele Fehler einer Datei stehen im Log, dann nur noch ihre Zahl. */
     private static final int FEHLER_JE_DATEI = 20;
 
-    /** Eine geprüfte Ebene: ihr JSON wie in der Datei, die Bilder, die sie nennt, und ihre version. */
-    record Ebene(String id, JsonObject json, Map<String, byte[]> bilder, String version) {
+    /**
+     * Eine geprüfte Ebene: ihr JSON wie in der Datei, die Bilder, die sie nennt, und ihre version. Mit {@code spieler}
+     * eine Aktionsebene: dort je Spieler mit eigenen Objekten seine Fassung, null für jede andere Ebene. Siehe
+     * docs/api.md, „Aktionsebenen und Knöpfe“.
+     */
+    record Ebene(String id, JsonObject json, Map<String, byte[]> bilder, String version, Map<UUID, Ebene> spieler) {
+
+        Ebene(String id, JsonObject json, Map<String, byte[]> bilder, String version) {
+            this(id, json, bilder, version, null);
+        }
+
+        boolean aktion() {
+            return spieler != null;
+        }
+
+        /** Die Fassung von {@code u} mit seinen eigenen Objekten; ohne solche diese Ebene selbst. */
+        Ebene fuer(UUID u) {
+            var f = spieler == null ? null : spieler.get(u);
+            return f == null ? this : f;
+        }
 
         String modname() {
             return id.substring(0, id.indexOf(':'));
@@ -52,8 +71,14 @@ final class Ebenen {
             return id.substring(id.indexOf(':') + 1);
         }
 
-        /** Auf die Webkarte: wie {@code web}, sonst nur ohne permission. Siehe docs/ebenen.md, „Webkarte“. */
+        /**
+         * Auf die Webkarte: wie {@code web}, sonst nur ohne permission; eine Aktionsebene nie über layers/. Siehe
+         * docs/ebenen.md, „Webkarte“.
+         */
         boolean web() {
+            if (spieler != null) {
+                return false;
+            }
             return json.has("web") ? json.get("web").getAsBoolean() : !json.has("permission");
         }
     }
@@ -213,7 +238,16 @@ final class Ebenen {
     static List<Ebene> mitSprites(List<Ebene> ebenen, Map<String, String> sprites) {
         return ebenen.stream().map(e -> {
             String s = sprites.get(e.id());
-            return s == null ? e : new Ebene(e.id(), e.json(), e.bilder(), kurz(e.version() + "|" + s));
+            if (s == null) {
+                return e;
+            }
+            Map<UUID, Ebene> spieler = null;
+            if (e.spieler() != null) {
+                var neu = new HashMap<UUID, Ebene>();
+                e.spieler().forEach((u, f) -> neu.put(u, new Ebene(f.id(), f.json(), f.bilder(), kurz(f.version() + "|" + s))));
+                spieler = Map.copyOf(neu);
+            }
+            return new Ebene(e.id(), e.json(), e.bilder(), kurz(e.version() + "|" + s), spieler);
         }).toList();
     }
 

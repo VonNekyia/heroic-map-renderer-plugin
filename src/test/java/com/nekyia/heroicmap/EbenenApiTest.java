@@ -411,6 +411,64 @@ class EbenenApiTest {
     }
 
     @Test
+    void aktionsebene_mit_objekten_je_spieler() {
+        var a = api(0);
+        var sam = new java.util.UUID(0, 1);
+        var alex = new java.util.UUID(0, 2);
+        Layer l = a.layer("Proficisci", "routen");
+        l.put(Pin.at("hafen", 0, 0));
+        assertFalse(ebene(a, "proficisci:routen").aktion(), "erst forPlayer macht sie zur Aktionsebene");
+        var meine = l.forPlayer(sam);
+        assertEquals(sam, meine.player());
+        meine.put(Line.through("route", List.of(new Point(0, 0), new Point(10, 10))));
+        var e = ebene(a, "proficisci:routen");
+        assertTrue(e.aktion());
+        assertFalse(e.web(), "nie über layers/");
+        assertEquals(List.of("hafen"), ids(e));
+        assertEquals(List.of("hafen", "route"), ids(e.fuer(sam)));
+        assertSame(e, e.fuer(alex), "ohne eigene Objekte die Ebene selbst");
+        assertNotEquals(e.version(), e.fuer(sam).version());
+
+        assertThrows(IllegalArgumentException.class, () -> meine.put(Pin.at("hafen", 1, 1)), "keine id, die alle sehen");
+        assertThrows(IllegalArgumentException.class, () -> l.put(Pin.at("route", 1, 1)), "keine id eines Spielers");
+        l.image("images/s.png", png(16, 16));
+        assertThrows(IllegalArgumentException.class, () -> meine.put(Pin.at("p", 0, 0).withSymbol(new Symbol("images/s.png", null))),
+                "eigene Objekte nennen keine Bilder");
+
+        l.clear();
+        assertEquals(List.of("route"), ids(ebene(a, "proficisci:routen").fuer(sam)), "clear lässt die eigenen");
+        meine.remove("route");
+        assertTrue(ebene(a, "proficisci:routen").aktion(), "bleibt Aktionsebene");
+        assertSame(ebene(a, "proficisci:routen"), ebene(a, "proficisci:routen").fuer(sam));
+
+        for (int i = 0; i < 1000; i++) {
+            meine.put(Line.through("r" + i, List.of(new Point(0, 0), new Point(i, 1))));
+        }
+        assertThrows(IllegalArgumentException.class, () -> meine.put(Line.through("r1000", List.of(new Point(0, 0), new Point(1, 1)))),
+                "höchstens 1000 eigene je Spieler");
+        l.forPlayer(alex).put(Line.through("r0", List.of(new Point(0, 0), new Point(1, 1))));
+        meine.clear();
+        assertEquals(List.of("r0"), ids(ebene(a, "proficisci:routen").fuer(alex)), "je Spieler");
+        l.delete();
+        assertThrows(IllegalStateException.class, () -> meine.put(Pin.at("x", 0, 0)));
+    }
+
+    @Test
+    void knopf_ueber_die_api_geht_mit_dem_plugin() throws ReflectiveOperationException {
+        var a = api(0);
+        var an = new AtomicBoolean(true);
+        Plugin p = plugin("Proficisci", an::get);
+        var schiff = a.button(p, "schiff", "Schiff", "Ship");
+        assertEquals("proficisci:schiff", schiff.id());
+        schiff.attach("nations:staedte", "stadt-17");
+        assertSame(schiff, a.knoepfe().angehaengt("proficisci:schiff", "nations:staedte", "stadt-17"));
+        a.beimAbschalten(abschalten(p));
+        an.set(false);
+        assertThrows(IllegalStateException.class, () -> schiff.state(new java.util.UUID(0, 1), "nations:staedte", "stadt-17"));
+        assertThrows(IllegalStateException.class, () -> a.button(p, "schiff", "Schiff", null), "abgeschaltet");
+    }
+
+    @Test
     void loeschen_und_ein_plugin_das_geht() {
         var a = api(0);
         Layer l = a.layer("Beispiel", "weg");

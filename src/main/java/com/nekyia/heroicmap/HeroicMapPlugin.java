@@ -2,6 +2,7 @@ package com.nekyia.heroicmap;
 
 import com.google.gson.JsonObject;
 import com.nekyia.heroicmap.api.HeroicMapApi;
+import com.nekyia.heroicmap.api.MapButtonClickEvent;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -10,6 +11,7 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.stream.Stream;
@@ -91,7 +93,7 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
         // Die Adresse erst, wenn der Webserver bereit ist, wie bei freigabe.
         var webKonf = konf.webserver();
         fuerMod = new EbenenFuerMod(() -> webserver != null && webserver.bereit() ? EbenenFuerMod.adresse(webKonf) : new JsonObject(),
-                Banner.geheim(getDataFolder().toPath()), getLogger());
+                Banner.geheim(getDataFolder().toPath()), getLogger(), ebenen.api().knoepfe());
         getServer().getAsyncScheduler().runAtFixedRate(this, t -> {
             ebenen.takt();
             fuerMod.bereite(ebenen.stand());
@@ -140,13 +142,12 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
      */
     @Override
     public void onPluginMessageReceived(String channel, Player player, byte[] message) {
+        if (EbenenFuerMod.istKnopf(message)) {
+            klick(player, message);
+            return;
+        }
         if (EbenenFuerMod.istTafel(message) || EbenenFuerMod.istBanner(message)) {
-            if (fuerMod != null && fuerMod.frage(player.getUniqueId(), message, Instant.now().getEpochSecond())) {
-                getServer().getAsyncScheduler().runNow(this, t -> {
-                    fuerMod.beantworte(Instant.now().getEpochSecond());
-                    getServer().getGlobalRegionScheduler().execute(this, () -> tafelnAn(player));
-                });
-            }
+            frageTafel(player, message);
             return;
         }
         var antwort = mitspieler.show(message, player.getUniqueId(), player.hasPermission(SHOW), simpleVoiceChat, Instant.now());
@@ -161,6 +162,37 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
         if (fuerMod != null) {
             fuerMod.vergiss(e.getPlayer().getUniqueId());
         }
+    }
+
+    /** Nimmt die Anfrage nach einer Tafel oder einem Banner an, beantwortet sie ausserhalb und schickt sie gleich danach. */
+    private void frageTafel(Player player, byte[] message) {
+        if (fuerMod != null && fuerMod.frage(player.getUniqueId(), message, Instant.now().getEpochSecond())) {
+            getServer().getAsyncScheduler().runNow(this, t -> {
+                fuerMod.beantworte(Instant.now().getEpochSecond());
+                getServer().getGlobalRegionScheduler().execute(this, () -> tafelnAn(player));
+            });
+        }
+    }
+
+    /**
+     * Im Hauptthread: ein Klick aus dem Mod. Nur ein Knopf, der an diesem Objekt hängt, an einer Ebene, die der
+     * Spieler sieht, und höchstens 20 je Sekunde; dann das Ereignis, und die Tafel geht neu an den Mod. Siehe
+     * docs/ebenen.md, „Knöpfe“.
+     */
+    private void klick(Player player, byte[] message) {
+        var k = EbenenFuerMod.klick(message);
+        UUID u = player.getUniqueId();
+        if (fuerMod == null || k == null || !fuerMod.darfKlicken(u, Instant.now().getEpochSecond())
+                || !player.hasPermission(LAYERS) || !fuerMod.sieht(k.ebene(), player::hasPermission)) {
+            return;
+        }
+        var knopf = ebenen.api().knoepfe().angehaengt(k.knopf(), k.ebene(), k.id());
+        if (knopf == null) {
+            return;
+        }
+        boolean an = knopf.state(u, k.ebene(), k.id());
+        getServer().getPluginManager().callEvent(new MapButtonClickEvent(knopf, u, k.ebene(), k.id(), an));
+        frageTafel(player, EbenenFuerMod.tafelNach(k));
     }
 
     /** Im Hauptthread: die fertigen Antworten auf Tafeln an {@code p}, im Budget der laufenden Sekunde. */

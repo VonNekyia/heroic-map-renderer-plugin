@@ -41,6 +41,103 @@ class EbenenFuerModTest {
         return new Ebene(id, json, Map.of(), Ebenen.version(json, Map.of(), "minecraft:overworld"));
     }
 
+    private static final UUID ALEX = new UUID(0, 2);
+
+    /** Eine Aktionsebene: alle sehen {@code gemeinsam}, SAM dazu {@code eigene}. */
+    private static Ebene aktion(String id, String gemeinsam, String eigene) {
+        var e = ebene(id, gemeinsam, "");
+        var f = ebene(id, gemeinsam + "," + eigene, "");
+        return new Ebene(id, e.json(), Map.of(), e.version(), Map.of(SAM, f));
+    }
+
+    /** Die ids der Objekte in den Teilen der Ebene {@code id} unter {@code nachrichten}, und ihre version. */
+    private static List<String> objekte(List<String> nachrichten, String id, String[] version) {
+        var ids = new ArrayList<String>();
+        for (String n : nachrichten) {
+            var o = lies(n);
+            if (o.get("typ").getAsString().equals("ebene") && o.get("id").getAsString().equals(id)) {
+                version[0] = o.get("version").getAsString();
+                o.getAsJsonArray("objects").forEach(x -> ids.add(x.getAsJsonObject().get("id").getAsString()));
+            }
+        }
+        return ids;
+    }
+
+    @Test
+    void aktionsebene_je_spieler_seine_fassung() {
+        var e = aktion("beispiel:routen", "{\"id\": \"hafen\", \"type\": \"pin\", \"at\": [0, 0]}",
+                "{\"id\": \"route\", \"type\": \"line\", \"points\": [[0, 0], [10, 10]]}");
+        var m = ohneAdresse(List.of(e));
+        var v = new String[1];
+        assertEquals(List.of("hafen", "route"), objekte(m.nachrichten(SAM, true, p -> true, JETZT), "beispiel:routen", v));
+        assertEquals(e.fuer(SAM).version(), v[0], "die version seiner Fassung");
+        assertEquals(List.of("hafen"), objekte(m.nachrichten(ALEX, true, p -> true, JETZT), "beispiel:routen", v),
+                "ein anderer sieht nur, was alle sehen");
+        assertEquals(e.version(), v[0]);
+        assertTrue(!e.version().equals(e.fuer(SAM).version()));
+        assertEquals(List.of(), objekte(m.nachrichten(SAM, true, p -> true, JETZT + 1), "beispiel:routen", v), "einmal je version");
+    }
+
+    @Test
+    void tafel_traegt_die_knoepfe_des_spielers() {
+        var k = new Knoepfe();
+        var schiff = k.knopf("proficisci", "schiff", "Schiff", "Ship");
+        var e = ebene("nations:staedte", """
+                {"id": "s1", "type": "pin", "at": [0, 0], "panel": {"blocks": [{"type": "title", "text": "Hafen"}]}},
+                {"id": "s2", "type": "pin", "at": [1, 1]},
+                {"id": "l", "type": "line", "points": [[0, 0], [1, 1]]}""", "");
+        for (String o : List.of("s1", "s2", "l")) {
+            schiff.attach("nations:staedte", o);
+        }
+        schiff.state(SAM, "nations:staedte", "s1", true);
+        var m = new EbenenFuerMod(JsonObject::new, null, Logger.getAnonymousLogger(), k);
+        m.bereite(List.of(e));
+        for (String o : List.of("s1", "s2", "l")) {
+            m.frage(SAM, tafel("nations:staedte", e.version(), o), JETZT);
+            m.frage(ALEX, tafel("nations:staedte", e.version(), o), JETZT);
+        }
+        m.beantworte(JETZT);
+        var sam = tafeln(m.tafeln(SAM, true, p -> true, JETZT));
+        assertEquals("{\"blocks\":[{\"type\":\"title\",\"text\":\"Hafen\"},{\"type\":\"button\",\"id\":\"proficisci:schiff\","
+                + "\"label\":{\"de\":\"Schiff\",\"en\":\"Ship\"},\"on\":true}]}", sam.get(0).get("panel").toString(),
+                "unter der Tafel, mit seinem Zustand");
+        assertEquals("{\"blocks\":[{\"type\":\"button\",\"id\":\"proficisci:schiff\",\"label\":{\"de\":\"Schiff\","
+                + "\"en\":\"Ship\"},\"on\":false}]}", sam.get(1).get("panel").toString(), "ohne Tafel eine nur mit dem Knopf");
+        assertFalse(sam.get(2).has("panel"), "eine Linie hat keine Tafel, also keinen Knopf");
+        var alex = tafeln(m.tafeln(ALEX, true, p -> true, JETZT));
+        assertFalse(alex.get(0).getAsJsonObject("panel").getAsJsonArray("blocks").get(1).getAsJsonObject().get("on").getAsBoolean(),
+                "ein anderer: aus");
+        assertEquals(1, e.json().getAsJsonArray("objects").get(0).getAsJsonObject().getAsJsonObject("panel")
+                .getAsJsonArray("blocks").size(), "die Tafel der Ebene bleibt, wie sie ist");
+    }
+
+    @Test
+    void klick_lesen_rate_und_sicht() {
+        byte[] k = "{\"v\": 1, \"typ\": \"knopf\", \"ebene\": \"nations:staedte\", \"version\": \"v1\", \"id\": \"s1\", \"knopf\": \"proficisci:schiff\"}"
+                .getBytes(StandardCharsets.UTF_8);
+        assertTrue(EbenenFuerMod.istKnopf(k));
+        assertFalse(EbenenFuerMod.istTafel(k));
+        assertEquals(new EbenenFuerMod.Klick("nations:staedte", "v1", "s1", "proficisci:schiff"), EbenenFuerMod.klick(k));
+        assertEquals(null, EbenenFuerMod.klick("{\"typ\": \"knopf\", \"ebene\": \"nations:staedte\", \"id\": \"s1\"}"
+                .getBytes(StandardCharsets.UTF_8)), "ohne version und knopf");
+        assertEquals(null, EbenenFuerMod.klick("kein json".getBytes(StandardCharsets.UTF_8)));
+        assertEquals("{\"v\":1,\"typ\":\"tafel\",\"ebene\":\"nations:staedte\",\"version\":\"v1\",\"id\":\"s1\"}",
+                new String(EbenenFuerMod.tafelNach(EbenenFuerMod.klick(k)), StandardCharsets.UTF_8));
+
+        var m = ohneAdresse(List.of(ebene("nations:staedte", "", ""),
+                ebene("beispiel:geheim", "", ", \"permission\": \"beispiel.karte\"")));
+        for (int i = 0; i < EbenenFuerMod.KLICKS_JE_SEKUNDE; i++) {
+            assertTrue(m.darfKlicken(SAM, JETZT));
+        }
+        assertFalse(m.darfKlicken(SAM, JETZT), "der 21. fällt weg");
+        assertTrue(m.darfKlicken(ALEX, JETZT), "je Spieler");
+        assertTrue(m.darfKlicken(SAM, JETZT + 1));
+        assertTrue(m.sieht("nations:staedte", p -> false));
+        assertFalse(m.sieht("beispiel:geheim", p -> false), "ohne die permission der Ebene");
+        assertTrue(m.sieht("beispiel:geheim", p -> p.equals("beispiel.karte")));
+        assertFalse(m.sieht("gibt:es-nicht", p -> true));
+    }
+
     private static Function<String, EbenenPruefung.Bild> keine() {
         return p -> null;
     }
@@ -222,7 +319,7 @@ class EbenenFuerModTest {
         var o = ebene("beispiel:offen", "", ENTWURF);
         byte[] ohne = {1, 2, 3};
         byte[] mit = {4, 5, 6, 7};
-        var m = new EbenenFuerMod(JsonObject::new, sprites("beispiel", "geheim", ohne, mit), Logger.getAnonymousLogger());
+        var m = new EbenenFuerMod(JsonObject::new, sprites("beispiel", "geheim", ohne, mit), Logger.getAnonymousLogger(), new Knoepfe());
         m.bereite(List.of(g, o));
         var liste = lies(m.nachrichten(SAM, true, p -> true, JETZT).getFirst()).getAsJsonArray("ebenen");
         assertTrue(liste.get(0).getAsJsonObject().get("secret").getAsBoolean(), "geheim: über den Kanal");
@@ -289,7 +386,7 @@ class EbenenFuerModTest {
             public void close() {}
         });
         var m = new EbenenFuerMod(JsonObject::new,
-                sprites("beispiel", "geheim", new byte[EbenenFuerMod.SPRITE + 1], new byte[1]), logger);
+                sprites("beispiel", "geheim", new byte[EbenenFuerMod.SPRITE + 1], new byte[1]), logger, new Knoepfe());
         m.bereite(List.of(g));
         m.frage(SAM, banner("beispiel:geheim", g.version(), "nordreich", false), JETZT);
         m.beantworte(JETZT);

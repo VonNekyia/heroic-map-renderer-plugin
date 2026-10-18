@@ -47,8 +47,13 @@ final class EbenenFuerMod {
     static final int BANNER_JE_SEKUNDE = 20;
     /** Ein Sprite über so vielen Byte geht nicht hinaus, wie die Grenze eines Bilds. */
     static final int SPRITE = 256 << 10;
+    /** Klicks auf Knöpfe je Spieler und Sekunde, getrennt gezählt; der Rest fällt weg. Siehe docs/ebenen.md, „Knöpfe“. */
+    static final int KLICKS_JE_SEKUNDE = 20;
 
-    /** Ein vorbereiteter Stand: die Ebenen und ihre Teile, je Kennung. */
+    /** Ein Klick aus dem Mod auf einen Knopf an einem Objekt. */
+    record Klick(String ebene, String version, String id, String knopf) {}
+
+    /** Ein vorbereiteter Stand: die Ebenen und ihre Teile, je Kennung; die Fassung eines Spielers unter {@link #schluessel}. */
     private record Fertig(List<Ebene> stand, Map<String, Teile> teile) {}
 
     /** Die Teile einer Ebene als JSON-Listen, mit ihrer version und ihren Bytes zusammen. */
@@ -81,6 +86,9 @@ final class EbenenFuerMod {
     private final Map<UUID, long[]> fenster = new HashMap<>();
     /** Dasselbe für Anfragen nach Bannern. */
     private final Map<UUID, long[]> bannerFenster = new HashMap<>();
+    /** Je Spieler die Sekunde und die Klicks darin; nur im Hauptthread. */
+    private final Map<UUID, long[]> klickFenster = new HashMap<>();
+    private final Knoepfe knoepfe;
     /** Wo die Sprites geheimer Ebenen liegen, --out ihres Aufrufs, siehe {@link Banner}; null: keine. */
     private final Path sprites;
     private final Logger log;
@@ -93,14 +101,23 @@ final class EbenenFuerMod {
     record Antwort(String permission, String text, int bytes) {}
 
     EbenenFuerMod(Supplier<JsonObject> adresse) {
-        this(adresse, null, Logger.getLogger(EbenenFuerMod.class.getName()));
+        this(adresse, null, Logger.getLogger(EbenenFuerMod.class.getName()), new Knoepfe());
     }
 
-    /** Mit {@code sprites}, dem Ordner der Sprites geheimer Ebenen, beantwortet es auch Anfragen nach Bannern. */
-    EbenenFuerMod(Supplier<JsonObject> adresse, Path sprites, Logger log) {
+    /**
+     * Mit {@code sprites}, dem Ordner der Sprites geheimer Ebenen, beantwortet es auch Anfragen nach Bannern; die
+     * Tafeln tragen die Knöpfe aus {@code knoepfe}.
+     */
+    EbenenFuerMod(Supplier<JsonObject> adresse, Path sprites, Logger log, Knoepfe knoepfe) {
         this.adresse = adresse;
         this.sprites = sprites;
         this.log = log;
+        this.knoepfe = knoepfe;
+    }
+
+    /** Unter diesem Schlüssel stehen die Teile der Fassung von {@code spieler}; die Teile einer Ebene unter ihrer id. */
+    private static String schluessel(String ebene, UUID spieler) {
+        return ebene + " " + spieler;
     }
 
     /**
@@ -113,6 +130,13 @@ final class EbenenFuerMod {
         for (Ebene e : stand) {
             var t = alt.get(e.id());
             neu.put(e.id(), t != null && t.version().equals(e.version()) ? t : teile(e));
+            if (e.aktion()) {
+                e.spieler().forEach((u, f) -> {
+                    var s = schluessel(e.id(), u);
+                    var ts = alt.get(s);
+                    neu.put(s, ts != null && ts.version().equals(f.version()) ? ts : teile(f));
+                });
+            }
         }
         fertig = new Fertig(List.copyOf(stand), Map.copyOf(neu));
     }
@@ -125,6 +149,67 @@ final class EbenenFuerMod {
     /** Ob {@code nachricht} eine Anfrage nach dem Sprite eines Banners ist. Siehe docs/ebenen.md, „Banner im Mod“. */
     static boolean istBanner(byte[] nachricht) {
         return lies(nachricht, "banner") != null;
+    }
+
+    /** Ob {@code nachricht} ein Klick auf einen Knopf ist. Siehe docs/ebenen.md, „Knöpfe“. */
+    static boolean istKnopf(byte[] nachricht) {
+        return lies(nachricht, "knopf") != null;
+    }
+
+    /** Der Klick in {@code nachricht}; null, wenn ein Feld fehlt oder keins ein Text ist. */
+    static Klick klick(byte[] nachricht) {
+        var o = lies(nachricht, "knopf");
+        if (o == null) {
+            return null;
+        }
+        String ebene = text(o, "ebene");
+        String version = text(o, "version");
+        String id = text(o, "id");
+        String knopf = text(o, "knopf");
+        return ebene == null || version == null || id == null || knopf == null ? null : new Klick(ebene, version, id, knopf);
+    }
+
+    /** Im Hauptthread: ob {@code spieler} in {@code sekunde} noch klicken darf, höchstens {@link #KLICKS_JE_SEKUNDE}. */
+    boolean darfKlicken(UUID spieler, long sekunde) {
+        long[] f = klickFenster.computeIfAbsent(spieler, k -> new long[2]);
+        if (f[0] != sekunde) {
+            f[0] = sekunde;
+            f[1] = 0;
+        }
+        return ++f[1] <= KLICKS_JE_SEKUNDE;
+    }
+
+    /**
+     * Ob ein Spieler die Ebene {@code ebene} sieht: Es gibt sie, und er hat ihre permission, falls sie eine hat. Die
+     * Permission heroicmap.layers prüft der Aufrufer.
+     */
+    boolean sieht(String ebene, Predicate<String> hat) {
+        for (Ebene e : fertig.stand()) {
+            if (e.id().equals(ebene)) {
+                var p = e.json().get("permission");
+                return p == null || hat.test(p.getAsString());
+            }
+        }
+        return false;
+    }
+
+    /** Nur Nadeln, Banner, Regionen und Kreise haben eine Tafel und damit Knöpfe. Siehe docs/ebenen.md, „Knöpfe“. */
+    private static boolean tafelArt(JsonObject objekt) {
+        return switch (objekt.get("type").getAsString()) {
+            case "pin", "banner", "region", "circle" -> true;
+            default -> false;
+        };
+    }
+
+    /** Eine Anfrage nach der Tafel des Objekts, wie der Mod sie schickt; nach einem Klick, damit der Knopf umspringt. */
+    static byte[] tafelNach(Klick k) {
+        var o = new JsonObject();
+        o.addProperty("v", 1);
+        o.addProperty("typ", "tafel");
+        o.addProperty("ebene", k.ebene());
+        o.addProperty("version", k.version());
+        o.addProperty("id", k.id());
+        return o.toString().getBytes(StandardCharsets.UTF_8);
     }
 
     private static JsonObject lies(byte[] nachricht, String typ) {
@@ -165,7 +250,7 @@ final class EbenenFuerMod {
         var stand = fertig.stand();
         for (Frage q; (q = fragen.poll()) != null; ) {
             var a = istBanner(q.nachricht()) ? banner(stand, q.nachricht(), jetzt, sprites, log)
-                    : antwort(stand, q.nachricht(), jetzt);
+                    : antwort(stand, q.nachricht(), jetzt, q.spieler(), knoepfe);
             if (a != null) {
                 antworten.computeIfAbsent(q.spieler(), k -> new ConcurrentLinkedQueue<>()).add(a);
             }
@@ -174,10 +259,11 @@ final class EbenenFuerMod {
 
     /**
      * Die Antwort mit {@code ebene}, {@code version} und {@code id} der Anfrage, dazu {@code panel}, wenn das Objekt
-     * eine Tafel hat und die version die aktuelle ist. Null für eine unlesbare Anfrage oder eine Ebene, die es nicht
-     * gibt. Siehe docs/ebenen.md, „Tafeln“.
+     * eine Tafel oder Knöpfe hat und die version die der Fassung von {@code spieler} ist; die Knöpfe mit seinem
+     * Zustand unter der Tafel. Null für eine unlesbare Anfrage oder eine Ebene, die es nicht gibt. Siehe
+     * docs/ebenen.md, „Tafeln“.
      */
-    static Antwort antwort(List<Ebene> stand, byte[] nachricht, long jetzt) {
+    static Antwort antwort(List<Ebene> stand, byte[] nachricht, long jetzt, UUID spieler, Knoepfe knoepfe) {
         var o = lies(nachricht, "tafel");
         String ebene = o == null ? null : text(o, "ebene");
         String version = o == null ? null : text(o, "version");
@@ -185,10 +271,11 @@ final class EbenenFuerMod {
         if (ebene == null || version == null || id == null) {
             return null;
         }
-        for (Ebene e : stand) {
-            if (!e.id().equals(ebene)) {
+        for (Ebene ganz : stand) {
+            if (!ganz.id().equals(ebene)) {
                 continue;
             }
+            var e = ganz.fuer(spieler);
             var a = kopf("tafel", jetzt);
             a.addProperty("ebene", ebene);
             a.addProperty("version", version);
@@ -197,7 +284,15 @@ final class EbenenFuerMod {
                 for (JsonElement x : e.json().getAsJsonArray("objects")) {
                     var objekt = x.getAsJsonObject();
                     if (objekt.get("id").getAsString().equals(id)) {
-                        if (objekt.has("panel")) {
+                        var knoepfeHier = tafelArt(objekt) ? knoepfe.bloecke(spieler, ebene, id) : List.<JsonObject>of();
+                        if (!knoepfeHier.isEmpty()) {
+                            // Unter die Tafel, ein Objekt ohne bekommt eine nur mit den Knöpfen; die Tafel der Ebene bleibt, wie sie ist.
+                            var tafel = objekt.has("panel") ? objekt.getAsJsonObject("panel").deepCopy() : new JsonObject();
+                            var bausteine = tafel.has("blocks") ? tafel.getAsJsonArray("blocks") : new JsonArray();
+                            knoepfeHier.forEach(bausteine::add);
+                            tafel.add("blocks", bausteine);
+                            a.add("panel", tafel);
+                        } else if (objekt.has("panel")) {
                             a.add("panel", objekt.get("panel"));
                         }
                         break;
@@ -278,12 +373,13 @@ final class EbenenFuerMod {
      */
     List<String> nachrichten(UUID spieler, boolean alle, Predicate<String> hat, long jetzt) {
         var f = fertig;
+        // Je Ebene die Fassung dieses Spielers; bei einer gewöhnlichen Ebene sie selbst.
         var sicht = new ArrayList<Ebene>();
         if (alle) {
             for (Ebene e : f.stand()) {
                 var p = e.json().get("permission");
                 if (p == null || hat.test(p.getAsString())) {
-                    sicht.add(e);
+                    sicht.add(e.fuer(spieler));
                 }
             }
         }
@@ -301,8 +397,10 @@ final class EbenenFuerMod {
         antworten(spieler, g, alle, hat, jetzt, aus);
         long rest = g.rest(jetzt);
         for (Ebene e : sicht) {
-            var t = f.teile().get(e.id());
-            if (e.version().equals(g.ebenen.get(e.id())) || t == null) {
+            var eigene = f.teile().get(schluessel(e.id(), spieler));
+            var t = eigene != null && eigene.version().equals(e.version()) ? eigene : f.teile().get(e.id());
+            // Passen Teile und Fassung nicht, etwa bevor bereite den neuen Stand kennt, kommt die Ebene im nächsten Takt.
+            if (e.version().equals(g.ebenen.get(e.id())) || t == null || !t.version().equals(e.version())) {
                 continue;
             }
             if (t.bytes() > rest && rest < JE_SEKUNDE) {

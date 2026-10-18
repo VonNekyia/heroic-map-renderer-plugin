@@ -6,8 +6,11 @@ import com.nekyia.heroicmap.Ebenen.Ebene;
 import com.nekyia.heroicmap.api.HeroicMapApi;
 import com.nekyia.heroicmap.api.BannerDesign;
 import com.nekyia.heroicmap.api.Layer;
+import com.nekyia.heroicmap.api.MapButton;
+import com.nekyia.heroicmap.api.PlayerLayer;
 import com.nekyia.heroicmap.api.MapObject;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -19,6 +22,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
@@ -44,6 +48,8 @@ final class EbenenApi implements HeroicMapApi, Listener {
      */
     private final Map<String, Map<String, byte[]>> bilder = new ConcurrentHashMap<>();
     private final AtomicBoolean geaendert = new AtomicBoolean();
+    /** Die Knöpfe aller Besitzer. Siehe docs/api.md, „Aktionsebenen und Knöpfe“. */
+    private final Knoepfe knoepfe = new Knoepfe();
     private final Supplier<List<Ebene>> ausDateien;
     private final String dimension;
     private final Logger log;
@@ -62,6 +68,19 @@ final class EbenenApi implements HeroicMapApi, Listener {
             throw new IllegalStateException("Ebene " + name + ": Plugin " + owner.getName() + " ist abgeschaltet");
         }
         return layer(owner.getName(), name);
+    }
+
+    @Override
+    public MapButton button(Plugin owner, String name, String de, String en) {
+        Objects.requireNonNull(owner);
+        if (!owner.isEnabled()) {
+            throw new IllegalStateException("Knopf " + name + ": Plugin " + owner.getName() + " ist abgeschaltet");
+        }
+        return knoepfe.knopf(modname(owner.getName()), name, de, en);
+    }
+
+    Knoepfe knoepfe() {
+        return knoepfe;
     }
 
     /** Der modname: der Name des Plugins klein, Leerzeichen als _. */
@@ -112,6 +131,7 @@ final class EbenenApi implements HeroicMapApi, Listener {
             return false;
         });
         bilder.remove(modname);
+        knoepfe.entferne(modname);
         geaendert.set(true);
     }
 
@@ -160,6 +180,13 @@ final class EbenenApi implements HeroicMapApi, Listener {
         /** Die Entwürfe der Banner am Kopf, Name → Entwurf als JSON. */
         private Map<String, JsonObject> entwuerfe = new LinkedHashMap<>();
         private final LinkedHashMap<String, JsonObject> objekte = new LinkedHashMap<>();
+        /**
+         * Die eigenen Objekte je Spieler, ohne Bilder; nie leer, ein Spieler ohne fällt heraus. Mit {@code aktion}
+         * ist die Ebene eine Aktionsebene, auch wenn keiner mehr eigene hat. Siehe docs/api.md, „Aktionsebenen und
+         * Knöpfe“.
+         */
+        private final Map<UUID, LinkedHashMap<String, JsonObject>> eigene = new HashMap<>();
+        private boolean aktion;
         /** Die Bilder, die ein Objekt nennt, je id; nur Objekte mit Bildern. */
         private final Map<String, Set<String>> bilderJeObjekt = new HashMap<>();
         private int nadeln;
@@ -341,15 +368,11 @@ final class EbenenApi implements HeroicMapApi, Listener {
                 var alt = objekte.get(m.id());
                 int neueNadeln = nadeln + nadel(j) - (alt == null ? 0 : nadel(alt));
                 long neueBytes = bytes + groesse(j) - (alt == null ? 0 : groesse(alt));
-                if (alt == null && objekte.size() >= 10_000) {
-                    throw new IllegalArgumentException("Objekt " + m.id() + ": höchstens 10 000 Objekte je Ebene");
+                if (eigene.values().stream().anyMatch(e -> e.containsKey(m.id()))) {
+                    throw new IllegalArgumentException("Objekt " + m.id() + ": ein Spieler hat schon ein eigenes mit dieser id");
                 }
-                if (neueNadeln > 1000) {
-                    throw new IllegalArgumentException("Objekt " + m.id() + ": höchstens 1000 Nadeln und Banner je Ebene");
-                }
-                if (neueBytes > EbenenPruefung.EBENE_BYTES - (64 << 10)) {
-                    throw new IllegalArgumentException("Objekt " + m.id() + ": die Ebene würde grösser als 4 MiB");
-                }
+                // Mit den eigenen Objekten des grössten Spielers zusammen, siehe grenzen.
+                grenzen(m.id(), objekte.size() + (alt == null ? 1 : 0), neueNadeln, neueBytes, groessteEigene());
                 objekte.put(m.id(), j);
                 if (p.bilder().isEmpty()) {
                     bilderJeObjekt.remove(m.id());
@@ -360,6 +383,131 @@ final class EbenenApi implements HeroicMapApi, Listener {
                 bytes = neueBytes;
             }
             geaendert();
+        }
+
+        /** Die Grenzen einer Ebene für {@code objekte}, {@code nadeln} und {@code bytes}, dazu {@code mehr} je Feld. */
+        private static void grenzen(String objektId, int objekteZahl, int nadelZahl, long byteZahl, long[] mehr) {
+            if (objekteZahl + mehr[0] > 10_000) {
+                throw new IllegalArgumentException("Objekt " + objektId + ": höchstens 10 000 Objekte je Ebene");
+            }
+            if (nadelZahl + mehr[1] > 1000) {
+                throw new IllegalArgumentException("Objekt " + objektId + ": höchstens 1000 Nadeln und Banner je Ebene");
+            }
+            if (byteZahl + mehr[2] > EbenenPruefung.EBENE_BYTES - (64 << 10)) {
+                throw new IllegalArgumentException("Objekt " + objektId + ": die Ebene würde grösser als 4 MiB");
+            }
+        }
+
+        /** Je Feld das Grösste über alle Spieler: Zahl, Nadeln und Bytes der eigenen Objekte. */
+        private long[] groessteEigene() {
+            var g = new long[3];
+            for (var e : eigene.values()) {
+                var s = summe(e.values());
+                for (int i = 0; i < 3; i++) {
+                    g[i] = Math.max(g[i], s[i]);
+                }
+            }
+            return g;
+        }
+
+        private static long[] summe(Iterable<JsonObject> objekteVon) {
+            var s = new long[3];
+            for (var j : objekteVon) {
+                s[0]++;
+                s[1] += nadel(j);
+                s[2] += groesse(j);
+            }
+            return s;
+        }
+
+        @Override
+        public PlayerLayer forPlayer(UUID spieler) {
+            Objects.requireNonNull(spieler);
+            synchronized (this) {
+                lebt();
+                if (!aktion) {
+                    aktion = true;
+                    geaendert();
+                }
+            }
+            return new Eigene(spieler);
+        }
+
+        /** Die eigenen Objekte eines Spielers; jede Methode sperrt die Ebene. */
+        private final class Eigene implements PlayerLayer {
+
+            private final UUID spieler;
+
+            private Eigene(UUID spieler) {
+                this.spieler = spieler;
+            }
+
+            @Override
+            public UUID player() {
+                return spieler;
+            }
+
+            @Override
+            public void put(MapObject m) {
+                synchronized (ApiEbene.this) {
+                    lebt();
+                    Objects.requireNonNull(m);
+                    JsonObject j = ApiJson.json(m);
+                    if (objekte.containsKey(m.id())) {
+                        throw new IllegalArgumentException("Objekt " + m.id() + ": die id hat ein Objekt, das alle sehen");
+                    }
+                    var pool = bilderVon();
+                    synchronized (pool) {
+                        var p = EbenenPruefung.pruefe(id, json(permission, List.of(j)), aus(pool));
+                        if (!p.fehler().isEmpty()) {
+                            throw new IllegalArgumentException("Objekt " + m.id() + ": " + fehler(p.fehler()));
+                        }
+                        if (!p.bilder().isEmpty()) {
+                            throw new IllegalArgumentException("Objekt " + m.id() + ": eigene Objekte eines Spielers nennen keine Bilder");
+                        }
+                    }
+                    var mein = eigene.getOrDefault(spieler, new LinkedHashMap<>());
+                    var alt = mein.get(m.id());
+                    var s = summe(mein.values());
+                    s[0] += alt == null ? 1 : 0;
+                    s[1] += nadel(j) - (alt == null ? 0 : nadel(alt));
+                    s[2] += groesse(j) - (alt == null ? 0 : groesse(alt));
+                    if (s[0] > 1000) {
+                        throw new IllegalArgumentException("Objekt " + m.id() + ": höchstens 1000 eigene Objekte je Spieler und Ebene");
+                    }
+                    if (s[2] > 1 << 20) {
+                        throw new IllegalArgumentException("Objekt " + m.id() + ": die eigenen Objekte würden grösser als 1 MiB");
+                    }
+                    grenzen(m.id(), objekte.size(), nadeln, bytes, s);
+                    mein.put(m.id(), j);
+                    eigene.put(spieler, mein);
+                    geaendert();
+                }
+            }
+
+            @Override
+            public void remove(String objektId) {
+                synchronized (ApiEbene.this) {
+                    lebt();
+                    var mein = eigene.get(spieler);
+                    if (mein != null && mein.remove(objektId) != null) {
+                        if (mein.isEmpty()) {
+                            eigene.remove(spieler);
+                        }
+                        geaendert();
+                    }
+                }
+            }
+
+            @Override
+            public void clear() {
+                synchronized (ApiEbene.this) {
+                    lebt();
+                    if (eigene.remove(spieler) != null) {
+                        geaendert();
+                    }
+                }
+            }
         }
 
         /** 1 für eine Nadel oder ein Banner: Beide zählen zusammen gegen die 1000 einer Ebene. */
@@ -455,6 +603,7 @@ final class EbenenApi implements HeroicMapApi, Listener {
         Ebene schnappschuss() {
             JsonObject json;
             Map<String, byte[]> pool;
+            Map<UUID, JsonObject> fassungen = null;
             synchronized (this) {
                 if (geloescht) {
                     return null;
@@ -465,6 +614,15 @@ final class EbenenApi implements HeroicMapApi, Listener {
                 // Erst zurücksetzen, dann kopieren: Was danach kommt, setzt veraltet wieder.
                 veraltet = false;
                 json = json(permission, objekte.values());
+                if (aktion) {
+                    // ponytail: baut bei jeder Änderung die Fassung jedes Spielers neu; nur geänderte, wenn viele Spieler eigene haben.
+                    fassungen = new HashMap<>();
+                    for (var e : eigene.entrySet()) {
+                        var alle = new ArrayList<>(objekte.values());
+                        alle.addAll(e.getValue().values());
+                        fassungen.put(e.getKey(), json(permission, alle));
+                    }
+                }
                 var b = bilder.get(modname);
                 if (b == null) {
                     // entferne lief nach der Prüfung oben: Die Ebene ist weg, kein Pool kommt zurück.
@@ -483,7 +641,14 @@ final class EbenenApi implements HeroicMapApi, Listener {
             }
             var benutzt = new TreeMap<String, byte[]>();
             p.bilder().forEach(b -> benutzt.put(b, pool.get(b)));
-            schnappschuss = new Ebene(id, json, benutzt, Ebenen.version(json, benutzt, dimension));
+            Map<UUID, Ebene> spieler = null;
+            if (fassungen != null) {
+                // Eigene Objekte nennen keine Bilder und sind beim Aufruf geprüft; die Fassung braucht keine Prüfung mehr.
+                var je = new HashMap<UUID, Ebene>();
+                fassungen.forEach((u, j) -> je.put(u, new Ebene(id, j, benutzt, Ebenen.version(j, benutzt, dimension))));
+                spieler = Map.copyOf(je);
+            }
+            schnappschuss = new Ebene(id, json, benutzt, Ebenen.version(json, benutzt, dimension), spieler);
             return schnappschuss;
         }
     }

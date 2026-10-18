@@ -49,7 +49,8 @@ Bukkit, und in `Kanal`, der den Kanal und den Stand im Spieler bedient.
 | Server → Mod | `ebenen` | die Ebenen, die der Spieler sehen darf, mit `version`, dazu `url` oder `port` | wenn sich für ihn etwas ändert, siehe [Ebenen](ebenen.md), „Mod“ |
 | Server → Mod | `ebene` | `id`, `version`, `teil`, `teile`, `objects`: alle Objekte einer Ebene ohne Tafel | nach `ebenen`, je neuer oder geänderter Ebene, siehe [Ebenen](ebenen.md), „Mod“ |
 | Mod → Server | `tafel` | `ebene`, `version`, `id` | ruht der Zeiger auf einem Objekt, je Objekt und `version` einmal, siehe [Ebenen](ebenen.md), „Tafeln“ |
-| Server → Mod | `tafel` | `ebene`, `version`, `id`, dazu `panel`, wenn das Objekt eine Tafel hat und `version` die aktuelle ist | auf jede lesbare `tafel` einer Ebene, die der Spieler sehen darf, im Takt der Ebenen |
+| Server → Mod | `tafel` | `ebene`, `version`, `id`, dazu `panel`, wenn das Objekt eine Tafel oder Knöpfe hat und `version` die aktuelle ist | auf jede lesbare `tafel` einer Ebene, die der Spieler sehen darf, im Takt der Ebenen |
+| Mod → Server | `knopf` | `ebene`, `version`, `id`, `knopf` | ein Klick auf einen Knopf in der Tafel, siehe [Ebenen](ebenen.md), „Knöpfe“; danach kommt die Tafel neu |
 
 - **`server`** im `angebot` ist `download.server-name`, wenn er ein
   Hostname ist: Teile aus a–z, 0–9 und Bindestrich, nicht am Rand, je

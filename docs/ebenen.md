@@ -131,10 +131,13 @@ Ebenen, neben `trees.json`:
 | Datei | Inhalt |
 |---|---|
 | `layers.json` | je Ebene mit `web` `id`, `name`, `visible`, `order`, `version` |
-| `layers/<modname>/<ebene>.json` | Kopf samt `designs` und Objekte der Ebene, ohne `web` und `permission` |
+| `layers/<modname>/<ebene>.json` | Kopf samt `designs` und Objekte der Ebene, ohne `web` und `permission`; nie eine Aktionsebene |
 | `layers/<modname>/images/…` | die Bilder, die eine Ebene nennt |
 | `layers/<modname>/banner/…` | die Sprites der Banner; sie schreibt der Renderer, siehe [Läufe](laeufe.md), „Banner“ |
 
+- **Aktionsebenen** fehlen hier ganz (`Ebene.web`), denn ihre Objekte sind
+  je Spieler, siehe [API](api.md), „Aktionsebenen und Knöpfe“. Auf die
+  Webkarte kommen sie erst mit der Anmeldung dort.
 - **Nur die Dimension der Wurzel:** Die Datei für die Webkarte enthält nur
   Objekte mit der `dimension` der Welt aus `world` in `config.yml`,
   Vorgabe `minecraft:overworld`.
@@ -237,7 +240,10 @@ Der Mod fragt die Tafel eines Objekts über den Kanal an. Warum so:
 ```
 
 - **Antwort:** `ebene`, `version` und `id` wie angefragt, dazu `panel`,
-  wenn das Objekt eine Tafel hat und `version` die aktuelle der Ebene ist.
+  wenn das Objekt eine Tafel oder Knöpfe hat und `version` die aktuelle der
+  Ebene ist, bei einer Aktionsebene die der Fassung dieses Spielers. Die
+  Knöpfe stehen unter der Tafel, mit dem Zustand dieses Spielers, siehe
+  „Knöpfe“.
   Ist die `version` alt, hat das Objekt keine Tafel oder gibt es es nicht,
   kommt die Antwort ohne `panel`; der Mod fragt für diese `version` dann
   nicht wieder.
@@ -256,6 +262,35 @@ Der Mod fragt die Tafel eines Objekts über den Kanal an. Warum so:
   passt, schickt der Takt in der nächsten Sekunde, vor neuen Ebenen.
 - **Im Mod:** Wann er fragt, wie viele Tafeln er behält und wie er Bilder
   der Tafel holt, steht in #35 und in der Doku des Mods.
+
+### Knöpfe
+
+Ein Knopf hängt unter der Tafel eines Objekts, siehe [API](api.md),
+„Aktionsebenen und Knöpfe“. Der Mod zeigt ihn mit der Antwort auf `tafel`
+und schickt einen Klick über den Kanal:
+
+```json
+{"v":1,"typ":"knopf","ebene":"nations:staedte","version":"5f3a9c1e5f3a9c1e","id":"stadt-17","knopf":"proficisci:schiff"}
+```
+
+- **Im Hauptthread** (`HeroicMapPlugin.klick`), geprüft der Reihe nach:
+  lesbar, höchstens 20 Klicks je Spieler und Sekunde
+  (`EbenenFuerMod.KLICKS_JE_SEKUNDE`), die Permission `heroicmap.layers`,
+  der Spieler sieht die Ebene samt ihrer `permission`, und der Knopf hängt
+  an genau diesem Objekt. Fällt eins durch, geschieht nichts, ohne Antwort.
+- **Dann** das Ereignis `MapButtonClickEvent`, und die Tafel des Objekts
+  geht neu an den Mod, wie auf eine Anfrage `tafel`; so springt der Knopf
+  um, sobald der Besitzer den Zustand gesetzt hat.
+- **Bausteine:** `{"type":"button","id","label","on"}` wie im Format;
+  `EbenenSchreiber` schreibt sie nie in eine Datei.
+
+### Aktionsebenen im Mod
+
+Jeder Spieler bekommt seine Fassung einer Aktionsebene wie eine
+gewöhnliche Ebene: die Objekte, die alle sehen, und seine eigenen, mit
+eigener `version` in der Liste und in den Teilen (`Ebene.fuer`). Die Teile
+der Fassungen rechnet `EbenenFuerMod.bereite` mit, ausserhalb des
+Hauptthreads.
 
 ### Banner im Mod
 
