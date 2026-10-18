@@ -7,6 +7,11 @@ Links und die Hinweise aus `NOTICE` setzt
 [`.github/notizen.sh`](.github/notizen.sh) dazu. Siehe
 [Entwicklung](docs/entwicklung.md), „Release“.
 
+## 0.10.1
+
+- **Renderer 0.11.0** inside: seen from above, grass, flowers, crops and seagrass now lie flat on their block instead of disappearing, in the views from the top and in the flat map.
+- **Full render needed** for maps with look `map` and `flat`: renderer 0.11.0 draws them differently (drawing stand 4 and 5). Maps with look `cinematic` keep updating.
+
 ## 0.10.0
 
 - **Renderer 0.10.0** inside: the companion mod can now download a whole map in one stream instead of tile by tile, which is much faster behind a proxy and can resume after an interruption.
