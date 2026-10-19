@@ -62,6 +62,11 @@ ist Admins vorbehalten.
   Server nimmt dann keine ältere Sitzung und keinen älteren Link mehr an,
   auf jedem Gerät. Ohne Ordner hat der Spieler keine Sitzung, und es
   ändert sich nichts.
+- **Recht verloren:** Hat ein Spieler mit Ordner beim Join
+  `heroicmap.web` nicht mehr, meldet ihn das Plugin ab wie
+  `/karte abmelden` (`HeroicMapPlugin.beimBetreten`), bei jedem Join
+  wieder. Bis zu diesem Join gelten seine Sitzungen weiter, höchstens
+  7 Tage; das Plugin kennt seine Rechte nur, solange er online ist.
 
 ## Dateien je Spieler
 
