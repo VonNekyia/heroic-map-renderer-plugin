@@ -7,6 +7,12 @@ Links und die Hinweise aus `NOTICE` setzt
 [`.github/notizen.sh`](.github/notizen.sh) dazu. Siehe
 [Entwicklung](docs/entwicklung.md), „Release“.
 
+## 0.13.0
+
+- **Players on the web map:** a player recognized on the web map sees themselves and the players they would see in the companion mod, by the same rules (`show`, `heroicmap.show`, Simple Voice Chat). Without Simple Voice Chat, only themselves.
+- **Recognized by IP:** when the browser comes from the IP of exactly one player online, the web map recognizes them without `/karte anmelden`, for viewing only; clicking buttons still needs `/karte anmelden`. `/karte ip aus` turns this off for a player. New keys `webserver.trusted-proxy` for a reverse proxy and `webserver.erkennen-url` for a second, IPv4-only name of the map, so that browsers with IPv6 are recognized too.
+- **Fewer writes:** the plugin writes the files of a player for the web map only while they look at it.
+
 ## 0.12.1
 
 - **Losing `heroicmap.web` ends web map sessions:** when a player who logged in on the web map joins without the permission, the plugin logs them out everywhere, as `/karte abmelden` does.

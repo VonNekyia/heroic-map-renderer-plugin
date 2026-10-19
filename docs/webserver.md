@@ -23,7 +23,8 @@ Der Code steht in `Webserver` in
 ```
 <binär> --serve <tiles> --web plugins/HeroicMap/web --listen <webserver.listen>
     --exit-with-stdin --threads 4 [--tls-cert <datei> --tls-key <datei>]
-    [--secret-file plugins/HeroicMap/token.geheimnis [--player-dir plugins/HeroicMap/spieler]]
+    [--secret-file plugins/HeroicMap/token.geheimnis [--player-dir plugins/HeroicMap/spieler
+        [--trusted-proxy <ip,…>] [--recognize-origin <ursprung> --recognize-url <erkennen-url>]]]
     [--site-url <url> --site-title <title> --site-description <description> [--site-image <image>]]
 ```
 
@@ -53,7 +54,12 @@ Der Code steht in `Webserver` in
   Strom“. Eine Zeile `Aktion:`, ein Klick auf der Webkarte, geht nicht ins
   Log, sondern ans Plugin, siehe [Anmeldung](anmeldung.md), „Klicks“.
 - **`--player-dir`** mit Karte und Geheimnis, für die Anmeldung auf der
-  Webkarte, siehe [Anmeldung](anmeldung.md), „Wann es sie gibt“.
+  Webkarte, siehe [Anmeldung](anmeldung.md), „Wann es sie gibt“. Nur mit
+  ihm `--trusted-proxy` aus `webserver.trusted-proxy` und, mit
+  `webserver.erkennen-url`, `--recognize-origin` mit dem Ursprung aus
+  `webserver.url` und `--recognize-url`, siehe „Erkennung per IP“ dort.
+- **Zeilen `Web:`** gehen wie `Aktion:` nicht ins Log, sondern ans Plugin,
+  siehe [Anmeldung](anmeldung.md), „Zuschauer“.
 
 ## Die Karte im Jar
 

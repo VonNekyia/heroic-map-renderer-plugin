@@ -148,6 +148,7 @@ The documentation is in German.
 | `/heroicmap layers` | reload the layer files |
 | `/karte anmelden` | a link to log in on the web map, for action layers and buttons |
 | `/karte abmelden` | end every web map session of this player |
+| `/karte ip an`, `/karte ip aus` | let the web map recognize this player by IP, for viewing only; on by default |
 
 `heroicmap.admin` (op) for `/heroicmap`; `heroicmap.layers` and
 `heroicmap.show` (everyone) for layers and players in the mod;
