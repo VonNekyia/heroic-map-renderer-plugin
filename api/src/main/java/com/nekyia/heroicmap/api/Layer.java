@@ -84,8 +84,8 @@ public interface Layer {
     /**
      * The objects of one player in this layer. The first {@link PlayerLayer#put} makes this an action layer for
      * good: each player sees the objects everyone sees and their own. In the mod that works at once; the web map
-     * shows action layers only after the player logs in there, from a later release. Objects of a player stay until
-     * the owner removes them, also when the player leaves; they go with the layer.
+     * shows action layers to a player after they log in there with {@code /karte anmelden}. Objects of a player stay
+     * until the owner removes them, also when the player leaves; they go with the layer.
      */
     PlayerLayer forPlayer(UUID player);
 

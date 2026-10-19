@@ -23,6 +23,8 @@ code:
   - src/test/java/com/nekyia/heroicmap/EbenenSchreiberTest.java
   - src/test/java/com/nekyia/heroicmap/EbenenFuerModTest.java
   - src/test/java/com/nekyia/heroicmap/EbenenApiTest.java
+  - src/test/java/com/nekyia/heroicmap/KnoepfeTest.java
+  - src/test/java/com/nekyia/heroicmap/SpielerOrdnerTest.java
   - api/build.gradle.kts
   - jitpack.yml
   - src/test/java/com/nekyia/heroicmap/MitspielerTest.java
@@ -193,7 +195,8 @@ Plugin das seiner Plattform aus, siehe [Konfiguration](konfiguration.md),
 - **`EbenenSchreiberTest`:** Liste, Ebenen und Bilder für die Webkarte,
   Aufräumen in der Reihenfolge Ebenen vor Bildern, gleiche Bytes nicht neu,
   nie durch eine Junction (Windows) oder einen Symlink, die Sprites unter
-  `layers/<modname>/banner/` bleiben.
+  `layers/<modname>/banner/` bleiben. Eine Aktionsebene nur in der Liste,
+  mit `player`, mit `permission` gar nicht.
 - **`BannerTest`:** `--banners` mit `FalscherRenderer banners`: der Befehl
   öffentlich mit `--tiles` und geheim ohne, nur Ebenen mit Entwürfen,
   geheim nach `permission`, Dateien nur mit `id` und `designs`, `failed`
@@ -225,16 +228,27 @@ Plugin das seiner Plattform aus, siehe [Konfiguration](konfiguration.md),
   und Entfernen, alle Arten und Bausteine als gültiges JSON, Banner mit
   geteiltem Bild, Bilder je Besitzer,
   `permission`, Löschen und ein Plugin, das geht, Vorrang vor der Datei.
+- **`KnoepfeTest`:** Label und Grenzen der Knöpfe, Anhängen, Zustand je
+  Spieler und Objekt, vier je Objekt in der Reihenfolge des Anhängens,
+  Anhang und Zustand zusammen, Löschen.
+- **`SpielerOrdnerTest`:** UUID nur klein mit Bindestrichen, Anmelden mit
+  `ich.json`, Abmelden erhöht `zaehler`, ohne Ordner nichts, kaputte und zu
+  grosse Zähler. Die Fassung jeder Aktionsebene je Spieler mit seiner
+  `version` und nur der Dimension der Wurzel, `knoepfe.json` sortiert und
+  ohne Linie, fehlendes Objekt, Ebene mit `permission` und eigenes Objekt
+  eines anderen, ohne Änderung kein Schreiben, Aufräumen, ein neuer
+  Spieler im nächsten Takt.
 - **`TokenTest`:** stellt jedes gültige Token aus den Testvektoren des
-  Renderers Zeichen für Zeichen gleich aus, lehnt ab, was kein gültiges
-  ergäbe.
+  Renderers Zeichen für Zeichen gleich aus, ebenso jede Anmeldung
+  (Fassung 2), lehnt ab, was kein gültiges ergäbe.
 - **`SatzTest`:** ein Manifest von Hand im Format aus #154: Summen je
   Massstab, Prüfsumme, kaputte Zeilen. Dazu der Testvektor des Renderers,
   `src/test/resources/manifest.json`, eine Kopie von
   `renderer/tests/fixtures/manifest.json`: dieselben Summen je Stufe.
 - **`WebserverTest`:** die Schalter mit und ohne Karte, HTTPS und
-  Geheimnis, die Karte aus einem Jar, das der Test baut, die Pause bis zum
-  Deckel. Mit `FalscherRenderer` als Server:
+  Geheimnis, `--player-dir` nur mit Geheimnis, die Karte aus einem Jar,
+  das der Test baut, die Pause bis zum Deckel. Eine Zeile `Aktion:` geht
+  an den Empfänger, nicht ins Log. Mit `FalscherRenderer` als Server:
   er läuft, bis stdin schliesst, und endet dann von selbst; bereit ist er
   nur zwischen Startzeile und Ende, und eine spätere Zeile `Server:` ändert
   die Adresse im Status nicht; ein Server,

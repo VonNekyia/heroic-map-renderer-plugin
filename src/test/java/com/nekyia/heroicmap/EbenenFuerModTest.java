@@ -149,21 +149,21 @@ class EbenenFuerModTest {
         m.bereite(List.of(staedte, routen, geheim));
         Function<String, EbenenFuerMod.Klick> klick = o -> new EbenenFuerMod.Klick(o.split(" ")[0], "egal", o.split(" ")[1], "proficisci:schiff");
 
-        var g = m.klickbar(SAM, klick.apply("nations:staedte s1"), p -> true);
+        var g = m.klickbar(SAM, klick.apply("nations:staedte s1"), p -> true, false);
         assertSame(schiff, g.knopf());
         assertTrue(g.an(), "mit seinem Zustand, auch mit einer anderen version");
-        assertFalse(m.klickbar(ALEX, klick.apply("nations:staedte s1"), p -> true).an(), "je Spieler");
-        assertNotNull(m.klickbar(SAM, klick.apply("proficisci:routen hafen"), p -> true), "sein eigenes Objekt");
-        assertNull(m.klickbar(ALEX, klick.apply("proficisci:routen hafen"), p -> true), "das eigene Objekt eines anderen");
-        assertNull(m.klickbar(SAM, klick.apply("nations:staedte l"), p -> true), "eine Linie hat keine Tafel");
-        assertNull(m.klickbar(SAM, klick.apply("nations:staedte weg"), p -> true), "ein Objekt, das es nicht gibt");
-        assertNull(m.klickbar(SAM, klick.apply("gibt:es-nicht x"), p -> true), "eine Ebene, die es nicht gibt");
-        assertNull(m.klickbar(SAM, klick.apply("beispiel:geheim g"), p -> false), "ohne die permission der Ebene");
-        assertNotNull(m.klickbar(SAM, klick.apply("beispiel:geheim g"), p -> p.equals("beispiel.karte")));
-        assertNull(m.klickbar(SAM, new EbenenFuerMod.Klick("nations:staedte", "egal", "s1", "proficisci:anderer"), p -> true),
+        assertFalse(m.klickbar(ALEX, klick.apply("nations:staedte s1"), p -> true, false).an(), "je Spieler");
+        assertNotNull(m.klickbar(SAM, klick.apply("proficisci:routen hafen"), p -> true, false), "sein eigenes Objekt");
+        assertNull(m.klickbar(ALEX, klick.apply("proficisci:routen hafen"), p -> true, false), "das eigene Objekt eines anderen");
+        assertNull(m.klickbar(SAM, klick.apply("nations:staedte l"), p -> true, false), "eine Linie hat keine Tafel");
+        assertNull(m.klickbar(SAM, klick.apply("nations:staedte weg"), p -> true, false), "ein Objekt, das es nicht gibt");
+        assertNull(m.klickbar(SAM, klick.apply("gibt:es-nicht x"), p -> true, false), "eine Ebene, die es nicht gibt");
+        assertNull(m.klickbar(SAM, klick.apply("beispiel:geheim g"), p -> false, false), "ohne die permission der Ebene");
+        assertNotNull(m.klickbar(SAM, klick.apply("beispiel:geheim g"), p -> p.equals("beispiel.karte"), false));
+        assertNull(m.klickbar(SAM, new EbenenFuerMod.Klick("nations:staedte", "egal", "s1", "proficisci:anderer"), p -> true, false),
                 "ein Knopf, der dort nicht hängt");
         schiff.detach("nations:staedte", "s1");
-        assertNull(m.klickbar(SAM, klick.apply("nations:staedte s1"), p -> true), "abgehängt");
+        assertNull(m.klickbar(SAM, klick.apply("nations:staedte s1"), p -> true, false), "abgehängt");
     }
 
     /** Die Tafel eines eigenen Objekts nur für seinen Spieler, mit der version seiner Fassung. */
@@ -182,6 +182,36 @@ class EbenenFuerModTest {
         assertTrue(sam.get(0).has("panel"), "seine Fassung");
         assertFalse(sam.get(1).has("panel"), "die version der gemeinsamen ist für ihn alt");
         assertFalse(tafeln(m.tafeln(ALEX, true, p -> true, JETZT)).getFirst().has("panel"), "ein anderer hat es nicht");
+    }
+
+    @Test
+    void zeile_aktion_lesen() {
+        var w = EbenenFuerMod.webKlick("{\"spieler\":\"" + SAM + "\",\"ebene\":\"nations:staedte\",\"objekt\":\"s1\",\"knopf\":\"proficisci:schiff\"}");
+        assertEquals(new EbenenFuerMod.WebKlick(SAM, new EbenenFuerMod.Klick("nations:staedte", "", "s1", "proficisci:schiff")), w);
+        for (String falsch : List.of(
+                "{\"spieler\":\"" + SAM + "\",\"ebene\":\"nations:staedte\",\"objekt\":\"s1\",\"knopf\":\"proficisci:schiff\",\"mehr\":1}",
+                "{\"spieler\":\"8F3C2B6E-0D4A-4C1E-9B7A-2E5F6A1D3C90\",\"ebene\":\"nations:staedte\",\"objekt\":\"s1\",\"knopf\":\"proficisci:schiff\"}",
+                "{\"spieler\":\"" + SAM + "\",\"ebene\":\"nations:staedte\",\"objekt\":1,\"knopf\":\"proficisci:schiff\"}",
+                "{\"spieler\":\"" + SAM + "\",\"ebene\":\"nations:staedte\",\"knopf\":\"proficisci:schiff\"}",
+                "[]", "kein json", "{\"spieler\":\"" + "x".repeat(2000) + "\"}")) {
+            assertNull(EbenenFuerMod.webKlick(falsch), falsch.length() > 200 ? "zu lang" : falsch);
+        }
+    }
+
+    @Test
+    void klick_aus_dem_web_nur_auf_ebenen_der_webkarte() {
+        var k = new Knoepfe();
+        var schiff = k.knopf("proficisci", "schiff", "Schiff", "Ship");
+        var nurMod = ebene("beispiel:nurmod", "{\"id\": \"n\", \"type\": \"pin\", \"at\": [0, 0]}", ", \"web\": false");
+        var staedte = ebene("nations:staedte", "{\"id\": \"s1\", \"type\": \"pin\", \"at\": [0, 0]}", "");
+        schiff.attach("beispiel:nurmod", "n");
+        schiff.attach("nations:staedte", "s1");
+        var m = new EbenenFuerMod(JsonObject::new, null, Logger.getAnonymousLogger(), k);
+        m.bereite(List.of(nurMod, staedte));
+        assertNotNull(m.klickbar(SAM, new EbenenFuerMod.Klick("beispiel:nurmod", "", "n", "proficisci:schiff"), p -> false, false));
+        assertNull(m.klickbar(SAM, new EbenenFuerMod.Klick("beispiel:nurmod", "", "n", "proficisci:schiff"), p -> false, true),
+                "web: false");
+        assertNotNull(m.klickbar(SAM, new EbenenFuerMod.Klick("nations:staedte", "", "s1", "proficisci:schiff"), p -> false, true));
     }
 
     @Test

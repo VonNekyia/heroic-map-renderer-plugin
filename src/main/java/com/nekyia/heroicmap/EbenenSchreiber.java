@@ -65,8 +65,14 @@ final class EbenenSchreiber {
         var liste = new TreeMap<String, JsonElement>();
         for (Ebene e : sortiert) {
             if (e.web()) {
-                soll.put(Path.of("layers", e.modname(), e.name() + ".json"), bytes(fuerWebkarte(e)));
-                liste.put(e.id(), eintrag(e));
+                var eintrag = eintrag(e);
+                if (e.aktion()) {
+                    // Ihre Datei gibt es nur je Spieler, siehe SpielerOrdner.
+                    eintrag.addProperty("player", true);
+                } else {
+                    soll.put(Path.of("layers", e.modname(), e.name() + ".json"), bytes(fuerWebkarte(e, List.of(), dimension)));
+                }
+                liste.put(e.id(), eintrag);
             }
         }
         Path layersJson = wurzel.resolve("layers.json");
@@ -127,19 +133,21 @@ final class EbenenSchreiber {
     }
 
     /**
-     * Die Datei der Ebene für die Webkarte: ohne web und permission, mit den Entwürfen, nur Objekte aus der
-     * Dimension der Wurzel.
+     * Die Datei der Ebene für die Webkarte: ohne web und permission, mit den Entwürfen, nur Objekte aus
+     * {@code dimension}, der Dimension der Wurzel; hinter denen der Ebene die {@code eigene} eines Spielers.
      */
-    private JsonObject fuerWebkarte(Ebene e) {
+    static JsonObject fuerWebkarte(Ebene e, Collection<JsonObject> eigene, String dimension) {
         var o = kopf(e);
         if (e.json().has("designs")) {
             o.add("designs", e.json().get("designs"));
         }
         var objekte = new JsonArray();
-        for (JsonElement x : e.json().getAsJsonArray("objects")) {
-            var d = x.getAsJsonObject().get("dimension");
-            if ((d == null ? OBERWELT : d.getAsString()).equals(dimension)) {
-                objekte.add(x);
+        for (Iterable<? extends JsonElement> quelle : List.of(e.json().getAsJsonArray("objects"), eigene)) {
+            for (JsonElement x : quelle) {
+                var d = x.getAsJsonObject().get("dimension");
+                if ((d == null ? OBERWELT : d.getAsString()).equals(dimension)) {
+                    objekte.add(x);
+                }
             }
         }
         o.add("objects", objekte);
@@ -163,15 +171,20 @@ final class EbenenSchreiber {
         return o;
     }
 
-    private static byte[] bytes(JsonObject o) {
+    /** Nach dem Löschen von {@code ziel}: Sein Hash fällt weg. */
+    synchronized void vergiss(Path ziel) {
+        geschrieben.remove(ziel);
+    }
+
+    static byte[] bytes(JsonObject o) {
         return o.toString().getBytes(StandardCharsets.UTF_8);
     }
 
     /**
      * Schreibt nur, was sich seit dem letzten Schreiben ändert oder fehlt: erst unter einem Namen mit . vorn, dann
-     * umbenannt. Nach einem Neustart schreibt es jede Datei einmal.
+     * umbenannt. Nach einem Neustart schreibt es jede Datei einmal. {@code ziel} liegt unter der Wurzel.
      */
-    private void schreibe(Path ziel, byte[] inhalt) throws IOException {
+    synchronized void schreibe(Path ziel, byte[] inhalt) throws IOException {
         keinLink(ziel.getParent());
         String hash = Ebenen.sha256(inhalt);
         if (hash.equals(geschrieben.get(ziel)) && Files.isRegularFile(ziel, LinkOption.NOFOLLOW_LINKS)) {

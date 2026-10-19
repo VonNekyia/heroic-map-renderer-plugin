@@ -91,14 +91,12 @@ final class Ebenen {
         }
 
         /**
-         * Auf die Webkarte: wie {@code web}, sonst nur ohne permission; eine Aktionsebene nie über layers/. Siehe
-         * docs/ebenen.md, „Webkarte“.
+         * Auf die Webkarte: wie {@code web}, sonst nur ohne permission; eine Aktionsebene nur ohne permission, und
+         * dort nie über layers/, sondern je Spieler. Siehe docs/ebenen.md, „Webkarte“.
          */
         boolean web() {
-            if (spieler != null) {
-                return false;
-            }
-            return json.has("web") ? json.get("web").getAsBoolean() : !json.has("permission");
+            boolean w = json.has("web") ? json.get("web").getAsBoolean() : !json.has("permission");
+            return w && (spieler == null || !json.has("permission"));
         }
     }
 

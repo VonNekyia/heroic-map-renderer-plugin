@@ -11,6 +11,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Consumer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.regex.Pattern;
@@ -24,6 +25,8 @@ final class Webserver {
     /** Pause vor dem ersten Neustart; sie verdoppelt sich bis {@link #LAENGSTE_PAUSE}. */
     static final Duration ERSTE_PAUSE = Duration.ofSeconds(5);
     static final Duration LAENGSTE_PAUSE = Duration.ofMinutes(5);
+    /** Ein Klick auf der Webkarte; der Rest der Zeile ist JSON. Siehe docs/anmeldung.md, „Klicks“. */
+    static final String AKTION = "Aktion: ";
     /** Lief er so lange, beginnt die Pause wieder bei der ersten. */
     static final Duration STABIL = Duration.ofMinutes(1);
     /** Die Startzeile des Servers mit seiner Adresse; spätere Zeilen mit „Server:“ nennen keine. */
@@ -35,6 +38,7 @@ final class Webserver {
     private final Path pidDatei;
     private final Duration erstePause;
     private final Duration stabil;
+    private final Consumer<String> aktion;
 
     // Geschützt durch this.
     private Thread faden;
@@ -45,8 +49,11 @@ final class Webserver {
     /** Zwischen seiner Startzeile und seinem Ende. */
     private volatile boolean bereit;
 
-    Webserver(List<String> befehl, Path renderer, Logger log, Path pidDatei, Duration erstePause, Duration stabil) {
+    /** {@code aktion} bekommt den Rest jeder Zeile {@link #AKTION}, im Faden des Servers; sie geht nicht ins Log. */
+    Webserver(List<String> befehl, Path renderer, Logger log, Path pidDatei, Duration erstePause, Duration stabil,
+            Consumer<String> aktion) {
         this.befehl = List.copyOf(befehl);
+        this.aktion = aktion;
         this.renderer = renderer;
         this.log = log;
         this.pidDatei = pidDatei;
@@ -55,10 +62,10 @@ final class Webserver {
     }
 
     /**
-     * Die Schalter des Servers; ohne {@code web} nur die Kacheln, ohne {@code geheimnis} kein
-     * Download. Siehe docs/webserver.md, „Aufruf“.
+     * Die Schalter des Servers; ohne {@code web} nur die Kacheln, ohne {@code geheimnis} kein Download und keine
+     * Anmeldung, ohne {@code spieler} keine Anmeldung. Siehe docs/webserver.md, „Aufruf“.
      */
-    static List<String> befehl(Konfiguration konf, Path web, Path geheimnis) {
+    static List<String> befehl(Konfiguration konf, Path web, Path geheimnis, Path spieler) {
         var w = konf.webserver();
         List<String> b = new ArrayList<>(List.of(konf.renderer().toString(), "--serve", konf.kacheln().toString()));
         if (web != null) {
@@ -72,6 +79,9 @@ final class Webserver {
         }
         if (geheimnis != null) {
             b.addAll(List.of("--secret-file", geheimnis.toString()));
+            if (spieler != null) {
+                b.addAll(List.of("--player-dir", spieler.toString()));
+            }
         }
         // Die Angaben der Seite setzt der Server nur in eine Karte aus --web.
         if (web != null && w.seite()) {
@@ -226,6 +236,15 @@ final class Webserver {
         }
         try (var r = p.inputReader(StandardCharsets.UTF_8)) {
             for (String z; (z = r.readLine()) != null; ) {
+                if (z.startsWith(AKTION)) {
+                    // Ein Fehler beim Klick beendet nie den Server; sonst fiele die Karte mit.
+                    try {
+                        aktion.accept(z.substring(AKTION.length()));
+                    } catch (RuntimeException e) {
+                        log.log(Level.WARNING, "Klick von der Webkarte nicht angenommen", e);
+                    }
+                    continue;
+                }
                 var m = ADRESSE.matcher(z);
                 if (m.matches()) {
                     zustand = m.group(1) + ", PID " + p.pid();

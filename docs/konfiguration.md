@@ -45,7 +45,7 @@ Die Statistik über bStats hat hier keinen Schlüssel; sie schaltet
 | `download.server-name` | leer | – | der Name des Servers für den Mod, etwa `play.example.net`; der Mod legt die Karten unter ihm ab statt unter der eingetippten Adresse. Nur ein Hostname, klein geschrieben; sonst meldet das Plugin keinen und schreibt eine Zeile ins Log, siehe [Download](download.md), „Kanal“ |
 | `webserver.enabled` | `true` | – | ob das Plugin den Server des Renderers startet |
 | `webserver.listen` | `"0.0.0.0:8080"` | `--listen` | Adresse und Port, IPv6 in `[…]`; Pflicht, wenn der Webserver an ist |
-| `webserver.url` | leer | – | optional: wie Spieler den Webserver erreichen, `http://` oder `https://`, ohne `/` am Ende; nur für einen anderen Host, HTTPS oder einen Proxy davor; mit HTTPS und einem Baum zum Download Pflicht. Ohne sie baut der Mod die Adresse selbst, siehe [Webserver](webserver.md), „Download“ |
+| `webserver.url` | leer | – | optional: wie Spieler den Webserver erreichen, `http://` oder `https://`, ohne `/` am Ende; nur für einen anderen Host, HTTPS oder einen Proxy davor; mit HTTPS und einem Baum zum Download Pflicht. Ohne sie baut der Mod die Adresse selbst, siehe [Webserver](webserver.md), „Download“; ohne sie gibt `/karte anmelden` keinen Link, siehe [Anmeldung](anmeldung.md) |
 | `webserver.public-port` | `0` | – | steht ein Proxy davor: der Port, unter dem Spieler ihn erreichen; die `freigabe` ohne `url` nennt ihn statt des Ports aus `listen`. `0`: der aus `listen` |
 | `webserver.title` | leer | `--site-title` | Titel der Seite; nur mit `description` und `url`, siehe [Webserver](webserver.md), „Angaben der Seite“ |
 | `webserver.description` | leer | `--site-description` | Beschreibung der Seite; nur mit `title` und `url` |

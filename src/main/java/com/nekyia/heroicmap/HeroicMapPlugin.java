@@ -7,14 +7,20 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.security.SecureRandom;
 import java.time.Instant;
 import java.time.ZoneId;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.stream.Stream;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.event.ClickEvent;
+import net.kyori.adventure.text.format.TextDecoration;
 import org.bstats.bukkit.Metrics;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
@@ -38,6 +44,9 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
     static final String SHOW = "heroicmap.show";
     /** Wer sie hat, bekommt im Mod die Ebenen. Siehe docs/ebenen.md, „Mod“. */
     static final String LAYERS = "heroicmap.layers";
+    /** Ein Anmeldelink gilt 5 min; einen neuen gibt es frühestens 15 s nach dem letzten. Siehe docs/anmeldung.md. */
+    private static final long ANMELDUNG_GILT = 300;
+    private static final long ANMELDUNG_ABSTAND = 15;
     /** Die ID des Plugins auf bstats.org. Siehe docs/statistik.md. */
     private static final int BSTATS = 34598;
 
@@ -52,6 +61,14 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
     private Laeufe laeufe;
     private Banner banner;
     private volatile Webserver webserver;
+    /** Die Anmeldung auf der Webkarte; null ohne. Siehe docs/anmeldung.md. */
+    private volatile SpielerOrdner spieler;
+    private byte[] geheimnis;
+    private String kartenUrl;
+    private boolean spielerScheiterte;
+    private final SecureRandom zufall = new SecureRandom();
+    /** Nur im Hauptthread: je Spieler die Sekunde seines letzten Anmeldelinks. */
+    private final Map<UUID, Long> letzteAnmeldung = new HashMap<>();
     /** Warum das Plugin ohne Renderer bleibt; null mit Renderer. Jeder Befehl nennt es. */
     private String ohneRenderer;
 
@@ -97,6 +114,7 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
         getServer().getAsyncScheduler().runAtFixedRate(this, t -> {
             ebenen.takt();
             fuerMod.bereite(ebenen.stand());
+            schreibeSpieler();
         }, 1, 1, TimeUnit.SECONDS);
         getServer().getGlobalRegionScheduler().runAtFixedRate(this, t -> ebenenAnMod(), 20, 20);
         try {
@@ -126,12 +144,24 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
             getServer().getAsyncScheduler().runAtFixedRate(this, t -> laeufe.starte(Laeufe.Art.UPDATE),
                     konf.updateMinuten(), konf.updateMinuten(), TimeUnit.MINUTES);
         }
-        Path geheimnis = null;
-        if (konf.baeume().stream().anyMatch(Konfiguration.Baum::download)) {
-            geheimnis = starteDownload(konf);
+        // Das Geheimnis für Download und Anmeldung; siehe docs/download.md und docs/anmeldung.md.
+        boolean download = konf.baeume().stream().anyMatch(Konfiguration.Baum::download);
+        Path geheimnisDatei = null;
+        byte[] g = null;
+        if (download || konf.webserver().an()) {
+            geheimnisDatei = getDataFolder().toPath().resolve("token.geheimnis");
+            try {
+                g = Download.geheimnis(geheimnisDatei, getLogger());
+            } catch (IOException e) {
+                getLogger().log(Level.SEVERE, "Geheimnis für die Token nicht gelesen, kein Download und keine Anmeldung", e);
+                geheimnisDatei = null;
+            }
+        }
+        if (download && g != null) {
+            starteDownload(konf, g);
         }
         if (konf.webserver().an()) {
-            starteWebserver(konf, geheimnis);
+            starteWebserver(konf, geheimnisDatei, g);
         }
     }
 
@@ -159,6 +189,7 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
     @EventHandler
     public void beimVerlassen(PlayerQuitEvent e) {
         mitspieler.vergiss(e.getPlayer().getUniqueId());
+        letzteAnmeldung.remove(e.getPlayer().getUniqueId());
         if (fuerMod != null) {
             fuerMod.vergiss(e.getPlayer().getUniqueId());
         }
@@ -186,12 +217,57 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
                 || !player.hasPermission(LAYERS)) {
             return;
         }
-        var g = fuerMod.klickbar(u, k, player::hasPermission);
+        var g = fuerMod.klickbar(u, k, player::hasPermission, false);
         if (g == null) {
             return;
         }
         getServer().getPluginManager().callEvent(new MapButtonClickEvent(g.knopf(), u, k.ebene(), k.id(), g.an()));
         frageTafel(player, EbenenFuerMod.tafelNach(k));
+    }
+
+    /**
+     * Im Faden des Webservers: ein Klick von der Webkarte aus einer Zeile Aktion:. Im Hauptthread geprüft wie ein Klick
+     * aus dem Mod, nur für einen angemeldeten Spieler und nur auf Ebenen der Webkarte ohne permission. Siehe
+     * docs/anmeldung.md, „Klicks“.
+     */
+    private void webKlick(String json) {
+        var w = EbenenFuerMod.webKlick(json);
+        if (w == null) {
+            getLogger().warning("Webserver: eine Zeile Aktion ohne gültigen Klick");
+            return;
+        }
+        getServer().getGlobalRegionScheduler().execute(this, () -> {
+            var s = spieler;
+            UUID u = w.spieler();
+            var k = w.klick();
+            if (s == null || !s.bekannt(u) || !fuerMod.darfKlicken(u, Instant.now().getEpochSecond())) {
+                return;
+            }
+            var g = fuerMod.klickbar(u, k, p -> false, true);
+            if (g != null) {
+                getServer().getPluginManager().callEvent(new MapButtonClickEvent(g.knopf(), u, k.ebene(), k.id(), g.an()));
+            }
+        });
+    }
+
+    /** Im Takt der Ebenen: die Dateien je Spieler für die Webkarte; ein Fehler steht einmal im Log. */
+    private void schreibeSpieler() {
+        var s = spieler;
+        if (s == null) {
+            return;
+        }
+        try {
+            s.schreibe(ebenen.stand(), ebenen.api().knoepfe());
+            if (spielerScheiterte) {
+                getLogger().info("Dateien je Spieler für die Webkarte wieder geschrieben");
+                spielerScheiterte = false;
+            }
+        } catch (IOException | RuntimeException e) {
+            if (!spielerScheiterte) {
+                getLogger().log(Level.WARNING, "Dateien je Spieler für die Webkarte nicht geschrieben", e);
+                spielerScheiterte = true;
+            }
+        }
     }
 
     /** Im Hauptthread: die fertigen Antworten auf Tafeln an {@code p}, im Budget der laufenden Sekunde. */
@@ -237,8 +313,11 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
         }
     }
 
-    /** Packt die Karte aus dem Jar aus und startet den Server des Renderers. Siehe docs/webserver.md. */
-    private void starteWebserver(Konfiguration konf, Path geheimnis) {
+    /**
+     * Packt die Karte aus dem Jar aus und startet den Server des Renderers; mit Karte und Geheimnis samt Anmeldung.
+     * Siehe docs/webserver.md.
+     */
+    private void starteWebserver(Konfiguration konf, Path geheimnisDatei, byte[] g) {
         Webserver.warnung(konf.webserver()).ifPresent(getLogger()::warning);
         Path web = getDataFolder().toPath().resolve("web");
         try {
@@ -250,25 +329,43 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
             getLogger().log(Level.SEVERE, "Karte nicht ausgepackt; der Webserver liefert nur /tiles/ aus", e);
             web = null;
         }
-        webserver = new Webserver(Webserver.befehl(konf, web, geheimnis), konf.renderer(), getLogger(),
-                getDataFolder().toPath().resolve("webserver.pid"), Webserver.ERSTE_PAUSE, Webserver.STABIL);
+        Path ordner = web != null && g != null ? starteAnmeldung(konf, web, g) : null;
+        webserver = new Webserver(Webserver.befehl(konf, web, geheimnisDatei, ordner), konf.renderer(), getLogger(),
+                getDataFolder().toPath().resolve("webserver.pid"), Webserver.ERSTE_PAUSE, Webserver.STABIL, this::webKlick);
         webserver.raeumeAuf();
         webserver.starte();
     }
 
     /**
-     * Den Kanal zum Mod gibt es nur, wenn ein Baum zum Download angeboten wird. Gibt die Datei des
-     * Geheimnisses für den Webserver, null ohne Geheimnis. Siehe docs/download.md.
+     * Der Ordner je Spieler für --player-dir, null ohne Anmeldung: nie unter den Kacheln oder der Karte, sonst startete
+     * der Server nicht. Siehe docs/anmeldung.md.
      */
-    private Path starteDownload(Konfiguration konf) {
-        Path datei = getDataFolder().toPath().resolve("token.geheimnis");
-        byte[] geheimnis;
+    private Path starteAnmeldung(Konfiguration konf, Path web, byte[] g) {
+        Path ordner = getDataFolder().toPath().resolve("spieler").toAbsolutePath().normalize();
+        for (Path p : List.of(konf.kacheln(), web)) {
+            if (ordner.startsWith(p.toAbsolutePath().normalize())) {
+                getLogger().warning("Keine Anmeldung auf der Webkarte: " + ordner + " liegt unter " + p);
+                return null;
+            }
+        }
+        geheimnis = g;
+        kartenUrl = konf.webserver().url();
         try {
-            geheimnis = Download.geheimnis(datei, getLogger());
+            Files.createDirectories(ordner);
+            // Zuletzt: Mit spieler gilt die Anmeldung als bereit.
+            spieler = new SpielerOrdner(ordner, konf.dimension());
         } catch (IOException e) {
-            getLogger().log(Level.SEVERE, "Geheimnis für die Token nicht gelesen, kein Download", e);
+            getLogger().log(Level.SEVERE, "Ordner je Spieler nicht gelesen, keine Anmeldung auf der Webkarte", e);
             return null;
         }
+        if (kartenUrl.isEmpty()) {
+            getLogger().warning("Ohne webserver.url gibt /karte anmelden keinen Link.");
+        }
+        return ordner;
+    }
+
+    /** Den Kanal zum Mod gibt es nur, wenn ein Baum zum Download angeboten wird. Siehe docs/download.md. */
+    private void starteDownload(Konfiguration konf, byte[] geheimnis) {
         // Token gibt es erst, wenn der Webserver lauscht; er startet nach dem Kanal.
         var w = konf.webserver();
         var ziel = w.url().isEmpty() ? new Download.Ziel(null, w.portFuerMod()) : new Download.Ziel(w.url() + "/download", 0);
@@ -279,7 +376,6 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
         var kanal = new Kanal(this, konf, download);
         kanal.starte();
         laeufe.nachLauf(kanal::aktualisiere);
-        return datei;
     }
 
     @Override
@@ -300,6 +396,9 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
 
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
+        if (command.getName().equals("karte")) {
+            return karte(sender, args);
+        }
         // Nur render nimmt ein zweites Wort, den Ordner eines Baums. Siehe docs/laeufe.md, „Befehle“.
         if (args.length != 1 && !(args.length == 2 && args[0].equals("render"))) {
             return false;
@@ -331,8 +430,72 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
         return true;
     }
 
+    /** /karte anmelden|abmelden: die Anmeldung auf der Webkarte. Siehe docs/anmeldung.md, „Befehl“. */
+    private boolean karte(CommandSender sender, String[] args) {
+        if (args.length != 1 || !args[0].equals("anmelden") && !args[0].equals("abmelden")) {
+            return false;
+        }
+        if (!(sender instanceof Player p)) {
+            sender.sendMessage("Nur ein Spieler meldet sich auf der Webkarte an.");
+            return true;
+        }
+        var s = spieler;
+        if (s == null || kartenUrl.isEmpty()) {
+            p.sendMessage("Eine Anmeldung auf der Webkarte gibt es auf diesem Server nicht.");
+            return true;
+        }
+        UUID u = p.getUniqueId();
+        if (args[0].equals("abmelden")) {
+            getServer().getAsyncScheduler().runNow(this, t -> {
+                String z;
+                try {
+                    z = s.meldeAb(u) ? "Abgemeldet: Jede Sitzung auf der Webkarte ist beendet." : "Du bist auf der Webkarte nicht angemeldet.";
+                } catch (IOException e) {
+                    getLogger().log(Level.WARNING, "Abmelden von " + u + " ging nicht", e);
+                    z = "Abmelden ging nicht; sag es bitte einem Admin.";
+                }
+                String antwort = z;
+                getServer().getGlobalRegionScheduler().execute(this, () -> p.sendMessage(antwort));
+            });
+            return true;
+        }
+        long jetzt = Instant.now().getEpochSecond();
+        Long vorher = letzteAnmeldung.get(u);
+        if (vorher != null && jetzt - vorher < ANMELDUNG_ABSTAND) {
+            p.sendMessage("Einen neuen Link gibt es frühestens 15 s nach dem letzten.");
+            return true;
+        }
+        if (webserver == null || !webserver.bereit()) {
+            p.sendMessage("Die Webkarte läuft gerade nicht; versuch es gleich noch einmal.");
+            return true;
+        }
+        letzteAnmeldung.put(u, jetzt);
+        String name = p.getName();
+        getServer().getAsyncScheduler().runNow(this, t -> {
+            Component antwort;
+            try {
+                long zaehler = s.meldeAn(u, name);
+                byte[] z = new byte[Token.ZUFALL];
+                zufall.nextBytes(z);
+                // Im Fragment: Es steht in keinem Log und geht in keinem Referer mit.
+                String link = kartenUrl + "/#anmelden=" + Token.anmeldung(geheimnis, u, jetzt + ANMELDUNG_GILT, zaehler, z);
+                antwort = Component.text("Anmelden auf der Webkarte, 5 min lang und nur einmal: ")
+                        .append(Component.text("Link öffnen").decorate(TextDecoration.UNDERLINED).clickEvent(ClickEvent.openUrl(link)));
+            } catch (IOException e) {
+                getLogger().log(Level.WARNING, "Anmelden von " + u + " ging nicht", e);
+                antwort = Component.text("Anmelden ging nicht; sag es bitte einem Admin.");
+            }
+            Component a = antwort;
+            getServer().getGlobalRegionScheduler().execute(this, () -> p.sendMessage(a));
+        });
+        return true;
+    }
+
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String label, String[] args) {
+        if (command.getName().equals("karte")) {
+            return args.length == 1 ? Stream.of("anmelden", "abmelden").filter(b -> b.startsWith(args[0])).toList() : List.of();
+        }
         if (args.length == 2 && args[0].equals("render") && laeufe != null) {
             return laeufe.ordner().stream().filter(o -> o.startsWith(args[1])).toList();
         }

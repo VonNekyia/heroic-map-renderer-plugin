@@ -1,6 +1,6 @@
 ---
 title: Webserver
-description: Wie das Plugin den Server des Renderers als zweiten Kindprozess startet, mit welchen Schaltern, woher die Karte kommt, wie er mit der Pipe auf stdin endet, nach einem Tod neu startet und im Status steht, dazu der Download unter /download/, die Angaben der Seite, Bäume nur zum Download und HTTPS.
+description: Wie das Plugin den Server des Renderers als zweiten Kindprozess startet, mit welchen Schaltern, woher die Karte kommt, wie er mit der Pipe auf stdin endet, nach einem Tod neu startet und im Status steht, dazu der Download unter /download/, die Anmeldung, die Angaben der Seite, Bäume nur zum Download und HTTPS.
 code:
   - src/main/java/com/nekyia/heroicmap/Webserver.java
   - src/main/java/com/nekyia/heroicmap/HeroicMapPlugin.java
@@ -23,7 +23,7 @@ Der Code steht in `Webserver` in
 ```
 <binär> --serve <tiles> --web plugins/HeroicMap/web --listen <webserver.listen>
     --exit-with-stdin --threads 4 [--tls-cert <datei> --tls-key <datei>]
-    [--secret-file plugins/HeroicMap/token.geheimnis]
+    [--secret-file plugins/HeroicMap/token.geheimnis [--player-dir plugins/HeroicMap/spieler]]
     [--site-url <url> --site-title <title> --site-description <description> [--site-image <image>]]
 ```
 
@@ -50,7 +50,10 @@ Der Code steht in `Webserver` in
   keine Zeile je Anfrage, nur seine Startzeile, das Neuladen eines
   Zertifikats, Fehler und ab Renderer 0.10.0 je Download als Strom eine
   Zeile `Download:`, wenn er endet, siehe [Download](download.md), „Als
-  Strom“.
+  Strom“. Eine Zeile `Aktion:`, ein Klick auf der Webkarte, geht nicht ins
+  Log, sondern ans Plugin, siehe [Anmeldung](anmeldung.md), „Klicks“.
+- **`--player-dir`** mit Karte und Geheimnis, für die Anmeldung auf der
+  Webkarte, siehe [Anmeldung](anmeldung.md), „Wann es sie gibt“.
 
 ## Die Karte im Jar
 
@@ -137,8 +140,10 @@ auch unter `/download/` aus, nur gegen ein Token, siehe
   Startzeile und seinem Ende. Sonst antwortet der Download „Webserver
   aus.“
 - **Das Geheimnis** liegt in `plugins/HeroicMap/token.geheimnis`, genau 32
-  Byte; der Server liest es beim Start. Ohne Baum zum Download fehlt
-  `--secret-file`, und `/download/` gibt `404`.
+  Byte; der Server liest es beim Start. Das Plugin gibt es ihm immer mit,
+  auch ohne Baum zum Download, denn auch die Anmeldung braucht es. Token
+  für `/download/` stellt es trotzdem nur für Bäume mit `download: true`
+  aus.
 
 ## Angaben der Seite
 

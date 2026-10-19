@@ -130,14 +130,18 @@ Ebenen, neben `trees.json`:
 
 | Datei | Inhalt |
 |---|---|
-| `layers.json` | je Ebene mit `web` `id`, `name`, `visible`, `order`, `version` |
+| `layers.json` | je Ebene mit `web` `id`, `name`, `visible`, `order`, `version`; bei einer Aktionsebene dazu `"player": true` |
 | `layers/<modname>/<ebene>.json` | Kopf samt `designs` und Objekte der Ebene, ohne `web` und `permission`; nie eine Aktionsebene |
 | `layers/<modname>/images/…` | die Bilder, die eine Ebene nennt |
 | `layers/<modname>/banner/…` | die Sprites der Banner; sie schreibt der Renderer, siehe [Läufe](laeufe.md), „Banner“ |
 
-- **Aktionsebenen** fehlen hier ganz (`Ebene.web`), denn ihre Objekte sind
-  je Spieler, siehe [API](api.md), „Aktionsebenen und Knöpfe“. Auf die
-  Webkarte kommen sie erst mit der Anmeldung dort.
+- **Aktionsebenen** stehen nur in `layers.json`, mit `"player": true`,
+  ohne Datei unter `layers/`, denn ihre Objekte sind je Spieler, siehe
+  [API](api.md), „Aktionsebenen und Knöpfe“. Die Fassung jedes
+  angemeldeten Spielers schreibt das Plugin nach
+  `plugins/HeroicMap/spieler/`, siehe [Anmeldung](anmeldung.md). Eine
+  Aktionsebene mit `permission` fehlt ganz, auch mit `web: true`
+  (`Ebene.web`, E2 in heroic-map-renderer#294).
 - **Nur die Dimension der Wurzel:** Die Datei für die Webkarte enthält nur
   Objekte mit der `dimension` der Welt aus `world` in `config.yml`,
   Vorgabe `minecraft:overworld`.

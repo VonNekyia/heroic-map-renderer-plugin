@@ -214,6 +214,32 @@ final class EbenenFuerMod {
         return ebene == null || version == null || id == null || knopf == null ? null : new Klick(ebene, version, id, knopf);
     }
 
+    /** Ein Klick von der Webkarte: der Spieler aus seiner Sitzung beim Server, der Klick ohne version. */
+    record WebKlick(UUID spieler, Klick klick) {}
+
+    /**
+     * Der Klick im Rest einer Zeile Aktion: des Servers; null, wenn er nicht genau die Felder spieler, ebene, objekt
+     * und knopf als Texte hat oder spieler keine UUID klein mit Bindestrichen ist. Siehe docs/anmeldung.md, „Klicks“.
+     */
+    static WebKlick webKlick(String json) {
+        if (json.length() > Download.GROESSTE_ANFRAGE) {
+            return null;
+        }
+        JsonObject o;
+        try {
+            o = JsonParser.parseString(json).getAsJsonObject();
+        } catch (RuntimeException e) {
+            return null;
+        }
+        String s = text(o, "spieler");
+        String ebene = text(o, "ebene");
+        String objekt = text(o, "objekt");
+        String knopf = text(o, "knopf");
+        var u = s == null ? null : SpielerOrdner.uuid(s);
+        return o.size() != 4 || u == null || ebene == null || objekt == null || knopf == null ? null
+                : new WebKlick(u, new Klick(ebene, "", objekt, knopf));
+    }
+
     /** Im Hauptthread: ob {@code spieler} in {@code sekunde} noch klicken darf, höchstens {@link #KLICKS_JE_SEKUNDE}. */
     boolean darfKlicken(UUID spieler, long sekunde) {
         long[] f = klickFenster.computeIfAbsent(spieler, k -> new long[2]);
@@ -227,13 +253,16 @@ final class EbenenFuerMod {
     /**
      * Im Hauptthread: der Knopf des Klicks mit dem Zustand von {@code spieler}, wenn er ihn drücken darf. Die Ebene
      * steht im Stand, er hat ihre permission, falls sie eine hat, das Objekt steht in seiner Fassung und hat eine
-     * Tafel, und der Knopf hängt dort. Sonst null. Die Permission heroicmap.layers, die Rate und die version prüft es
-     * nicht. Siehe docs/ebenen.md, „Knöpfe“.
+     * Tafel, und der Knopf hängt dort; mit {@code web} steht die Ebene dazu auf der Webkarte. Sonst null. Die
+     * Permission heroicmap.layers, die Rate und die version prüft es nicht. Siehe docs/ebenen.md, „Knöpfe“.
      */
-    Knoepfe.Gedrueckt klickbar(UUID spieler, Klick k, Predicate<String> hat) {
+    Knoepfe.Gedrueckt klickbar(UUID spieler, Klick k, Predicate<String> hat, boolean web) {
         var f = fertig;
         for (Ebene e : f.stand()) {
             if (e.id().equals(k.ebene())) {
+                if (web && !e.web()) {
+                    return null;
+                }
                 var p = e.json().get("permission");
                 if (p != null && !hat.test(p.getAsString()) || tafelObjekt(f, e, spieler, k.id()) == null) {
                     return null;
@@ -245,7 +274,7 @@ final class EbenenFuerMod {
     }
 
     /** Nur Nadeln, Banner, Regionen und Kreise haben eine Tafel und damit Knöpfe. Siehe docs/ebenen.md, „Knöpfe“. */
-    private static boolean tafelArt(JsonObject objekt) {
+    static boolean tafelArt(JsonObject objekt) {
         return switch (objekt.get("type").getAsString()) {
             case "pin", "banner", "region", "circle" -> true;
             default -> false;

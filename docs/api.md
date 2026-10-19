@@ -300,8 +300,8 @@ void klick(MapButtonClickEvent e) {
   - `Layer.clear()` lässt die eigenen Objekte stehen.
 - **Im Mod** ist eine Aktionsebene eine gewöhnliche Ebene, je Spieler mit
   eigener `version`, siehe [Ebenen](ebenen.md), „Mod“. **Auf der Webkarte**
-  fehlt sie, bis das Plugin die Anmeldung dort kann; nie steht sie unter
-  `layers/`.
+  sieht sie nur ein Spieler, der sich mit `/karte anmelden` angemeldet
+  hat, siehe [Anmeldung](anmeldung.md); nie steht sie unter `layers/`.
 - **Knopf:** `HeroicMapApi.button` legt ihn beim ersten Aufruf an, mit
   Label `de` und/oder `en`, je höchstens 32 Zeichen, höchstens 64 je
   Plugin. `attach(ebene, objekt)` hängt ihn unter die Tafel eines Objekts,
