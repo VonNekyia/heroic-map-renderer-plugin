@@ -3,6 +3,7 @@ package com.nekyia.heroicmap;
 import com.google.gson.JsonObject;
 import com.nekyia.heroicmap.api.MapButton;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -11,6 +12,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.BiPredicate;
 
 /**
  * Die Knöpfe der API: je Besitzer, an Objekten beliebiger Ebenen, mit dem Zustand je Spieler, nur im Speicher. Jede
@@ -30,6 +32,36 @@ final class Knoepfe {
     private final Map<Ort, List<Knopf>> an = new HashMap<>();
     /** Je Ort und Knopf die Spieler, für die er an ist; nur angehängte Knöpfe. */
     private final Map<Ort, Map<String, Set<UUID>>> zustand = new HashMap<>();
+    /** Zählt jede Änderung an Anhängen und Zuständen. */
+    private long stand;
+
+    /** Ändert sich mit jedem Anhängen, Abhängen, Zustand und Löschen; so schreibt die Webkarte nur nach Änderungen. */
+    synchronized long stand() {
+        return stand;
+    }
+
+    /**
+     * Die Knöpfe für knoepfe.json eines Spielers: je Objekt, das {@code zeigt} durchlässt, seine Knöpfe mit dem
+     * Zustand von {@code spieler}, nach Ebene und Objekt sortiert. Siehe docs/anmeldung.md, „Dateien je Spieler“.
+     */
+    synchronized List<JsonObject> fuerWeb(UUID spieler, BiPredicate<String, String> zeigt) {
+        var aus = new ArrayList<JsonObject>();
+        an.entrySet().stream()
+                .filter(e -> zeigt.test(e.getKey().ebene(), e.getKey().objekt()))
+                .sorted(Map.Entry.comparingByKey(Comparator.comparing(Ort::ebene).thenComparing(Ort::objekt)))
+                .forEach(e -> {
+                    for (var k : e.getValue()) {
+                        var o = new JsonObject();
+                        o.addProperty("ebene", e.getKey().ebene());
+                        o.addProperty("objekt", e.getKey().objekt());
+                        o.addProperty("knopf", k.id);
+                        o.add("label", k.label.deepCopy());
+                        o.addProperty("on", istAn(e.getKey(), k, spieler));
+                        aus.add(o);
+                    }
+                });
+        return aus;
+    }
 
     /** Der Knopf {@code name} von {@code modname}, beim ersten Aufruf mit diesem Label angelegt. */
     synchronized MapButton knopf(String modname, String name, String de, String en) {
@@ -112,6 +144,7 @@ final class Knoepfe {
     }
 
     private void loesche(Knopf k) {
+        stand++;
         k.geloescht = true;
         knoepfe.remove(k.id);
         for (var e : List.copyOf(an.entrySet())) {
@@ -187,6 +220,7 @@ final class Knoepfe {
                     throw new IllegalArgumentException("Knopf " + id + ": " + objekt + " in " + ebene + " hat schon 4 Knöpfe");
                 }
                 hier.add(this);
+                stand++;
             }
         }
 
@@ -198,6 +232,7 @@ final class Knoepfe {
                 var hier = an.get(o);
                 if (hier != null && hier.remove(this)) {
                     abhaengen(o, this);
+                    stand++;
                 }
             }
         }
@@ -212,10 +247,8 @@ final class Knoepfe {
                     throw new IllegalArgumentException("Knopf " + id + ": hängt nicht an " + objekt + " in " + ebene);
                 }
                 var s = zustand.computeIfAbsent(o, x -> new HashMap<>()).computeIfAbsent(id, x -> new HashSet<>());
-                if (ein) {
-                    s.add(spieler);
-                } else {
-                    s.remove(spieler);
+                if (ein ? s.add(spieler) : s.remove(spieler)) {
+                    stand++;
                 }
             }
         }

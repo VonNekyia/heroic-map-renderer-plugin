@@ -56,7 +56,7 @@ class WebserverTest {
     }
 
     private Webserver webserver(List<String> befehl, Duration erstePause, Duration stabil) {
-        return new Webserver(befehl, JAVA, logger, tmp.resolve("webserver.pid"), erstePause, stabil);
+        return new Webserver(befehl, JAVA, logger, tmp.resolve("webserver.pid"), erstePause, stabil, z -> {});
     }
 
     private static void warte(BooleanSupplier bis, java.util.function.Supplier<String> was) throws InterruptedException {
@@ -80,7 +80,7 @@ class WebserverTest {
                 "--threads", "4",
                 "--tls-cert", tmp.resolve("kette.pem").toString(), "--tls-key", tmp.resolve("schluessel.pem").toString(),
                 "--secret-file", tmp.resolve("token.geheimnis").toString()),
-                Webserver.befehl(konf(w), tmp.resolve("web"), tmp.resolve("token.geheimnis")));
+                Webserver.befehl(konf(w), tmp.resolve("web"), tmp.resolve("token.geheimnis"), null));
     }
 
     @Test
@@ -89,11 +89,11 @@ class WebserverTest {
                 "Unsere Welt", "Die Karte unseres Servers.", "vorschau.jpg", 0);
         assertEquals(List.of("--site-url", "https://karte.example.org/welt", "--site-title", "Unsere Welt",
                 "--site-description", "Die Karte unseres Servers.", "--site-image", "vorschau.jpg"),
-                ende(Webserver.befehl(konf(w), tmp.resolve("web"), null), 8));
+                ende(Webserver.befehl(konf(w), tmp.resolve("web"), null, null), 8));
         var ohneBild = new Konfiguration.Webserver(true, "0.0.0.0:8080", "https://karte.example.org", null, null,
                 "Unsere Welt", "Die Karte.", "", 0);
-        assertEquals(List.of("--site-description", "Die Karte."), ende(Webserver.befehl(konf(ohneBild), tmp.resolve("web"), null), 2));
-        assertFalse(Webserver.befehl(konf(w), null, null).contains("--site-url"), "ohne Karte keine Angaben");
+        assertEquals(List.of("--site-description", "Die Karte."), ende(Webserver.befehl(konf(ohneBild), tmp.resolve("web"), null, null), 2));
+        assertFalse(Webserver.befehl(konf(w), null, null, null).contains("--site-url"), "ohne Karte keine Angaben");
     }
 
     private static List<String> ende(List<String> b, int n) {
@@ -105,13 +105,13 @@ class WebserverTest {
         var w = new Konfiguration.Webserver(true, "127.0.0.1:8080", "", null, null, "", "", "", 0);
         assertEquals(List.of(tmp.resolve("r").toString(), "--serve", tmp.resolve("tiles").toString(),
                 "--listen", "127.0.0.1:8080", "--exit-with-stdin", "--threads", "4"),
-                Webserver.befehl(konf(w), null, null), "vier Threads, nicht renderer.threads; ohne Geheimnis kein Download");
+                Webserver.befehl(konf(w), null, null, null), "vier Threads, nicht renderer.threads; ohne Geheimnis kein Download");
     }
 
     @Test
     void server_mit_normaler_prioritaet_laeufe_mit_niedrigster() {
         var w = new Konfiguration.Webserver(true, "127.0.0.1:8080", "", null, null, "", "", "", 0);
-        assertFalse(Webserver.befehl(konf(w), tmp.resolve("web"), tmp.resolve("token.geheimnis")).contains("--low-priority"),
+        assertFalse(Webserver.befehl(konf(w), tmp.resolve("web"), tmp.resolve("token.geheimnis"), null).contains("--low-priority"),
                 "unter Volllast bekäme der Server sonst kaum CPU");
         var laeufe = new Laeufe(konf(w), Logger.getAnonymousLogger(), tmp);
         assertTrue(laeufe.befehl(new Konfiguration.Baum("2:1", "se", null, false, false, true), Laeufe.Art.UPDATE, false)

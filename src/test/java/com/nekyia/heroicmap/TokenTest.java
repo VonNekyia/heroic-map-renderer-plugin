@@ -1,6 +1,7 @@
 package com.nekyia.heroicmap;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import com.google.gson.JsonObject;
@@ -40,6 +41,26 @@ class TokenTest {
                     t.get("baum").getAsString());
             assertEquals(t.get("token").getAsString(), token, t.get("name").getAsString());
         }
+    }
+
+    @Test
+    void stellt_jede_gueltige_anmeldung_der_vektoren_aus() throws Exception {
+        var v = vektoren();
+        byte[] geheimnis = HexFormat.of().parseHex(v.get("geheimnis_hex").getAsString());
+        var gueltig = v.getAsJsonObject("anmeldung").getAsJsonArray("gueltig");
+        assertFalse(gueltig.isEmpty());
+        for (var e : gueltig) {
+            var t = e.getAsJsonObject();
+            String token = Token.anmeldung(geheimnis, UUID.fromString(t.get("uuid").getAsString()),
+                    t.get("ablauf").getAsLong(), t.get("zaehler").getAsLong(),
+                    HexFormat.of().parseHex(t.get("zufall_hex").getAsString()));
+            assertEquals(t.get("token").getAsString(), token, t.get("name").getAsString());
+        }
+        byte[] z = new byte[Token.ZUFALL];
+        var u = UUID.randomUUID();
+        assertThrows(IllegalArgumentException.class, () -> Token.anmeldung(geheimnis, u, 1, 1L << 32, z), "Zähler über u32");
+        assertThrows(IllegalArgumentException.class, () -> Token.anmeldung(geheimnis, u, 1, -1, z));
+        assertThrows(IllegalArgumentException.class, () -> Token.anmeldung(new byte[31], u, 1, 0, z));
     }
 
     @Test

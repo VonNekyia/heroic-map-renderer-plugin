@@ -11,12 +11,19 @@ commands:
     description: Karte rendern, Update, Nachverdichten, Status, Abbruch, Ebenen neu laden
     usage: /<command> render [baum]|update|compact|status|cancel|layers
     permission: heroicmap.admin
+  karte:
+    description: Auf der Webkarte an- oder abmelden, für eigene Ebenen und Knöpfe
+    usage: /<command> anmelden|abmelden
+    permission: heroicmap.web
 permissions:
   heroicmap.admin:
     description: Läufe des Renderers starten und abbrechen
     default: op
   heroicmap.layers:
     description: Ebenen im Mod sehen, siehe docs/ebenen.md
+    default: true
+  heroicmap.web:
+    description: Mit /karte anmelden auf der Webkarte anmelden, siehe docs/anmeldung.md
     default: true
   heroicmap.show:
     description: Mitspieler auf der Karte im Mod sehen und gesehen werden, siehe docs/mitspieler.md

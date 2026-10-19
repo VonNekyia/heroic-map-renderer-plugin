@@ -10,8 +10,8 @@ import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 
 /**
- * Das Token für den Kartendownload, Byte für Byte wie in docs/plugin.md, „Token“, des Renderers.
- * Siehe docs/download.md, „Token“.
+ * Die Token für den Kartendownload und die Anmeldung auf der Webkarte, Byte für Byte wie in docs/plugin.md,
+ * „Token“ und „Anmeldung und Sitzung“, des Renderers. Siehe docs/download.md, „Token“, und docs/anmeldung.md.
  */
 final class Token {
 
@@ -36,6 +36,24 @@ final class Token {
                 .put((byte) stufe).put(zufall)
                 .put((byte) b.length).put(b)
                 .array();
+        return unterschrieben(geheimnis, inhalt);
+    }
+
+    /** Die Anmeldung, Fassung 2: 45 Byte Inhalt; {@code zaehler} als u32. */
+    static String anmeldung(byte[] geheimnis, UUID spieler, long ablauf, long zaehler, byte[] zufall) {
+        if (geheimnis.length != GEHEIMNIS || zufall.length != ZUFALL || zaehler < 0 || zaehler > 0xFFFF_FFFFL) {
+            throw new IllegalArgumentException("Token: Geheimnis, Zufall oder Zähler passt nicht");
+        }
+        byte[] inhalt = ByteBuffer.allocate(45)
+                .put((byte) 2)
+                .putLong(spieler.getMostSignificantBits()).putLong(spieler.getLeastSignificantBits())
+                .putLong(ablauf).putInt((int) zaehler)
+                .put(zufall)
+                .array();
+        return unterschrieben(geheimnis, inhalt);
+    }
+
+    private static String unterschrieben(byte[] geheimnis, byte[] inhalt) {
         try {
             var mac = Mac.getInstance("HmacSHA256");
             mac.init(new SecretKeySpec(geheimnis, "HmacSHA256"));
