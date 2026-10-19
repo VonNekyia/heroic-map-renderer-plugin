@@ -89,7 +89,7 @@ final class Mitspieler {
      * Merkt sich die Wahl aus der Nachricht show und gibt die Antwort darauf; null, wenn es keine lesbare
      * Nachricht show ist. Siehe docs/download.md, „Kanal“.
      */
-    JsonObject show(byte[] nachricht, UUID spieler, boolean darf, boolean simpleVoiceChat, Instant jetzt) {
+    JsonObject show(byte[] nachricht, UUID spieler, boolean darf, boolean simpleVoiceChat, boolean web, Instant jetzt) {
         var o = alsShow(nachricht);
         String wahl;
         try {
@@ -114,6 +114,8 @@ final class Mitspieler {
         } else if (!simpleVoiceChat) {
             a.addProperty("grund", "simplevoicechat");
         }
+        // Ob dieser Spieler mit der Nachricht web einen Link bekäme; fehlt es, ist das Plugin alt.
+        a.addProperty("web", web);
         return a;
     }
 

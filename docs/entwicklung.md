@@ -280,7 +280,8 @@ Plugin das seiner Plattform aus, siehe [Konfiguration](konfiguration.md),
 - **`DownloadTest`:** Angebot, unlesbare Anfragen, „Webserver aus“, Token mit
   Stufe, Deckel und Ablauf, Fortsetzen, Wechsel des Massstabs, alle drei
   Grenzen samt `wieder`, der tägliche Abgleich um die Uhrzeit herum, das
-  Geheimnis. Ohne Bukkit; den Webserver gibt der Test als Adresse vor.
+  Geheimnis, die Nachricht `web` und ihre Antworten. Ohne Bukkit; den
+  Webserver gibt der Test als Adresse vor.
 - **Mutationen,** am 05.10.: Jede der 58 Änderungen am Code liess einen
   Test fallen, etwa ohne Begrenzung der Threads, ohne `destroy`, ohne
   `--resume`, ohne den Vergleich der ausführbaren Datei, ohne das Ende des

@@ -21,6 +21,7 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
 import java.util.logging.Level;
 import java.util.stream.Stream;
 import net.kyori.adventure.text.Component;
@@ -72,6 +73,8 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
     private volatile SpielerOrdner spieler;
     private byte[] geheimnis;
     private String kartenUrl;
+    /** url oder port für den Mod, wie in der Liste ebenen; leer, wenn er keine Adresse bekäme. */
+    private JsonObject modAdresse = new JsonObject();
     /** Was beim Schreiben je Spieler gerade scheitert; so steht jeder Fehler einmal im Log. */
     private final Set<String> spielerScheitert = ConcurrentHashMap.newKeySet();
     /** Die IPs der Spieler online, zuletzt im Hauptthread gelesen; geschrieben wird immer die neueste. */
@@ -119,6 +122,7 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
         });
         // Die Adresse erst, wenn der Webserver bereit ist, wie bei freigabe.
         var webKonf = konf.webserver();
+        modAdresse = EbenenFuerMod.adresse(webKonf);
         fuerMod = new EbenenFuerMod(() -> webserver != null && webserver.bereit() ? EbenenFuerMod.adresse(webKonf) : new JsonObject(),
                 Banner.geheim(getDataFolder().toPath()), getLogger(), ebenen.api().knoepfe());
         getServer().getAsyncScheduler().runAtFixedRate(this, t -> {
@@ -195,7 +199,13 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
             frageTafel(player, message);
             return;
         }
-        var antwort = mitspieler.show(message, player.getUniqueId(), player.hasPermission(SHOW), simpleVoiceChat, Instant.now());
+        if (Download.istWeb(message)) {
+            web(player);
+            return;
+        }
+        // web: Dieser Spieler bekäme einen Link für „Im Browser öffnen“. Siehe docs/download.md, „Kanal“.
+        boolean web = player.hasPermission(WEB) && spieler != null && modAdresse.size() > 0;
+        var antwort = mitspieler.show(message, player.getUniqueId(), player.hasPermission(SHOW), simpleVoiceChat, web, Instant.now());
         if (antwort != null) {
             player.sendPluginMessage(this, Download.KANAL, antwort.toString().getBytes(StandardCharsets.UTF_8));
         }
@@ -581,36 +591,81 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
             });
             return true;
         }
-        long jetzt = Instant.now().getEpochSecond();
-        Long vorher = letzteAnmeldung.get(u);
-        if (vorher != null && jetzt - vorher < ANMELDUNG_ABSTAND) {
+        String grund = stelleAnmeldungAus(p, token -> p.sendMessage(token == null
+                ? Component.text("Anmelden ging nicht; sag es bitte einem Admin.")
+                // Im Fragment: Es steht in keinem Log und geht in keinem Referer mit.
+                : Component.text("Anmelden auf der Webkarte, 5 min lang und nur einmal: ").append(Component.text("Link öffnen")
+                        .decorate(TextDecoration.UNDERLINED).clickEvent(ClickEvent.openUrl(kartenUrl + "/#anmelden=" + token)))));
+        if ("rate".equals(grund)) {
             p.sendMessage("Einen neuen Link gibt es frühestens 15 s nach dem letzten.");
-            return true;
-        }
-        if (webserver == null || !webserver.bereit()) {
+        } else if (grund != null) {
             p.sendMessage("Die Webkarte läuft gerade nicht; versuch es gleich noch einmal.");
-            return true;
+        }
+        return true;
+    }
+
+    /**
+     * Im Hauptthread: ein Token der Anmeldung für {@code p}, für /karte anmelden und die Nachricht web des Mods, mit
+     * derselben Rate. Gibt, warum nicht: webserver, wenn es keine Anmeldung gibt oder der Webserver nicht bereit ist,
+     * rate, wenn der letzte Link keine 15 s her ist. Sonst null, und {@code fertig} bekommt im Hauptthread das Token,
+     * oder null, wenn die Platte nicht ging. Siehe docs/anmeldung.md, „Befehl“.
+     */
+    private String stelleAnmeldungAus(Player p, Consumer<String> fertig) {
+        var s = spieler;
+        if (s == null || webserver == null || !webserver.bereit()) {
+            return "webserver";
+        }
+        UUID u = p.getUniqueId();
+        long jetzt = Instant.now().getEpochSecond();
+        if (wieder(u, jetzt) > 0) {
+            return "rate";
         }
         letzteAnmeldung.put(u, jetzt);
         String name = p.getName();
         getServer().getAsyncScheduler().runNow(this, t -> {
-            Component antwort;
+            String token = null;
             try {
                 long zaehler = s.meldeAn(u, name);
                 byte[] z = new byte[Token.ZUFALL];
                 zufall.nextBytes(z);
-                // Im Fragment: Es steht in keinem Log und geht in keinem Referer mit.
-                String link = kartenUrl + "/#anmelden=" + Token.anmeldung(geheimnis, u, jetzt + ANMELDUNG_GILT, zaehler, z);
-                antwort = Component.text("Anmelden auf der Webkarte, 5 min lang und nur einmal: ")
-                        .append(Component.text("Link öffnen").decorate(TextDecoration.UNDERLINED).clickEvent(ClickEvent.openUrl(link)));
+                token = Token.anmeldung(geheimnis, u, jetzt + ANMELDUNG_GILT, zaehler, z);
             } catch (IOException e) {
+                // Nie das Token ins Log; hier gibt es noch keins.
                 getLogger().log(Level.WARNING, "Anmelden von " + u + " ging nicht", e);
-                antwort = Component.text("Anmelden ging nicht; sag es bitte einem Admin.");
             }
-            Component a = antwort;
-            getServer().getGlobalRegionScheduler().execute(this, () -> p.sendMessage(a));
+            String fertigesToken = token;
+            getServer().getGlobalRegionScheduler().execute(this, () -> fertig.accept(fertigesToken));
         });
-        return true;
+        return null;
+    }
+
+    /** Wie viele Sekunden {@code u} noch auf den nächsten Anmeldelink wartet; 0, wenn er jetzt einen bekommt. */
+    private long wieder(UUID u, long jetzt) {
+        Long vorher = letzteAnmeldung.get(u);
+        return vorher == null ? 0 : Math.max(0, ANMELDUNG_ABSTAND - (jetzt - vorher));
+    }
+
+    /**
+     * Im Hauptthread: die Nachricht web aus dem Mod, „Im Browser öffnen“. Dieselbe Logik und Rate wie /karte anmelden;
+     * den Link baut der Mod aus der Adresse, von der er die Kacheln holt. Siehe docs/download.md, „Kanal“.
+     */
+    private void web(Player p) {
+        String grund = !p.hasPermission(WEB) ? "permission" : modAdresse.size() == 0 ? "webserver" : null;
+        if (grund == null) {
+            grund = stelleAnmeldungAus(p, token -> antworteWeb(p, token, "sonst"));
+        }
+        if (grund != null) {
+            antworteWeb(p, null, grund);
+        }
+    }
+
+    private void antworteWeb(Player p, String token, String grund) {
+        if (!p.isOnline()) {
+            return;
+        }
+        long jetzt = Instant.now().getEpochSecond();
+        var a = Download.web(token, grund, "rate".equals(grund) ? wieder(p.getUniqueId(), jetzt) : null, Instant.ofEpochSecond(jetzt));
+        p.sendPluginMessage(this, Download.KANAL, a.toString().getBytes(StandardCharsets.UTF_8));
     }
 
     @Override

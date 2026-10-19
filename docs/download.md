@@ -45,8 +45,10 @@ Bukkit, und in `Kanal`, der den Kanal und den Stand im Spieler bedient.
 | Server → Mod | `abgelehnt` | `baum`, `art`, `grund` (Text für den Spieler), `wieder` (Epoch s, falls bekannt) | siehe „Anfrage“ |
 | Server → Mod | `spieler` | `spieler`: je Spieler, den der Empfänger sieht, `uuid`, `name`, `dimension`, `x`, `z` | etwa jede Sekunde, solange jemand zu sehen ist; endet die Sicht, einmal mit leerer Liste, siehe [Mitspieler](mitspieler.md), „Wer wen sieht“ |
 | Mod → Server | `show` | `show`: `hidden` oder `simplevoicechat` | sobald der Kanal geht, und nach jeder Änderung der Wahl |
-| Server → Mod | `show` | `erlaubt`: `true` oder `false`; bei `false` `grund`: `permission` oder `simplevoicechat` | auf jede lesbare `show`, siehe [Mitspieler](mitspieler.md), „Die Wahl show“ |
-| Server → Mod | `ebenen` | die Ebenen, die der Spieler sehen darf, mit `version`, dazu `url` oder `port` | wenn sich für ihn etwas ändert, siehe [Ebenen](ebenen.md), „Mod“ |
+| Server → Mod | `show` | `erlaubt`: `true` oder `false`; bei `false` `grund`: `permission` oder `simplevoicechat`; dazu `web`: `true`, wenn dieser Spieler mit `web` einen Link bekäme | auf jede lesbare `show`, siehe [Mitspieler](mitspieler.md), „Die Wahl show“ |
+| Server → Mod | `ebenen` | die Ebenen, die der Spieler sehen darf, mit `version`, dazu `url` oder `port` | wenn sich für ihn etwas ändert, auch ohne Ebenen, sobald es eine Adresse gibt, siehe [Ebenen](ebenen.md), „Mod“ |
+| Mod → Server | `web` | keine | „Im Browser öffnen“, nur bei `web: true` in der Antwort auf `show`, siehe „Im Browser öffnen“ |
+| Server → Mod | `web` | `erlaubt`; mit `true` `token`, sonst `grund`: `permission`, `webserver`, `rate` mit `wieder` in s, oder `sonst` | auf jede lesbare `web` |
 | Server → Mod | `ebene` | `id`, `version`, `teil`, `teile`, `objects`: alle Objekte einer Ebene ohne Tafel | nach `ebenen`, je neuer oder geänderter Ebene, siehe [Ebenen](ebenen.md), „Mod“ |
 | Mod → Server | `tafel` | `ebene`, `version`, `id` | ruht der Zeiger auf einem Objekt, je Objekt und `version` einmal, siehe [Ebenen](ebenen.md), „Tafeln“ |
 | Server → Mod | `tafel` | `ebene`, `version`, `id`, dazu `panel`, wenn das Objekt eine Tafel oder Knöpfe hat und `version` die aktuelle ist | auf jede lesbare `tafel` einer Ebene, die der Spieler sehen darf, im Takt der Ebenen |
@@ -79,8 +81,27 @@ Bukkit, und in `Kanal`, der den Kanal und den Stand im Spieler bedient.
   {"v":1,"typ":"show","jetzt":1760000000,"erlaubt":false,"grund":"permission"}
   ```
 
-  `Kanal` lässt `show` und `tafel` aus, sonst wären sie unlesbare
-  `anfrage`; die Antworten gibt `HeroicMapPlugin`.
+  `Kanal` lässt `show`, `tafel`, `banner`, `knopf` und `web` aus, sonst
+  wären sie unlesbare `anfrage`; die Antworten gibt `HeroicMapPlugin`.
+- **Im Browser öffnen:** Der Mod fragt mit `web` nach einem Token der
+  Anmeldung, wie `/karte anmelden` es ausstellt, und öffnet
+  `<Basis der Kacheln ohne /tiles>/#anmelden=<token>`, siehe
+  [Anmeldung](anmeldung.md), „Befehl“:
+
+  ```json
+  {"v":1,"typ":"web"}
+  {"v":1,"typ":"web","jetzt":1760000000,"erlaubt":true,"token":"Ao88K24N…"}
+  {"v":1,"typ":"web","jetzt":1760000000,"erlaubt":false,"grund":"rate","wieder":12}
+  ```
+
+  - Die Adresse schickt das Plugin nicht: Der Mod baut sie aus `url` oder
+    `port` der Liste `ebenen` und öffnet so nie eine Adresse, die der
+    Server vorgibt. Die Karte liegt dort, wo `/tiles` endet.
+  - `webserver` heisst: keine Anmeldung auf diesem Server, keine Adresse
+    für den Mod, etwa HTTPS ohne `url`, oder der Webserver läuft gerade
+    nicht. `sonst`: Die Platte ging nicht; das steht im Log, nie das Token.
+  - Ein altes Plugin kennt `web` nicht und hat kein `web` in der Antwort
+    auf `show`; dann fragt der Mod nicht.
 - **`dimension`** im `angebot` folgt aus `world` in `config.yml`. Die
   Weltwurzel ist `minecraft:overworld`, ein Ordner `dimensions/<ns>/<name>`
   heisst `<ns>:<name>`. `map.json` nennt keine Dimension.

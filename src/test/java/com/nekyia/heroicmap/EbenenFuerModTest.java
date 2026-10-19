@@ -714,6 +714,12 @@ class EbenenFuerModTest {
         var neu = m.nachrichten(SAM, true, p -> true, JETZT);
         assertEquals(1, neu.size(), "nur die Liste, mit Adresse");
         assertEquals(8080, lies(neu.getFirst()).get("port").getAsInt());
+
+        // Mit Adresse auch ohne Ebenen, einmal: die Basis für „Im Browser öffnen“.
+        var ohneEbenen = new EbenenFuerMod(() -> adresse[0]);
+        var liste = ohneEbenen.nachrichten(SAM, false, p -> true, JETZT);
+        assertEquals(List.of("{\"v\":1,\"typ\":\"ebenen\",\"jetzt\":1760000000,\"ebenen\":[],\"port\":8080}"), liste);
+        assertEquals(List.of(), ohneEbenen.nachrichten(SAM, false, p -> true, JETZT + 1), "nur einmal");
     }
 
     @Test
