@@ -1,9 +1,10 @@
 ---
 title: Mitspieler
-description: Ein Spieler mit dem Mod sieht auf der Karte die Spieler, die ihn in Simple Voice Chat hören, wenn beide es im Mod gewählt haben und die Permission heroicmap.show haben. Die Wahl show je Spieler, wer wen hört, mit Beleg aus Javadoc und Code von Simple Voice Chat, wer wen sieht, der Takt im Hauptthread, die Brücke zu Simple Voice Chat als weiche Abhängigkeit und was ohne ihn geschieht; dazu dieselbe Sicht auf der Webkarte.
+description: Ein Spieler mit dem Mod sieht auf der Karte die Spieler, die ihn in Simple Voice Chat hören, wenn beide es im Mod gewählt haben und die Permission heroicmap.show haben. Die Wahl show je Spieler, wer wen hört, mit Beleg aus Javadoc und Code von Simple Voice Chat, wer wen sieht, wer unsichtbar ist und fehlt, der Takt im Hauptthread, die Brücke zu Simple Voice Chat als weiche Abhängigkeit und was ohne ihn geschieht; dazu dieselbe Sicht auf der Webkarte.
 code:
   - src/main/java/com/nekyia/heroicmap/Mitspieler.java
   - src/main/java/com/nekyia/heroicmap/Sprachchat.java
+  - src/main/java/com/nekyia/heroicmap/Unsichtbar.java
   - src/main/java/com/nekyia/heroicmap/HeroicMapPlugin.java
   - src/main/resources/plugin.yml
   - src/test/java/com/nekyia/heroicmap/MitspielerTest.java
@@ -156,6 +157,8 @@ siehe unten. Der Code steht in `Mitspieler.sieht`.
 
 - **Ohne Permission oder mit `hidden`** sieht man niemanden und wird von
   niemandem gesehen.
+- **Wer für E unsichtbar ist,** fehlt bei E immer, siehe „Unsichtbare
+  Spieler“.
 - **Ein Zuschauer** (`GameMode.SPECTATOR`) sieht alle anderen Spieler
   online, aus jeder Dimension, auch andere Zuschauer. Ob er sie hört, was
   sie gewählt haben und ob sie die Permission haben, zählt nicht; der Mod
@@ -174,12 +177,47 @@ siehe unten. Der Code steht in `Mitspieler.sieht`.
   Permission oder mit `hidden` ist seine Liste leer, und eine leere Liste
   kommt nur einmal, wenn vorher jemand zu sehen war, siehe „Takt“.
 
+## Unsichtbare Spieler
+
+Wer für einen Betrachter unsichtbar ist, erscheint bei ihm nie als
+Mitspieler, weder im Mod noch auf der Webkarte in `sicht.json`, auch nicht
+bei einem Zuschauer (#87). Anlass war ein Fehlerbericht vom 20.10.: Ein
+Admin mit dem Vanish eines anderen Plugins erschien auf der Karte anderer
+Spieler in der Nähe.
+
+- **Unsichtbar** ist ein Spieler H für einen Betrachter E, wenn:
+  - `H.getMetadata("vanished")` einen Wert hat, dessen `asBoolean()` wahr
+    ist. Unter diesem Schlüssel legen Plugins für Vanish den Zustand für
+    andere Plugins ab. Ein wahrer Wert reicht, auch wenn ein anderes Plugin
+    einen falschen setzt;
+  - oder `E.canSee(H)` falsch ist, also ein Plugin H vor E mit
+    `hidePlayer` verborgen hat.
+- **Mit `vanished` für alle:** H fehlt dann bei jedem, auch bei einem, der
+  ihn im Spiel sähe, etwa einem Admin mit dem Recht dazu. Nur `canSee`
+  unterscheidet je Betrachter.
+- **Der Unsichtbare selbst** sieht weiter alle, nach denselben Regeln wie
+  vorher.
+- **Im Hauptthread:** `Sprachchat.takt` fragt beides je Paar ab, im Takt
+  über `GlobalRegionScheduler`. Den tickt Paper im Hauptthread:
+  `MinecraftServer.tickChildren` ruft nach
+  `CraftScheduler.mainThreadHeartbeat` `FoliaGlobalRegionScheduler.tick`,
+  belegt per `javap` an Paper 26.2, Build 129. Dort dürfen `canSee` und
+  `getMetadata` laufen.
+- **Im Code:** `Unsichtbar.vor` prüft ein Paar. `Mitspieler.Spieler`
+  trägt in `unsichtbar`, wer für diesen Spieler unsichtbar ist, und
+  `Mitspieler.sieht` lässt sie aus.
+- **Kosten:** n² Paare je Sekunde, je Paar eine Liste der Metadaten und ein
+  Nachschlagen in den verborgenen Spielern. Nicht gemessen.
+- **Getestet** in `MitspielerTest`: der Filter im Mod, auf der Webkarte und
+  für Zuschauer, dazu `Unsichtbar.vor` mit Spielern als Proxy; die Brücke
+  selbst braucht die API von Simple Voice Chat und läuft nicht im Test.
+
 ## Takt
 
 - **Einmal je Sekunde,** alle 20 Ticks, über
   `GlobalRegionScheduler.runAtFixedRate`. Unter Paper läuft das im
   Hauptthread; dort liest `Sprachchat.takt` je Spieler Lage, Welt, Stimme,
-  die Permission und ob er Zuschauer ist.
+  die Permission, ob er Zuschauer ist und wer für ihn unsichtbar ist.
 - **Nur Spieler mit offenem Kanal** bekommen eine Nachricht, also mit
   `heroicmap:karte` in `getListeningPluginChannels`. Gezeigt werden auch
   Spieler ohne Mod.
@@ -202,8 +240,8 @@ Mitspieler wie im Mod (#305), siehe [Anmeldung](anmeldung.md),
 „Mitspieler“.
 
 - **Dieselbe Regel:** `Mitspieler.takt` rechnet je Betrachter mit
-  `sieht`, wie für den Mod; ein Betrachter mit Mod bekommt dieselbe Liste
-  in beide. Die Betrachter setzt das Plugin jede Sekunde
+  `sieht`, wie für den Mod, also auch ohne Unsichtbare; ein Betrachter mit
+  Mod bekommt dieselbe Liste in beide. Die Betrachter setzt das Plugin jede Sekunde
   (`Mitspieler.betrachter`): Zuschauer, die online sind.
 - **Ohne Simple Voice Chat** läuft kein Takt, und ein Betrachter sieht nur
   sich.

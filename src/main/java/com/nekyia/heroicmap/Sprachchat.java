@@ -9,6 +9,8 @@ import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import org.bukkit.GameMode;
 import org.bukkit.entity.Player;
@@ -16,8 +18,8 @@ import org.bukkit.plugin.java.JavaPlugin;
 
 /**
  * Die Brücke zu Simple Voice Chat, die einzige Klasse, die seine API berührt; geladen nur, wenn er auf dem
- * Server liegt. Einmal je Sekunde im Hauptthread: Lage und Stimme jedes Spielers, dann die Nachrichten aus
- * {@link Mitspieler#takt}. Siehe docs/mitspieler.md.
+ * Server liegt. Einmal je Sekunde im Hauptthread: Lage und Stimme jedes Spielers und wer für ihn unsichtbar ist,
+ * dann die Nachrichten aus {@link Mitspieler#takt}. Siehe docs/mitspieler.md.
  */
 final class Sprachchat implements VoicechatPlugin {
 
@@ -65,11 +67,18 @@ final class Sprachchat implements VoicechatPlugin {
         }
         var alle = new ArrayList<Mitspieler.Spieler>();
         var mitKanal = new HashSet<UUID>();
-        for (Player p : plugin.getServer().getOnlinePlayers()) {
+        List<Player> online = List.copyOf(plugin.getServer().getOnlinePlayers());
+        for (Player p : online) {
             var l = p.getLocation();
+            var unsichtbar = new HashSet<UUID>();
+            for (Player z : online) {
+                if (z != p && Unsichtbar.vor(p, z)) {
+                    unsichtbar.add(z.getUniqueId());
+                }
+            }
             alle.add(new Mitspieler.Spieler(p.getUniqueId(), p.getName(), p.getWorld().getKey().toString(),
                     l.getX(), l.getY(), l.getZ(), stimme(a, p), p.hasPermission(HeroicMapPlugin.SHOW),
-                    p.getGameMode() == GameMode.SPECTATOR));
+                    p.getGameMode() == GameMode.SPECTATOR, Set.copyOf(unsichtbar)));
             if (p.getListeningPluginChannels().contains(Download.KANAL)) {
                 mitKanal.add(p.getUniqueId());
             }
