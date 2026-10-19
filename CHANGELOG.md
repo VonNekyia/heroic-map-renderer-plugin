@@ -7,6 +7,10 @@ Links und die Hinweise aus `NOTICE` setzt
 [`.github/notizen.sh`](.github/notizen.sh) dazu. Siehe
 [Entwicklung](docs/entwicklung.md), „Release“.
 
+## 0.13.3
+
+- **Renderer 0.13.1** inside: an update that is cancelled, for example by a server stop, no longer makes the next update much larger; with cinematic it grew many times over with each cancel. No full render needed. A tree that already grew large after many cancelled updates is faster with one full render.
+
 ## 0.13.2
 
 - **Invisible players stay hidden:** a player hidden by a vanish plugin (metadata `vanished`) or hidden from a viewer (`hidePlayer`) no longer appears as another player on the map, neither in the mod nor on the web map. They still see the others.
