@@ -33,6 +33,8 @@ class KnoepfeTest {
         assertThrows(IllegalArgumentException.class, () -> k.knopf("proficisci", "ohne", null, null), "de oder en");
         assertThrows(IllegalArgumentException.class, () -> k.knopf("proficisci", "lang", "x".repeat(33), null), "höchstens 32 Zeichen");
         assertThrows(IllegalArgumentException.class, () -> k.knopf("proficisci", "leer", " ", null));
+        assertThrows(IllegalArgumentException.class, () -> k.knopf("proficisci", "farbe", null, "§aShip"), "ohne §");
+        assertThrows(IllegalArgumentException.class, () -> k.knopf("proficisci", "farbe", "Schiff", "§a"), "auch in der zweiten Sprache");
         assertThrows(IllegalArgumentException.class, () -> k.knopf("proficisci", "Gross", "x", null), "Regel einer Kennung");
         for (int i = 1; i < Knoepfe.JE_BESITZER; i++) {
             k.knopf("proficisci", "k" + i, "x", null);

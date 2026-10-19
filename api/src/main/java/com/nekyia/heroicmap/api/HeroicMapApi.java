@@ -46,8 +46,8 @@ public interface HeroicMapApi {
      *
      * @param owner the calling plugin itself, as for {@link #layer}
      * @param name the rule of {@link #layer}
-     * @param de the label in German, or null; at most 32 characters
-     * @param en the label in English, or null; at most 32 characters; one of both is required
+     * @param de the label in German, or null; at most 32 characters, no formatting codes with §
+     * @param en the label in English, or null; at most 32 characters, no formatting codes with §; one of both is required
      * @throws IllegalArgumentException if the name or label is not allowed, or the owner already has 64 buttons
      * @throws IllegalStateException if {@code owner} is disabled
      */
