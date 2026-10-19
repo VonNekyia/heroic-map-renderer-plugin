@@ -11,6 +11,11 @@ Links und die Hinweise aus `NOTICE` setzt
 
 - **Action layers and buttons** in the [layer API](https://github.com/VonNekyia/heroic-map-renderer-plugin/blob/main/docs/api.md): a plugin can show each player objects of their own, and hang buttons below the panel of objects, also of layers of other plugins. A click in the companion mod is an event for the plugin that owns the button. The web map follows in a later release.
 
+## 0.10.1
+
+- **Renderer 0.11.0** inside: seen from above, grass, flowers, crops and seagrass now lie flat on their block instead of disappearing, in the views from the top and in the flat map.
+- **Full render needed** for maps with look `map` and `flat`: renderer 0.11.0 draws them differently (drawing stand 4 and 5). Maps with look `cinematic` keep updating.
+
 ## 0.10.0
 
 - **Renderer 0.10.0** inside: the companion mod can now download a whole map in one stream instead of tile by tile, which is much faster behind a proxy and can resume after an interruption.
