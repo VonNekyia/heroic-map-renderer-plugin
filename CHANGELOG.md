@@ -7,6 +7,10 @@ Links und die Hinweise aus `NOTICE` setzt
 [`.github/notizen.sh`](.github/notizen.sh) dazu. Siehe
 [Entwicklung](docs/entwicklung.md), „Release“.
 
+## 0.12.0
+
+- **Log in on the web map:** players run `/karte anmelden` in game and get a link. Logged in, the web map shows them their action layers and the buttons of the layer API, and a click there is the same event for the plugin as a click in the companion mod. `/karte abmelden` ends every session of the player. New permission `heroicmap.web`, by default everyone. The link needs `webserver.url`.
+
 ## 0.11.0
 
 - **Action layers and buttons** in the [layer API](https://github.com/VonNekyia/heroic-map-renderer-plugin/blob/main/docs/api.md): a plugin can show each player objects of their own, and hang buttons below the panel of objects, also of layers of other plugins. A click in the companion mod is an event for the plugin that owns the button. The web map follows in a later release.

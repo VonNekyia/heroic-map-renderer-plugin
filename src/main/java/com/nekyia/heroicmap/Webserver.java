@@ -237,7 +237,12 @@ final class Webserver {
         try (var r = p.inputReader(StandardCharsets.UTF_8)) {
             for (String z; (z = r.readLine()) != null; ) {
                 if (z.startsWith(AKTION)) {
-                    aktion.accept(z.substring(AKTION.length()));
+                    // Ein Fehler beim Klick beendet nie den Server; sonst fiele die Karte mit.
+                    try {
+                        aktion.accept(z.substring(AKTION.length()));
+                    } catch (RuntimeException e) {
+                        log.log(Level.WARNING, "Klick von der Webkarte nicht angenommen", e);
+                    }
                     continue;
                 }
                 var m = ADRESSE.matcher(z);

@@ -146,9 +146,12 @@ The documentation is in German.
 | `/heroicmap status` | what runs, since when, and how the last run of each view ended |
 | `/heroicmap cancel` | stop the current run |
 | `/heroicmap layers` | reload the layer files |
+| `/karte anmelden` | a link to log in on the web map, for action layers and buttons |
+| `/karte abmelden` | end every web map session of this player |
 
-`heroicmap.admin` (op) for the commands; `heroicmap.layers` and
-`heroicmap.show` (everyone) for layers and players in the mod.
+`heroicmap.admin` (op) for `/heroicmap`; `heroicmap.layers` and
+`heroicmap.show` (everyone) for layers and players in the mod;
+`heroicmap.web` (everyone) for `/karte`.
 
 ## Companion mod
 

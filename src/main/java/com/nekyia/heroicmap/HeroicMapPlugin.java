@@ -348,15 +348,16 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
                 return null;
             }
         }
+        geheimnis = g;
+        kartenUrl = konf.webserver().url();
         try {
             Files.createDirectories(ordner);
+            // Zuletzt: Mit spieler gilt die Anmeldung als bereit.
             spieler = new SpielerOrdner(ordner, konf.dimension());
         } catch (IOException e) {
             getLogger().log(Level.SEVERE, "Ordner je Spieler nicht gelesen, keine Anmeldung auf der Webkarte", e);
             return null;
         }
-        geheimnis = g;
-        kartenUrl = konf.webserver().url();
         if (kartenUrl.isEmpty()) {
             getLogger().warning("Ohne webserver.url gibt /karte anmelden keinen Link.");
         }

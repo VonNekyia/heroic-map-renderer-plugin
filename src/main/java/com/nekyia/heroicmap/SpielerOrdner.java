@@ -86,7 +86,7 @@ final class SpielerOrdner {
 
     /**
      * Erhöht den Zähler um eins; so endet jede Sitzung des Spielers. False ohne Ordner: Dann hat er keine. Die Datei
-     * verschwindet nie und sinkt nie, siehe docs/anmeldung.md, „Abmelden“.
+     * verschwindet nie und sinkt nie, siehe docs/anmeldung.md, „Dateien je Spieler“.
      */
     synchronized boolean meldeAb(UUID u) throws IOException {
         if (!bekannt.contains(u)) {
