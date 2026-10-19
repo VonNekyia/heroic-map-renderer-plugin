@@ -7,6 +7,10 @@ Links und die Hinweise aus `NOTICE` setzt
 [`.github/notizen.sh`](.github/notizen.sh) dazu. Siehe
 [Entwicklung](docs/entwicklung.md), „Release“.
 
+## 0.13.1
+
+- **Renderer 0.13.0** inside: other players on the web map, seen as in the mod; about 30 % less memory for flat maps. No full render needed.
+
 ## 0.13.0
 
 - **Renderer 0.12.0** inside: it serves the players on the web map and the recognition by IP. No full render needed: maps rendered with renderer 0.11.0 keep updating.
