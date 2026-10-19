@@ -38,7 +38,8 @@ unbekannt, siehe [Konfiguration](konfiguration.md), „Nach einem Update“.
 - **Die Antwort** auf jede lesbare Nachricht `show` sagt, ob die
   Mitspieler hier gehen: `erlaubt`, sonst mit `grund` `permission` oder
   `simplevoicechat`. Fehlt beides, nennt sie die Permission. Der Mod zeigt
-  das im Menü. Eine Nachricht `show` mit einem anderen Wert, mit einem
+  das im Menü. Dazu `web`: ob dieser Spieler über den Kanal einen Link für
+  die Webkarte bekäme, siehe [Download](download.md), „Kanal“. Eine Nachricht `show` mit einem anderen Wert, mit einem
   anderen `v` als 1 oder über 1024 Byte bleibt ohne Antwort und ändert
   nichts.
 - **Die Permission** `heroicmap.show` steht in `plugin.yml` mit

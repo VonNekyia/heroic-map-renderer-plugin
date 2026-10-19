@@ -459,8 +459,9 @@ final class EbenenFuerMod {
         }
         var g = gesendet.computeIfAbsent(spieler, k -> new Gesendet());
         var a = adresse.get();
-        // Ohne Ebenen keine Liste; ändert sich die Adresse, kommt die Liste neu.
-        String unterschrift = sicht.isEmpty() ? ""
+        // Ohne Ebenen und ohne Adresse keine Liste; mit Adresse auch ohne Ebenen, für die Basis von „Im Browser öffnen“.
+        // Ändert sich die Adresse, kommt die Liste neu. Siehe docs/ebenen.md, „Mod“.
+        String unterschrift = sicht.isEmpty() && a.size() == 0 ? ""
                 : a + "|" + sicht.stream().map(e -> e.id() + "=" + e.version()).collect(Collectors.joining(","));
         var aus = new ArrayList<String>();
         if (!unterschrift.equals(g.liste)) {

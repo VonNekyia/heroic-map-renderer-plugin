@@ -183,17 +183,17 @@ class MitspielerTest {
         var m = new Mitspieler();
         assertEquals(Set.of(a.uuid(), b.uuid()), empfaenger(m, a, b));
 
-        assertTrue(m.show(show("hidden"), b.uuid(), true, true, JETZT).get("erlaubt").getAsBoolean());
+        assertTrue(m.show(show("hidden"), b.uuid(), true, true, false, JETZT).get("erlaubt").getAsBoolean());
         var raus = m.takt(List.of(a, b), Set.of(a.uuid(), b.uuid()), WEITE, JETZT);
         assertEquals(Set.of(a.uuid(), b.uuid()), raus.keySet(), "beide bekommen einmal die leere Liste");
         assertTrue(raus.values().stream().allMatch(n -> n.getAsJsonArray("spieler").isEmpty()),
                 "b sieht niemanden und wird nicht gesehen");
         assertEquals(Set.of(), empfaenger(m, a, b));
 
-        m.show(show("simplevoicechat"), b.uuid(), true, true, JETZT);
+        m.show(show("simplevoicechat"), b.uuid(), true, true, false, JETZT);
         assertEquals(Set.of(a.uuid(), b.uuid()), empfaenger(m, a, b), "zurück auf simplevoicechat");
 
-        m.show(show("hidden"), a.uuid(), true, true, JETZT);
+        m.show(show("hidden"), a.uuid(), true, true, false, JETZT);
         assertEquals(Set.of(), empfaenger(m, a, b), "auch von der anderen Seite");
         m.vergiss(a.uuid());
         assertEquals(Set.of(a.uuid(), b.uuid()), empfaenger(m, a, b), "nach dem Verlassen gilt wieder simplevoicechat");
@@ -203,27 +203,29 @@ class MitspielerTest {
     void antwort_auf_show() {
         var m = new Mitspieler();
         var u = new UUID(0, 7);
-        assertEquals("{\"v\":1,\"typ\":\"show\",\"jetzt\":1760000000,\"erlaubt\":true}",
-                m.show(show("simplevoicechat"), u, true, true, JETZT).toString());
-        assertEquals("{\"v\":1,\"typ\":\"show\",\"jetzt\":1760000000,\"erlaubt\":true}",
-                m.show(show("hidden"), u, true, true, JETZT).toString(), "auch wer hidden wählt, darf");
-        assertEquals("{\"v\":1,\"typ\":\"show\",\"jetzt\":1760000000,\"erlaubt\":false,\"grund\":\"permission\"}",
-                m.show(show("simplevoicechat"), u, false, true, JETZT).toString());
-        assertEquals("{\"v\":1,\"typ\":\"show\",\"jetzt\":1760000000,\"erlaubt\":false,\"grund\":\"simplevoicechat\"}",
-                m.show(show("simplevoicechat"), u, true, false, JETZT).toString());
-        assertEquals("permission", m.show(show("hidden"), u, false, false, JETZT).get("grund").getAsString(),
+        assertEquals("{\"v\":1,\"typ\":\"show\",\"jetzt\":1760000000,\"erlaubt\":true,\"web\":false}",
+                m.show(show("simplevoicechat"), u, true, true, false, JETZT).toString());
+        assertEquals("{\"v\":1,\"typ\":\"show\",\"jetzt\":1760000000,\"erlaubt\":true,\"web\":false}",
+                m.show(show("hidden"), u, true, true, false, JETZT).toString(), "auch wer hidden wählt, darf");
+        assertEquals("{\"v\":1,\"typ\":\"show\",\"jetzt\":1760000000,\"erlaubt\":false,\"grund\":\"permission\",\"web\":false}",
+                m.show(show("simplevoicechat"), u, false, true, false, JETZT).toString());
+        assertEquals("{\"v\":1,\"typ\":\"show\",\"jetzt\":1760000000,\"erlaubt\":false,\"grund\":\"simplevoicechat\",\"web\":false}",
+                m.show(show("simplevoicechat"), u, true, false, false, JETZT).toString());
+        assertTrue(m.show(show("hidden"), u, false, false, true, JETZT).get("web").getAsBoolean(),
+                "web für „Im Browser öffnen“, unabhängig von show");
+        assertEquals("permission", m.show(show("hidden"), u, false, false, false, JETZT).get("grund").getAsString(),
                 "ohne beides zuerst die Permission");
 
         for (String falsch : List.of("{\"v\":1,\"typ\":\"show\",\"show\":\"alle\"}", "{\"v\":2,\"typ\":\"show\",\"show\":\"hidden\"}",
                 "{\"v\":1,\"typ\":\"show\"}", "kein json", "{\"v\":1,\"typ\":\"anfrage\",\"baum\":\"top-north-s\"}")) {
-            assertEquals(null, m.show(falsch.getBytes(StandardCharsets.UTF_8), u, true, true, JETZT), falsch);
+            assertEquals(null, m.show(falsch.getBytes(StandardCharsets.UTF_8), u, true, true, false, JETZT), falsch);
         }
         assertTrue(Mitspieler.istShow(show("alle")), "show mit falschem Wert ist trotzdem keine Anfrage");
         assertFalse(Mitspieler.istShow("{\"v\":1,\"typ\":\"anfrage\"}".getBytes(StandardCharsets.UTF_8)));
         var gross = ("{\"v\":1,\"typ\":\"show\",\"show\":\"hidden\",\"x\":\"" + "a".repeat(Download.GROESSTE_ANFRAGE) + "\"}")
                 .getBytes(StandardCharsets.UTF_8);
         assertFalse(Mitspieler.istShow(gross), "über 1024 Byte");
-        assertEquals(null, m.show(gross, u, true, true, JETZT));
+        assertEquals(null, m.show(gross, u, true, true, false, JETZT));
     }
 
     private static Spieler zuschauer(Spieler p, boolean zuschauer) {
@@ -240,7 +242,7 @@ class MitspielerTest {
         var versteckt = bei(2, OHNE_GRUPPE);
         var ohneRecht = new Spieler(new UUID(2, 2), "OhneRecht", OBERWELT, 3, 64, 0, Stimme.STUMM, false, false);
         var andererZuschauer = zuschauer(bei(4, OHNE_GRUPPE), true);
-        m.show(show("hidden"), versteckt.uuid(), true, true, JETZT);
+        m.show(show("hidden"), versteckt.uuid(), true, true, false, JETZT);
         var alle = List.of(z, weit, nether, isoliert, versteckt, ohneRecht, andererZuschauer);
         for (var h : alle) {
             assertEquals(!h.equals(z), m.sieht(z, h, WEITE), "ohne Stimme, über Welt und Weite, hidden, ohne Permission: "
@@ -268,10 +270,10 @@ class MitspielerTest {
         var m = new Mitspieler();
         var z = zuschauer(bei(0, OHNE_GRUPPE), true);
         var a = bei(1, OHNE_GRUPPE);
-        m.show(show("hidden"), z.uuid(), true, true, JETZT);
+        m.show(show("hidden"), z.uuid(), true, true, false, JETZT);
         assertFalse(m.sieht(z, a, WEITE), "mit eigener Wahl hidden niemand");
         assertEquals(Set.of(), empfaenger(m, z, a));
-        m.show(show("simplevoicechat"), z.uuid(), true, true, JETZT);
+        m.show(show("simplevoicechat"), z.uuid(), true, true, false, JETZT);
         var ohneRecht = new Spieler(z.uuid(), z.name(), OBERWELT, 0, 64, 0, OHNE_GRUPPE, false, true);
         assertFalse(m.sieht(ohneRecht, a, WEITE), "ohne eigene Permission niemand");
     }

@@ -4,6 +4,7 @@ import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import com.google.gson.JsonPrimitive;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.FileSystems;
@@ -397,6 +398,37 @@ final class Download {
         a.addProperty("grund", grund);
         if (wieder != null) {
             a.addProperty("wieder", wieder);
+        }
+        return a;
+    }
+
+    /** Ob die Nachricht vom Mod typ web trägt, „Im Browser öffnen“. Siehe docs/download.md, „Kanal“. */
+    static boolean istWeb(byte[] nachricht) {
+        if (nachricht.length > GROESSTE_ANFRAGE) {
+            return false;
+        }
+        try {
+            var o = JsonParser.parseString(new String(nachricht, StandardCharsets.UTF_8)).getAsJsonObject();
+            return o.get("typ") instanceof JsonPrimitive t && t.isString() && t.getAsString().equals("web");
+        } catch (RuntimeException e) {
+            return false;
+        }
+    }
+
+    /**
+     * Die Antwort auf web: mit {@code token} erlaubt, sonst mit {@code grund} und bei rate mit {@code wieder} in s. Den Link
+     * baut der Mod. Siehe docs/download.md, „Kanal“.
+     */
+    static JsonObject web(String token, String grund, Long wieder, Instant jetzt) {
+        var a = nachricht("web", jetzt);
+        a.addProperty("erlaubt", token != null);
+        if (token != null) {
+            a.addProperty("token", token);
+        } else {
+            a.addProperty("grund", grund);
+            if (wieder != null) {
+                a.addProperty("wieder", wieder);
+            }
         }
         return a;
     }

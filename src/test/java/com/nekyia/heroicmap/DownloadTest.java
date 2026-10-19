@@ -582,4 +582,20 @@ class DownloadTest {
         assertEquals(1, meldungen.size());
         assertTrue(meldungen.get(0).contains("hat 5 statt 32 Byte"), meldungen::toString);
     }
+
+    @Test
+    void web_fuer_im_browser_oeffnen() {
+        var jetzt = Instant.ofEpochSecond(1_760_000_000);
+        assertTrue(Download.istWeb("{\"v\":1,\"typ\":\"web\"}".getBytes(StandardCharsets.UTF_8)));
+        assertFalse(Download.istWeb("{\"v\":1,\"typ\":\"show\"}".getBytes(StandardCharsets.UTF_8)));
+        assertFalse(Download.istWeb("kein json".getBytes(StandardCharsets.UTF_8)));
+        assertFalse(Download.istWeb(("{\"typ\":\"web\",\"x\":\"" + "x".repeat(2000) + "\"}").getBytes(StandardCharsets.UTF_8)),
+                "über 1024 Byte");
+        assertEquals("{\"v\":1,\"typ\":\"web\",\"jetzt\":1760000000,\"erlaubt\":true,\"token\":\"abc.def\"}",
+                Download.web("abc.def", "sonst", null, jetzt).toString(), "mit Token kein Grund");
+        assertEquals("{\"v\":1,\"typ\":\"web\",\"jetzt\":1760000000,\"erlaubt\":false,\"grund\":\"rate\",\"wieder\":12}",
+                Download.web(null, "rate", 12L, jetzt).toString());
+        assertEquals("{\"v\":1,\"typ\":\"web\",\"jetzt\":1760000000,\"erlaubt\":false,\"grund\":\"permission\"}",
+                Download.web(null, "permission", null, jetzt).toString());
+    }
 }

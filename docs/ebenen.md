@@ -225,7 +225,9 @@ Jede Nachricht trägt dazu `v` (1) und `jetzt`, wie alle des Servers, siehe
   offenem Kanal prüft `EbenenFuerMod.nachrichten` die Rechte und
   vergleicht Kennungen, `version` und Adresse mit dem, was der Spieler
   schon hat. Gleiches schickt er nicht noch einmal; ohne Ebenen schickt er
-  nie etwas.
+  nur dann etwas, wenn es eine Adresse gibt: einmal die Liste mit
+  `"ebenen":[]` und `url` oder `port`. Daraus baut der Mod den Link für
+  „Im Browser öffnen“, siehe [Download](download.md), „Kanal“.
 - **Höchstens 1 MiB je Spieler und Sekunde,** an Teilen und Antworten auf
   Tafeln zusammen, eine Ebene aber immer ganz. Was übrig ist, kommt in der nächsten
   Sekunde. So bekommt ein Spieler beim Beitritt bei vollen Grenzen, 64

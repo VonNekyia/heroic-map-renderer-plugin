@@ -69,6 +69,11 @@ denn `/heroicmap` ist Admins vorbehalten.
     von vorn an.
   - **Nur mit bereitem Webserver,** sonst „Die Webkarte läuft gerade
     nicht“.
+- **Aus dem Mod:** Der Knopf „Im Browser öffnen“ fragt über den Kanal mit
+  `web` nach demselben Token, mit derselben Logik und Rate
+  (`HeroicMapPlugin.stelleAnmeldungAus`), auch ohne `webserver.url`; den
+  Link baut der Mod aus der Adresse seiner Kacheln. Siehe
+  [Download](download.md), „Kanal“.
 - **`abmelden`:** Das Plugin erhöht den Zähler des Spielers um eins. Der
   Server nimmt dann keine ältere Sitzung und keinen älteren Link mehr an,
   auf jedem Gerät. Ohne Ordner hat der Spieler keine Sitzung, und es
