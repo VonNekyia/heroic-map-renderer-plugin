@@ -85,6 +85,10 @@ final class Knoepfe {
             if (t[1].isBlank() || t[1].codePointCount(0, t[1].length()) > LABEL) {
                 throw new IllegalArgumentException("Knopf " + id + ": " + t[0] + " leer oder länger als 32 Zeichen");
             }
+            // Der Mod streicht Codes mit § und verwürfe ein Label, das dann leer ist; die Webkarte zeigte § wörtlich.
+            if (t[1].indexOf('§') >= 0) {
+                throw new IllegalArgumentException("Knopf " + id + ": " + t[0] + " ohne §");
+            }
             label.addProperty(t[0], t[1]);
         }
         if (knoepfe.values().stream().filter(x -> x.modname.equals(modname)).count() >= JE_BESITZER) {

@@ -303,8 +303,9 @@ void klick(MapButtonClickEvent e) {
   sieht sie nur ein Spieler, der sich mit `/karte anmelden` angemeldet
   hat, siehe [Anmeldung](anmeldung.md); nie steht sie unter `layers/`.
 - **Knopf:** `HeroicMapApi.button` legt ihn beim ersten Aufruf an, mit
-  Label `de` und/oder `en`, je höchstens 32 Zeichen, höchstens 64 je
-  Plugin. `attach(ebene, objekt)` hängt ihn unter die Tafel eines Objekts,
+  Label `de` und/oder `en`, je höchstens 32 Zeichen und ohne `§`,
+  höchstens 64 je Plugin. Codes mit `§` streicht der Mod, und die
+  Webkarte zeigte sie wörtlich. `attach(ebene, objekt)` hängt ihn unter die Tafel eines Objekts,
   höchstens 4 je Objekt; nur Nadeln, Banner, Regionen und Kreise haben eine.
   `state(spieler, ebene, objekt, an)` setzt den Zustand je Spieler, Vorgabe
   aus; erst nach `attach`, sonst `IllegalArgumentException`. Gelesen ist er
