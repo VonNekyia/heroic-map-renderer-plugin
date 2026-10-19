@@ -72,6 +72,7 @@ public final class FalscherRenderer {
             case "server" -> {
                 out.println("Server:     http://127.0.0.1:1234 mit kacheln unter /tiles/, 1 Threads");
                 out.println("Server:     Zertifikat neu geladen");
+                out.println("Aktion: {\"spieler\":\"00000000-0000-0000-0000-000000000001\",\"ebene\":\"a:b\",\"objekt\":\"o\",\"knopf\":\"a:k\"}");
                 System.in.readAllBytes();
             }
             case "still" -> System.in.readAllBytes();

@@ -185,6 +185,36 @@ class EbenenFuerModTest {
     }
 
     @Test
+    void zeile_aktion_lesen() {
+        var w = EbenenFuerMod.webKlick("{\"spieler\":\"" + SAM + "\",\"ebene\":\"nations:staedte\",\"objekt\":\"s1\",\"knopf\":\"proficisci:schiff\"}");
+        assertEquals(new EbenenFuerMod.WebKlick(SAM, new EbenenFuerMod.Klick("nations:staedte", "", "s1", "proficisci:schiff")), w);
+        for (String falsch : List.of(
+                "{\"spieler\":\"" + SAM + "\",\"ebene\":\"nations:staedte\",\"objekt\":\"s1\",\"knopf\":\"proficisci:schiff\",\"mehr\":1}",
+                "{\"spieler\":\"8F3C2B6E-0D4A-4C1E-9B7A-2E5F6A1D3C90\",\"ebene\":\"nations:staedte\",\"objekt\":\"s1\",\"knopf\":\"proficisci:schiff\"}",
+                "{\"spieler\":\"" + SAM + "\",\"ebene\":\"nations:staedte\",\"objekt\":1,\"knopf\":\"proficisci:schiff\"}",
+                "{\"spieler\":\"" + SAM + "\",\"ebene\":\"nations:staedte\",\"knopf\":\"proficisci:schiff\"}",
+                "[]", "kein json", "{\"spieler\":\"" + "x".repeat(2000) + "\"}")) {
+            assertNull(EbenenFuerMod.webKlick(falsch), falsch.length() > 200 ? "zu lang" : falsch);
+        }
+    }
+
+    @Test
+    void klick_aus_dem_web_nur_auf_ebenen_der_webkarte() {
+        var k = new Knoepfe();
+        var schiff = k.knopf("proficisci", "schiff", "Schiff", "Ship");
+        var nurMod = ebene("beispiel:nurmod", "{\"id\": \"n\", \"type\": \"pin\", \"at\": [0, 0]}", ", \"web\": false");
+        var staedte = ebene("nations:staedte", "{\"id\": \"s1\", \"type\": \"pin\", \"at\": [0, 0]}", "");
+        schiff.attach("beispiel:nurmod", "n");
+        schiff.attach("nations:staedte", "s1");
+        var m = new EbenenFuerMod(JsonObject::new, null, Logger.getAnonymousLogger(), k);
+        m.bereite(List.of(nurMod, staedte));
+        assertNotNull(m.klickbar(SAM, new EbenenFuerMod.Klick("beispiel:nurmod", "", "n", "proficisci:schiff"), p -> false, false));
+        assertNull(m.klickbar(SAM, new EbenenFuerMod.Klick("beispiel:nurmod", "", "n", "proficisci:schiff"), p -> false, true),
+                "web: false");
+        assertNotNull(m.klickbar(SAM, new EbenenFuerMod.Klick("nations:staedte", "", "s1", "proficisci:schiff"), p -> false, true));
+    }
+
+    @Test
     void vergessen_leert_auch_die_klicks() {
         var m = ohneAdresse(List.of());
         for (int i = 0; i < EbenenFuerMod.KLICKS_JE_SEKUNDE; i++) {

@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.google.gson.JsonObject;
 import com.nekyia.heroicmap.Ebenen.Ebene;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -15,9 +16,11 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.attribute.FileTime;
 import java.nio.file.attribute.PosixFilePermissions;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.DisabledOnOs;
 import org.junit.jupiter.api.condition.EnabledOnOs;
@@ -64,6 +67,29 @@ class EbenenSchreiberTest {
         assertFalse(Files.exists(wurzel.resolve("layers/andere/nurmod.json")));
         assertTrue(Files.isRegularFile(wurzel.resolve("layers/andere/images/s.png")),
                 "Bilder auch bei web: false, damit der Mod sie holen kann");
+    }
+
+    /** Eine Aktionsebene mit {@code kopf}, ein Spieler mit einer eigenen Linie. */
+    private static Ebene aktion(String id, String kopf) {
+        var e = ebene(id, kopf, Map.of());
+        var mein = new LinkedHashMap<String, JsonObject>();
+        mein.put("r", Ebenen.lies("{\"id\": \"r\", \"type\": \"line\", \"points\": [[0, 0], [1, 1]]}"));
+        return new Ebene(id, e.json(), Map.of(), null, Map.of(new UUID(0, 1), Ebenen.Eigene.aus(mein))).mitVersion(e.version());
+    }
+
+    @Test
+    void aktionsebene_nur_in_der_liste_mit_player() throws IOException {
+        var routen = aktion("proficisci:routen", "");
+        var geheim = aktion("proficisci:geheim", ", \"web\": true, \"permission\": \"x\"");
+        Path wurzel = tmp.resolve("tiles");
+        new EbenenSchreiber(wurzel, OBERWELT).schreibe(List.of(routen, geheim), Set.of());
+        var liste = Ebenen.lies(Files.readString(wurzel.resolve("layers.json"))).getAsJsonArray("layers");
+        assertEquals(1, liste.size(), "eine Aktionsebene mit permission nie auf die Webkarte, auch nicht mit web");
+        var eintrag = liste.get(0).getAsJsonObject();
+        assertEquals("proficisci:routen", eintrag.get("id").getAsString());
+        assertTrue(eintrag.get("player").getAsBoolean());
+        assertEquals(routen.version(), eintrag.get("version").getAsString());
+        assertFalse(Files.exists(wurzel.resolve("layers/proficisci")), "ihre Datei gibt es nur je Spieler");
     }
 
     @Test
