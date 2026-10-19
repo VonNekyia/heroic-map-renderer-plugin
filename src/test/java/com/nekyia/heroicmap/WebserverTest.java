@@ -57,7 +57,8 @@ class WebserverTest {
     }
 
     private Webserver webserver(List<String> befehl, Duration erstePause, Duration stabil) {
-        return new Webserver(befehl, JAVA, logger, tmp.resolve("webserver.pid"), erstePause, stabil, aktionen::add);
+        return new Webserver(befehl, JAVA, logger, tmp.resolve("webserver.pid"), erstePause, stabil,
+                Map.of(Webserver.AKTION, aktionen::add, Webserver.WEB, z -> aktionen.add("web " + z)));
     }
 
     private static void warte(BooleanSupplier bis, java.util.function.Supplier<String> was) throws InterruptedException {
@@ -86,6 +87,13 @@ class WebserverTest {
                 ende(Webserver.befehl(konf(w), tmp.resolve("web"), tmp.resolve("token.geheimnis"), tmp.resolve("spieler")), 4));
         assertFalse(Webserver.befehl(konf(w), tmp.resolve("web"), null, tmp.resolve("spieler")).contains("--player-dir"),
                 "ohne Geheimnis keine Anmeldung");
+        var mitErkennung = new Konfiguration.Webserver(true, "127.0.0.1:8082", "https://karte.example.org/karte", null, null,
+                "", "", "", 0, List.of("127.0.0.1", "::1"), "https://karte4.example.org/karte");
+        assertEquals(List.of("--player-dir", tmp.resolve("spieler").toString(), "--trusted-proxy", "127.0.0.1,::1",
+                "--recognize-origin", "https://karte.example.org", "--recognize-url", "https://karte4.example.org/karte"),
+                ende(Webserver.befehl(konf(mitErkennung), tmp.resolve("web"), tmp.resolve("token.geheimnis"), tmp.resolve("spieler")), 8));
+        assertFalse(Webserver.befehl(konf(mitErkennung), tmp.resolve("web"), tmp.resolve("token.geheimnis"), null)
+                .contains("--trusted-proxy"), "ohne Ordner je Spieler keine Erkennung");
     }
 
     @Test
@@ -183,9 +191,10 @@ class WebserverTest {
         assertFalse(Files.exists(tmp.resolve("webserver.pid")));
         assertTrue(log.stream().noneMatch(z -> z.contains("Neustart") || z.contains("hart")), log::toString);
         assertTrue(log.contains("Server:     http://127.0.0.1:1234 mit kacheln unter /tiles/, 1 Threads"), log::toString);
-        assertEquals(List.of("{\"spieler\":\"00000000-0000-0000-0000-000000000001\",\"ebene\":\"a:b\",\"objekt\":\"o\",\"knopf\":\"a:k\"}"),
-                aktionen, "die Zeile Aktion: ohne ihren Anfang an den Empfänger");
-        assertTrue(log.stream().noneMatch(z -> z.contains("Aktion")), "nicht ins Log");
+        assertEquals(List.of("{\"spieler\":\"00000000-0000-0000-0000-000000000001\",\"ebene\":\"a:b\",\"objekt\":\"o\",\"knopf\":\"a:k\"}",
+                "web 00000000-0000-0000-0000-000000000001"),
+                aktionen, "die Zeilen Aktion: und Web: ohne ihren Anfang an ihren Empfänger");
+        assertTrue(log.stream().noneMatch(z -> z.contains("Aktion") || z.contains("Web:")), "nicht ins Log");
     }
 
     @Test

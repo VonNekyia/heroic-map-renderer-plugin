@@ -1,6 +1,7 @@
 package com.nekyia.heroicmap;
 
 import java.math.BigInteger;
+import java.net.InetAddress;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -61,7 +62,22 @@ record Konfiguration(
 
     /** Der Server des Renderers; ohne Zertifikat HTTP; {@code url} die Adresse für Spieler. Siehe docs/webserver.md. */
     record Webserver(boolean an, String adresse, String url, Path zertifikat, Path schluessel, String titel,
-            String beschreibung, String bild, int oeffentlicherPort) {
+            String beschreibung, String bild, int oeffentlicherPort, List<String> vertrauteProxys, String erkennenUrl) {
+
+        /** Ohne vertraute Proxys und ohne zweiten Namen für die Erkennung. Siehe docs/anmeldung.md, „Erkennung per IP“. */
+        Webserver(boolean an, String adresse, String url, Path zertifikat, Path schluessel, String titel,
+                String beschreibung, String bild, int oeffentlicherPort) {
+            this(an, adresse, url, zertifikat, schluessel, titel, beschreibung, bild, oeffentlicherPort, List.of(), "");
+        }
+
+        /** Der Ursprung von {@code url}, Schema, Host und Port ohne Pfad; leer ohne url. */
+        String ursprung() {
+            if (url.isEmpty()) {
+                return "";
+            }
+            int pfad = url.indexOf('/', url.indexOf("://") + 3);
+            return pfad < 0 ? url : url.substring(0, pfad);
+        }
 
         /** Ob der Server Adresse, Titel und Beschreibung in die Seite setzt; die Konfiguration prüft, dass alle drei da sind. */
         boolean seite() {
@@ -211,6 +227,20 @@ record Konfiguration(
                 }
             }
         }
+        // Nur IP-Literale, nie ein Name: Den müsste der Server auflösen, und ein falscher öffnete die Erkennung für
+        // jeden. Siehe docs/anmeldung.md, „Erkennung per IP“.
+        var proxys = c.getStringList("webserver.trusted-proxy").stream().map(String::strip).toList();
+        for (String p : proxys) {
+            try {
+                InetAddress.ofLiteral(p);
+            } catch (IllegalArgumentException e) {
+                fehler.add("webserver.trusted-proxy: " + p + " ist keine IP wie \"127.0.0.1\" oder \"::1\"");
+            }
+        }
+        String erkennen = c.getString("webserver.erkennen-url", "").strip().replaceAll("/+$", "");
+        if (webserver && !erkennen.isEmpty() && (!ADRESSE.matcher(erkennen).matches() || url.isEmpty())) {
+            fehler.add("webserver.erkennen-url: mit http:// oder https:// und Host, und nur mit webserver.url");
+        }
         String cert = c.getString("webserver.tls-cert", "");
         String key = c.getString("webserver.tls-key", "");
         boolean download = baeume.stream().anyMatch(Baum::download);
@@ -264,7 +294,7 @@ record Konfiguration(
                         c.getString("download.server-name", "").strip().toLowerCase(Locale.ROOT)),
                 new Webserver(webserver, adresse, url,
                         cert.isBlank() ? null : server.resolve(cert), key.isBlank() ? null : server.resolve(key),
-                        titel, beschreibung, bild, oeffentlich),
+                        titel, beschreibung, bild, oeffentlich, proxys, erkennen),
                 new ClientJar(c.getBoolean("renderer.download-client-jar"), c.getString("renderer.client-version", "").strip()),
                 c.getBoolean("renderer.compact"));
     }

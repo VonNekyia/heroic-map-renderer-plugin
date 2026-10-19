@@ -175,6 +175,21 @@ class KonfigurationTest {
                 () -> Konfiguration.aus(yaml(baum + "  listen: 127.0.0.1:0\n"), server, server));
         assertEquals("webserver.listen: mit Port 0 braucht der Download webserver.url oder webserver.public-port",
                 nullPort.getMessage());
+        var erkennung = Konfiguration.aus(yaml(baum + "  listen: 127.0.0.1:8082\n  url: https://karte.example.org/karte\n"
+                + "  trusted-proxy: [\"127.0.0.1\", \"::1\"]\n  erkennen-url: https://karte4.example.org/karte/\n"), server, server).webserver();
+        assertEquals(List.of("127.0.0.1", "::1"), erkennung.vertrauteProxys());
+        assertEquals("https://karte4.example.org/karte", erkennung.erkennenUrl(), "ohne / am Ende");
+        assertEquals("https://karte.example.org", erkennung.ursprung(), "ohne Pfad");
+        assertEquals("", Konfiguration.aus(yaml(baum + "  listen: 0.0.0.0:8080\n"), server, server).webserver().ursprung());
+        var proxyName = assertThrows(IllegalArgumentException.class, () -> Konfiguration.aus(yaml(baum
+                + "  listen: 0.0.0.0:8080\n  trusted-proxy: [localhost, 10.0.0.0/8]\n"), server, server));
+        assertEquals("webserver.trusted-proxy: localhost ist keine IP wie \"127.0.0.1\" oder \"::1\"; "
+                + "webserver.trusted-proxy: 10.0.0.0/8 ist keine IP wie \"127.0.0.1\" oder \"::1\"", proxyName.getMessage(),
+                "nur IP-Literale, kein Name und kein Netz");
+        var erkennenOhneUrl = assertThrows(IllegalArgumentException.class, () -> Konfiguration.aus(yaml(baum
+                + "  listen: 0.0.0.0:8080\n  erkennen-url: https://karte4.example.org\n"), server, server));
+        assertEquals("webserver.erkennen-url: mit http:// oder https:// und Host, und nur mit webserver.url",
+                erkennenOhneUrl.getMessage());
         var hinterProxy = Konfiguration.aus(yaml(baum + "  listen: 127.0.0.1:8082\n  public-port: 8080\n"), server, server)
                 .webserver();
         assertEquals(8082, hinterProxy.port());

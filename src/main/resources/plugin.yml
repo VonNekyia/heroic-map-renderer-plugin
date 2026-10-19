@@ -13,7 +13,7 @@ commands:
     permission: heroicmap.admin
   karte:
     description: Auf der Webkarte an- oder abmelden, für eigene Ebenen und Knöpfe
-    usage: /<command> anmelden|abmelden
+    usage: /<command> anmelden|abmelden|ip an|ip aus
     permission: heroicmap.web
 permissions:
   heroicmap.admin:

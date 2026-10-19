@@ -10,6 +10,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.logging.Level;
@@ -27,6 +28,8 @@ final class Webserver {
     static final Duration LAENGSTE_PAUSE = Duration.ofMinutes(5);
     /** Ein Klick auf der Webkarte; der Rest der Zeile ist JSON. Siehe docs/anmeldung.md, „Klicks“. */
     static final String AKTION = "Aktion: ";
+    /** Ein Spieler schaut auf der Webkarte; der Rest der Zeile ist seine UUID. Siehe docs/anmeldung.md, „Zuschauer“. */
+    static final String WEB = "Web: ";
     /** Lief er so lange, beginnt die Pause wieder bei der ersten. */
     static final Duration STABIL = Duration.ofMinutes(1);
     /** Die Startzeile des Servers mit seiner Adresse; spätere Zeilen mit „Server:“ nennen keine. */
@@ -38,7 +41,8 @@ final class Webserver {
     private final Path pidDatei;
     private final Duration erstePause;
     private final Duration stabil;
-    private final Consumer<String> aktion;
+    /** Je Anfang einer Zeile, wer ihren Rest bekommt; diese Zeilen gehen nicht ins Log. */
+    private final Map<String, Consumer<String>> zeilen;
 
     // Geschützt durch this.
     private Thread faden;
@@ -49,11 +53,14 @@ final class Webserver {
     /** Zwischen seiner Startzeile und seinem Ende. */
     private volatile boolean bereit;
 
-    /** {@code aktion} bekommt den Rest jeder Zeile {@link #AKTION}, im Faden des Servers; sie geht nicht ins Log. */
+    /**
+     * Je Anfang in {@code zeilen}, etwa {@link #AKTION} und {@link #WEB}, bekommt der Empfänger den Rest jeder solchen
+     * Zeile, im Faden des Servers; sie geht nicht ins Log.
+     */
     Webserver(List<String> befehl, Path renderer, Logger log, Path pidDatei, Duration erstePause, Duration stabil,
-            Consumer<String> aktion) {
+            Map<String, Consumer<String>> zeilen) {
         this.befehl = List.copyOf(befehl);
-        this.aktion = aktion;
+        this.zeilen = Map.copyOf(zeilen);
         this.renderer = renderer;
         this.log = log;
         this.pidDatei = pidDatei;
@@ -63,7 +70,7 @@ final class Webserver {
 
     /**
      * Die Schalter des Servers; ohne {@code web} nur die Kacheln, ohne {@code geheimnis} kein Download und keine
-     * Anmeldung, ohne {@code spieler} keine Anmeldung. Siehe docs/webserver.md, „Aufruf“.
+     * Anmeldung, ohne {@code spieler} keine Anmeldung und keine Erkennung per IP. Siehe docs/webserver.md, „Aufruf“.
      */
     static List<String> befehl(Konfiguration konf, Path web, Path geheimnis, Path spieler) {
         var w = konf.webserver();
@@ -81,6 +88,12 @@ final class Webserver {
             b.addAll(List.of("--secret-file", geheimnis.toString()));
             if (spieler != null) {
                 b.addAll(List.of("--player-dir", spieler.toString()));
+                if (!w.vertrauteProxys().isEmpty()) {
+                    b.addAll(List.of("--trusted-proxy", String.join(",", w.vertrauteProxys())));
+                }
+                if (!w.erkennenUrl().isEmpty()) {
+                    b.addAll(List.of("--recognize-origin", w.ursprung(), "--recognize-url", w.erkennenUrl()));
+                }
             }
         }
         // Die Angaben der Seite setzt der Server nur in eine Karte aus --web.
@@ -236,12 +249,13 @@ final class Webserver {
         }
         try (var r = p.inputReader(StandardCharsets.UTF_8)) {
             for (String z; (z = r.readLine()) != null; ) {
-                if (z.startsWith(AKTION)) {
-                    // Ein Fehler beim Klick beendet nie den Server; sonst fiele die Karte mit.
+                var anfang = zeilen.keySet().stream().filter(z::startsWith).findFirst();
+                if (anfang.isPresent()) {
+                    // Ein Fehler beim Empfänger beendet nie den Server; sonst fiele die Karte mit.
                     try {
-                        aktion.accept(z.substring(AKTION.length()));
+                        zeilen.get(anfang.get()).accept(z.substring(anfang.get().length()));
                     } catch (RuntimeException e) {
-                        log.log(Level.WARNING, "Klick von der Webkarte nicht angenommen", e);
+                        log.log(Level.WARNING, "Zeile " + anfang.get().strip() + " des Webservers nicht angenommen", e);
                     }
                     continue;
                 }
