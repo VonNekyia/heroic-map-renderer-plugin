@@ -9,6 +9,7 @@ import static org.junit.jupiter.api.Assertions.fail;
 import com.nekyia.heroicmap.Mitspieler.Spieler;
 import com.nekyia.heroicmap.Mitspieler.Stimme;
 import com.nekyia.heroicmap.Mitspieler.Typ;
+import java.lang.reflect.Proxy;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -18,6 +19,8 @@ import java.util.UUID;
 import java.util.logging.Handler;
 import java.util.logging.LogRecord;
 import java.util.logging.Logger;
+import org.bukkit.entity.Player;
+import org.bukkit.metadata.MetadataValue;
 import org.junit.jupiter.api.Test;
 
 /** Wer wen hört und sieht, die Wahl show, der Takt und der Start, ohne Server und ohne Simple Voice Chat. */
@@ -229,7 +232,75 @@ class MitspielerTest {
     }
 
     private static Spieler zuschauer(Spieler p, boolean zuschauer) {
-        return new Spieler(p.uuid(), p.name(), p.dimension(), p.x(), p.y(), p.z(), p.stimme(), p.darf(), zuschauer);
+        return new Spieler(p.uuid(), p.name(), p.dimension(), p.x(), p.y(), p.z(), p.stimme(), p.darf(), zuschauer,
+                p.unsichtbar());
+    }
+
+    private static Spieler fuerDenUnsichtbar(Spieler p, UUID... unsichtbar) {
+        return new Spieler(p.uuid(), p.name(), p.dimension(), p.x(), p.y(), p.z(), p.stimme(), p.darf(), p.zuschauer(),
+                Set.of(unsichtbar));
+    }
+
+    /**
+     * Wer für E unsichtbar ist, fehlt für E im Mod und auf der Webkarte, auch wenn E Zuschauer ist; der Unsichtbare
+     * selbst sieht weiter alle. Siehe docs/mitspieler.md, „Unsichtbare Spieler“.
+     */
+    @Test
+    void unsichtbar_fehlt_fuer_den_betrachter() {
+        var m = new Mitspieler();
+        var admin = bei(0, OHNE_GRUPPE);
+        var nah = bei(2, OHNE_GRUPPE);
+        var e = fuerDenUnsichtbar(bei(1, OHNE_GRUPPE), admin.uuid());
+        assertFalse(m.sieht(e, admin, WEITE), "für E unsichtbar");
+        assertTrue(m.sieht(e, nah, WEITE), "die anderen sieht E weiter");
+        assertTrue(m.sieht(admin, e, WEITE), "der Unsichtbare sieht E");
+        assertFalse(m.sieht(zuschauer(e, true), admin, WEITE), "auch als Zuschauer nicht");
+
+        m.betrachter(Set.of(e.uuid(), admin.uuid()));
+        var raus = m.takt(List.of(admin, e, nah), Set.of(e.uuid()), WEITE, JETZT);
+        var liste = raus.get(e.uuid()).getAsJsonArray("spieler");
+        assertEquals(1, liste.size(), "im Mod nur nah");
+        assertEquals(nah.uuid().toString(), liste.get(0).getAsJsonObject().get("uuid").getAsString());
+        assertEquals(List.of(nah), m.imWeb(e.uuid()), "auf der Webkarte ebenso");
+        var sicht = Mitspieler.sicht(e, m.imWeb(e.uuid()), OBERWELT).getAsJsonArray("spieler");
+        assertEquals(1, sicht.size(), "sicht.json ohne ihn");
+        assertEquals(Set.of(e, nah), Set.copyOf(m.imWeb(admin.uuid())), "der Unsichtbare sieht im Web alle");
+    }
+
+    /** Ein Spieler für {@link Unsichtbar}: Werte unter vanished und ob er als Betrachter jeden sieht. */
+    @SuppressWarnings("deprecation")
+    private static Player spielerMit(List<Boolean> vanished, boolean siehtJeden) {
+        var werte = vanished.stream().map(w -> (MetadataValue) Proxy.newProxyInstance(MetadataValue.class.getClassLoader(),
+                new Class<?>[] {MetadataValue.class}, (o, methode, args) -> switch (methode.getName()) {
+                    case "asBoolean" -> w;
+                    default -> throw new UnsupportedOperationException(methode.getName());
+                })).toList();
+        var uuid = new UUID(5, ++naechste);
+        return (Player) Proxy.newProxyInstance(Player.class.getClassLoader(), new Class<?>[] {Player.class},
+                (o, methode, args) -> switch (methode.getName()) {
+                    case "getUniqueId" -> uuid;
+                    case "getMetadata" -> args[0].equals("vanished") ? werte : List.of();
+                    case "canSee" -> siehtJeden;
+                    case "equals" -> o == args[0];
+                    case "hashCode" -> uuid.hashCode();
+                    case "toString" -> "Spieler " + uuid;
+                    default -> throw new UnsupportedOperationException(methode.getName());
+                });
+    }
+
+    /**
+     * Unsichtbar ist, wer einen Wert vanished trägt, der als Boolean wahr ist, auch wenn ein anderes Plugin falsch
+     * setzt, oder wer vor dem Betrachter verborgen ist. Siehe docs/mitspieler.md, „Unsichtbare Spieler“.
+     */
+    @Test
+    void unsichtbar_ueber_vanished_oder_can_see() {
+        var betrachter = spielerMit(List.of(), true);
+        assertFalse(Unsichtbar.vor(betrachter, spielerMit(List.of(), true)), "ohne Wert sichtbar");
+        assertFalse(Unsichtbar.vor(betrachter, spielerMit(List.of(false), true)), "ein falscher Wert zählt nicht");
+        assertTrue(Unsichtbar.vor(betrachter, spielerMit(List.of(true), true)));
+        assertTrue(Unsichtbar.vor(betrachter, spielerMit(List.of(false, true), true)), "ein wahrer von zweien");
+        assertTrue(Unsichtbar.vor(spielerMit(List.of(), false), spielerMit(List.of(), true)), "vor dem Betrachter verborgen");
+        assertFalse(Unsichtbar.vor(spielerMit(List.of(true), true), betrachter), "unsichtbar sein heisst nicht blind sein");
     }
 
     @Test

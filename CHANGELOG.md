@@ -7,6 +7,10 @@ Links und die Hinweise aus `NOTICE` setzt
 [`.github/notizen.sh`](.github/notizen.sh) dazu. Siehe
 [Entwicklung](docs/entwicklung.md), „Release“.
 
+## 0.13.2
+
+- **Invisible players stay hidden:** a player hidden by a vanish plugin (metadata `vanished`) or hidden from a viewer (`hidePlayer`) no longer appears as another player on the map, neither in the mod nor on the web map. They still see the others.
+
 ## 0.13.1
 
 - **Renderer 0.13.0** inside: other players on the web map, seen as in the mod; about 30 % less memory for flat maps. No full render needed.

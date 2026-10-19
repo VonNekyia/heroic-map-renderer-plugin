@@ -35,10 +35,17 @@ final class Mitspieler {
 
     /**
      * Ein Spieler online, mit Lage und Stimme; {@code darf}: mit der Permission heroicmap.show; {@code zuschauer}:
-     * im Zuschauermodus.
+     * im Zuschauermodus; {@code unsichtbar}: wer für ihn unsichtbar ist, siehe {@link Unsichtbar}.
      */
     record Spieler(UUID uuid, String name, String dimension, double x, double y, double z, Stimme stimme, boolean darf,
-            boolean zuschauer) {}
+            boolean zuschauer, Set<UUID> unsichtbar) {
+
+        /** Für den, für den niemand unsichtbar ist. */
+        Spieler(UUID uuid, String name, String dimension, double x, double y, double z, Stimme stimme, boolean darf,
+                boolean zuschauer) {
+            this(uuid, name, dimension, x, y, z, stimme, darf, zuschauer, Set.of());
+        }
+    }
 
     /** Wer im Mod hidden gewählt hat; wer fehlt, hat simplevoicechat, auch ein Spieler ohne Mod. */
     private final Set<UUID> verborgen = new HashSet<>();
@@ -171,12 +178,13 @@ final class Mitspieler {
     }
 
     /**
-     * Ob {@code e} {@code h} auf der Karte sieht. {@code e} braucht immer Permission und simplevoicechat. Ein
-     * Zuschauer sieht dann jeden; ein anderer nur, wer ihn hört und selbst Permission und simplevoicechat hat,
-     * und nie einen Zuschauer. Siehe docs/mitspieler.md, „Wer wen sieht“.
+     * Ob {@code e} {@code h} auf der Karte sieht. {@code e} braucht immer Permission und simplevoicechat, und
+     * {@code h} darf für {@code e} nicht unsichtbar sein. Ein Zuschauer sieht dann jeden; ein anderer nur, wer ihn
+     * hört und selbst Permission und simplevoicechat hat, und nie einen Zuschauer. Siehe docs/mitspieler.md, „Wer
+     * wen sieht“.
      */
     boolean sieht(Spieler e, Spieler h, double weite) {
-        if (!zeigt(e) || e.uuid().equals(h.uuid())) {
+        if (!zeigt(e) || e.uuid().equals(h.uuid()) || e.unsichtbar().contains(h.uuid())) {
             return false;
         }
         return e.zuschauer() || !h.zuschauer() && zeigt(h) && hoert(h, e, weite);
