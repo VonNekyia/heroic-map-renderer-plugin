@@ -8,11 +8,15 @@ import org.bukkit.event.HandlerList;
 /**
  * A player clicked a {@link MapButton}, in the mod or on the web map. Called on the main thread. The player may be
  * offline when the click comes from the web map, so the event names the UUID, not a player. HeroicMap has checked
- * that the button hangs at this object and that the player may see its layer. Nothing changes by itself: the owner
- * of the button sets the new state and changes objects, for example of this player with {@link Layer#forPlayer}.
+ * that the button hangs at this object, that the player sees this object in the layer, and that the player may see
+ * the layer. Nothing changes by itself: the owner of the button sets the new state and changes objects, for example
+ * of this player with {@link Layer#forPlayer}.
+ *
+ * <p>Put the handler in a listener class of its own and register it only when HeroicMap is enabled: without
+ * HeroicMap, loading a class that names this event throws {@link NoClassDefFoundError}.
  *
  * <pre>{@code
- * // in a Listener, as an EventHandler
+ * // in its own Listener class, as an EventHandler
  * void click(MapButtonClickEvent e) {
  *     if (e.button() != ship) return;
  *     ship.state(e.player(), e.layer(), e.object(), !e.on());

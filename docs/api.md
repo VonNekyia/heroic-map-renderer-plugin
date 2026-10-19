@@ -149,7 +149,7 @@ final class Staedte {
 | `Layer.name(de, en)`, `visible`, `order`, `web`, `permission` | der Kopf, wie in der Datei |
 | `Layer.image(pfad, bytes)`, `removeImage(pfad)` | ein Bild des Besitzers, siehe „Bilder“ |
 | `Layer.design(name, entwurf)`, `removeDesign(name)` | ein Entwurf der Banner am Kopf der Ebene, siehe „Entwürfe“ |
-| `Layer.forPlayer(uuid)` | die eigenen Objekte eines Spielers; macht die Ebene zur Aktionsebene, siehe „Aktionsebenen und Knöpfe“ |
+| `Layer.forPlayer(uuid)` | die eigenen Objekte eines Spielers; das erste macht die Ebene zur Aktionsebene, siehe „Aktionsebenen und Knöpfe“ |
 | `HeroicMapApi.button(plugin, name, de, en)` | ein Knopf unter der Tafel von Objekten, an oder aus je Spieler, siehe „Aktionsebenen und Knöpfe“ |
 | `Layer.put(objekt)` | setzt ein Objekt oder ersetzt das mit gleicher `id` |
 | `Layer.remove(id)`, `clear()`, `delete()` | entfernt ein Objekt, alle oder die Ebene |
@@ -249,7 +249,7 @@ der Ebene, entschieden im Renderer in
   `design` bleibt das Bild Pflicht.
 - **Entfernen nur, wenn kein Banner ihn nennt:** `removeDesign` wirft
   `IllegalArgumentException`, solange ein Banner der Ebene den Entwurf
-  nennt.
+  nennt, auch das eigene Banner eines Spielers.
 - **Gezeichnet:** Das Plugin lässt jeden Entwurf vom Renderer zeichnen, mit
   `--banners`, siehe [Läufe](laeufe.md), „Banner“. Bis das Sprite da ist,
   zeigen Webkarte und Mod das Bild; ein Banner ohne Bild übergehen sie.
@@ -276,15 +276,16 @@ routen.forPlayer(spieler).put(MapObject.Line.through("hafen-a-b", List.of(a, b))
 MapButton schiff = api.button(plugin, "schiff", "Schiff", "Ship");
 schiff.attach("nations:staedte", stadtId);
 
-// In einem Listener, als EventHandler:
+// In einer eigenen Listener-Klasse, als EventHandler:
 void klick(MapButtonClickEvent e) {
     if (e.button() != schiff) return;
     schiff.state(e.player(), e.layer(), e.object(), !e.on());
 }
 ```
 
-- **Aktionsebene:** Mit dem ersten `forPlayer` wird eine Ebene der API zur
-  Aktionsebene, für immer. Jeder Spieler sieht die Objekte, die alle sehen,
+- **Aktionsebene:** Mit dem ersten eigenen Objekt (`PlayerLayer.put`) wird
+  eine Ebene der API zur Aktionsebene, für immer; `forPlayer` allein ändert
+  nichts. Jeder Spieler sieht die Objekte, die alle sehen,
   und seine eigenen (`PlayerLayer.put`, `remove`, `clear`).
   - Eigene Objekte nennen keine Bilder; ihre `id` ist keine, die alle sehen,
     und umgekehrt.
@@ -300,16 +301,21 @@ void klick(MapButtonClickEvent e) {
   Plugin. `attach(ebene, objekt)` hängt ihn unter die Tafel eines Objekts,
   höchstens 4 je Objekt; nur Nadeln, Banner, Regionen und Kreise haben eine.
   `state(spieler, ebene, objekt, an)` setzt den Zustand je Spieler, Vorgabe
-  aus; erst nach `attach`.
+  aus; erst nach `attach`, sonst `IllegalArgumentException`. Gelesen ist er
+  aus, wo der Knopf nicht hängt.
 - **Fremde Objekte:** Jedes Plugin darf an jedes Objekt hängen, nach
   Absprache mit dem Besitzer der Ebene; geprüft wird das nicht, wie beim
   Besitz („Regeln“). Entschieden vom Reviewer am 18.10. (#294).
 - **Ereignis:** `MapButtonClickEvent` im Hauptthread, mit dem Knopf, der
   UUID des Spielers, Ebene, Objekt und dem Zustand beim Klick. Geprüft hat
-  HeroicMap vorher: Der Knopf hängt an diesem Objekt, und der Spieler sieht
-  dessen Ebene. Was der Klick tut, entscheidet der Besitzer des Knopfs;
+  HeroicMap vorher: Der Knopf hängt an diesem Objekt, der Spieler sieht
+  dessen Ebene, und das Objekt steht in seiner Fassung, siehe
+  [Ebenen](ebenen.md), „Knöpfe“. Was der Klick tut, entscheidet der Besitzer des Knopfs;
   von selbst ändert sich nichts. Die UUID, kein `Player`, denn ein Klick
   von der Webkarte kann von einem Spieler kommen, der nicht online ist.
+  Den Handler in eine eigene Listener-Klasse, die das Plugin nur
+  registriert, wenn HeroicMap läuft: Ohne HeroicMap wirft schon das Laden
+  einer Klasse, die das Ereignis nennt, `NoClassDefFoundError`.
 - **Nur im Speicher:** Eigene Objekte und Zustände gehen mit dem Besitzer,
   wenn er abgeschaltet wird; sein `onEnable` setzt sie neu. Eigene Objekte
   bleiben, bis er sie entfernt, auch wenn der Spieler geht.

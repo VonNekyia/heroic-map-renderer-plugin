@@ -30,10 +30,20 @@ public interface MapButton {
     /** Takes the button from the object, with the states of every player there; no effect if it does not hang there. */
     void detach(String layer, String object);
 
-    /** Sets the state of this player at this object. Default: off. */
+    /**
+     * Sets the state of this player at this object. Default: off.
+     *
+     * @throws IllegalArgumentException if the button does not hang at this object, or an id is not allowed
+     * @throws IllegalStateException if the button is deleted
+     */
     void state(UUID player, String layer, String object, boolean on);
 
-    /** The state of this player at this object. */
+    /**
+     * The state of this player at this object; off where the button does not hang.
+     *
+     * @throws IllegalArgumentException if an id is not allowed
+     * @throws IllegalStateException if the button is deleted
+     */
     boolean state(UUID player, String layer, String object);
 
     /**

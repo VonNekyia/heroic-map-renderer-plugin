@@ -175,23 +175,22 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
     }
 
     /**
-     * Im Hauptthread: ein Klick aus dem Mod. Nur ein Knopf, der an diesem Objekt hängt, an einer Ebene, die der
-     * Spieler sieht, und höchstens 20 je Sekunde; dann das Ereignis, und die Tafel geht neu an den Mod. Siehe
+     * Im Hauptthread: ein Klick aus dem Mod. Höchstens 20 je Sekunde, mit heroicmap.layers, und nur, was
+     * {@link EbenenFuerMod#klickbar} durchlässt; dann das Ereignis, und die Tafel geht neu an den Mod. Siehe
      * docs/ebenen.md, „Knöpfe“.
      */
     private void klick(Player player, byte[] message) {
         var k = EbenenFuerMod.klick(message);
         UUID u = player.getUniqueId();
         if (fuerMod == null || k == null || !fuerMod.darfKlicken(u, Instant.now().getEpochSecond())
-                || !player.hasPermission(LAYERS) || !fuerMod.sieht(k.ebene(), player::hasPermission)) {
+                || !player.hasPermission(LAYERS)) {
             return;
         }
-        var knopf = ebenen.api().knoepfe().angehaengt(k.knopf(), k.ebene(), k.id());
-        if (knopf == null) {
+        var g = fuerMod.klickbar(u, k, player::hasPermission);
+        if (g == null) {
             return;
         }
-        boolean an = knopf.state(u, k.ebene(), k.id());
-        getServer().getPluginManager().callEvent(new MapButtonClickEvent(knopf, u, k.ebene(), k.id(), an));
+        getServer().getPluginManager().callEvent(new MapButtonClickEvent(g.knopf(), u, k.ebene(), k.id(), g.an()));
         frageTafel(player, EbenenFuerMod.tafelNach(k));
     }
 

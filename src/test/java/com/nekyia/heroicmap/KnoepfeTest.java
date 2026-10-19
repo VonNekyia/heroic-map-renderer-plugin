@@ -60,12 +60,14 @@ class KnoepfeTest {
         assertTrue(k.bloecke(SAM, STAEDTE, "stadt-17").getFirst().get("on").getAsBoolean());
         assertFalse(k.bloecke(ALEX, STAEDTE, "stadt-17").getFirst().get("on").getAsBoolean(), "je Spieler");
         assertFalse(schiff.state(SAM, STAEDTE, "stadt-18"), "je Objekt");
-        assertSame(schiff, k.angehaengt("proficisci:schiff", STAEDTE, "stadt-17"));
-        assertNull(k.angehaengt("proficisci:schiff", STAEDTE, "stadt-18"));
-        assertNull(k.angehaengt("proficisci:anderer", STAEDTE, "stadt-17"));
+        assertEquals(new Knoepfe.Gedrueckt((Knoepfe.Knopf) schiff, true), k.angehaengt("proficisci:schiff", STAEDTE, "stadt-17", SAM),
+                "Anhang und Zustand zusammen");
+        assertFalse(k.angehaengt("proficisci:schiff", STAEDTE, "stadt-17", ALEX).an());
+        assertNull(k.angehaengt("proficisci:schiff", STAEDTE, "stadt-18", SAM));
+        assertNull(k.angehaengt("proficisci:anderer", STAEDTE, "stadt-17", SAM));
 
         schiff.detach(STAEDTE, "stadt-17");
-        assertNull(k.angehaengt("proficisci:schiff", STAEDTE, "stadt-17"));
+        assertNull(k.angehaengt("proficisci:schiff", STAEDTE, "stadt-17", SAM));
         schiff.attach(STAEDTE, "stadt-17");
         assertFalse(schiff.state(SAM, STAEDTE, "stadt-17"), "abhängen nimmt die Zustände mit");
     }

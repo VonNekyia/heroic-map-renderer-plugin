@@ -37,6 +37,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BooleanSupplier;
 import java.util.logging.Handler;
@@ -410,14 +411,23 @@ class EbenenApiTest {
                 "mit permission kein Bild");
     }
 
+    /** Die ids, die {@code u} in der Ebene sieht: die gemeinsamen, dann seine eigenen. */
+    private static List<String> ids(Ebene e, UUID u) {
+        var ids = new ArrayList<>(ids(e));
+        var f = e.eigene(u);
+        if (f != null) {
+            ids.addAll(f.objekte().keySet());
+        }
+        return ids;
+    }
+
     @Test
     void aktionsebene_mit_objekten_je_spieler() {
         var a = api(0);
-        var sam = new java.util.UUID(0, 1);
-        var alex = new java.util.UUID(0, 2);
+        var sam = new UUID(0, 1);
+        var alex = new UUID(0, 2);
         Layer l = a.layer("Proficisci", "routen");
         l.put(Pin.at("hafen", 0, 0));
-        assertFalse(ebene(a, "proficisci:routen").aktion(), "erst forPlayer macht sie zur Aktionsebene");
         var meine = l.forPlayer(sam);
         assertEquals(sam, meine.player());
         meine.put(Line.through("route", List.of(new Point(0, 0), new Point(10, 10))));
@@ -425,9 +435,21 @@ class EbenenApiTest {
         assertTrue(e.aktion());
         assertFalse(e.web(), "nie über layers/");
         assertEquals(List.of("hafen"), ids(e));
-        assertEquals(List.of("hafen", "route"), ids(e.fuer(sam)));
+        assertEquals(List.of("hafen", "route"), ids(e, sam));
         assertSame(e, e.fuer(alex), "ohne eigene Objekte die Ebene selbst");
         assertNotEquals(e.version(), e.fuer(sam).version());
+
+        // Die version der Fassung folgt den gemeinsamen Objekten, den eigenen und den Sprites.
+        l.put(Pin.at("hafen-2", 1, 1));
+        var gemeinsam = ebene(a, "proficisci:routen");
+        assertNotEquals(e.fuer(sam).version(), gemeinsam.fuer(sam).version(), "gemeinsame geändert");
+        meine.put(Line.through("route", List.of(new Point(0, 0), new Point(10, 11))));
+        var eigen = ebene(a, "proficisci:routen");
+        assertEquals(gemeinsam.version(), eigen.version(), "die Ebene bleibt");
+        assertNotEquals(gemeinsam.fuer(sam).version(), eigen.fuer(sam).version(), "eigene geändert");
+        var mitSprites = Ebenen.mitSprites(List.of(eigen), Map.of(eigen.id(), "1")).getFirst();
+        assertNotEquals(eigen.fuer(sam).version(), mitSprites.fuer(sam).version(), "Sprites geändert");
+        assertSame(eigen.eigene(sam).objekte(), mitSprites.eigene(sam).objekte());
 
         assertThrows(IllegalArgumentException.class, () -> meine.put(Pin.at("hafen", 1, 1)), "keine id, die alle sehen");
         assertThrows(IllegalArgumentException.class, () -> l.put(Pin.at("route", 1, 1)), "keine id eines Spielers");
@@ -436,7 +458,7 @@ class EbenenApiTest {
                 "eigene Objekte nennen keine Bilder");
 
         l.clear();
-        assertEquals(List.of("route"), ids(ebene(a, "proficisci:routen").fuer(sam)), "clear lässt die eigenen");
+        assertEquals(List.of("route"), ids(ebene(a, "proficisci:routen"), sam), "clear lässt die eigenen");
         meine.remove("route");
         assertTrue(ebene(a, "proficisci:routen").aktion(), "bleibt Aktionsebene");
         assertSame(ebene(a, "proficisci:routen"), ebene(a, "proficisci:routen").fuer(sam));
@@ -448,9 +470,65 @@ class EbenenApiTest {
                 "höchstens 1000 eigene je Spieler");
         l.forPlayer(alex).put(Line.through("r0", List.of(new Point(0, 0), new Point(1, 1))));
         meine.clear();
-        assertEquals(List.of("r0"), ids(ebene(a, "proficisci:routen").fuer(alex)), "je Spieler");
+        assertEquals(List.of("r0"), ids(ebene(a, "proficisci:routen"), alex), "je Spieler");
         l.delete();
         assertThrows(IllegalStateException.class, () -> meine.put(Pin.at("x", 0, 0)));
+    }
+
+    @Test
+    void erst_ein_eigenes_objekt_macht_die_aktionsebene() {
+        var a = api(0);
+        Layer l = a.layer("Proficisci", "routen");
+        l.put(Pin.at("hafen", 0, 0));
+        var meine = l.forPlayer(new UUID(0, 1));
+        meine.remove("route");
+        meine.clear();
+        var e = ebene(a, "proficisci:routen");
+        assertFalse(e.aktion(), "forPlayer, remove und clear allein nicht");
+        assertTrue(e.web(), "sie bleibt auf der Webkarte");
+        meine.put(Line.through("route", List.of(new Point(0, 0), new Point(1, 1))));
+        assertTrue(ebene(a, "proficisci:routen").aktion());
+    }
+
+    @Test
+    void ein_entwurf_bleibt_solange_ein_eigenes_banner_ihn_nennt() {
+        var a = api(0);
+        Layer l = a.layer("Proficisci", "staedte");
+        l.design("nordreich", BannerDesign.of(DyeColor.WHITE));
+        var meine = l.forPlayer(new UUID(0, 1));
+        meine.put(Banner.at("b", 0, 0).withDesign("nordreich"));
+        var e = assertThrows(IllegalArgumentException.class, () -> l.removeDesign("nordreich"));
+        assertTrue(e.getMessage().contains("eigene Objekt b"), e.getMessage());
+        assertTrue(ebene(a, "proficisci:staedte").json().has("designs"), "der Entwurf bleibt");
+        meine.remove("b");
+        l.removeDesign("nordreich");
+        assertFalse(ebene(a, "proficisci:staedte").json().has("designs"));
+    }
+
+    @Test
+    void grenzen_der_ebene_mit_den_summen_je_spieler() {
+        var a = api(0);
+        Layer l = a.layer("Proficisci", "routen");
+        var alex = l.forPlayer(new UUID(0, 2));
+        l.forPlayer(new UUID(0, 1)).put(Pin.at("sam", 0, 0));
+        for (int i = 0; i < 600; i++) {
+            alex.put(Pin.at("a" + i, 0, 0));
+        }
+        for (int i = 0; i < 400; i++) {
+            l.put(Pin.at("g" + i, 0, 0));
+        }
+        var e = assertThrows(IllegalArgumentException.class, () -> l.put(Pin.at("g400", 0, 0)), "400 und die 600 von alex");
+        assertTrue(e.getMessage().contains("1000 Nadeln"), e.getMessage());
+        alex.remove("a0");
+        l.put(Pin.at("g400", 0, 0));
+        assertThrows(IllegalArgumentException.class, () -> alex.put(Pin.at("a0", 0, 0)), "wieder 1000");
+        alex.put(Line.through("a1", List.of(new Point(0, 0), new Point(1, 1))));
+        alex.put(Pin.at("a0", 0, 0));
+        alex.clear();
+        for (int i = 401; i < 999; i++) {
+            l.put(Pin.at("g" + i, 0, 0));
+        }
+        assertThrows(IllegalArgumentException.class, () -> l.put(Pin.at("g999", 0, 0)), "999 und die eine von sam");
     }
 
     @Test
@@ -461,10 +539,10 @@ class EbenenApiTest {
         var schiff = a.button(p, "schiff", "Schiff", "Ship");
         assertEquals("proficisci:schiff", schiff.id());
         schiff.attach("nations:staedte", "stadt-17");
-        assertSame(schiff, a.knoepfe().angehaengt("proficisci:schiff", "nations:staedte", "stadt-17"));
+        assertSame(schiff, a.knoepfe().angehaengt("proficisci:schiff", "nations:staedte", "stadt-17", new UUID(0, 1)).knopf());
         a.beimAbschalten(abschalten(p));
         an.set(false);
-        assertThrows(IllegalStateException.class, () -> schiff.state(new java.util.UUID(0, 1), "nations:staedte", "stadt-17"));
+        assertThrows(IllegalStateException.class, () -> schiff.state(new UUID(0, 1), "nations:staedte", "stadt-17"));
         assertThrows(IllegalStateException.class, () -> a.button(p, "schiff", "Schiff", null), "abgeschaltet");
     }
 

@@ -10,8 +10,8 @@ import com.nekyia.heroicmap.api.MapButton;
 import com.nekyia.heroicmap.api.PlayerLayer;
 import com.nekyia.heroicmap.api.MapObject;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -181,11 +181,11 @@ final class EbenenApi implements HeroicMapApi, Listener {
         private Map<String, JsonObject> entwuerfe = new LinkedHashMap<>();
         private final LinkedHashMap<String, JsonObject> objekte = new LinkedHashMap<>();
         /**
-         * Die eigenen Objekte je Spieler, ohne Bilder; nie leer, ein Spieler ohne fällt heraus. Mit {@code aktion}
-         * ist die Ebene eine Aktionsebene, auch wenn keiner mehr eigene hat. Siehe docs/api.md, „Aktionsebenen und
-         * Knöpfe“.
+         * Die eigenen Objekte je Spieler; ein Spieler ohne fällt heraus. Mit {@code aktion}, gesetzt beim ersten
+         * eigenen Objekt, ist die Ebene eine Aktionsebene, auch wenn keiner mehr eigene hat. Siehe docs/api.md,
+         * „Aktionsebenen und Knöpfe“.
          */
-        private final Map<UUID, LinkedHashMap<String, JsonObject>> eigene = new HashMap<>();
+        private final Map<UUID, Mein> eigene = new HashMap<>();
         private boolean aktion;
         /** Die Bilder, die ein Objekt nennt, je id; nur Objekte mit Bildern. */
         private final Map<String, Set<String>> bilderJeObjekt = new HashMap<>();
@@ -283,6 +283,14 @@ final class EbenenApi implements HeroicMapApi, Listener {
             if (!entwuerfe.containsKey(name)) {
                 return;
             }
+            for (var mein : eigene.values()) {
+                for (var j : mein.objekte.values()) {
+                    if (j.has("design") && j.get("design").getAsString().equals(name)) {
+                        throw new IllegalArgumentException("Ebene " + id + ": das eigene Objekt " + j.get("id").getAsString()
+                                + " eines Spielers nennt den Entwurf " + name + " noch");
+                    }
+                }
+            }
             var neu = new LinkedHashMap<>(entwuerfe);
             neu.remove(name);
             // Ganz geprüft: Nennt ein Banner den Entwurf noch, wirft es.
@@ -368,7 +376,7 @@ final class EbenenApi implements HeroicMapApi, Listener {
                 var alt = objekte.get(m.id());
                 int neueNadeln = nadeln + nadel(j) - (alt == null ? 0 : nadel(alt));
                 long neueBytes = bytes + groesse(j) - (alt == null ? 0 : groesse(alt));
-                if (eigene.values().stream().anyMatch(e -> e.containsKey(m.id()))) {
+                if (eigene.values().stream().anyMatch(e -> e.objekte.containsKey(m.id()))) {
                     throw new IllegalArgumentException("Objekt " + m.id() + ": ein Spieler hat schon ein eigenes mit dieser id");
                 }
                 // Mit den eigenen Objekten des grössten Spielers zusammen, siehe grenzen.
@@ -402,34 +410,26 @@ final class EbenenApi implements HeroicMapApi, Listener {
         private long[] groessteEigene() {
             var g = new long[3];
             for (var e : eigene.values()) {
-                var s = summe(e.values());
-                for (int i = 0; i < 3; i++) {
-                    g[i] = Math.max(g[i], s[i]);
-                }
+                g[0] = Math.max(g[0], e.objekte.size());
+                g[1] = Math.max(g[1], e.nadeln);
+                g[2] = Math.max(g[2], e.bytes);
             }
             return g;
         }
 
-        private static long[] summe(Iterable<JsonObject> objekteVon) {
-            var s = new long[3];
-            for (var j : objekteVon) {
-                s[0]++;
-                s[1] += nadel(j);
-                s[2] += groesse(j);
-            }
-            return s;
+        /** Die eigenen Objekte eines Spielers, ohne Bilder, mit ihren Summen; nie leer. */
+        private static final class Mein {
+            private final LinkedHashMap<String, JsonObject> objekte = new LinkedHashMap<>();
+            private long nadeln;
+            private long bytes;
+            /** Für den Schnappschuss, ohne version; null nach jeder Änderung. */
+            private Ebenen.Eigene kopie;
         }
 
         @Override
         public PlayerLayer forPlayer(UUID spieler) {
             Objects.requireNonNull(spieler);
-            synchronized (this) {
-                lebt();
-                if (!aktion) {
-                    aktion = true;
-                    geaendert();
-                }
-            }
+            lebt();
             return new Eigene(spieler);
         }
 
@@ -466,12 +466,14 @@ final class EbenenApi implements HeroicMapApi, Listener {
                             throw new IllegalArgumentException("Objekt " + m.id() + ": eigene Objekte eines Spielers nennen keine Bilder");
                         }
                     }
-                    var mein = eigene.getOrDefault(spieler, new LinkedHashMap<>());
-                    var alt = mein.get(m.id());
-                    var s = summe(mein.values());
-                    s[0] += alt == null ? 1 : 0;
-                    s[1] += nadel(j) - (alt == null ? 0 : nadel(alt));
-                    s[2] += groesse(j) - (alt == null ? 0 : groesse(alt));
+                    var mein = eigene.get(spieler);
+                    if (mein == null) {
+                        mein = new Mein();
+                    }
+                    var alt = mein.objekte.get(m.id());
+                    long[] s = {mein.objekte.size() + (alt == null ? 1 : 0),
+                            mein.nadeln + nadel(j) - (alt == null ? 0 : nadel(alt)),
+                            mein.bytes + groesse(j) - (alt == null ? 0 : groesse(alt))};
                     if (s[0] > 1000) {
                         throw new IllegalArgumentException("Objekt " + m.id() + ": höchstens 1000 eigene Objekte je Spieler und Ebene");
                     }
@@ -479,8 +481,12 @@ final class EbenenApi implements HeroicMapApi, Listener {
                         throw new IllegalArgumentException("Objekt " + m.id() + ": die eigenen Objekte würden grösser als 1 MiB");
                     }
                     grenzen(m.id(), objekte.size(), nadeln, bytes, s);
-                    mein.put(m.id(), j);
+                    mein.objekte.put(m.id(), j);
+                    mein.nadeln = s[1];
+                    mein.bytes = s[2];
+                    mein.kopie = null;
                     eigene.put(spieler, mein);
+                    aktion = true;
                     geaendert();
                 }
             }
@@ -490,8 +496,12 @@ final class EbenenApi implements HeroicMapApi, Listener {
                 synchronized (ApiEbene.this) {
                     lebt();
                     var mein = eigene.get(spieler);
-                    if (mein != null && mein.remove(objektId) != null) {
-                        if (mein.isEmpty()) {
+                    var alt = mein == null ? null : mein.objekte.remove(objektId);
+                    if (alt != null) {
+                        mein.nadeln -= nadel(alt);
+                        mein.bytes -= groesse(alt);
+                        mein.kopie = null;
+                        if (mein.objekte.isEmpty()) {
                             eigene.remove(spieler);
                         }
                         geaendert();
@@ -603,7 +613,7 @@ final class EbenenApi implements HeroicMapApi, Listener {
         Ebene schnappschuss() {
             JsonObject json;
             Map<String, byte[]> pool;
-            Map<UUID, JsonObject> fassungen = null;
+            Map<UUID, Ebenen.Eigene> spieler = null;
             synchronized (this) {
                 if (geloescht) {
                     return null;
@@ -615,13 +625,16 @@ final class EbenenApi implements HeroicMapApi, Listener {
                 veraltet = false;
                 json = json(permission, objekte.values());
                 if (aktion) {
-                    // ponytail: baut bei jeder Änderung die Fassung jedes Spielers neu; nur geänderte, wenn viele Spieler eigene haben.
-                    fassungen = new HashMap<>();
+                    // Kopie und Hash nur für Spieler, deren Objekte sich seit dem letzten Mal änderten.
+                    var je = new HashMap<UUID, Ebenen.Eigene>();
                     for (var e : eigene.entrySet()) {
-                        var alle = new ArrayList<>(objekte.values());
-                        alle.addAll(e.getValue().values());
-                        fassungen.put(e.getKey(), json(permission, alle));
+                        var mein = e.getValue();
+                        if (mein.kopie == null) {
+                            mein.kopie = Ebenen.Eigene.aus(Collections.unmodifiableMap(new LinkedHashMap<>(mein.objekte)));
+                        }
+                        je.put(e.getKey(), mein.kopie);
                     }
+                    spieler = Map.copyOf(je);
                 }
                 var b = bilder.get(modname);
                 if (b == null) {
@@ -641,14 +654,8 @@ final class EbenenApi implements HeroicMapApi, Listener {
             }
             var benutzt = new TreeMap<String, byte[]>();
             p.bilder().forEach(b -> benutzt.put(b, pool.get(b)));
-            Map<UUID, Ebene> spieler = null;
-            if (fassungen != null) {
-                // Eigene Objekte nennen keine Bilder und sind beim Aufruf geprüft; die Fassung braucht keine Prüfung mehr.
-                var je = new HashMap<UUID, Ebene>();
-                fassungen.forEach((u, j) -> je.put(u, new Ebene(id, j, benutzt, Ebenen.version(j, benutzt, dimension))));
-                spieler = Map.copyOf(je);
-            }
-            schnappschuss = new Ebene(id, json, benutzt, Ebenen.version(json, benutzt, dimension), spieler);
+            // Eigene Objekte nennen keine Bilder und sind beim Aufruf geprüft; die Fassungen brauchen keine Prüfung mehr.
+            schnappschuss = new Ebene(id, json, benutzt, null, spieler).mitVersion(Ebenen.version(json, benutzt, dimension));
             return schnappschuss;
         }
     }

@@ -274,10 +274,17 @@ und schickt einen Klick über den Kanal:
 ```
 
 - **Im Hauptthread** (`HeroicMapPlugin.klick`), geprüft der Reihe nach:
-  lesbar, höchstens 20 Klicks je Spieler und Sekunde
-  (`EbenenFuerMod.KLICKS_JE_SEKUNDE`), die Permission `heroicmap.layers`,
-  der Spieler sieht die Ebene samt ihrer `permission`, und der Knopf hängt
-  an genau diesem Objekt. Fällt eins durch, geschieht nichts, ohne Antwort.
+  - lesbar, höchstens 20 Klicks je Spieler und Sekunde
+    (`EbenenFuerMod.KLICKS_JE_SEKUNDE`), die Permission `heroicmap.layers`;
+  - dann `EbenenFuerMod.klickbar`: Die Ebene steht im Stand, der Spieler
+    hat ihre `permission`, das Objekt steht in seiner Fassung und hat eine
+    Tafel, und der Knopf hängt an genau diesem Objekt. Ein eigenes Objekt
+    eines anderen Spielers, ein entferntes und eine Linie fallen so durch.
+  - Die `version` des Klicks prüft es nicht; ein Klick aus einer eben
+    abgelösten Fassung geht durch, wenn das Objekt noch da ist.
+
+  Fällt eins durch, geschieht nichts, ohne Antwort. Anhang und Zustand
+  liest `Knoepfe.angehaengt` unter einer Sperre zusammen.
 - **Dann** das Ereignis `MapButtonClickEvent`, und die Tafel des Objekts
   geht neu an den Mod, wie auf eine Anfrage `tafel`; so springt der Knopf
   um, sobald der Besitzer den Zustand gesetzt hat.
@@ -288,9 +295,17 @@ und schickt einen Klick über den Kanal:
 
 Jeder Spieler bekommt seine Fassung einer Aktionsebene wie eine
 gewöhnliche Ebene: die Objekte, die alle sehen, und seine eigenen, mit
-eigener `version` in der Liste und in den Teilen (`Ebene.fuer`). Die Teile
-der Fassungen rechnet `EbenenFuerMod.bereite` mit, ausserhalb des
-Hauptthreads.
+eigener `version` in der Liste und in den Teilen (`Ebene.fuer`).
+
+- **version der Fassung:** aus der `version` der Ebene und einem Hash der
+  eigenen Objekte (`Ebene.mitVersion`). Sie ändert sich mit den Objekten,
+  die alle sehen, mit den eigenen und mit den Sprites.
+- **Teile:** die Teile der Ebene, dieselben Strings, dahinter die der
+  eigenen Objekte. Ohne Objekte, die alle sehen, nur die eigenen. So
+  kostet ein Spieler im Speicher nur seine eigenen Objekte, auch offline.
+  `EbenenFuerMod.bereite` rechnet sie ausserhalb des Hauptthreads.
+- **Tafeln und Banner** gelten zur `version` der Fassung; die der Ebene
+  ist für einen Spieler mit eigenen Objekten alt.
 
 ### Banner im Mod
 
@@ -310,7 +325,8 @@ mit dem Mod am 10.10.
   Banners, und `krone`, sein `capital`.
 - **Antwort:** dieselben Felder, dazu `satz` wie `satz.json` mit `foot` und
   `angle` und `png`, das Sprite aus dem Satz `oben` als Base64. Ist die
-  `version` alt, hat die Ebene den Entwurf nicht oder fehlt das Sprite noch,
+  `version` alt, bei einer Aktionsebene gemessen an der Fassung des
+  Spielers, hat die Ebene den Entwurf nicht oder fehlt das Sprite noch,
   kommt die Antwort ohne `satz` und `png`; der Mod fragt für diese `version`
   dann nicht wieder. Die `version` ändert sich, wenn der Renderer die Sprites
   neu zeichnet.

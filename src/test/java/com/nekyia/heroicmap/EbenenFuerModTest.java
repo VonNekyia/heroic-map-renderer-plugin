@@ -3,6 +3,10 @@ package com.nekyia.heroicmap;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.google.gson.JsonArray;
@@ -15,6 +19,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Base64;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -43,12 +48,17 @@ class EbenenFuerModTest {
 
     private static final UUID ALEX = new UUID(0, 2);
 
-    /** Eine Aktionsebene: alle sehen {@code gemeinsam}, SAM dazu {@code eigene}. */
-    private static Ebene aktion(String id, String gemeinsam, String eigene) {
-        var e = ebene(id, gemeinsam, "");
-        var f = ebene(id, gemeinsam + "," + eigene, "");
-        return new Ebene(id, e.json(), Map.of(), e.version(), Map.of(SAM, f));
+    /** Eine Aktionsebene mit {@code extra} am Kopf: alle sehen {@code gemeinsam}, SAM dazu {@code eigene}. */
+    private static Ebene aktion(String id, String gemeinsam, String eigene, String extra) {
+        var e = ebene(id, gemeinsam, extra);
+        var mein = new LinkedHashMap<String, JsonObject>();
+        ebene(id, eigene, extra).json().getAsJsonArray("objects")
+                .forEach(x -> mein.put(x.getAsJsonObject().get("id").getAsString(), x.getAsJsonObject()));
+        return new Ebene(id, e.json(), Map.of(), null, Map.of(SAM, Ebenen.Eigene.aus(mein))).mitVersion(e.version());
     }
+
+    private static final String HAFEN = "{\"id\": \"hafen\", \"type\": \"pin\", \"at\": [0, 0]}";
+    private static final String ROUTE = "{\"id\": \"route\", \"type\": \"line\", \"points\": [[0, 0], [10, 10]]}";
 
     /** Die ids der Objekte in den Teilen der Ebene {@code id} unter {@code nachrichten}, und ihre version. */
     private static List<String> objekte(List<String> nachrichten, String id, String[] version) {
@@ -65,17 +75,24 @@ class EbenenFuerModTest {
 
     @Test
     void aktionsebene_je_spieler_seine_fassung() {
-        var e = aktion("beispiel:routen", "{\"id\": \"hafen\", \"type\": \"pin\", \"at\": [0, 0]}",
-                "{\"id\": \"route\", \"type\": \"line\", \"points\": [[0, 0], [10, 10]]}");
+        var e = aktion("beispiel:routen", HAFEN, ROUTE, "");
         var m = ohneAdresse(List.of(e));
         var v = new String[1];
-        assertEquals(List.of("hafen", "route"), objekte(m.nachrichten(SAM, true, p -> true, JETZT), "beispiel:routen", v));
+        var sam = m.nachrichten(SAM, true, p -> true, JETZT);
+        assertEquals(List.of("hafen", "route"), objekte(sam, "beispiel:routen", v));
         assertEquals(e.fuer(SAM).version(), v[0], "die version seiner Fassung");
+        assertEquals(e.fuer(SAM).version(), lies(sam.getFirst()).getAsJsonArray("ebenen").get(0).getAsJsonObject()
+                .get("version").getAsString(), "auch in der Liste");
         assertEquals(List.of("hafen"), objekte(m.nachrichten(ALEX, true, p -> true, JETZT), "beispiel:routen", v),
                 "ein anderer sieht nur, was alle sehen");
         assertEquals(e.version(), v[0]);
-        assertTrue(!e.version().equals(e.fuer(SAM).version()));
+        assertNotEquals(e.version(), e.fuer(SAM).version());
         assertEquals(List.of(), objekte(m.nachrichten(SAM, true, p -> true, JETZT + 1), "beispiel:routen", v), "einmal je version");
+
+        var nurEigene = ohneAdresse(List.of(aktion("beispiel:routen", "", ROUTE, "")));
+        var teile = nurEigene.nachrichten(SAM, true, p -> true, JETZT).stream().filter(n -> lies(n).get("typ").getAsString().equals("ebene")).toList();
+        assertEquals(1, teile.size(), "ohne gemeinsame Objekte kein leerer Teil vorn");
+        assertEquals(List.of("route"), objekte(teile, "beispiel:routen", v));
     }
 
     @Test
@@ -111,8 +128,75 @@ class EbenenFuerModTest {
                 .getAsJsonArray("blocks").size(), "die Tafel der Ebene bleibt, wie sie ist");
     }
 
+    /**
+     * Ein Klick geht nur durch für einen Knopf, der an einem Objekt mit Tafel hängt, das in der Fassung des Spielers
+     * steht, an einer Ebene, die er sehen darf; mit seinem Zustand. Die version prüft es nicht.
+     */
     @Test
-    void klick_lesen_rate_und_sicht() {
+    void klick_nur_auf_knoepfe_an_objekten_seiner_fassung() {
+        var k = new Knoepfe();
+        var schiff = k.knopf("proficisci", "schiff", "Schiff", "Ship");
+        var staedte = ebene("nations:staedte", "{\"id\": \"s1\", \"type\": \"pin\", \"at\": [0, 0]}, "
+                + "{\"id\": \"l\", \"type\": \"line\", \"points\": [[0, 0], [1, 1]]}", "");
+        var routen = aktion("proficisci:routen", "", HAFEN, "");
+        var geheim = ebene("beispiel:geheim", "{\"id\": \"g\", \"type\": \"pin\", \"at\": [0, 0]}", ", \"permission\": \"beispiel.karte\"");
+        for (var o : List.of("nations:staedte s1", "nations:staedte l", "nations:staedte weg", "proficisci:routen hafen",
+                "beispiel:geheim g", "gibt:es-nicht x")) {
+            schiff.attach(o.split(" ")[0], o.split(" ")[1]);
+        }
+        schiff.state(SAM, "nations:staedte", "s1", true);
+        var m = new EbenenFuerMod(JsonObject::new, null, Logger.getAnonymousLogger(), k);
+        m.bereite(List.of(staedte, routen, geheim));
+        Function<String, EbenenFuerMod.Klick> klick = o -> new EbenenFuerMod.Klick(o.split(" ")[0], "egal", o.split(" ")[1], "proficisci:schiff");
+
+        var g = m.klickbar(SAM, klick.apply("nations:staedte s1"), p -> true);
+        assertSame(schiff, g.knopf());
+        assertTrue(g.an(), "mit seinem Zustand, auch mit einer anderen version");
+        assertFalse(m.klickbar(ALEX, klick.apply("nations:staedte s1"), p -> true).an(), "je Spieler");
+        assertNotNull(m.klickbar(SAM, klick.apply("proficisci:routen hafen"), p -> true), "sein eigenes Objekt");
+        assertNull(m.klickbar(ALEX, klick.apply("proficisci:routen hafen"), p -> true), "das eigene Objekt eines anderen");
+        assertNull(m.klickbar(SAM, klick.apply("nations:staedte l"), p -> true), "eine Linie hat keine Tafel");
+        assertNull(m.klickbar(SAM, klick.apply("nations:staedte weg"), p -> true), "ein Objekt, das es nicht gibt");
+        assertNull(m.klickbar(SAM, klick.apply("gibt:es-nicht x"), p -> true), "eine Ebene, die es nicht gibt");
+        assertNull(m.klickbar(SAM, klick.apply("beispiel:geheim g"), p -> false), "ohne die permission der Ebene");
+        assertNotNull(m.klickbar(SAM, klick.apply("beispiel:geheim g"), p -> p.equals("beispiel.karte")));
+        assertNull(m.klickbar(SAM, new EbenenFuerMod.Klick("nations:staedte", "egal", "s1", "proficisci:anderer"), p -> true),
+                "ein Knopf, der dort nicht hängt");
+        schiff.detach("nations:staedte", "s1");
+        assertNull(m.klickbar(SAM, klick.apply("nations:staedte s1"), p -> true), "abgehängt");
+    }
+
+    /** Die Tafel eines eigenen Objekts nur für seinen Spieler, mit der version seiner Fassung. */
+    @Test
+    void tafel_eines_eigenen_objekts() {
+        var k = new Knoepfe();
+        k.knopf("proficisci", "schiff", "Schiff", null).attach("proficisci:routen", "hafen");
+        var e = aktion("proficisci:routen", "", HAFEN, "");
+        var m = new EbenenFuerMod(JsonObject::new, null, Logger.getAnonymousLogger(), k);
+        m.bereite(List.of(e));
+        m.frage(SAM, tafel("proficisci:routen", e.fuer(SAM).version(), "hafen"), JETZT);
+        m.frage(SAM, tafel("proficisci:routen", e.version(), "hafen"), JETZT);
+        m.frage(ALEX, tafel("proficisci:routen", e.version(), "hafen"), JETZT);
+        m.beantworte(JETZT);
+        var sam = tafeln(m.tafeln(SAM, true, p -> true, JETZT));
+        assertTrue(sam.get(0).has("panel"), "seine Fassung");
+        assertFalse(sam.get(1).has("panel"), "die version der gemeinsamen ist für ihn alt");
+        assertFalse(tafeln(m.tafeln(ALEX, true, p -> true, JETZT)).getFirst().has("panel"), "ein anderer hat es nicht");
+    }
+
+    @Test
+    void vergessen_leert_auch_die_klicks() {
+        var m = ohneAdresse(List.of());
+        for (int i = 0; i < EbenenFuerMod.KLICKS_JE_SEKUNDE; i++) {
+            m.darfKlicken(SAM, JETZT);
+        }
+        assertFalse(m.darfKlicken(SAM, JETZT));
+        m.vergiss(SAM);
+        assertTrue(m.darfKlicken(SAM, JETZT), "nach dem Vergessen von vorn");
+    }
+
+    @Test
+    void klick_lesen_und_rate() {
         byte[] k = "{\"v\": 1, \"typ\": \"knopf\", \"ebene\": \"nations:staedte\", \"version\": \"v1\", \"id\": \"s1\", \"knopf\": \"proficisci:schiff\"}"
                 .getBytes(StandardCharsets.UTF_8);
         assertTrue(EbenenFuerMod.istKnopf(k));
@@ -124,18 +208,13 @@ class EbenenFuerModTest {
         assertEquals("{\"v\":1,\"typ\":\"tafel\",\"ebene\":\"nations:staedte\",\"version\":\"v1\",\"id\":\"s1\"}",
                 new String(EbenenFuerMod.tafelNach(EbenenFuerMod.klick(k)), StandardCharsets.UTF_8));
 
-        var m = ohneAdresse(List.of(ebene("nations:staedte", "", ""),
-                ebene("beispiel:geheim", "", ", \"permission\": \"beispiel.karte\"")));
+        var m = ohneAdresse(List.of());
         for (int i = 0; i < EbenenFuerMod.KLICKS_JE_SEKUNDE; i++) {
             assertTrue(m.darfKlicken(SAM, JETZT));
         }
         assertFalse(m.darfKlicken(SAM, JETZT), "der 21. fällt weg");
         assertTrue(m.darfKlicken(ALEX, JETZT), "je Spieler");
         assertTrue(m.darfKlicken(SAM, JETZT + 1));
-        assertTrue(m.sieht("nations:staedte", p -> false));
-        assertFalse(m.sieht("beispiel:geheim", p -> false), "ohne die permission der Ebene");
-        assertTrue(m.sieht("beispiel:geheim", p -> p.equals("beispiel.karte")));
-        assertFalse(m.sieht("gibt:es-nicht", p -> true));
     }
 
     private static Function<String, EbenenPruefung.Bild> keine() {
@@ -351,6 +430,24 @@ class EbenenFuerModTest {
         m.frage(SAM, banner("beispiel:geheim", g.version(), "nordreich", false), JETZT);
         m.beantworte(JETZT);
         assertEquals(List.of(), banner(m.nachrichten(SAM, true, p -> false, JETZT)), "ohne das Recht der Ebene keine Antwort");
+    }
+
+    /** Eine geheime Aktionsebene: das Sprite zur version der Fassung des Spielers, die der Mod kennt. */
+    @Test
+    void banner_einer_geheimen_aktionsebene_mit_der_version_der_fassung() throws IOException {
+        var g = aktion("beispiel:geheim", "", "{\"id\": \"b\", \"type\": \"banner\", \"at\": [0, 0], \"design\": \"nordreich\"}",
+                ENTWURF + ", \"permission\": \"beispiel.karte\"");
+        var m = new EbenenFuerMod(JsonObject::new, sprites("beispiel", "geheim", new byte[] {1}, new byte[] {2}),
+                Logger.getAnonymousLogger(), new Knoepfe());
+        m.bereite(List.of(g));
+        m.frage(SAM, banner("beispiel:geheim", g.fuer(SAM).version(), "nordreich", false), JETZT);
+        m.frage(ALEX, banner("beispiel:geheim", g.fuer(SAM).version(), "nordreich", false), JETZT);
+        m.frage(ALEX, banner("beispiel:geheim", g.version(), "nordreich", false), JETZT);
+        m.beantworte(JETZT);
+        assertTrue(banner(m.nachrichten(SAM, true, p -> true, JETZT)).getFirst().has("png"), "die version seiner Fassung");
+        var alex = banner(m.nachrichten(ALEX, true, p -> true, JETZT));
+        assertFalse(alex.get(0).has("png"), "nicht die Fassung eines anderen");
+        assertTrue(alex.get(1).has("png"), "ohne eigene die der Ebene");
     }
 
     /** Höchstens 20 Anfragen nach Bannern je Spieler und Sekunde, gezählt getrennt von den Tafeln. */

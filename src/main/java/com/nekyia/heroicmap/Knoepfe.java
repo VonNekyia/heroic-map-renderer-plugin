@@ -94,10 +94,15 @@ final class Knoepfe {
         return aus;
     }
 
-    /** Der Knopf {@code id}, wenn er an diesem Objekt hängt; sonst null. */
-    synchronized Knopf angehaengt(String id, String ebene, String objekt) {
-        var hier = an.get(new Ort(ebene, objekt));
-        return hier == null ? null : hier.stream().filter(k -> k.id.equals(id)).findFirst().orElse(null);
+    /** Ein Knopf an einem Objekt und der Zustand eines Spielers dort, zusammen gelesen. */
+    record Gedrueckt(Knopf knopf, boolean an) {}
+
+    /** Der Knopf {@code id} mit dem Zustand von {@code spieler}, wenn er an diesem Objekt hängt; sonst null. */
+    synchronized Gedrueckt angehaengt(String id, String ebene, String objekt, UUID spieler) {
+        var ort = new Ort(ebene, objekt);
+        var hier = an.get(ort);
+        var k = hier == null ? null : hier.stream().filter(x -> x.id.equals(id)).findFirst().orElse(null);
+        return k == null ? null : new Gedrueckt(k, istAn(ort, k, spieler));
     }
 
     private boolean istAn(Ort ort, Knopf k, UUID spieler) {
