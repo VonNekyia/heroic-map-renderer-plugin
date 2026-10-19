@@ -1,5 +1,7 @@
 package com.nekyia.heroicmap.api;
 
+import java.util.UUID;
+
 /**
  * One layer of the map. Every change is checked right away and throws {@link IllegalArgumentException} if it does
  * not fit the format or its limits; nothing changes then. The messages of these exceptions are German, like the
@@ -76,8 +78,16 @@ public interface Layer {
     /** Removes the object with this id, if there is one. */
     void remove(String id);
 
-    /** Removes every object. */
+    /** Removes every object everyone sees; the objects of single players stay, see {@link #forPlayer}. */
     void clear();
+
+    /**
+     * The objects of one player in this layer. The first {@link PlayerLayer#put} makes this an action layer for
+     * good: each player sees the objects everyone sees and their own. In the mod that works at once; the web map
+     * shows action layers only after the player logs in there, from a later release. Objects of a player stay until
+     * the owner removes them, also when the player leaves; they go with the layer.
+     */
+    PlayerLayer forPlayer(UUID player);
 
     /**
      * Removes the layer; any further call other than {@link #id()} and {@code delete} throws

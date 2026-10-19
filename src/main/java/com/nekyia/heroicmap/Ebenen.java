@@ -25,6 +25,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -41,8 +42,45 @@ final class Ebenen {
     /** So viele Fehler einer Datei stehen im Log, dann nur noch ihre Zahl. */
     private static final int FEHLER_JE_DATEI = 20;
 
-    /** Eine geprüfte Ebene: ihr JSON wie in der Datei, die Bilder, die sie nennt, und ihre version. */
-    record Ebene(String id, JsonObject json, Map<String, byte[]> bilder, String version) {
+    /**
+     * Eine geprüfte Ebene: ihr JSON wie in der Datei, die Bilder, die sie nennt, und ihre version. Mit {@code spieler}
+     * eine Aktionsebene: dort je Spieler mit eigenen Objekten diese, null für jede andere Ebene. Siehe
+     * docs/ebenen.md, „Aktionsebenen im Mod“.
+     */
+    record Ebene(String id, JsonObject json, Map<String, byte[]> bilder, String version, Map<UUID, Eigene> spieler) {
+
+        Ebene(String id, JsonObject json, Map<String, byte[]> bilder, String version) {
+            this(id, json, bilder, version, null);
+        }
+
+        boolean aktion() {
+            return spieler != null;
+        }
+
+        /** Die eigenen Objekte von {@code u}; null ohne. */
+        Eigene eigene(UUID u) {
+            return spieler == null ? null : spieler.get(u);
+        }
+
+        /**
+         * Die Ebene, wie {@code u} sie in der Liste sieht: Kopf und Objekte dieser Ebene, die version seiner Fassung.
+         * Seine eigenen Objekte stehen in {@link #eigene}. Ohne eigene diese Ebene selbst.
+         */
+        Ebene fuer(UUID u) {
+            var f = eigene(u);
+            return f == null ? this : new Ebene(id, json, bilder, f.version());
+        }
+
+        /** Diese Ebene mit der version {@code v}; die version jeder Fassung folgt ihr. */
+        Ebene mitVersion(String v) {
+            Map<UUID, Eigene> neu = null;
+            if (spieler != null) {
+                var je = new HashMap<UUID, Eigene>();
+                spieler.forEach((u, f) -> je.put(u, new Eigene(f.objekte(), f.hash(), kurz(v + "|" + f.hash()))));
+                neu = Map.copyOf(je);
+            }
+            return new Ebene(id, json, bilder, v, neu);
+        }
 
         String modname() {
             return id.substring(0, id.indexOf(':'));
@@ -52,9 +90,28 @@ final class Ebenen {
             return id.substring(id.indexOf(':') + 1);
         }
 
-        /** Auf die Webkarte: wie {@code web}, sonst nur ohne permission. Siehe docs/ebenen.md, „Webkarte“. */
+        /**
+         * Auf die Webkarte: wie {@code web}, sonst nur ohne permission; eine Aktionsebene nie über layers/. Siehe
+         * docs/ebenen.md, „Webkarte“.
+         */
         boolean web() {
+            if (spieler != null) {
+                return false;
+            }
             return json.has("web") ? json.get("web").getAsBoolean() : !json.has("permission");
+        }
+    }
+
+    /**
+     * Die eigenen Objekte eines Spielers in einer Aktionsebene, nach id in ihrer Reihenfolge, nie geändert; ihr
+     * {@code hash} und die {@code version} seiner Fassung aus dem Hash und der version der Ebene, siehe
+     * {@link Ebene#mitVersion}.
+     */
+    record Eigene(Map<String, JsonObject> objekte, String hash, String version) {
+
+        /** Ohne version; die setzt {@link Ebene#mitVersion}. */
+        static Eigene aus(Map<String, JsonObject> objekte) {
+            return new Eigene(objekte, kurz(objekte.values().toString()), null);
         }
     }
 
@@ -213,7 +270,7 @@ final class Ebenen {
     static List<Ebene> mitSprites(List<Ebene> ebenen, Map<String, String> sprites) {
         return ebenen.stream().map(e -> {
             String s = sprites.get(e.id());
-            return s == null ? e : new Ebene(e.id(), e.json(), e.bilder(), kurz(e.version() + "|" + s));
+            return s == null ? e : e.mitVersion(kurz(e.version() + "|" + s));
         }).toList();
     }
 
@@ -388,7 +445,7 @@ final class Ebenen {
     }
 
     /** Die ersten 16 Hexziffern der SHA-256 eines Texts. */
-    private static String kurz(String text) {
+    static String kurz(String text) {
         try {
             return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(text.getBytes(StandardCharsets.UTF_8)), 0, 8);
         } catch (NoSuchAlgorithmException e) {

@@ -39,4 +39,17 @@ public interface HeroicMapApi {
      * @throws IllegalStateException if {@code owner} is disabled, as in its {@code onDisable}
      */
     Layer layer(Plugin owner, String name);
+
+    /**
+     * The button {@code name} of {@code owner}, created on the first call with this label, see {@link MapButton}.
+     * Its id is {@code modname:name}.
+     *
+     * @param owner the calling plugin itself, as for {@link #layer}
+     * @param name the rule of {@link #layer}
+     * @param de the label in German, or null; at most 32 characters
+     * @param en the label in English, or null; at most 32 characters; one of both is required
+     * @throws IllegalArgumentException if the name or label is not allowed, or the owner already has 64 buttons
+     * @throws IllegalStateException if {@code owner} is disabled
+     */
+    MapButton button(Plugin owner, String name, String de, String en);
 }
