@@ -10,6 +10,7 @@ Links und die Hinweise aus `NOTICE` setzt
 ## 0.12.1
 
 - **Losing `heroicmap.web` ends web map sessions:** when a player who logged in on the web map joins without the permission, the plugin logs them out everywhere, as `/karte abmelden` does.
+- **Button labels without §:** `HeroicMapApi.button` rejects a label with formatting codes. The companion mod removes them, and the web map would show them as they are.
 
 ## 0.12.0
 
