@@ -28,6 +28,7 @@ import org.bukkit.configuration.InvalidConfigurationException;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
+import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.plugin.ServicePriority;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -44,6 +45,7 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
     static final String SHOW = "heroicmap.show";
     /** Wer sie hat, bekommt im Mod die Ebenen. Siehe docs/ebenen.md, „Mod“. */
     static final String LAYERS = "heroicmap.layers";
+    static final String WEB = "heroicmap.web";
     /** Ein Anmeldelink gilt 5 min; einen neuen gibt es frühestens 15 s nach dem letzten. Siehe docs/anmeldung.md. */
     private static final long ANMELDUNG_GILT = 300;
     private static final long ANMELDUNG_ABSTAND = 15;
@@ -183,6 +185,25 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
         var antwort = mitspieler.show(message, player.getUniqueId(), player.hasPermission(SHOW), simpleVoiceChat, Instant.now());
         if (antwort != null) {
             player.sendPluginMessage(this, Download.KANAL, antwort.toString().getBytes(StandardCharsets.UTF_8));
+        }
+    }
+
+    /**
+     * Wer heroicmap.web nicht mehr hat, verliert beim Join jede Sitzung auf der Webkarte, wie mit /karte abmelden.
+     * Siehe docs/anmeldung.md, „Befehl“.
+     */
+    @EventHandler
+    public void beimBetreten(PlayerJoinEvent e) {
+        var s = spieler;
+        UUID u = e.getPlayer().getUniqueId();
+        if (s != null && s.bekannt(u) && !e.getPlayer().hasPermission(WEB)) {
+            getServer().getAsyncScheduler().runNow(this, t -> {
+                try {
+                    s.meldeAb(u);
+                } catch (IOException ex) {
+                    getLogger().log(Level.WARNING, "Abmelden von " + u + " ohne heroicmap.web ging nicht", ex);
+                }
+            });
         }
     }
 

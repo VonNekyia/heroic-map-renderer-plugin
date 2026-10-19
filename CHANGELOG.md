@@ -7,6 +7,10 @@ Links und die Hinweise aus `NOTICE` setzt
 [`.github/notizen.sh`](.github/notizen.sh) dazu. Siehe
 [Entwicklung](docs/entwicklung.md), „Release“.
 
+## 0.12.1
+
+- **Losing `heroicmap.web` ends web map sessions:** when a player who logged in on the web map joins without the permission, the plugin logs them out everywhere, as `/karte abmelden` does.
+
 ## 0.12.0
 
 - **Log in on the web map:** players run `/karte anmelden` in game and get a link. Logged in, the web map shows them their action layers and the buttons of the layer API, and a click there is the same event for the plugin as a click in the companion mod. `/karte abmelden` ends every session of the player. New permission `heroicmap.web`, by default everyone. The link needs `webserver.url`.
