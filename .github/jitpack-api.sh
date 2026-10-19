@@ -10,7 +10,15 @@ quelle=https://github.com/VonNekyia/heroic-map-renderer-plugin/releases/download
 ziel=$HOME/.m2/repository/com/nekyia/api/$version
 mkdir -p "$ziel"
 
-curl -fsSL --retry 3 -o "$ziel/SHA256SUMS" "$quelle/SHA256SUMS"
+# Fragt jemand nach dem Tag, bevor das Release veröffentlicht ist, gäbe es 404, und JitPack hielte den Fehlschlag fest.
+# Darum bis zu 10 min auf das Release warten. Siehe docs/api.md, „Einbinden“.
+versuche=40
+for versuch in $(seq 1 "$versuche"); do
+  curl -fsSL --retry 3 -o "$ziel/SHA256SUMS" "$quelle/SHA256SUMS" && break
+  [ "$versuch" -lt "$versuche" ] || { echo "Das Release $tag ist nach 10 min noch nicht veröffentlicht" >&2; exit 1; }
+  echo "Das Release $tag ist noch nicht veröffentlicht, nächster Versuch in 15 s"
+  sleep 15
+done
 for datei in "api-$version.jar" "api-$version.pom" "api-$version.module" "api-$version-sources.jar" "api-$version-javadoc.jar"; do
   # --ignore-missing unten prüft nur, was SHA256SUMS nennt; darum muss jede Datei darin stehen.
   awk -v d="$datei" '$2 == d || $2 == "*" d {f = 1} END {exit !f}' "$ziel/SHA256SUMS" \
