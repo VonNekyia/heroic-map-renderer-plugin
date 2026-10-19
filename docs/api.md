@@ -80,6 +80,12 @@ dependencies:
   [`jitpack.yml`](../jitpack.yml), ohne Java:
   - Es lädt Jar, `.pom`, `.module`, Quellen und Javadoc der API aus dem
     Release des Tags, den JitPack in `VERSION` nennt.
+  - Ist das Release noch nicht veröffentlicht, wartet es bis zu 10 min,
+    alle 15 s ein Versuch. Den Tag gibt es vor dem Release, siehe
+    [Entwicklung](entwicklung.md), „Release“. Ohne das Warten bekam am
+    19.10. eine Anfrage nach v0.11.0 in diesen Minuten 404, und JitPack
+    hielt den Fehlschlag fest; löschen kann ihn dort nur der Besitzer des
+    Repos.
   - Es prüft sie gegen `SHA256SUMS` des Releases.
   - Es legt sie nach `~/.m2/repository/com/nekyia/api/<version>/`.
 
