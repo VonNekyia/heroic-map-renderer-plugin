@@ -153,7 +153,8 @@ Plugin das seiner Plattform aus, siehe [Konfiguration](konfiguration.md),
 
 - **`KonfigurationTest`:** die mitgelieferte `config.yml`, auch ohne
   `renderer.binary`, Pfade, Bäume und ihre Ordner wie im Renderer, alle
-  Fehler auf einmal.
+  Fehler auf einmal. `webserver.trusted-proxy` nur mit IP-Literalen,
+  `webserver.erkennen-url` nur mit `url`, der Ursprung ohne Pfad und klein.
 - **`VorlageTest`:** eine alte `config.yml` mit eigenen Werten und
   Kommentaren, auch in `trees`, und unbekannten Schlüsseln: Jede ihrer
   Zeilen bleibt, jeder Schlüssel der Vorlage ist danach da, mit Vorgabe und
@@ -236,8 +237,13 @@ Plugin das seiner Plattform aus, siehe [Konfiguration](konfiguration.md),
   grosse Zähler. Die Fassung jeder Aktionsebene je Spieler mit seiner
   `version` und nur der Dimension der Wurzel, `knoepfe.json` sortiert und
   ohne Linie, fehlendes Objekt, Ebene mit `permission` und eigenes Objekt
-  eines anderen, ohne Änderung kein Schreiben, Aufräumen, ein neuer
-  Spieler im nächsten Takt.
+  eines anderen, ohne Änderung kein Schreiben, Aufräumen. Dateien nur für
+  Zuschauer, 60 s nach dem letzten `Web:`. `sicht.json`: alte beim Start
+  weg, `jetzt` vorn, `ich.json` ohne Anmeldung, Herzschlag nach 5 s, eine
+  Änderung gleich, offline und ohne Zuschauen einmal leer. `ips`: das
+  HMAC gegen die Testvektoren `ips` in `token.json` des Renderers,
+  IPv4-gemappt wie IPv4, sortiert, ohne geteilte IP und ohne `ip-aus`, das
+  über einen Neustart gilt.
 - **`TokenTest`:** stellt jedes gültige Token aus den Testvektoren des
   Renderers Zeichen für Zeichen gleich aus, ebenso jede Anmeldung
   (Fassung 2), lehnt ab, was kein gültiges ergäbe.
@@ -247,8 +253,9 @@ Plugin das seiner Plattform aus, siehe [Konfiguration](konfiguration.md),
   `renderer/tests/fixtures/manifest.json`: dieselben Summen je Stufe.
 - **`WebserverTest`:** die Schalter mit und ohne Karte, HTTPS und
   Geheimnis, `--player-dir` nur mit Geheimnis, die Karte aus einem Jar,
-  das der Test baut, die Pause bis zum Deckel. Eine Zeile `Aktion:` geht
-  an den Empfänger, nicht ins Log. Mit `FalscherRenderer` als Server:
+  das der Test baut, die Pause bis zum Deckel; `--trusted-proxy`,
+  `--recognize-origin` und `--recognize-url` nur mit Ordner je Spieler.
+  Die Zeilen `Aktion:` und `Web:` gehen an ihren Empfänger, nicht ins Log. Mit `FalscherRenderer` als Server:
   er läuft, bis stdin schliesst, und endet dann von selbst; bereit ist er
   nur zwischen Startzeile und Ende, und eine spätere Zeile `Server:` ändert
   die Adresse im Status nicht; ein Server,
@@ -268,6 +275,8 @@ Plugin das seiner Plattform aus, siehe [Konfiguration](konfiguration.md),
   einmal beim Ende der Sicht. Der Start ohne Simple Voice Chat. Die Tests
   laufen ohne die API; so prüft der Test auch, dass `HeroicMapPlugin` ohne
   sie lädt und nur `Sprachchat` sie braucht.
+  Für die Webkarte: die Sicht der Betrachter auch ohne Kanal, `sicht.json`
+  auf Blöcke abgerundet, nur die Dimension der Wurzel, höchstens 256.
 - **`DownloadTest`:** Angebot, unlesbare Anfragen, „Webserver aus“, Token mit
   Stufe, Deckel und Ablauf, Fortsetzen, Wechsel des Massstabs, alle drei
   Grenzen samt `wieder`, der tägliche Abgleich um die Uhrzeit herum, das

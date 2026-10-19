@@ -69,6 +69,13 @@ webserver:
   # HTTPS: Kette und Schlüssel als PEM, beide oder keins. Leer: HTTP.
   tls-cert: ""
   tls-key: ""
+  # Proxys vor dem Webserver, deren X-Real-IP er glaubt, nur als IP, etwa
+  # ["127.0.0.1"]; für die Erkennung per IP, siehe docs/anmeldung.md.
+  trusted-proxy: []
+  # Ein zweiter Name der Karte nur mit A-Eintrag, etwa
+  # "https://karte4.example.org"; so erkennt die Karte auch Browser mit
+  # IPv6. Leer: nur die IP am Namen aus url. Nur mit url.
+  erkennen-url: ""
 
 # Kartendownload für den Mod, siehe docs/download.md.
 download:

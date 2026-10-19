@@ -7,11 +7,14 @@ Links und die Hinweise aus `NOTICE` setzt
 [`.github/notizen.sh`](.github/notizen.sh) dazu. Siehe
 [Entwicklung](docs/entwicklung.md), „Release“.
 
-## 0.12.1
+## 0.13.0
 
-- **Renderer 0.12.0** inside. No full render needed: maps rendered with renderer 0.11.0 keep updating.
+- **Renderer 0.12.0** inside: it serves the players on the web map and the recognition by IP. No full render needed: maps rendered with renderer 0.11.0 keep updating.
+- **Players on the web map:** a player recognized on the web map sees themselves and the players they would see in the companion mod, by the same rules (`show`, `heroicmap.show`, Simple Voice Chat). Without Simple Voice Chat, only themselves.
+- **Recognized by IP:** when the browser comes from the IP of exactly one player online, the web map recognizes them without `/karte anmelden`, for viewing only; clicking buttons still needs `/karte anmelden`. `/karte ip aus` turns this off for a player. New keys `webserver.trusted-proxy` for a reverse proxy and `webserver.erkennen-url` for a second, IPv4-only name of the map, so that browsers with IPv6 are recognized too.
 - **Losing `heroicmap.web` ends web map sessions:** when a player who logged in on the web map joins without the permission, the plugin logs them out everywhere, as `/karte abmelden` does.
 - **Button labels without §:** `HeroicMapApi.button` rejects a label with formatting codes. The companion mod removes them, and the web map would show them as they are.
+- **Fewer writes:** the plugin writes the files of a player for the web map only while they look at it.
 
 ## 0.12.0
 

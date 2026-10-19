@@ -5,6 +5,7 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -44,6 +45,15 @@ final class Mitspieler {
 
     /** Wem zuletzt eine Liste mit Spielern ging; endet seine Sicht, bekommt er einmal eine leere. */
     private final Set<UUID> sahen = new HashSet<>();
+
+    /** Wer online ist und auf der Webkarte schaut; das Plugin setzt es jede Sekunde. */
+    private Set<UUID> betrachter = Set.of();
+
+    /** Je Betrachter, wen er im letzten Takt sah. */
+    private Map<UUID, List<Spieler>> imWeb = Map.of();
+
+    /** Höchstens so viele andere in sicht.json. */
+    static final int IM_WEB = 256;
 
     /**
      * Startet die Brücke zu Simple Voice Chat, wenn er auf dem Server liegt; sonst sagt das Log einmal, dass
@@ -107,6 +117,47 @@ final class Mitspieler {
         return a;
     }
 
+    /** Die Betrachter auf der Webkarte für den nächsten Takt. Siehe docs/mitspieler.md, „Webkarte“. */
+    void betrachter(Set<UUID> b) {
+        betrachter = Set.copyOf(b);
+    }
+
+    /** Wen {@code betrachter} im letzten Takt sah, wie im Mod; leer ohne Simple Voice Chat. */
+    List<Spieler> imWeb(UUID betrachter) {
+        return imWeb.getOrDefault(betrachter, List.of());
+    }
+
+    /**
+     * Der Inhalt von sicht.json ohne jetzt: {@code ich}, wenn er in {@code dimension} ist, und von {@code andere}
+     * höchstens {@link #IM_WEB} aus {@code dimension}, x und z auf Blöcke abgerundet. Siehe docs/anmeldung.md,
+     * „Mitspieler“.
+     */
+    static JsonObject sicht(Spieler ich, List<Spieler> andere, String dimension) {
+        var o = new JsonObject();
+        if (ich.dimension().equals(dimension)) {
+            o.add("ich", lage(ich));
+        }
+        var liste = new JsonArray();
+        andere.stream().filter(p -> p.dimension().equals(dimension)).limit(IM_WEB).forEach(p -> {
+            var l = lage(p);
+            var e = new JsonObject();
+            e.addProperty("uuid", p.uuid().toString());
+            e.addProperty("name", p.name());
+            e.add("x", l.get("x"));
+            e.add("z", l.get("z"));
+            liste.add(e);
+        });
+        o.add("spieler", liste);
+        return o;
+    }
+
+    private static JsonObject lage(Spieler p) {
+        var o = new JsonObject();
+        o.addProperty("x", (long) Math.floor(p.x()));
+        o.addProperty("z", (long) Math.floor(p.z()));
+        return o;
+    }
+
     /** Ein Spieler geht; bis zu seiner nächsten Nachricht show gilt für ihn wieder simplevoicechat. */
     void vergiss(UUID spieler) {
         verborgen.remove(spieler);
@@ -154,27 +205,35 @@ final class Mitspieler {
 
     /**
      * Ein Takt: je Spieler mit offenem Kanal die Nachricht spieler mit allen, die er sieht; die leere Liste nur
-     * einmal, wenn seine Sicht endet. Spieler ohne Nachricht fehlen in der Antwort.
+     * einmal, wenn seine Sicht endet. Spieler ohne Nachricht fehlen in der Antwort. Dazu die Sicht jedes
+     * Betrachters auf der Webkarte, siehe {@link #imWeb}.
      */
     Map<UUID, JsonObject> takt(List<Spieler> alle, Set<UUID> mitKanal, double weite, Instant jetzt) {
         // Jeder gegen jeden, n² je Takt. Siehe docs/mitspieler.md, „Takt“.
         var raus = new LinkedHashMap<UUID, JsonObject>();
+        var web = new HashMap<UUID, List<Spieler>>();
         sahen.retainAll(mitKanal);
         for (var empfaenger : alle) {
-            if (!mitKanal.contains(empfaenger.uuid())) {
+            boolean mod = mitKanal.contains(empfaenger.uuid());
+            if (!mod && !betrachter.contains(empfaenger.uuid())) {
+                continue;
+            }
+            var sichtbar = alle.stream().filter(p -> sieht(empfaenger, p, weite)).toList();
+            if (betrachter.contains(empfaenger.uuid())) {
+                web.put(empfaenger.uuid(), sichtbar);
+            }
+            if (!mod) {
                 continue;
             }
             var liste = new JsonArray();
-            for (var p : alle) {
-                if (sieht(empfaenger, p, weite)) {
-                    var o = new JsonObject();
-                    o.addProperty("uuid", p.uuid().toString());
-                    o.addProperty("name", p.name());
-                    o.addProperty("dimension", p.dimension());
-                    o.addProperty("x", p.x());
-                    o.addProperty("z", p.z());
-                    liste.add(o);
-                }
+            for (var p : sichtbar) {
+                var o = new JsonObject();
+                o.addProperty("uuid", p.uuid().toString());
+                o.addProperty("name", p.name());
+                o.addProperty("dimension", p.dimension());
+                o.addProperty("x", p.x());
+                o.addProperty("z", p.z());
+                liste.add(o);
             }
             if (!liste.isEmpty()) {
                 sahen.add(empfaenger.uuid());
@@ -185,6 +244,7 @@ final class Mitspieler {
             n.add("spieler", liste);
             raus.put(empfaenger.uuid(), n);
         }
+        imWeb = web;
         return raus;
     }
 }

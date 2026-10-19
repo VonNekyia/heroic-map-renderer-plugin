@@ -329,4 +329,38 @@ class MitspielerTest {
         });
         return l;
     }
+
+    @Test
+    void takt_rechnet_die_sicht_der_betrachter_im_web() {
+        var sam = bei(0, OHNE_GRUPPE);
+        var alex = bei(10, OHNE_GRUPPE);
+        var fern = bei(1000, OHNE_GRUPPE);
+        var m = new Mitspieler();
+        m.betrachter(Set.of(sam.uuid(), fern.uuid()));
+        var raus = m.takt(List.of(sam, alex, fern), Set.of(), WEITE, JETZT);
+        assertTrue(raus.isEmpty(), "im Web keine Nachricht an den Mod");
+        assertEquals(List.of(alex), m.imWeb(sam.uuid()), "wie im Mod, auch ohne Kanal");
+        assertEquals(List.of(), m.imWeb(fern.uuid()));
+        assertEquals(List.of(), m.imWeb(alex.uuid()), "kein Betrachter");
+        m.betrachter(Set.of());
+        m.takt(List.of(sam, alex, fern), Set.of(), WEITE, JETZT.plusSeconds(1));
+        assertEquals(List.of(), m.imWeb(sam.uuid()), "schaut nicht mehr");
+    }
+
+    @Test
+    void sicht_fuer_die_webkarte() {
+        var ich = new Mitspieler.Spieler(new UUID(0, 1), "Sam", "minecraft:overworld", -0.5, 64, 10.9, Mitspieler.Stimme.STUMM, true, false);
+        var da = new Mitspieler.Spieler(new UUID(0, 2), "Alex", "minecraft:overworld", 3.2, 64, -7.1, Mitspieler.Stimme.STUMM, true, false);
+        var nether = new Mitspieler.Spieler(new UUID(0, 3), "Kim", "minecraft:the_nether", 0, 64, 0, Mitspieler.Stimme.STUMM, true, false);
+        assertEquals("{\"ich\":{\"x\":-1,\"z\":10},\"spieler\":[{\"uuid\":\"00000000-0000-0000-0000-000000000002\","
+                + "\"name\":\"Alex\",\"x\":3,\"z\":-8}]}", Mitspieler.sicht(ich, List.of(da, nether), "minecraft:overworld").toString(),
+                "auf Blöcke abgerundet, nur die Dimension der Wurzel");
+        assertEquals("{\"spieler\":[{\"uuid\":\"00000000-0000-0000-0000-000000000003\",\"name\":\"Kim\",\"x\":0,\"z\":0}]}",
+                Mitspieler.sicht(ich, List.of(da, nether), "minecraft:the_nether").toString(), "ich woanders: ohne ich");
+        var viele = new java.util.ArrayList<Mitspieler.Spieler>();
+        for (int i = 0; i < 300; i++) {
+            viele.add(new Mitspieler.Spieler(new UUID(1, i), "S" + i, "minecraft:overworld", i, 64, 0, Mitspieler.Stimme.STUMM, true, false));
+        }
+        assertEquals(Mitspieler.IM_WEB, Mitspieler.sicht(ich, viele, "minecraft:overworld").getAsJsonArray("spieler").size());
+    }
 }

@@ -7,13 +7,21 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import com.nekyia.heroicmap.Ebenen.Ebene;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.net.Inet6Address;
+import java.net.InetAddress;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.HexFormat;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -23,6 +31,7 @@ class SpielerOrdnerTest {
     private static final UUID SAM = UUID.fromString("8f3c2b6e-0d4a-4c1e-9b7a-2e5f6a1d3c90");
     private static final UUID ALEX = new UUID(0, 2);
     private static final String OBERWELT = "minecraft:overworld";
+    private static final long JETZT = 1_790_000_000;
 
     @TempDir
     Path tmp;
@@ -58,7 +67,7 @@ class SpielerOrdnerTest {
     void anmelden_abmelden_und_der_zaehler() throws IOException {
         Files.createDirectories(tmp.resolve(ALEX.toString()));
         Files.createDirectories(tmp.resolve("kein-spieler"));
-        var s = new SpielerOrdner(tmp, OBERWELT);
+        var s = new SpielerOrdner(tmp, OBERWELT, new byte[32]);
         assertTrue(s.bekannt(ALEX), "hat schon einen Ordner");
         assertFalse(s.bekannt(SAM));
         assertFalse(s.meldeAb(SAM), "ohne Ordner keine Sitzung");
@@ -87,9 +96,11 @@ class SpielerOrdnerTest {
 
     @Test
     void schreibt_je_spieler_fassungen_und_knoepfe() throws IOException {
-        var s = new SpielerOrdner(tmp, OBERWELT);
+        var s = new SpielerOrdner(tmp, OBERWELT, new byte[32]);
         s.meldeAn(SAM, "Sam");
         s.meldeAn(ALEX, "Alex");
+        s.schaut(SAM, JETZT);
+        s.schaut(ALEX, JETZT);
         var routen = aktion("proficisci:routen", "{\"id\": \"hafen\", \"type\": \"pin\", \"at\": [0, 0]}",
                 "{\"id\": \"route\", \"type\": \"line\", \"points\": [[0, 0], [9, 9]]}, "
                         + "{\"id\": \"nether\", \"type\": \"pin\", \"at\": [0, 0], \"dimension\": \"minecraft:the_nether\"}, "
@@ -106,7 +117,7 @@ class SpielerOrdnerTest {
         }
         schiff.state(SAM, "nations:staedte", "s1", true);
         var stand = List.of(routen, staedte, geheim);
-        s.schreibe(stand, k);
+        s.schreibe(stand, k, JETZT);
 
         var sam = lies(tmp.resolve(SAM + "/ebenen/proficisci/routen.json"));
         assertEquals(routen.fuer(SAM).version(), sam.get("version").getAsString());
@@ -128,29 +139,112 @@ class SpielerOrdnerTest {
 
         // Ohne Änderung kein Schreiben; nach einer an den Knöpfen wieder.
         Files.delete(tmp.resolve(SAM + "/knoepfe.json"));
-        s.schreibe(stand, k);
+        s.schreibe(stand, k, JETZT);
         assertFalse(Files.exists(tmp.resolve(SAM + "/knoepfe.json")), "nichts geändert, nichts geschrieben");
         schiff.state(SAM, "nations:staedte", "s1", false);
-        s.schreibe(stand, k);
+        s.schreibe(stand, k, JETZT);
         assertTrue(Files.readString(tmp.resolve(SAM + "/knoepfe.json")).contains("\"on\":false"));
 
         // Geht die Aktionsebene, geht ihre Datei; ich.json und zaehler bleiben.
         s.meldeAb(SAM);
-        s.schreibe(List.of(staedte), k);
+        s.schreibe(List.of(staedte), k, JETZT);
         assertFalse(Files.exists(tmp.resolve(SAM + "/ebenen")), "leere Ordner gehen mit");
         assertTrue(Files.exists(tmp.resolve(SAM + "/ich.json")));
         assertEquals("1\n", Files.readString(tmp.resolve(SAM + "/zaehler")));
     }
 
     @Test
-    void ein_neuer_spieler_bekommt_seine_dateien_im_naechsten_takt() throws IOException {
-        var s = new SpielerOrdner(tmp, OBERWELT);
+    void dateien_nur_fuer_zuschauer() throws IOException {
+        var s = new SpielerOrdner(tmp, OBERWELT, new byte[32]);
         var stand = List.of(aktion("proficisci:routen", "", "{\"id\": \"r\", \"type\": \"line\", \"points\": [[0, 0], [1, 1]]}", ""));
         var k = new Knoepfe();
-        s.schreibe(stand, k);
         s.meldeAn(ALEX, "Alex");
-        s.schreibe(stand, k);
-        assertTrue(Files.exists(tmp.resolve(ALEX + "/knoepfe.json")));
+        s.schreibe(stand, k, JETZT);
+        assertFalse(Files.exists(tmp.resolve(ALEX + "/knoepfe.json")), "angemeldet, aber er schaut nicht");
+        s.schaut(ALEX, JETZT);
+        s.schreibe(stand, k, JETZT);
+        assertTrue(Files.exists(tmp.resolve(ALEX + "/knoepfe.json")), "ein neuer Zuschauer im nächsten Takt");
         assertEquals(0, lies(tmp.resolve(ALEX + "/ebenen/proficisci/routen.json")).getAsJsonArray("objects").size());
+        assertEquals(Set.of(ALEX), s.zuschauer(JETZT + SpielerOrdner.ZUSCHAUEN - 1));
+        assertEquals(Set.of(), s.zuschauer(JETZT + SpielerOrdner.ZUSCHAUEN), "60 s ohne Signal Web:");
+    }
+
+    private String sicht(UUID u) throws IOException {
+        return Files.readString(tmp.resolve(u + "/sicht.json"));
+    }
+
+    @Test
+    void sicht_mit_herzschlag_und_leer_beim_gehen() throws IOException {
+        Files.createDirectories(tmp.resolve(SAM.toString()));
+        Files.writeString(tmp.resolve(SAM + "/sicht.json"), "alt");
+        var s = new SpielerOrdner(tmp, OBERWELT, new byte[32]);
+        assertFalse(Files.exists(tmp.resolve(SAM + "/sicht.json")), "beim Start fällt jede alte weg");
+        var inhalt = Ebenen.lies("{\"ich\":{\"x\":1,\"z\":2},\"spieler\":[]}");
+        s.schreibeSicht(Map.of(SAM, inhalt), Map.of(SAM, "Sam"), JETZT);
+        assertFalse(Files.exists(tmp.resolve(SAM + "/sicht.json")), "nur für Zuschauer");
+        s.schaut(SAM, JETZT);
+        s.schreibeSicht(Map.of(SAM, inhalt), Map.of(SAM, "Sam"), JETZT);
+        assertEquals("{\"jetzt\":1790000000,\"ich\":{\"x\":1,\"z\":2},\"spieler\":[]}", sicht(SAM));
+        assertEquals("{\"name\":\"Sam\",\"uuid\":\"" + SAM + "\"}", Files.readString(tmp.resolve(SAM + "/ich.json")),
+                "ich.json auch ohne /karte anmelden");
+        s.schreibeSicht(Map.of(SAM, inhalt), Map.of(SAM, "Sam"), JETZT + SpielerOrdner.HERZSCHLAG - 1);
+        assertTrue(sicht(SAM).startsWith("{\"jetzt\":1790000000,"), "gleich und vor dem Herzschlag: nicht neu");
+        s.schreibeSicht(Map.of(SAM, inhalt), Map.of(SAM, "Sam"), JETZT + SpielerOrdner.HERZSCHLAG);
+        assertTrue(sicht(SAM).startsWith("{\"jetzt\":1790000005,"), "der Herzschlag");
+        var anders = Ebenen.lies("{\"ich\":{\"x\":2,\"z\":2},\"spieler\":[]}");
+        s.schreibeSicht(Map.of(SAM, anders), Map.of(SAM, "Sam"), JETZT + 6);
+        assertEquals("{\"jetzt\":1790000006,\"ich\":{\"x\":2,\"z\":2},\"spieler\":[]}", sicht(SAM), "eine Änderung gleich");
+        s.schreibeSicht(Map.of(), Map.of(), JETZT + 7);
+        assertEquals("{\"jetzt\":1790000007,\"spieler\":[]}", sicht(SAM), "offline: einmal leer, ohne ich");
+        s.schreibeSicht(Map.of(), Map.of(), JETZT + 20);
+        assertEquals("{\"jetzt\":1790000007,\"spieler\":[]}", sicht(SAM), "danach kein Herzschlag");
+        s.schreibeSicht(Map.of(SAM, inhalt), Map.of(SAM, "Sam"), JETZT + 21);
+        assertTrue(sicht(SAM).contains("\"ich\""));
+        s.schreibeSicht(Map.of(SAM, inhalt), Map.of(SAM, "Sam"), JETZT + SpielerOrdner.ZUSCHAUEN);
+        assertEquals("{\"jetzt\":1790000060,\"spieler\":[]}", sicht(SAM), "schaut nicht mehr: einmal leer");
+    }
+
+    @Test
+    void ips_als_hmac_nur_eindeutige_und_ohne_ip_aus() throws Exception {
+        // Die Testvektoren des Renderers, eine Kopie von renderer/tests/fixtures/token.json; die CI vergleicht sie.
+        JsonObject v;
+        try (var r = new InputStreamReader(Objects.requireNonNull(
+                SpielerOrdnerTest.class.getResourceAsStream("/token.json")), StandardCharsets.UTF_8)) {
+            v = JsonParser.parseReader(r).getAsJsonObject();
+        }
+        byte[] g = HexFormat.of().parseHex(v.get("geheimnis_hex").getAsString());
+        var vektoren = v.getAsJsonObject("ips").getAsJsonArray("vektoren");
+        assertEquals(4, vektoren.size());
+        for (var e : vektoren) {
+            var t = e.getAsJsonObject();
+            assertEquals(t.get("hmac_hex").getAsString(), SpielerOrdner.hmac(g, InetAddress.ofLiteral(t.get("adresse").getAsString())),
+                    t.get("adresse").getAsString());
+        }
+        assertEquals("970379b34719ddc10020e079065e622061177903a8cd4ef26dfd6ba61bcee7d4",
+                SpielerOrdner.hmac(g, Inet6Address.getByAddress(null,
+                        new byte[] {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, (byte) 0xff, (byte) 0xff, (byte) 203, 0, 113, 7}, null)),
+                "IPv4-gemappt als Inet6Address wie IPv4");
+
+        var s = new SpielerOrdner(tmp, OBERWELT, g);
+        var drei = new UUID(0, 3);
+        var vier = new UUID(0, 4);
+        s.schreibeIps(Map.of(SAM, InetAddress.ofLiteral("203.0.113.7"), ALEX, InetAddress.ofLiteral("198.51.100.1"),
+                drei, InetAddress.ofLiteral("198.51.100.1"), vier, InetAddress.ofLiteral("2001:db8::1")));
+        String ips = Files.readString(tmp.resolve("ips"));
+        assertEquals(List.of("970379b34719ddc10020e079065e622061177903a8cd4ef26dfd6ba61bcee7d4 " + SAM,
+                "bd046e94b9ac190f45b693ffaa33dfa3e9e2d079c76e5f6ce849f41eb0de0e31 " + vier), ips.lines().toList(),
+                "sortiert, ohne die IP von zweien, nie im Klartext");
+        assertTrue(ips.endsWith("\n"));
+        assertFalse(ips.contains("203.0.113.7"));
+
+        s.ip(SAM, false);
+        assertTrue(Files.exists(tmp.resolve(SAM + "/ip-aus")));
+        s.schreibeIps(Map.of(SAM, InetAddress.ofLiteral("203.0.113.7")));
+        assertEquals("", Files.readString(tmp.resolve("ips")), "mit /karte ip aus nicht");
+        assertTrue(new SpielerOrdner(tmp, OBERWELT, g).ohneIp(SAM), "über einen Neustart");
+        s.ip(SAM, true);
+        assertFalse(Files.exists(tmp.resolve(SAM + "/ip-aus")));
+        s.schreibeIps(Map.of(SAM, InetAddress.ofLiteral("203.0.113.7")));
+        assertEquals("970379b34719ddc10020e079065e622061177903a8cd4ef26dfd6ba61bcee7d4 " + SAM + "\n", Files.readString(tmp.resolve("ips")));
     }
 }

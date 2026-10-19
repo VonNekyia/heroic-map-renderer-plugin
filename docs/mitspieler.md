@@ -1,6 +1,6 @@
 ---
 title: Mitspieler
-description: Ein Spieler mit dem Mod sieht auf der Karte die Spieler, die ihn in Simple Voice Chat hören, wenn beide es im Mod gewählt haben und die Permission heroicmap.show haben. Die Wahl show je Spieler, wer wen hört, mit Beleg aus Javadoc und Code von Simple Voice Chat, wer wen sieht, der Takt im Hauptthread, die Brücke zu Simple Voice Chat als weiche Abhängigkeit und was ohne ihn geschieht.
+description: Ein Spieler mit dem Mod sieht auf der Karte die Spieler, die ihn in Simple Voice Chat hören, wenn beide es im Mod gewählt haben und die Permission heroicmap.show haben. Die Wahl show je Spieler, wer wen hört, mit Beleg aus Javadoc und Code von Simple Voice Chat, wer wen sieht, der Takt im Hauptthread, die Brücke zu Simple Voice Chat als weiche Abhängigkeit und was ohne ihn geschieht; dazu dieselbe Sicht auf der Webkarte.
 code:
   - src/main/java/com/nekyia/heroicmap/Mitspieler.java
   - src/main/java/com/nekyia/heroicmap/Sprachchat.java
@@ -193,3 +193,19 @@ siehe unten. Der Code steht in `Mitspieler.sieht`.
   Spielern online, dazu je Spieler eine Abfrage an Simple Voice Chat.
   Nicht gemessen. Wird es bei vielen Spielern zu teuer, hilft ein Raster
   nach Welt und Lage.
+
+## Webkarte
+
+Wer auf der Webkarte erkannt ist und schaut, sieht dort sich und dieselben
+Mitspieler wie im Mod (#305), siehe [Anmeldung](anmeldung.md),
+„Mitspieler“.
+
+- **Dieselbe Regel:** `Mitspieler.takt` rechnet je Betrachter mit
+  `sieht`, wie für den Mod; ein Betrachter mit Mod bekommt dieselbe Liste
+  in beide. Die Betrachter setzt das Plugin jede Sekunde
+  (`Mitspieler.betrachter`): Zuschauer, die online sind.
+- **Ohne Simple Voice Chat** läuft kein Takt, und ein Betrachter sieht nur
+  sich.
+- **Offline** sieht ein Betrachter niemanden.
+- **Kosten:** zu den Empfängern mit Mod kommen Betrachter ohne Mod, je
+  einer n Vergleiche.

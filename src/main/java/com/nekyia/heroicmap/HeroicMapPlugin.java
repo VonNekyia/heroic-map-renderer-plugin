@@ -4,6 +4,7 @@ import com.google.gson.JsonObject;
 import com.nekyia.heroicmap.api.HeroicMapApi;
 import com.nekyia.heroicmap.api.MapButtonClickEvent;
 import java.io.IOException;
+import java.net.InetAddress;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -11,11 +12,15 @@ import java.security.SecureRandom;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.logging.Level;
 import java.util.stream.Stream;
 import net.kyori.adventure.text.Component;
@@ -67,7 +72,10 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
     private volatile SpielerOrdner spieler;
     private byte[] geheimnis;
     private String kartenUrl;
-    private boolean spielerScheiterte;
+    /** Was beim Schreiben je Spieler gerade scheitert; so steht jeder Fehler einmal im Log. */
+    private final Set<String> spielerScheitert = ConcurrentHashMap.newKeySet();
+    /** Die IPs der Spieler online, zuletzt im Hauptthread gelesen; geschrieben wird immer die neueste. */
+    private final AtomicReference<Map<UUID, InetAddress>> ips = new AtomicReference<>(Map.of());
     private final SecureRandom zufall = new SecureRandom();
     /** Nur im Hauptthread: je Spieler die Sekunde seines letzten Anmeldelinks. */
     private final Map<UUID, Long> letzteAnmeldung = new HashMap<>();
@@ -116,8 +124,13 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
         getServer().getAsyncScheduler().runAtFixedRate(this, t -> {
             ebenen.takt();
             fuerMod.bereite(ebenen.stand());
-            schreibeSpieler();
+            var s = spieler;
+            if (s != null) {
+                schreibeSpieler("Dateien je Spieler", () -> s.schreibe(ebenen.stand(), ebenen.api().knoepfe(),
+                        Instant.now().getEpochSecond()));
+            }
         }, 1, 1, TimeUnit.SECONDS);
+        getServer().getGlobalRegionScheduler().runAtFixedRate(this, t -> sichtTakt(), 20, 20);
         getServer().getGlobalRegionScheduler().runAtFixedRate(this, t -> ebenenAnMod(), 20, 20);
         try {
             konf = konf.mitRenderer(Binaer.waehle(konf.renderer(), getFile().toPath(), getDataFolder().toPath().resolve("bin"),
@@ -205,6 +218,7 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
                 }
             });
         }
+        ipsNeu(null);
     }
 
     @EventHandler
@@ -213,6 +227,65 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
         letzteAnmeldung.remove(e.getPlayer().getUniqueId());
         if (fuerMod != null) {
             fuerMod.vergiss(e.getPlayer().getUniqueId());
+        }
+        ipsNeu(e.getPlayer().getUniqueId());
+    }
+
+    /**
+     * Im Hauptthread: liest die IPs der Spieler online, ohne {@code geht}, und schreibt ips ausserhalb neu. Zwei
+     * schnelle Aufrufe schreiben beide den neuesten Stand. Siehe docs/anmeldung.md, „Erkennung per IP“.
+     */
+    private void ipsNeu(UUID geht) {
+        var s = spieler;
+        if (s == null) {
+            return;
+        }
+        var online = new HashMap<UUID, InetAddress>();
+        for (Player p : getServer().getOnlinePlayers()) {
+            var a = p.getAddress();
+            if (!p.getUniqueId().equals(geht) && a != null && a.getAddress() != null) {
+                online.put(p.getUniqueId(), a.getAddress());
+            }
+        }
+        ips.set(Map.copyOf(online));
+        getServer().getAsyncScheduler().runNow(this, t -> schreibeSpieler("ips", () -> s.schreibeIps(ips.get())));
+    }
+
+    /**
+     * Im Hauptthread, jede Sekunde: die Sicht jedes Zuschauers online für sicht.json, aus seiner Lage und dem, was
+     * Mitspieler im letzten Takt für ihn rechnete; geschrieben ausserhalb. Siehe docs/anmeldung.md, „Mitspieler“.
+     */
+    private void sichtTakt() {
+        var s = spieler;
+        if (s == null) {
+            return;
+        }
+        long jetzt = Instant.now().getEpochSecond();
+        var zuschauer = s.zuschauer(jetzt);
+        var inhalte = new HashMap<UUID, JsonObject>();
+        var namen = new HashMap<UUID, String>();
+        for (Player p : getServer().getOnlinePlayers()) {
+            UUID u = p.getUniqueId();
+            if (zuschauer.contains(u)) {
+                var l = p.getLocation();
+                var ich = new Mitspieler.Spieler(u, p.getName(), p.getWorld().getKey().toString(), l.getX(), l.getY(),
+                        l.getZ(), Mitspieler.Stimme.STUMM, true, false);
+                inhalte.put(u, Mitspieler.sicht(ich, mitspieler.imWeb(u), s.dimension()));
+                namen.put(u, p.getName());
+            }
+        }
+        mitspieler.betrachter(inhalte.keySet());
+        getServer().getAsyncScheduler().runNow(this, t -> schreibeSpieler("sicht.json", () -> s.schreibeSicht(inhalte, namen, jetzt)));
+    }
+
+    /** Im Faden des Webservers: eine Zeile Web:, also schaut dieser Spieler gerade. Siehe docs/anmeldung.md, „Zuschauer“. */
+    private void zuschauer(String rest) {
+        var s = spieler;
+        var u = rest.length() == 36 ? SpielerOrdner.uuid(rest) : null;
+        if (u == null) {
+            getLogger().warning("Webserver: eine Zeile Web ohne gültige UUID");
+        } else if (s != null) {
+            s.schaut(u, Instant.now().getEpochSecond());
         }
     }
 
@@ -271,22 +344,21 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
         });
     }
 
-    /** Im Takt der Ebenen: die Dateien je Spieler für die Webkarte; ein Fehler steht einmal im Log. */
-    private void schreibeSpieler() {
-        var s = spieler;
-        if (s == null) {
-            return;
-        }
+    /** Etwas, das unter plugins/HeroicMap/spieler/ schreibt. */
+    private interface Schreiben {
+        void run() throws IOException;
+    }
+
+    /** Ausserhalb des Hauptthreads: schreibt für die Webkarte; ein Fehler je {@code was} steht einmal im Log. */
+    private void schreibeSpieler(String was, Schreiben s) {
         try {
-            s.schreibe(ebenen.stand(), ebenen.api().knoepfe());
-            if (spielerScheiterte) {
-                getLogger().info("Dateien je Spieler für die Webkarte wieder geschrieben");
-                spielerScheiterte = false;
+            s.run();
+            if (spielerScheitert.remove(was)) {
+                getLogger().info(was + " für die Webkarte wieder geschrieben");
             }
         } catch (IOException | RuntimeException e) {
-            if (!spielerScheiterte) {
-                getLogger().log(Level.WARNING, "Dateien je Spieler für die Webkarte nicht geschrieben", e);
-                spielerScheiterte = true;
+            if (spielerScheitert.add(was)) {
+                getLogger().log(Level.WARNING, was + " für die Webkarte nicht geschrieben", e);
             }
         }
     }
@@ -352,7 +424,9 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
         }
         Path ordner = web != null && g != null ? starteAnmeldung(konf, web, g) : null;
         webserver = new Webserver(Webserver.befehl(konf, web, geheimnisDatei, ordner), konf.renderer(), getLogger(),
-                getDataFolder().toPath().resolve("webserver.pid"), Webserver.ERSTE_PAUSE, Webserver.STABIL, this::webKlick);
+                getDataFolder().toPath().resolve("webserver.pid"), Webserver.ERSTE_PAUSE, Webserver.STABIL,
+                Map.of(Webserver.AKTION, this::webKlick, Webserver.WEB, this::zuschauer));
+        ipsNeu(null);
         webserver.raeumeAuf();
         webserver.starte();
     }
@@ -374,7 +448,7 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
         try {
             Files.createDirectories(ordner);
             // Zuletzt: Mit spieler gilt die Anmeldung als bereit.
-            spieler = new SpielerOrdner(ordner, konf.dimension());
+            spieler = new SpielerOrdner(ordner, konf.dimension(), g);
         } catch (IOException e) {
             getLogger().log(Level.SEVERE, "Ordner je Spieler nicht gelesen, keine Anmeldung auf der Webkarte", e);
             return null;
@@ -412,6 +486,11 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
         }
         if (webserver != null) {
             webserver.stoppe();
+        }
+        // Nach dem Server: Ohne ihn fragt niemand mehr, und keine IP bleibt in ips.
+        var s = spieler;
+        if (s != null) {
+            schreibeSpieler("ips", () -> s.schreibeIps(Map.of()));
         }
     }
 
@@ -453,7 +532,8 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
 
     /** /karte anmelden|abmelden: die Anmeldung auf der Webkarte. Siehe docs/anmeldung.md, „Befehl“. */
     private boolean karte(CommandSender sender, String[] args) {
-        if (args.length != 1 || !args[0].equals("anmelden") && !args[0].equals("abmelden")) {
+        boolean ip = args.length == 2 && args[0].equals("ip") && (args[1].equals("an") || args[1].equals("aus"));
+        if (!ip && (args.length != 1 || !args[0].equals("anmelden") && !args[0].equals("abmelden"))) {
             return false;
         }
         if (!(sender instanceof Player p)) {
@@ -461,11 +541,32 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
             return true;
         }
         var s = spieler;
-        if (s == null || kartenUrl.isEmpty()) {
+        if (s == null || !ip && kartenUrl.isEmpty()) {
             p.sendMessage("Eine Anmeldung auf der Webkarte gibt es auf diesem Server nicht.");
             return true;
         }
         UUID u = p.getUniqueId();
+        if (ip) {
+            boolean an = args[1].equals("an");
+            getServer().getAsyncScheduler().runNow(this, t -> {
+                String z;
+                try {
+                    s.ip(u, an);
+                    z = an ? "Erkennung per IP an: Bist du als einziger Spieler mit deiner IP online, zeigt dir die Webkarte "
+                            + "deine Sicht und deine Ebenen ohne Anmeldung. Klicken geht nur nach /karte anmelden."
+                            : "Erkennung per IP aus: Die Webkarte erkennt dich nur nach /karte anmelden.";
+                } catch (IOException e) {
+                    getLogger().log(Level.WARNING, "Erkennung per IP für " + u + " nicht umgestellt", e);
+                    z = "Das ging nicht; sag es bitte einem Admin.";
+                }
+                String antwort = z;
+                getServer().getGlobalRegionScheduler().execute(this, () -> {
+                    ipsNeu(null);
+                    p.sendMessage(antwort);
+                });
+            });
+            return true;
+        }
         if (args[0].equals("abmelden")) {
             getServer().getAsyncScheduler().runNow(this, t -> {
                 String z;
@@ -515,7 +616,9 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String label, String[] args) {
         if (command.getName().equals("karte")) {
-            return args.length == 1 ? Stream.of("anmelden", "abmelden").filter(b -> b.startsWith(args[0])).toList() : List.of();
+            var w = args.length == 1 ? Stream.of("anmelden", "abmelden", "ip")
+                    : args.length == 2 && args[0].equals("ip") ? Stream.of("an", "aus") : Stream.<String>empty();
+            return w.filter(b -> b.startsWith(args[args.length - 1])).toList();
         }
         if (args.length == 2 && args[0].equals("render") && laeufe != null) {
             return laeufe.ordner().stream().filter(o -> o.startsWith(args[1])).toList();
