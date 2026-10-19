@@ -90,7 +90,7 @@ class WebserverTest {
         var mitErkennung = new Konfiguration.Webserver(true, "127.0.0.1:8082", "https://karte.example.org/karte", null, null,
                 "", "", "", 0, List.of("127.0.0.1", "::1"), "https://karte4.example.org/karte");
         assertEquals(List.of("--player-dir", tmp.resolve("spieler").toString(), "--trusted-proxy", "127.0.0.1,::1",
-                "--recognize-origin", "https://karte.example.org", "--recognize-url", "https://karte4.example.org/karte"),
+                "--recognize-origin", "https://karte.example.org", "--recognize-url", "https://karte4.example.org"),
                 ende(Webserver.befehl(konf(mitErkennung), tmp.resolve("web"), tmp.resolve("token.geheimnis"), tmp.resolve("spieler")), 8));
         assertFalse(Webserver.befehl(konf(mitErkennung), tmp.resolve("web"), tmp.resolve("token.geheimnis"), null)
                 .contains("--trusted-proxy"), "ohne Ordner je Spieler keine Erkennung");

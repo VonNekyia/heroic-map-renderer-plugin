@@ -180,6 +180,8 @@ class KonfigurationTest {
         assertEquals(List.of("127.0.0.1", "::1"), erkennung.vertrauteProxys());
         assertEquals("https://karte4.example.org/karte", erkennung.erkennenUrl(), "ohne / am Ende");
         assertEquals("https://karte.example.org", erkennung.ursprung(), "ohne Pfad");
+        assertEquals("https://karte.example.org:8443", Konfiguration.Webserver.ursprung("HTTPS://Karte.Example.org:8443/Karte"),
+                "klein geschrieben, mit Port");
         assertEquals("", Konfiguration.aus(yaml(baum + "  listen: 0.0.0.0:8080\n"), server, server).webserver().ursprung());
         var proxyName = assertThrows(IllegalArgumentException.class, () -> Konfiguration.aus(yaml(baum
                 + "  listen: 0.0.0.0:8080\n  trusted-proxy: [localhost, 10.0.0.0/8]\n"), server, server));

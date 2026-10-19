@@ -7,14 +7,21 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import com.nekyia.heroicmap.Ebenen.Ebene;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.net.Inet6Address;
 import java.net.InetAddress;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.HexFormat;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -158,8 +165,8 @@ class SpielerOrdnerTest {
         s.schreibe(stand, k, JETZT);
         assertTrue(Files.exists(tmp.resolve(ALEX + "/knoepfe.json")), "ein neuer Zuschauer im nächsten Takt");
         assertEquals(0, lies(tmp.resolve(ALEX + "/ebenen/proficisci/routen.json")).getAsJsonArray("objects").size());
-        assertEquals(java.util.Set.of(ALEX), s.zuschauer(JETZT + SpielerOrdner.ZUSCHAUEN - 1));
-        assertEquals(java.util.Set.of(), s.zuschauer(JETZT + SpielerOrdner.ZUSCHAUEN), "60 s ohne Signal Web:");
+        assertEquals(Set.of(ALEX), s.zuschauer(JETZT + SpielerOrdner.ZUSCHAUEN - 1));
+        assertEquals(Set.of(), s.zuschauer(JETZT + SpielerOrdner.ZUSCHAUEN), "60 s ohne Signal Web:");
     }
 
     private String sicht(UUID u) throws IOException {
@@ -199,19 +206,24 @@ class SpielerOrdnerTest {
 
     @Test
     void ips_als_hmac_nur_eindeutige_und_ohne_ip_aus() throws Exception {
-        byte[] g = new byte[32];
-        for (int i = 0; i < 32; i++) {
-            g[i] = (byte) i;
+        // Die Testvektoren des Renderers, eine Kopie von renderer/tests/fixtures/token.json; die CI vergleicht sie.
+        JsonObject v;
+        try (var r = new InputStreamReader(Objects.requireNonNull(
+                SpielerOrdnerTest.class.getResourceAsStream("/token.json")), StandardCharsets.UTF_8)) {
+            v = JsonParser.parseReader(r).getAsJsonObject();
         }
-        // Unabhängig gerechnet mit Python, hmac und ipaddress.
+        byte[] g = HexFormat.of().parseHex(v.get("geheimnis_hex").getAsString());
+        var vektoren = v.getAsJsonObject("ips").getAsJsonArray("vektoren");
+        assertEquals(4, vektoren.size());
+        for (var e : vektoren) {
+            var t = e.getAsJsonObject();
+            assertEquals(t.get("hmac_hex").getAsString(), SpielerOrdner.hmac(g, InetAddress.ofLiteral(t.get("adresse").getAsString())),
+                    t.get("adresse").getAsString());
+        }
         assertEquals("970379b34719ddc10020e079065e622061177903a8cd4ef26dfd6ba61bcee7d4",
-                SpielerOrdner.hmac(g, InetAddress.ofLiteral("203.0.113.7")));
-        assertEquals("970379b34719ddc10020e079065e622061177903a8cd4ef26dfd6ba61bcee7d4",
-                SpielerOrdner.hmac(g, java.net.Inet6Address.getByAddress(null,
+                SpielerOrdner.hmac(g, Inet6Address.getByAddress(null,
                         new byte[] {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, (byte) 0xff, (byte) 0xff, (byte) 203, 0, 113, 7}, null)),
-                "IPv4-gemappt wie IPv4");
-        assertEquals("bd046e94b9ac190f45b693ffaa33dfa3e9e2d079c76e5f6ce849f41eb0de0e31",
-                SpielerOrdner.hmac(g, InetAddress.ofLiteral("2001:db8::1")));
+                "IPv4-gemappt als Inet6Address wie IPv4");
 
         var s = new SpielerOrdner(tmp, OBERWELT, g);
         var drei = new UUID(0, 3);

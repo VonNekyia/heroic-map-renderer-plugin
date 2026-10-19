@@ -154,7 +154,7 @@ Plugin das seiner Plattform aus, siehe [Konfiguration](konfiguration.md),
 - **`KonfigurationTest`:** die mitgelieferte `config.yml`, auch ohne
   `renderer.binary`, Pfade, Bäume und ihre Ordner wie im Renderer, alle
   Fehler auf einmal. `webserver.trusted-proxy` nur mit IP-Literalen,
-  `webserver.erkennen-url` nur mit `url`, der Ursprung ohne Pfad.
+  `webserver.erkennen-url` nur mit `url`, der Ursprung ohne Pfad und klein.
 - **`VorlageTest`:** eine alte `config.yml` mit eigenen Werten und
   Kommentaren, auch in `trees`, und unbekannten Schlüsseln: Jede ihrer
   Zeilen bleibt, jeder Schlüssel der Vorlage ist danach da, mit Vorgabe und
@@ -241,8 +241,9 @@ Plugin das seiner Plattform aus, siehe [Konfiguration](konfiguration.md),
   Zuschauer, 60 s nach dem letzten `Web:`. `sicht.json`: alte beim Start
   weg, `jetzt` vorn, `ich.json` ohne Anmeldung, Herzschlag nach 5 s, eine
   Änderung gleich, offline und ohne Zuschauen einmal leer. `ips`: das
-  HMAC gegen Werte aus Python, IPv4-gemappt wie IPv4, sortiert, ohne
-  geteilte IP und ohne `ip-aus`, das über einen Neustart gilt.
+  HMAC gegen die Testvektoren `ips` in `token.json` des Renderers,
+  IPv4-gemappt wie IPv4, sortiert, ohne geteilte IP und ohne `ip-aus`, das
+  über einen Neustart gilt.
 - **`TokenTest`:** stellt jedes gültige Token aus den Testvektoren des
   Renderers Zeichen für Zeichen gleich aus, ebenso jede Anmeldung
   (Fassung 2), lehnt ab, was kein gültiges ergäbe.

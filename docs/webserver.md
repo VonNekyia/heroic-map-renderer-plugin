@@ -56,8 +56,10 @@ Der Code steht in `Webserver` in
 - **`--player-dir`** mit Karte und Geheimnis, für die Anmeldung auf der
   Webkarte, siehe [Anmeldung](anmeldung.md), „Wann es sie gibt“. Nur mit
   ihm `--trusted-proxy` aus `webserver.trusted-proxy` und, mit
-  `webserver.erkennen-url`, `--recognize-origin` mit dem Ursprung aus
-  `webserver.url` und `--recognize-url`, siehe „Erkennung per IP“ dort.
+  `webserver.erkennen-url`, `--recognize-origin` und `--recognize-url` mit
+  den Ursprüngen von `webserver.url` und `webserver.erkennen-url`, ohne
+  Pfad und klein geschrieben (`Konfiguration.Webserver.ursprung`), siehe
+  „Erkennung per IP“ dort.
 - **Zeilen `Web:`** gehen wie `Aktion:` nicht ins Log, sondern ans Plugin,
   siehe [Anmeldung](anmeldung.md), „Zuschauer“.
 

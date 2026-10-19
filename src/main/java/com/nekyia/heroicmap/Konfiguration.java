@@ -70,13 +70,22 @@ record Konfiguration(
             this(an, adresse, url, zertifikat, schluessel, titel, beschreibung, bild, oeffentlicherPort, List.of(), "");
         }
 
-        /** Der Ursprung von {@code url}, Schema, Host und Port ohne Pfad; leer ohne url. */
+        /** Der Ursprung von {@code url}; leer ohne url. */
         String ursprung() {
-            if (url.isEmpty()) {
+            return ursprung(url);
+        }
+
+        /**
+         * Der Ursprung einer Adresse, Schema, Host und Port ohne Pfad, klein geschrieben, wie der Server ihn mit
+         * --recognize-origin und --recognize-url vergleicht; leer für eine leere. Siehe docs/anmeldung.md, „Erkennung
+         * per IP“.
+         */
+        static String ursprung(String adresse) {
+            if (adresse.isEmpty()) {
                 return "";
             }
-            int pfad = url.indexOf('/', url.indexOf("://") + 3);
-            return pfad < 0 ? url : url.substring(0, pfad);
+            int pfad = adresse.indexOf('/', adresse.indexOf("://") + 3);
+            return (pfad < 0 ? adresse : adresse.substring(0, pfad)).toLowerCase(Locale.ROOT);
         }
 
         /** Ob der Server Adresse, Titel und Beschreibung in die Seite setzt; die Konfiguration prüft, dass alle drei da sind. */

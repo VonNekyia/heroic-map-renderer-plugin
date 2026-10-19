@@ -92,7 +92,8 @@ final class Webserver {
                     b.addAll(List.of("--trusted-proxy", String.join(",", w.vertrauteProxys())));
                 }
                 if (!w.erkennenUrl().isEmpty()) {
-                    b.addAll(List.of("--recognize-origin", w.ursprung(), "--recognize-url", w.erkennenUrl()));
+                    b.addAll(List.of("--recognize-origin", w.ursprung(),
+                            "--recognize-url", Konfiguration.Webserver.ursprung(w.erkennenUrl())));
                 }
             }
         }

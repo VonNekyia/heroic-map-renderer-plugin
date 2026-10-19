@@ -53,7 +53,7 @@ Die Statistik über bStats hat hier keinen Schlüssel; sie schaltet
 | `webserver.tls-cert` | leer | `--tls-cert` | HTTPS: die Kette der Zertifikate als PEM; nur mit `tls-key` |
 | `webserver.tls-key` | leer | `--tls-key` | der Schlüssel dazu als PEM; nur mit `tls-cert` |
 | `webserver.trusted-proxy` | `[]` | `--trusted-proxy` | Proxys vor dem Webserver, deren `X-Real-IP` er glaubt, nur IP-Literale wie `"127.0.0.1"`, kein Name und kein Netz; für die Erkennung per IP, siehe [Anmeldung](anmeldung.md), „Erkennung per IP“ |
-| `webserver.erkennen-url` | leer | `--recognize-url`, dazu `--recognize-origin` aus `url` | ein zweiter Name der Karte nur mit A-Eintrag, `http://` oder `https://`; so erkennt die Karte auch Browser mit IPv6. Nur mit `url`, siehe [Anmeldung](anmeldung.md), „Erkennung per IP“ |
+| `webserver.erkennen-url` | leer | `--recognize-url` mit ihrem Ursprung, dazu `--recognize-origin` mit dem Ursprung von `url`, beide ohne Pfad und klein | ein zweiter Name der Karte nur mit A-Eintrag, `http://` oder `https://`; so erkennt die Karte auch Browser mit IPv6. Nur mit `url`, siehe [Anmeldung](anmeldung.md), „Erkennung per IP“ |
 
 Was die Schlüssel unter `download` bewirken, steht in [Download](download.md),
 was der Webserver tut, in [Webserver](webserver.md). Die Mitspieler auf der
