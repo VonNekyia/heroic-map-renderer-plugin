@@ -85,8 +85,8 @@ Plugin das seiner Plattform aus, siehe [Konfiguration](konfiguration.md),
 
 | Version | Archiv | SHA-256 |
 |---|---|---|
-| `0.11.0` | `heroic-map-renderer-windows-x64.zip` | `38e7093fa5a032dd69b213a2815427a5a24525cf29210c25d87c822be193e557` |
-| `0.11.0` | `heroic-map-renderer-linux-x64.tar.gz` | `359a3338b75e3f129e3f100b9bb570c41bb1ddadf7197e91a500dc24791d1652` |
+| `0.12.0` | `heroic-map-renderer-windows-x64.zip` | `aef528de7534bb9489db1091c100f1aac37c3836d1a1927316143382b695774f` |
+| `0.12.0` | `heroic-map-renderer-linux-x64.tar.gz` | `0b7eebcd710d93daa1535916756fa46a4236495053a7f9e7cabcc4f52577a354` |
 
 - **Laden:** von
   `https://github.com/VonNekyia/heroic-map-renderer/releases/download/v<version>/`
@@ -96,7 +96,7 @@ Plugin das seiner Plattform aus, siehe [Konfiguration](konfiguration.md),
 - **Prüfen:** Hat ein geladenes Archiv eine andere SHA-256 als in
   `build.gradle.kts`, oder antwortet GitHub nicht mit 200, scheitert der
   Build. `SHA256SUMS` aus dem Release liest er nicht.
-- **Ohne Netz,** auch mit `--offline`, warnt er „Renderer 0.11.0 nicht
+- **Ohne Netz,** auch mit `--offline`, warnt er „Renderer 0.12.0 nicht
   geladen, das Jar bleibt ohne Binärs“ und baut weiter. Der nächste Build
   versucht es wieder.
 - **Mit xz:** `holeRenderer` packt jedes Binär mit xz, mit den Parametern
