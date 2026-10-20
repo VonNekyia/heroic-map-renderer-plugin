@@ -247,14 +247,16 @@ final class Laeufe {
         return b;
     }
 
-    /** Assets, Daten und das Client-Jar, für jeden Lauf und für --banners gleich. */
+    /** Assets, Daten, Cache und das Client-Jar, für jeden Lauf und für --banners gleich. */
     List<String> quellen() {
         var b = new ArrayList<String>();
         konf.assets().forEach(p -> b.addAll(List.of("--assets", p.toString())));
         konf.daten().forEach(p -> b.addAll(List.of("--data", p.toString())));
+        // Immer: Darin legt der Renderer auch die Datapacks der Welt ab. Siehe docs/konfiguration.md, „Client-Jar“.
+        b.addAll(List.of("--cache-dir", cache.toString()));
         // Nur mit Zustimmung des Betreibers. Siehe docs/konfiguration.md, „Client-Jar“.
         if (konf.clientJar().zugestimmt()) {
-            b.addAll(List.of("--download-client-jar", "--cache-dir", cache.toString()));
+            b.add("--download-client-jar");
             if (!konf.clientJar().version().isEmpty()) {
                 b.addAll(List.of("--client-version", konf.clientJar().version()));
             }

@@ -563,12 +563,17 @@ class LaeufeTest {
     void client_jar_nur_mit_zustimmung_und_cache_im_datenordner() {
         var mit = new Laeufe(konf(JAVA, false, List.of(KARTE), new Konfiguration.ClientJar(true, "26.2")), logger, tmp);
         var befehl = mit.plane(Art.VOLL).getFirst().befehl();
-        int i = befehl.indexOf("--download-client-jar");
-        assertEquals(List.of("--download-client-jar", "--cache-dir", tmp.resolve("client-jar").toString(), "--client-version", "26.2"),
+        int i = befehl.indexOf("--cache-dir");
+        assertEquals(List.of("--cache-dir", tmp.resolve("client-jar").toString(), "--download-client-jar", "--client-version", "26.2"),
                 befehl.subList(i, i + 5));
         var ohneVersion = new Laeufe(konf(JAVA, false, List.of(KARTE), new Konfiguration.ClientJar(true, "")), logger, tmp);
         assertFalse(ohneVersion.plane(Art.VOLL).getFirst().befehl().contains("--client-version"));
-        assertFalse(laeufe(KARTE).plane(Art.VOLL).getFirst().befehl().contains("--download-client-jar"), "ohne Zustimmung");
+        // Ohne Zustimmung kein Jar, aber der Cache für die Datapacks der Welt.
+        var ohne = laeufe(KARTE).plane(Art.VOLL).getFirst().befehl();
+        assertFalse(ohne.contains("--download-client-jar"), "ohne Zustimmung");
+        int j = ohne.indexOf("--cache-dir");
+        assertTrue(j >= 0, "ohne Zustimmung ohne Cache");
+        assertEquals(tmp.resolve("client-jar").toString(), ohne.get(j + 1));
     }
 
     @Test
@@ -690,6 +695,7 @@ class LaeufeTest {
                 "--assets", tmp.resolve("a1").toString(),
                 "--assets", tmp.resolve("a2").toString(),
                 "--data", tmp.resolve("d").toString(),
+                "--cache-dir", tmp.resolve("client-jar").toString(),
                 "--tiles", tmp.resolve("tiles").toString(),
                 "--camera", "2:1", "--direction", "se",
                 "--gpu", "off", "--threads", "1", "--low-priority", "--progress", "json"), plan.getFirst().befehl());

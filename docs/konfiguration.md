@@ -28,11 +28,11 @@ Die Statistik über bStats hat hier keinen Schlüssel; sie schaltet
 | `renderer.binary` | leer: das aus dem Jar | – | Pfad zu einem eigenen Binär des Renderers, siehe „Das Binär“ |
 | `renderer.assets` | leer | `--assets` je Eintrag | Asset-Wurzeln, spätere überschreiben frühere; leer nur mit Zustimmung zum Client-Jar, siehe „Client-Jar“ |
 | `renderer.nexo` | `false` | ein letztes `--assets` mit dem ausgepackten Pack | die eigenen Blöcke von Nexo mit ihren Texturen zeichnen, siehe „Nexo“ |
-| `renderer.data` | leer | `--data` je Eintrag | Datenwurzeln mit Biomen und Bannermustern |
+| `renderer.data` | leer | `--data` je Eintrag | Datenwurzeln mit Biomen und Bannermustern; die Datapacks der Welt liest der Renderer selbst, siehe „Client-Jar“ |
 | `renderer.gpu` | `false` | `--gpu auto`, sonst `--gpu off` | ob die Grafikkarte zeichnen darf |
 | `renderer.threads` | `1` | `--threads` bei Updates | so viele Threads bekommt ein Update, ab 1; dazu immer `--low-priority` |
 | `renderer.full-run-threads` | `0` | `--threads` bei vollen Läufen und beim Nachverdichten | so viele Threads bekommt ein voller Lauf, auch fortgesetzt, und `/heroicmap compact`; `0`: alle Kerne, die die JVM sieht |
-| `renderer.download-client-jar` | `false` | `--download-client-jar`, `--cache-dir` | die Zustimmung, das Client-Jar von Mojang zu laden, siehe „Client-Jar“ |
+| `renderer.download-client-jar` | `false` | `--download-client-jar` | die Zustimmung, das Client-Jar von Mojang zu laden, siehe „Client-Jar“ |
 | `renderer.client-version` | leer: die zur Welt | `--client-version` | die Version des Client-Jars, etwa `"26.2"` |
 | `renderer.compact` | `false` | `--compact` bei vollen Läufen | kompakt packen, rund die Hälfte der Bytes für ein Mehrfaches der Zeit beim Kodieren; gilt nur für einen neuen Baum, einen bestehenden packt `/heroicmap compact` nach, siehe [Läufe](laeufe.md), „Kompakt“ |
 | `world` | leer: die Hauptwelt | `--world` | die Weltwurzel mit `level.dat` |
@@ -136,9 +136,19 @@ was er prüft, steht in der Doku des Renderers,
   nennt den Text mit Version und Grösse des Jars; er steht im Log und im
   Status, siehe [Läufe](laeufe.md), „Der Kindprozess“, und das Log sagt
   einmal je Start, wo man zustimmt.
-- **Der Cache** liegt in `plugins/HeroicMap/client-jar`, `--cache-dir`,
-  neben den Kacheln und der Karte, nie darunter. Unter `tiles` bräche der
-  Renderer ab, und der Server lieferte das Jar sonst aus.
+- **Der Cache** liegt in `plugins/HeroicMap/client-jar`, neben den Kacheln
+  und der Karte, nie darunter. Unter `tiles` bräche der Renderer ab, und der
+  Server lieferte das Jar sonst aus. Das Plugin gibt ihn als `--cache-dir`
+  bei jedem Lauf, auch ohne Zustimmung: Darin legt der Renderer auch die
+  Datapacks der Welt ab (renderer#288).
+- **Die Datapacks der Welt** aus `level.dat` und `datapacks/` liest der
+  Renderer selbst, mit ihren Biomen, Bannermustern und Dimensionen, siehe
+  [Assets](https://github.com/VonNekyia/heroic-map-renderer/blob/master/docs/benutzung/assets.md),
+  „Datapacks der Welt“. Ein Pack, das bisher ausgepackt in `renderer.data`
+  stand, nimmt man dort heraus; sonst kommt es doppelt. Kommt ein solches
+  Pack dazu oder ändert es sich, braucht jeder Baum einmal einen vollen
+  Lauf, und `/heroicmap status` sagt „neue Assets: erst /heroicmap render
+  <baum>“.
 - **Mit Assets** dazu legt der Renderer `renderer.assets` und
   `renderer.data` über die Basis aus dem Jar.
 

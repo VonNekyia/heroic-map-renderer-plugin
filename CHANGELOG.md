@@ -7,8 +7,10 @@ Links und die Hinweise aus `NOTICE` setzt
 [`.github/notizen.sh`](.github/notizen.sh) dazu. Siehe
 [Entwicklung](docs/entwicklung.md), „Release“.
 
-## 0.15.1
+## 0.16.0
 
+- **Biomes from the world's datapacks:** the renderer now reads the datapacks of the world itself, from `level.dat` and `datapacks/`, as folders or zips, the way the game picks them. Grass, leaves and water take the colours of their biomes instead of looking like plains. Each world whose datapacks carry biomes, banner patterns or dimensions needs one full render; `/heroicmap status` then says "neue Assets: erst /heroicmap render <tree>". A pack that so far came unpacked through `renderer.data` should be removed there, or it comes twice.
+- **`--cache-dir` on every run:** the plugin now always passes `plugins/HeroicMap/client-jar` as the cache, also without consent to the client jar, because the renderer keeps the world's datapacks there.
 - **`renderer.nexo`:** with `true`, the map draws the custom blocks of Nexo with their own textures instead of the vanilla block they sit on. The plugin unpacks the `assets/` of Nexo's generated pack into `plugins/HeroicMap/nexo/` and passes it as the last asset root; furniture stays out, it is entities. Each new pack needs one full render; `/heroicmap status` then says "neue Assets: erst /heroicmap render <tree>", also after a change to `renderer.assets` or `renderer.data`.
 - **Quieter start with `karte.von`:** while the other server is still starting, errors fetching its layers in the first 60 seconds are logged as info instead of warnings. An error that lasts longer is then logged once as a warning.
 
