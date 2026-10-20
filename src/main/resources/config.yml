@@ -35,6 +35,14 @@ world: ""
 # Die Wurzel der Kachelbäume, --tiles.
 tiles: plugins/HeroicMap/tiles
 
+# Mehrere Server hinter einem Proxy, siehe docs/mehrere-server.md.
+karte:
+  # Name dieses Servers, etwa "main"; nur, wenn der Proxy ihn nicht meldet.
+  name: ""
+  # Die Karte eines anderen Servers zeigen, etwa "main": tiles zeigt dann
+  # auf dessen Wurzel, und dieser Server rendert nichts. Leer: die eigene.
+  von: ""
+
 # Alle so viele Minuten ein Update; 0 schaltet den Zeitplan ab.
 # Dazu den Autosave von Paper auf 60 s, siehe docs/laeufe.md.
 update-minutes: 2

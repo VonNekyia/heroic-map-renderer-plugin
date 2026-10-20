@@ -14,6 +14,7 @@ import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.attribute.FileTime;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
@@ -22,6 +23,7 @@ import java.util.HashMap;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
@@ -120,7 +122,12 @@ final class Ebenen {
     record Geladen(List<Ebene> ebenen, List<String> fehler, Set<String> nichtGelesen) {}
 
     private final Path ordner;
+    /** Mit karte.von: layers/ in der Wurzel des anderen Servers, nur gelesen; sonst null. */
+    private final Path fremd;
+    /** Die Zeit von layers.json dort beim letzten Laden. */
+    private FileTime fremdStand;
     private final String dimension;
+    /** Null mit karte.von: Dann schreibt dieser Server nichts unter tiles. */
     private final EbenenSchreiber schreiber;
     private final Logger log;
     private final EbenenApi api;
@@ -149,7 +156,16 @@ final class Ebenen {
 
     /** {@code dimension} ist die der Wurzel von tiles; sie geht in jede version ein. */
     Ebenen(Path ordner, String dimension, EbenenSchreiber schreiber, Logger log) {
+        this(ordner, null, dimension, schreiber, log);
+    }
+
+    /**
+     * Mit {@code fremd}, layers/ in der Wurzel eines anderen Servers, und ohne {@code schreiber}: die Karte dort zeigen,
+     * ihre öffentlichen Ebenen dazu, ohne unter tiles zu schreiben. Siehe docs/mehrere-server.md, „Karte von“.
+     */
+    Ebenen(Path ordner, Path fremd, String dimension, EbenenSchreiber schreiber, Logger log) {
         this.ordner = ordner;
+        this.fremd = fremd;
         this.dimension = dimension;
         this.schreiber = schreiber;
         this.log = log;
@@ -166,7 +182,8 @@ final class Ebenen {
      * Dateien. Den Stand bildet erst der nächste {@link #takt}. Gibt eine Zeile für den Befehl.
      */
     synchronized String ladeNeu() {
-        var g = lade(ordner, dimension);
+        var eigene = lade(ordner, dimension, false);
+        var g = fremd != null && eigene.nichtGelesen() != null ? mitFremden(eigene) : eigene;
         g.fehler().forEach(f -> log.warning("Ebenen: " + f));
         if (g.nichtGelesen() == null) {
             // Ein früherer Stand gilt weiter; ohne ihn rührt das Schreiben layers/ nicht an.
@@ -198,11 +215,17 @@ final class Ebenen {
      * Stand und schreibt für die Webkarte.
      */
     synchronized void takt() {
+        if (fremd != null) {
+            ladeFremdeNachAenderung();
+        }
         boolean dateien = geaendert.getAndSet(false);
         if (!api.holeAenderung() && !dateien) {
             return;
         }
         stand = mitSprites(vereine(ausDateien, api.ebenen()), sprites);
+        if (schreiber == null) {
+            return;
+        }
         try {
             schreiber.schreibe(stand, nichtGelesen);
             if (schreibenScheiterte) {
@@ -315,6 +338,39 @@ final class Ebenen {
      * &lt;modname&gt;/images/. Jede Datei für sich: Ein Fehler trifft nur sie, oder nur ihren Ordner.
      */
     static Geladen lade(Path ordner, String dimension) {
+        return lade(ordner, dimension, false);
+    }
+
+    /**
+     * Die Ebenen des anderen Servers dazu: seine öffentlichen aus layers/ dort, nur, wo keine eigene Datei dieselbe
+     * Kennung hat; zusammen höchstens 64.
+     */
+    private Geladen mitFremden(Geladen eigene) {
+        var f = lade(fremd, dimension, true);
+        f.fehler().forEach(x -> log.warning("Ebenen der anderen Karte: " + x));
+        var ids = eigene.ebenen().stream().map(Ebene::id).collect(Collectors.toSet());
+        var alle = new ArrayList<>(eigene.ebenen());
+        f.ebenen().stream().filter(e -> !ids.contains(e.id())).forEach(alle::add);
+        alle.sort(Comparator.comparing(Ebene::id));
+        return new Geladen(List.copyOf(alle.subList(0, Math.min(alle.size(), HOECHSTENS))), eigene.fehler(), eigene.nichtGelesen());
+    }
+
+    /** Lädt neu, wenn sich layers.json des anderen Servers geändert hat; sein EbenenSchreiber schreibt sie zuletzt. */
+    private void ladeFremdeNachAenderung() {
+        FileTime zeit;
+        try {
+            zeit = Files.getLastModifiedTime(fremd.resolveSibling("layers.json"));
+        } catch (IOException e) {
+            zeit = null;
+        }
+        if (!Objects.equals(zeit, fremdStand)) {
+            fremdStand = zeit;
+            ladeNeu();
+        }
+    }
+
+    /** Mit {@code ausTiles} liest es die Ablage unter tiles, mit den Sprites unter banner/, die es übergeht. */
+    static Geladen lade(Path ordner, String dimension, boolean ausTiles) {
         var ebenen = new ArrayList<Ebene>();
         var fehler = new ArrayList<String>();
         var nichtGelesen = new TreeSet<String>();
@@ -337,7 +393,7 @@ final class Ebenen {
                 continue;
             }
             try {
-                ladeMod(mod, modname, dimension, ebenen, fehler);
+                ladeMod(mod, modname, dimension, ausTiles, ebenen, fehler);
             } catch (IOException | UncheckedIOException e) {
                 fehler.add(modname + ": nicht gelesen, es gilt der alte Stand: " + e.getMessage());
                 nichtGelesen.add(modname);
@@ -353,8 +409,8 @@ final class Ebenen {
     }
 
     /** Wirft nur, wenn der Ordner des modname nicht aufzulisten ist; jede Datei darin trifft ein Fehler allein. */
-    private static void ladeMod(Path mod, String modname, String dimension, List<Ebene> ebenen, List<String> fehler)
-            throws IOException {
+    private static void ladeMod(Path mod, String modname, String dimension, boolean ausTiles, List<Ebene> ebenen,
+            List<String> fehler) throws IOException {
         List<Path> dateien;
         try (var l = Files.list(mod)) {
             dateien = l.sorted().toList();
@@ -365,7 +421,7 @@ final class Ebenen {
         for (Path d : dateien) {
             String datei = d.getFileName().toString();
             String stelle = modname + "/" + datei;
-            if (datei.startsWith(".") || datei.equals("images")) {
+            if (datei.startsWith(".") || datei.equals("images") || ausTiles && datei.equals("banner")) {
                 continue;
             }
             if (!Files.isRegularFile(d) || !EbenenPruefung.datei(datei, ".json")) {

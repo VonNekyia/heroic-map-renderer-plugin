@@ -100,6 +100,10 @@ final class Laeufe {
 
     /** Wie oben; mit {@code nur} nur für den Baum in diesem Ordner. Siehe docs/laeufe.md, „Befehle“. */
     synchronized String starte(Art art, String nur) {
+        if (konf.karte().fremd()) {
+            return "Hier läuft kein Lauf: Dieser Server zeigt die Karte von " + konf.karte().von()
+                    + ", gerendert wird dort. Siehe docs/mehrere-server.md.";
+        }
         if (faden != null) {
             return "Es läuft schon: " + laeuft;
         }
@@ -185,6 +189,10 @@ final class Laeufe {
      * sie bei den übrigen; so folgt die Platte der Konfiguration. Siehe docs/webserver.md, „Nur zum Download“.
      */
     void markiere() {
+        // Mit karte.von gehört die Wurzel dem anderen Server; dieser schreibt dort nichts.
+        if (konf.karte().fremd()) {
+            return;
+        }
         for (Konfiguration.Baum baum : konf.baeume()) {
             Path marke = konf.kacheln().resolve(baum.ordner()).resolve("nur-download");
             try {
@@ -335,6 +343,9 @@ final class Laeufe {
      */
     synchronized String status() {
         var text = new StringBuilder();
+        if (konf.karte().fremd()) {
+            text.append("Karte von ").append(konf.karte().von()).append(", hier kein Lauf. ");
+        }
         if (faden == null) {
             text.append(letzte.isEmpty() ? "Kein Lauf seit dem Start." : "Kein Lauf.");
         } else {

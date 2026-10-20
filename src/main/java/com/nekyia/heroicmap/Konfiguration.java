@@ -32,7 +32,29 @@ record Konfiguration(
         Download download,
         Webserver webserver,
         ClientJar clientJar,
-        boolean kompakt) {
+        boolean kompakt,
+        Karte karte) {
+
+    /** Ohne Abschnitt karte, für Tests und alte Aufrufe. */
+    Konfiguration(Path renderer, Path welt, Path kacheln, List<Path> assets, List<Path> daten, boolean grafikkarte,
+            int threads, int vollThreads, int updateMinuten, List<Baum> baeume, Download download, Webserver webserver,
+            ClientJar clientJar, boolean kompakt) {
+        this(renderer, welt, kacheln, assets, daten, grafikkarte, threads, vollThreads, updateMinuten, baeume, download,
+                webserver, clientJar, kompakt, Karte.OHNE);
+    }
+
+    /**
+     * Der Name dieses Servers hinter einem Proxy, falls der Proxy ihn nicht meldet, und die Karte eines anderen, die
+     * dieser zeigt; je leer ohne. Siehe docs/mehrere-server.md.
+     */
+    record Karte(String name, String von) {
+        static final Karte OHNE = new Karte("", "");
+
+        /** Zeigt dieser Server die Karte eines anderen? Dann rendert und schreibt er nichts unter tiles. */
+        boolean fremd() {
+            return !von.isEmpty();
+        }
+    }
 
     private static final Pattern SCHRAEG = Pattern.compile("(\\d+):(\\d+)");
 
@@ -285,6 +307,20 @@ record Konfiguration(
             }
         }
 
+        // Wie ein Teil einer Kennung, klein; so taugt der Name im Mod als Ordner. Siehe docs/mehrere-server.md.
+        String kartenName = "", kartenVon = "";
+        for (String schluessel : List.of("karte.name", "karte.von")) {
+            String roh = c.getString(schluessel, "").strip();
+            String n = Proxyname.gueltig(roh);
+            if (!roh.isEmpty() && n == null) {
+                fehler.add(schluessel + ": " + roh + " ist kein Name aus a-z, 0-9, _ und -, höchstens 64 Zeichen");
+            } else if (schluessel.equals("karte.name")) {
+                kartenName = roh.isEmpty() ? "" : n;
+            } else {
+                kartenVon = roh.isEmpty() ? "" : n;
+            }
+        }
+
         if (!fehler.isEmpty()) {
             throw new IllegalArgumentException(String.join("; ", fehler));
         }
@@ -305,13 +341,14 @@ record Konfiguration(
                         cert.isBlank() ? null : server.resolve(cert), key.isBlank() ? null : server.resolve(key),
                         titel, beschreibung, bild, oeffentlich, proxys, erkennen),
                 new ClientJar(c.getBoolean("renderer.download-client-jar"), c.getString("renderer.client-version", "").strip()),
-                c.getBoolean("renderer.compact"));
+                c.getBoolean("renderer.compact"),
+                new Karte(kartenName, kartenVon));
     }
 
     /** Dieselbe Konfiguration mit diesem Binär. */
     Konfiguration mitRenderer(Path binaer) {
         return new Konfiguration(binaer, welt, kacheln, assets, daten, grafikkarte, threads, vollThreads, updateMinuten,
-                baeume, download, webserver, clientJar, kompakt);
+                baeume, download, webserver, clientJar, kompakt, karte);
     }
 
     /**

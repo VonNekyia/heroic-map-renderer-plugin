@@ -69,6 +69,11 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
     private Laeufe laeufe;
     private Banner banner;
     private volatile Webserver webserver;
+    /** Name und Karte hinter einem Proxy, aus config.yml. Siehe docs/mehrere-server.md. */
+    private Konfiguration.Karte kartenKonf = Konfiguration.Karte.OHNE;
+    /** Nur im Hauptthread. */
+    private final Proxyname proxyname = new Proxyname();
+    private boolean ohneProxyKanalGemeldet;
     /** Die Anmeldung auf der Webkarte; null ohne. Siehe docs/anmeldung.md. */
     private volatile SpielerOrdner spieler;
     private byte[] geheimnis;
@@ -107,10 +112,21 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
         // Zum Empfangen auch ohne Simple Voice Chat, damit show eine Antwort mit Grund bekommt.
         getServer().getMessenger().registerOutgoingPluginChannel(this, Download.KANAL);
         getServer().getMessenger().registerIncomingPluginChannel(this, Download.KANAL, this);
+        // Für GetServer, den Namen dieses Servers vom Proxy. Siehe docs/mehrere-server.md, „Name vom Proxy“.
+        getServer().getMessenger().registerOutgoingPluginChannel(this, Proxyname.KANAL);
+        getServer().getMessenger().registerIncomingPluginChannel(this, Proxyname.KANAL, this);
+        kartenKonf = konf.karte();
         getServer().getPluginManager().registerEvents(this, this);
         // Ebenen brauchen keinen Renderer; geladen wird ausserhalb des Hauptthreads. Siehe docs/ebenen.md.
         Path ebenenOrdner = getDataFolder().toPath().resolve("ebenen");
-        ebenen = new Ebenen(ebenenOrdner, konf.dimension(), new EbenenSchreiber(konf.kacheln(), konf.dimension()), getLogger());
+        // Mit karte.von gehört tiles dem anderen Server: seine öffentlichen Ebenen lesen, nichts schreiben.
+        ebenen = konf.karte().fremd()
+                ? new Ebenen(ebenenOrdner, konf.kacheln().resolve("layers"), konf.dimension(), null, getLogger())
+                : new Ebenen(ebenenOrdner, konf.dimension(), new EbenenSchreiber(konf.kacheln(), konf.dimension()), getLogger());
+        if (konf.karte().fremd() && !Files.isRegularFile(konf.kacheln().resolve("trees.json"))) {
+            getLogger().warning("karte.von: " + konf.kacheln() + " hat keine trees.json; tiles muss auf die Wurzel von "
+                    + konf.karte().von() + " zeigen. Siehe docs/mehrere-server.md.");
+        }
         // Die API für andere Plugins; ihre Ebenen gehen mit dem Plugin, dem sie gehören. Siehe docs/api.md.
         getServer().getServicesManager().register(HeroicMapApi.class, ebenen.api(), this, ServicePriority.Normal);
         getServer().getPluginManager().registerEvents(ebenen.api(), this);
@@ -149,17 +165,20 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
         laeufe.markiere();
         // Die Sprites der Banner: nach dem ersten Schreiben der Ebenen, nach neuen Entwürfen und nach einem Lauf mit
         // neuen Bäumen; nie vor dem ersten Laden. Siehe docs/laeufe.md, „Banner“.
-        banner = new Banner(konf, List.of(konf.renderer().toString()), laeufe.quellen(), getLogger(),
-                getDataFolder().toPath(), ebenen::stand, ebenen::sprites);
-        laeufe.nachLauf(banner::nachLauf);
-        ebenen.nachEntwuerfen(banner::bestelle);
+        // Mit karte.von zeichnet der andere Server die Sprites; --banners schriebe sonst unter tiles.
+        if (!konf.karte().fremd()) {
+            banner = new Banner(konf, List.of(konf.renderer().toString()), laeufe.quellen(), getLogger(),
+                    getDataFolder().toPath(), ebenen::stand, ebenen::sprites);
+            laeufe.nachLauf(banner::nachLauf);
+            ebenen.nachEntwuerfen(banner::bestelle);
+        }
         for (var w : getServer().getWorlds()) {
             if (!w.isAutoSave() && w.getWorldFolder().toPath().toAbsolutePath().normalize().equals(konf.welt().normalize())) {
                 getLogger().warning("Der Autosave der Welt " + w.getName() + " ist aus. Änderungen kommen erst beim "
                         + "Entladen oder Stoppen auf die Platte und erst dann auf die Karte.");
             }
         }
-        if (konf.updateMinuten() > 0) {
+        if (konf.updateMinuten() > 0 && !konf.karte().fremd()) {
             getServer().getAsyncScheduler().runAtFixedRate(this, t -> laeufe.starte(Laeufe.Art.UPDATE),
                     konf.updateMinuten(), konf.updateMinuten(), TimeUnit.MINUTES);
         }
@@ -191,6 +210,12 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
      */
     @Override
     public void onPluginMessageReceived(String channel, Player player, byte[] message) {
+        if (channel.equals(Proxyname.KANAL) || channel.equals("bungeecord:main")) {
+            if (proxyname.antwort(player.getUniqueId(), message)) {
+                getLogger().info("Der Proxy meldet den Namen dieses Servers: " + proxyname.name());
+            }
+            return;
+        }
         if (EbenenFuerMod.istKnopf(message)) {
             klick(player, message);
             return;
@@ -207,7 +232,52 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
         boolean web = player.hasPermission(WEB) && spieler != null && modAdresse.size() > 0;
         var antwort = mitspieler.show(message, player.getUniqueId(), player.hasPermission(SHOW), simpleVoiceChat, web, Instant.now());
         if (antwort != null) {
-            player.sendPluginMessage(this, Download.KANAL, antwort.toString().getBytes(StandardCharsets.UTF_8));
+            frageProxy(player);
+            sendeShow(player, antwort);
+        }
+    }
+
+    /**
+     * Im Hauptthread: die Antwort auf show mit karte, dem Namen der Karte für den Ordner im Mod. Wartet der Name noch
+     * auf den Proxy, höchstens {@link Proxyname#FRIST_MS}, kommt sie danach; ein zweites show schickt der Mod nicht.
+     * Siehe docs/mehrere-server.md, „Format“.
+     */
+    private void sendeShow(Player p, JsonObject antwort) {
+        if (proxyname.wartet(System.currentTimeMillis())) {
+            getServer().getGlobalRegionScheduler().runDelayed(this, t -> sendeShow(p, antwort), 2);
+            return;
+        }
+        String karte = karte();
+        if (karte != null) {
+            antwort.addProperty("karte", karte);
+        }
+        if (p.isOnline()) {
+            p.sendPluginMessage(this, Download.KANAL, antwort.toString().getBytes(StandardCharsets.UTF_8));
+        }
+    }
+
+    private String karte() {
+        return Proxyname.karte(kartenKonf, proxyname.name());
+    }
+
+    /**
+     * Im Hauptthread: fragt den Proxy über {@code p} nach dem Namen dieses Servers, wenn er noch fehlt. Nur, wenn der
+     * Proxy den Kanal bei diesem Spieler angemeldet hat; Paper schickt sonst nichts. Siehe docs/mehrere-server.md,
+     * „Name vom Proxy“.
+     */
+    private void frageProxy(Player p) {
+        if (kartenKonf.fremd() || proxyname.name() != null) {
+            return;
+        }
+        if (!p.getListeningPluginChannels().contains(Proxyname.KANAL)) {
+            if (!ohneProxyKanalGemeldet) {
+                ohneProxyKanalGemeldet = true;
+                getLogger().info("Kein Proxy meldet den Kanal BungeeCord; der Name dieses Servers kommt aus karte.name.");
+            }
+            return;
+        }
+        if (proxyname.frage(p.getUniqueId(), System.currentTimeMillis())) {
+            p.sendPluginMessage(this, Proxyname.KANAL, Proxyname.frage());
         }
     }
 
@@ -229,6 +299,7 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
             });
         }
         ipsNeu(null);
+        frageProxy(e.getPlayer());
     }
 
     @EventHandler
@@ -481,6 +552,10 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
         var kanal = new Kanal(this, konf, download);
         kanal.starte();
         laeufe.nachLauf(kanal::aktualisiere);
+        // Mit karte.von laufen hier keine Läufe; neue Manifeste des anderen Servers bemerkt erst diese Frage.
+        if (konf.karte().fremd()) {
+            getServer().getAsyncScheduler().runAtFixedRate(this, t -> kanal.aktualisiere(), 1, 1, TimeUnit.MINUTES);
+        }
     }
 
     @Override

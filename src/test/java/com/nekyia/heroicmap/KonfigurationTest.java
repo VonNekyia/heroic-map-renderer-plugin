@@ -36,6 +36,23 @@ class KonfigurationTest {
     }
 
     @Test
+    void karte_name_und_von() throws Exception {
+        Files.createFile(server.resolve("heroic-map-renderer"));
+        var c = vorgabe();
+        c.set("renderer.binary", "heroic-map-renderer");
+        c.set("renderer.assets", List.of("vanilla-assets"));
+        assertEquals(Konfiguration.Karte.OHNE, Konfiguration.aus(c, server, server).karte(), "Vorgabe: kein Name, die eigene Karte");
+        c.set("karte.name", "Build");
+        c.set("karte.von", "main");
+        var k = Konfiguration.aus(c, server, server).karte();
+        assertEquals(new Konfiguration.Karte("build", "main"), k, "klein geschrieben");
+        assertTrue(k.fremd());
+        c.set("karte.von", "../main");
+        var fehler = assertThrows(IllegalArgumentException.class, () -> Konfiguration.aus(c, server, server));
+        assertEquals("karte.von: ../main ist kein Name aus a-z, 0-9, _ und -, höchstens 64 Zeichen", fehler.getMessage());
+    }
+
+    @Test
     void vorgabe_mit_binaer() throws Exception {
         Files.createFile(server.resolve("heroic-map-renderer"));
         var c = vorgabe();
