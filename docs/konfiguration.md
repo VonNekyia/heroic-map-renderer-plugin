@@ -40,7 +40,7 @@ Die Statistik über bStats hat hier keinen Schlüssel; sie schaltet
 | `karte.von-url` | leer | – | der Webserver von `karte.von`, wie dieser Server ihn erreicht, etwa `"http://127.0.0.1:8080"`, für dessen öffentliche Ebenen; nur mit `karte.von` |
 | `karte.von-oeffentlich` | leer: der eigene | – | der Webserver von `karte.von`, wie Spieler ihn erreichen, etwa dessen `webserver.url`; der Mod holt Bilder und Banner dort, ohne „Im Browser öffnen“, und dieser Server braucht keinen Webserver; nur mit `karte.von`, siehe [Mehrere Server](mehrere-server.md), „Karte von“ |
 | `update-minutes` | `2` | – | Abstand der Updates in Minuten, `0` schaltet sie ab; dazu der Autosave von Paper auf 60 s, siehe [Läufe](laeufe.md), „Zeitplan“ |
-| `trees` | ein Baum `"2:1"` | siehe „Bäume“ | je Eintrag ein Kachelbaum |
+| `trees` | ein Baum `"2:1"` | siehe „Bäume“ | je Eintrag ein Kachelbaum; leer nur mit `karte.von` |
 | `download.voll-je-10-min` | `10` | – | volle Downloads, die der Server in 10 min ausgibt |
 | `download.voll-je-woche` | `5` | – | volle Downloads je Spieler in 7 Tagen |
 | `download.abgleich-je-tag` | `1` | – | Abgleiche je Spieler in 24 h, von Hand und der tägliche zusammen |
@@ -226,7 +226,7 @@ schaltet sich ab:
 - `update-minutes` ist kleiner als 0;
 - eine Kamera ohne Anführungszeichen, ein `scale`, der keine ganze Zahl ist;
 - `renderer.threads` kleiner als 1, `renderer.full-run-threads` kleiner als 0;
-- kein Baum;
+- kein Baum, ausser mit `karte.von`;
 - `download: true` an einem Baum, der nicht `top-north` mit scale 4 ohne
   Cinematic ist;
 - eine Grenze unter `download` kleiner als 0, oder `abgleich-ab` keine

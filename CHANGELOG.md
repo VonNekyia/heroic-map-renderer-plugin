@@ -10,6 +10,7 @@ Links und die Hinweise aus `NOTICE` setzt
 ## 0.14.1
 
 - **`karte.von-oeffentlich`:** a server with `karte.von` can point the mod to the public address of the other server's web map. The mod then loads the images and banners of the layers there, and this server needs no web server of its own. "Open in browser" is off on it, since its login would not work there.
+- **No trees needed with `karte.von`:** `trees: []` is allowed then. The server renders nothing itself; before, the plugin refused to start with "trees: kein Baum".
 
 ## 0.14.0
 

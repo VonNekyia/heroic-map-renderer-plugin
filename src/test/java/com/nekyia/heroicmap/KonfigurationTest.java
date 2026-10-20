@@ -68,6 +68,19 @@ class KonfigurationTest {
     }
 
     @Test
+    void mit_karte_von_ohne_baeume() throws Exception {
+        Files.createFile(server.resolve("heroic-map-renderer"));
+        var c = vorgabe();
+        c.set("renderer.binary", "heroic-map-renderer");
+        c.set("renderer.assets", List.of("vanilla-assets"));
+        c.set("trees", List.of());
+        var fehler = assertThrows(IllegalArgumentException.class, () -> Konfiguration.aus(c, server, server));
+        assertEquals("trees: kein Baum", fehler.getMessage());
+        c.set("karte.von", "main");
+        assertEquals(List.of(), Konfiguration.aus(c, server, server).baeume(), "build rendert nichts selbst");
+    }
+
+    @Test
     void vorgabe_mit_binaer() throws Exception {
         Files.createFile(server.resolve("heroic-map-renderer"));
         var c = vorgabe();

@@ -95,6 +95,9 @@ denselben Wegpunkten, Regionen und eigenen Ebenen. Entschieden in
   `karte.von` ein Fehler beim Start; er legte Kacheln von build in den
   Ordner von main. Die Karte im Mod frischt sich nur auf main auf, mit dem
   Download dort.
+- **Ohne Bäume:** Mit `karte.von` darf `trees` leer sein, `trees: []`.
+  Dann rendert build nichts, braucht keine Assets und belegt weder CPU
+  noch Platte für Kacheln; ein Update findet keinen Baum und tut nichts.
 - **Gleiche Welt:** Der Ordner im Mod hängt auch am Hash des Seeds je
   Dimension. Eine Kopie der Welt von main hat denselben; mit einem anderen
   Seed legt der Mod einen neuen Ordner an, und die Karte von main fehlt.

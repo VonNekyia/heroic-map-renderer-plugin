@@ -159,7 +159,7 @@ Plugin das seiner Plattform aus, siehe [Konfiguration](konfiguration.md),
   `webserver.erkennen-url` nur mit `url`, der Ursprung ohne Pfad und klein.
   `karte.name` und `karte.von` klein, ein Name mit `/` ist ein Fehler,
   `karte.von-url` und `karte.von-oeffentlich` nur mit `karte.von`,
-  `karte.von` nicht mit Download.
+  `karte.von` nicht mit Download, aber ohne Baum.
 - **`VorlageTest`:** eine alte `config.yml` mit eigenen Werten und
   Kommentaren, auch in `trees`, und unbekannten Schlüsseln: Jede ihrer
   Zeilen bleibt, jeder Schlüssel der Vorlage ist danach da, mit Vorgabe und

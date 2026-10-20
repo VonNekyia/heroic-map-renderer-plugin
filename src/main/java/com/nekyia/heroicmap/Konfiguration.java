@@ -215,7 +215,8 @@ record Konfiguration(
             }
             baeume.add(new Baum(kamera, richtung, (Integer) scale, cinematic, download, web, flat));
         }
-        if (baeume.isEmpty() && fehler.isEmpty()) {
+        // Mit karte.von rendert dieser Server nichts selbst. Siehe docs/mehrere-server.md, „Karte von“.
+        if (baeume.isEmpty() && fehler.isEmpty() && c.getString("karte.von", "").isBlank()) {
             fehler.add("trees: kein Baum");
         }
 
