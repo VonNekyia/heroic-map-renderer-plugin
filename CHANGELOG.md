@@ -7,7 +7,7 @@ Links und die Hinweise aus `NOTICE` setzt
 [`.github/notizen.sh`](.github/notizen.sh) dazu. Siehe
 [Entwicklung](docs/entwicklung.md), „Release“.
 
-## 0.14.2
+## 0.15.0
 
 - **Renderer 0.13.2** inside: layers on the web map move with the map without stutter. No full render needed.
 
