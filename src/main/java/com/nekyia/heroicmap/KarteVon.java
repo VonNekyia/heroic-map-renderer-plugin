@@ -44,6 +44,8 @@ final class KarteVon {
     /** Die Fehler, die zuletzt im Log standen, und ob als INFO; nur in einem Faden. */
     private List<String> gemeldet = List.of();
     private boolean alsInfo;
+    /** Die Zahl der Ebenen, die zuletzt im Log stand; -1 vor der ersten Zeile. */
+    private int gemeldetZahl = -1;
 
     /** {@code url} wie webserver.url des anderen Servers, ohne / am Ende; {@code dimension} die von tiles hier. */
     KarteVon(String url, String dimension) {
@@ -58,19 +60,28 @@ final class KarteVon {
     }
 
     /**
-     * Mit welcher Stufe die Fehler eines Holens ins Log kommen, oder null, wenn nichts neu ist: nur, wenn sie sich
-     * ändern; im {@link #ANLAUF} als INFO, danach als WARNING. Ein Fehler, der den Anlauf überdauert, kommt dann
-     * einmal als WARNING; keine Fehler mehr nach welchen als INFO, für die Zeile mit der Zahl. Siehe
-     * docs/mehrere-server.md, „Karte von“.
+     * Mit welcher Stufe ein Holen ins Log kommt, oder null, wenn nichts neu ist. Fehler nur, wenn sie sich ändern; im
+     * {@link #ANLAUF} als INFO, danach als WARNING, und ein Fehler, der den Anlauf überdauert, dann einmal als WARNING.
+     * Ohne Fehler die Zeile mit der Zahl {@code zahl} der Ebenen als INFO, wenn vorher Fehler waren oder sich die Zahl
+     * änderte. Siehe docs/mehrere-server.md, „Karte von“.
      */
-    Level meldung(List<String> fehler, Instant jetzt) {
+    Level meldung(List<String> fehler, int zahl, Instant jetzt) {
+        if (fehler.isEmpty()) {
+            if (gemeldet.isEmpty() && zahl == gemeldetZahl) {
+                return null;
+            }
+            gemeldet = List.of();
+            alsInfo = false;
+            gemeldetZahl = zahl;
+            return Level.INFO;
+        }
         boolean anlauf = Duration.between(start, jetzt).compareTo(ANLAUF) < 0;
-        if (fehler.equals(gemeldet) && !(alsInfo && !anlauf && !fehler.isEmpty())) {
+        if (fehler.equals(gemeldet) && !(alsInfo && !anlauf)) {
             return null;
         }
         gemeldet = List.copyOf(fehler);
-        alsInfo = anlauf && !fehler.isEmpty();
-        return anlauf || fehler.isEmpty() ? Level.INFO : Level.WARNING;
+        alsInfo = anlauf;
+        return anlauf ? Level.INFO : Level.WARNING;
     }
 
     /** Die zuletzt geholten Ebenen, sortiert wie layers.json dort. */
