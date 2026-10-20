@@ -45,6 +45,10 @@ karte:
   # Der Webserver von "von", wie dieser Server ihn erreicht, etwa
   # "http://127.0.0.1:8080": für dessen öffentliche Ebenen. Leer: keine.
   von-url: ""
+  # Der Webserver von "von", wie Spieler ihn erreichen, etwa dessen
+  # webserver.url: Der Mod holt Bilder und Banner der Ebenen dort, und
+  # dieser Server braucht keinen eigenen Webserver. Leer: der eigene.
+  von-oeffentlich: ""
 
 # Alle so viele Minuten ein Update; 0 schaltet den Zeitplan ab.
 # Dazu den Autosave von Paper auf 60 s, siehe docs/laeufe.md.

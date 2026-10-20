@@ -114,11 +114,27 @@ denselben Wegpunkten, Regionen und eigenen Ebenen. Entschieden in
 - **Zusammen mit den eigenen:** Die Ebenen von main kommen zu den Dateien
   von build, wie eine weitere Datei; eine eigene Datei mit derselben
   Kennung gilt vor der von main. Dann gilt alles wie für Dateien: Das
-  Plugin von build schreibt sie für seine Webkarte und schickt sie dem Mod
-  mit seiner eigenen Adresse.
+  Plugin von build schreibt sie für seine Webkarte und schickt sie dem Mod.
+- **Adresse für den Mod:** Mit `karte.von-oeffentlich`, der Adresse von
+  main, wie Spieler sie erreichen, etwa `webserver.url` dort, nennt die
+  Liste `ebenen` `url: <karte.von-oeffentlich>/tiles`
+  (`EbenenFuerMod.adresse`). Der Mod holt Bilder und Banner der Ebenen bei
+  main, geprüft wie immer, siehe im Mod `ebenen.md`, „Symbole“. Dann:
+  - kein „Im Browser öffnen“: Die Antwort auf `show` trägt `web: false`,
+    und `web` bekommt den Grund `webserver`. Den Link baut der Mod aus
+    dieser Adresse, und das Token von build gilt bei main nicht;
+  - kein `--banners` auf build, die Sprites liegen bei main;
+  - build braucht keinen eigenen Webserver, `webserver.enabled: false`
+    geht. Er muss main nur über `karte.von-url` erreichen.
+
+  Ohne `karte.von-oeffentlich` nennt build seine eigene Adresse wie sonst,
+  und sein Webserver liefert alles, auch die Bilder von main.
 - **Grenzen:**
   - Nur die Objekte der Dimension der Wurzel von main: Mehr schreibt main
     nicht für die Webkarte.
   - Ebenen mit `permission`, mit `web: false` und Aktionsebenen von main
     fehlen; sie stehen nicht öffentlich unter `/tiles/`.
   - Ohne `karte.von-url` nur der Name, keine Ebenen von main.
+  - Mit `karte.von-oeffentlich` fehlen im Mod Bilder und Banner eigener
+    Ebenen von build, aus Dateien oder der API: Der Mod sucht sie bei
+    main. Objekte ohne Bild gehen.

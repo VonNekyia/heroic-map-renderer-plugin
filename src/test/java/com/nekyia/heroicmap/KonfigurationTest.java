@@ -46,15 +46,17 @@ class KonfigurationTest {
         c.set("karte.name", " Build ");
         c.set("karte.von", "Main");
         c.set("karte.von-url", "http://127.0.0.1:8080/");
-        assertEquals(new Konfiguration.Karte("build", "main", "http://127.0.0.1:8080"), Konfiguration.aus(c, server, server).karte(),
-                "klein geschrieben, ohne / am Ende");
+        c.set("karte.von-oeffentlich", "https://karte.example.org/");
+        assertEquals(new Konfiguration.Karte("build", "main", "http://127.0.0.1:8080", "https://karte.example.org"),
+                Konfiguration.aus(c, server, server).karte(), "klein geschrieben, ohne / am Ende");
         c.set("karte.name", "../main");
         var fehler = assertThrows(IllegalArgumentException.class, () -> Konfiguration.aus(c, server, server));
         assertEquals("karte.name: ../main ist kein Name aus a-z, 0-9, _ und -, höchstens 64 Zeichen", fehler.getMessage());
         c.set("karte.name", "");
         c.set("karte.von", "");
         fehler = assertThrows(IllegalArgumentException.class, () -> Konfiguration.aus(c, server, server));
-        assertEquals("karte.von-url: mit http:// oder https:// und Host, etwa \"http://127.0.0.1:8080\", und nur mit karte.von",
+        assertEquals("karte.von-url: mit http:// oder https:// und Host, etwa \"http://127.0.0.1:8080\", und nur mit karte.von; "
+                + "karte.von-oeffentlich: mit http:// oder https:// und Host, etwa \"http://127.0.0.1:8080\", und nur mit karte.von",
                 fehler.getMessage());
         c.set("karte.von", "main");
         c.set("karte.von-url", "ftp://127.0.0.1");

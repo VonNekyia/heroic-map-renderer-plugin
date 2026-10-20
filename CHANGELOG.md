@@ -7,6 +7,10 @@ Links und die Hinweise aus `NOTICE` setzt
 [`.github/notizen.sh`](.github/notizen.sh) dazu. Siehe
 [Entwicklung](docs/entwicklung.md), „Release“.
 
+## 0.14.1
+
+- **`karte.von-oeffentlich`:** a server with `karte.von` can point the mod to the public address of the other server's web map. The mod then loads the images and banners of the layers there, and this server needs no web server of its own. "Open in browser" is off on it, since its login would not work there.
+
 ## 0.14.0
 
 - **One map per server behind a proxy:** the plugin tells the companion mod the name of the map, so two servers with the same world no longer share one folder in the mod. The name comes from the proxy via `GetServer` on the BungeeCord channel: Velocity answers with `bungee-plugin-message-channel = true`, or a plugin on the proxy does. The plugin only asks when Paper runs behind a proxy with forwarding (Velocity forwarding or BungeeCord mode); otherwise set `karte.name` in `config.yml`.
