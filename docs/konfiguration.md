@@ -35,6 +35,7 @@ Die Statistik über bStats hat hier keinen Schlüssel; sie schaltet
 | `renderer.compact` | `false` | `--compact` bei vollen Läufen | kompakt packen, rund die Hälfte der Bytes für ein Mehrfaches der Zeit beim Kodieren; gilt nur für einen neuen Baum, einen bestehenden packt `/heroicmap compact` nach, siehe [Läufe](laeufe.md), „Kompakt“ |
 | `world` | leer: die Hauptwelt | `--world` | die Weltwurzel mit `level.dat` |
 | `tiles` | `plugins/HeroicMap/tiles` | `--tiles` | die Wurzel der Kachelbäume |
+| `karte.name` | leer | – | der Name dieses Servers für den Ordner im Mod, etwa `main`; nur, wenn der Proxy keinen meldet, siehe [Mehrere Server](mehrere-server.md), „Name vom Proxy“ |
 | `update-minutes` | `2` | – | Abstand der Updates in Minuten, `0` schaltet sie ab; dazu der Autosave von Paper auf 60 s, siehe [Läufe](laeufe.md), „Zeitplan“ |
 | `trees` | ein Baum `"2:1"` | siehe „Bäume“ | je Eintrag ein Kachelbaum |
 | `download.voll-je-10-min` | `10` | – | volle Downloads, die der Server in 10 min ausgibt |
@@ -228,6 +229,8 @@ schaltet sich ab:
 - eine Grenze unter `download` kleiner als 0, oder `abgleich-ab` keine
   Uhrzeit wie `"00:00"`;
 - `web: false` an einem Baum ohne `download: true`;
+- `karte.name` kein Name aus a–z, 0–9, `_` und `-` mit höchstens 64
+  Zeichen;
 - mit eingeschaltetem Webserver: `webserver.listen` ohne Port, mit einem
   Port über 65535, oder mit Port 0 und einem Baum zum Download ohne `url`
   und ohne `public-port`; `public-port` keine Zahl, etwa in
