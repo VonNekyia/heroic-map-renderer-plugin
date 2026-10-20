@@ -7,6 +7,10 @@ Links und die Hinweise aus `NOTICE` setzt
 [`.github/notizen.sh`](.github/notizen.sh) dazu. Siehe
 [Entwicklung](docs/entwicklung.md), „Release“.
 
+## 0.15.1
+
+- **Quieter start with `karte.von`:** while the other server is still starting, errors fetching its layers in the first 60 seconds are logged as info instead of warnings. An error that lasts longer is then logged once as a warning.
+
 ## 0.15.0
 
 - **Heads on the web map:** with login on the web map, each player's face from their skin, with the hat layer as in the game, replaces the dot for themselves and the players they see. The plugin fetches skins only from `textures.minecraft.net` and stores small 8 × 8 images under `koepfe/` in the tiles root; heads unused for 30 days, or beyond 4096, are removed. Without a skin, or with `karte.von`, the dot stays.

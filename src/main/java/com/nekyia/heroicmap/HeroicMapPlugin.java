@@ -77,8 +77,6 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
     /** Nur im Hauptthread. */
     private Proxyname proxyname = new Proxyname(false);
     private boolean ohneProxyKanalGemeldet;
-    /** Nur in {@link #holeVon}. */
-    private List<String> vonFehler = List.of();
     /** Die Anmeldung auf der Webkarte; null ohne. Siehe docs/anmeldung.md. */
     private volatile SpielerOrdner spieler;
     /** Die Köpfe für die Webkarte; null ohne Anmeldung oder mit karte.von. Siehe docs/koepfe.md. */
@@ -274,7 +272,8 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
 
     /**
      * Ausserhalb des Hauptthreads, alle 10 s: die öffentlichen Ebenen der anderen Karte; neu laden, wenn sie sich
-     * änderten. Fehler stehen im Log, nur wenn sie sich ändern.
+     * änderten. Fehler stehen im Log, nur wenn sie sich ändern, im Anlauf nach dem Start als INFO
+     * ({@link KarteVon#meldung}).
      */
     private void holeVon(KarteVon von) {
         var fehler = new ArrayList<String>();
@@ -288,9 +287,9 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
             Thread.currentThread().interrupt();
             return;
         }
-        if (!fehler.equals(vonFehler)) {
-            vonFehler = fehler;
-            fehler.forEach(f -> getLogger().warning("Ebenen von " + kartenKonf.von() + ": " + f));
+        Level stufe = von.meldung(fehler, Instant.now());
+        if (stufe != null) {
+            fehler.forEach(f -> getLogger().log(stufe, "Ebenen von " + kartenKonf.von() + ": " + f));
             if (fehler.isEmpty()) {
                 getLogger().info("Ebenen von " + kartenKonf.von() + ": " + von.stand().size() + " geholt");
             }

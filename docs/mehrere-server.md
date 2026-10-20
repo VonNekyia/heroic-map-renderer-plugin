@@ -112,8 +112,13 @@ denselben Wegpunkten, Regionen und eigenen Ebenen. Entschieden in
   - nur im Speicher, nie auf der Platte von build; nach einem Neustart
     holt es neu;
   - keine Weiterleitung, Frist 10 s. Ist main nicht zu erreichen, gilt der
-    alte Stand. Fehler stehen im Log, nur wenn sie sich ändern; nach einem
-    Fehler fragt es ohne ETag, bis alles da ist.
+    alte Stand. Nach einem Fehler fragt es ohne ETag, bis alles da ist.
+  - **Log** (`KarteVon.meldung`): Fehler nur, wenn sie sich ändern. In den
+    ersten 60 s nach dem Start (`KarteVon.ANLAUF`) als INFO, denn main
+    startet vielleicht gerade, etwa „Connection refused“ oder
+    `layers.json: HTTP 404`, bevor seine Ebenen liegen; danach als WARN.
+    Ein Fehler, der den Anlauf überdauert, kommt dann einmal als WARN.
+    Klappt es wieder, eine Zeile mit der Zahl der geholten Ebenen.
 - **Zusammen mit den eigenen:** Die Ebenen von main kommen zu den Dateien
   von build, wie eine weitere Datei; eine eigene Datei mit derselben
   Kennung gilt vor der von main. Dann gilt alles wie für Dateien: Das
