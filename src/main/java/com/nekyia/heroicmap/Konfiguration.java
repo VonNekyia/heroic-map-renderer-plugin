@@ -16,7 +16,8 @@ import org.bukkit.configuration.ConfigurationSection;
 
 /**
  * Die Einstellungen aus config.yml, geprüft, alle Pfade absolut; {@code renderer} null ohne renderer.binary;
- * {@code kompakt}: volle Läufe mit --compact. Siehe docs/konfiguration.md.
+ * {@code kompakt}: volle Läufe mit --compact; {@code nexo}: das Pack von Nexo als letzte Asset-Wurzel. Siehe
+ * docs/konfiguration.md.
  */
 record Konfiguration(
         Path renderer,
@@ -33,7 +34,8 @@ record Konfiguration(
         Webserver webserver,
         ClientJar clientJar,
         boolean kompakt,
-        Karte karte) {
+        Karte karte,
+        boolean nexo) {
 
     /** Ohne Abschnitt karte, für Tests und alte Aufrufe. */
     Konfiguration(Path renderer, Path welt, Path kacheln, List<Path> assets, List<Path> daten, boolean grafikkarte,
@@ -41,6 +43,14 @@ record Konfiguration(
             ClientJar clientJar, boolean kompakt) {
         this(renderer, welt, kacheln, assets, daten, grafikkarte, threads, vollThreads, updateMinuten, baeume, download,
                 webserver, clientJar, kompakt, Karte.OHNE);
+    }
+
+    /** Ohne Nexo, für Tests und alte Aufrufe. */
+    Konfiguration(Path renderer, Path welt, Path kacheln, List<Path> assets, List<Path> daten, boolean grafikkarte,
+            int threads, int vollThreads, int updateMinuten, List<Baum> baeume, Download download, Webserver webserver,
+            ClientJar clientJar, boolean kompakt, Karte karte) {
+        this(renderer, welt, kacheln, assets, daten, grafikkarte, threads, vollThreads, updateMinuten, baeume, download,
+                webserver, clientJar, kompakt, karte, false);
     }
 
     /**
@@ -347,13 +357,14 @@ record Konfiguration(
                         titel, beschreibung, bild, oeffentlich, proxys, erkennen),
                 new ClientJar(c.getBoolean("renderer.download-client-jar"), c.getString("renderer.client-version", "").strip()),
                 c.getBoolean("renderer.compact"),
-                new Karte(karten.get(0), karten.get(1), urls.get(0), urls.get(1)));
+                new Karte(karten.get(0), karten.get(1), urls.get(0), urls.get(1)),
+                c.getBoolean("renderer.nexo"));
     }
 
     /** Dieselbe Konfiguration mit diesem Binär. */
     Konfiguration mitRenderer(Path binaer) {
         return new Konfiguration(binaer, welt, kacheln, assets, daten, grafikkarte, threads, vollThreads, updateMinuten,
-                baeume, download, webserver, clientJar, kompakt, karte);
+                baeume, download, webserver, clientJar, kompakt, karte, nexo);
     }
 
     /**

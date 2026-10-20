@@ -1,11 +1,12 @@
 ---
 title: Konfiguration
-description: Jeder Schlüssel in config.yml mit Vorgabe und Schalter des Renderers, das Binär aus dem Jar und wann es ausgepackt wird, wie das Plugin den Ordner eines Baums bestimmt und welche Fehler es beim Start meldet.
+description: Jeder Schlüssel in config.yml mit Vorgabe und Schalter des Renderers, das Binär aus dem Jar und wann es ausgepackt wird, das Pack von Nexo als Asset-Wurzel, wie das Plugin den Ordner eines Baums bestimmt und welche Fehler es beim Start meldet.
 code:
   - src/main/resources/config.yml
   - src/main/java/com/nekyia/heroicmap/Konfiguration.java
   - src/main/java/com/nekyia/heroicmap/Binaer.java
   - src/main/java/com/nekyia/heroicmap/Vorlage.java
+  - src/main/java/com/nekyia/heroicmap/Nexo.java
 ---
 
 # Konfiguration
@@ -26,6 +27,7 @@ Die Statistik über bStats hat hier keinen Schlüssel; sie schaltet
 |---|---|---|---|
 | `renderer.binary` | leer: das aus dem Jar | – | Pfad zu einem eigenen Binär des Renderers, siehe „Das Binär“ |
 | `renderer.assets` | leer | `--assets` je Eintrag | Asset-Wurzeln, spätere überschreiben frühere; leer nur mit Zustimmung zum Client-Jar, siehe „Client-Jar“ |
+| `renderer.nexo` | `false` | ein letztes `--assets` mit dem ausgepackten Pack | die eigenen Blöcke von Nexo mit ihren Texturen zeichnen, siehe „Nexo“ |
 | `renderer.data` | leer | `--data` je Eintrag | Datenwurzeln mit Biomen und Bannermustern |
 | `renderer.gpu` | `false` | `--gpu auto`, sonst `--gpu off` | ob die Grafikkarte zeichnen darf |
 | `renderer.threads` | `1` | `--threads` bei Updates | so viele Threads bekommt ein Update, ab 1; dazu immer `--low-priority` |
@@ -139,6 +141,59 @@ was er prüft, steht in der Doku des Renderers,
   Renderer ab, und der Server lieferte das Jar sonst aus.
 - **Mit Assets** dazu legt der Renderer `renderer.assets` und
   `renderer.data` über die Basis aus dem Jar.
+
+## Nexo
+
+Mit `renderer.nexo: true` zeichnet die Karte die eigenen Blöcke von Nexo mit
+ihren Texturen, nicht als den Vanilla-Block, auf dem sie sitzen
+(heroic-map-renderer-plugin#40). Nexo baut sie auf Zuständen von
+Vanilla-Blöcken auf, etwa Notenblock, Stolperdraht und Chorusblüte, und
+gibt diesen Zuständen im eigenen Pack Blockstates, Modelle und Texturen im
+Format von Vanilla. Liegt das Pack als letzte Wurzel oben, zeichnet der
+Renderer sie ohne eigenen Code. Möbel von Nexo sind Entities; die zeichnet
+der Renderer nicht.
+
+- **Das Pack:** `Pack.generation.output_path` aus
+  `plugins/Nexo/settings.yml`, relativ zum Ordner des Servers, ohne Angabe
+  `plugins/Nexo/pack/pack.zip`, nur mit
+  `Pack.generation.generate_pack: true`. Geprüft mit Nexo 1.29.1.
+- **Auspacken:** im Faden des Laufs, vor dem ersten Baum, nur wenn Grösse
+  oder Zeit des Zips anders sind als beim letzten Mal. Aus dem Zip nur die
+  Einträge unter `assets/`, ohne das Präfix, nach
+  `plugins/HeroicMap/nexo/<hash>/`. `<hash>` sind 16 Zeichen des SHA-256
+  über Namen und Inhalt der Einträge, nicht über die Bytes des Zips: Ein
+  neu gebautes Pack mit gleichem Inhalt gibt denselben Ordner. Den gibt es
+  dann schon, er bleibt; andere Ordner darunter fallen weg.
+- **Die Zeit jeder Datei** ist 1980-01-01. Der Renderer nimmt Pfad, Grösse
+  und Zeit jeder Datei in den Fingerabdruck der Assets; so bleibt er auch
+  nach einem neuen Auspacken gleich.
+- **Sicher:** Ein Eintrag mit `..`, `\` oder einem absoluten Pfad bricht ab,
+  ebenso mehr als 100 000 Einträge oder mehr als 2 GiB ausgepackt. Nichts
+  landet ausserhalb des Ordners, und ein halber Ordner bleibt nicht liegen.
+- **An den Renderer:** als letztes `--assets`, nach `renderer.assets`, also
+  über allem anderen. Die Sprites der Banner zeichnet das Plugin ohne das
+  Pack.
+- **Ohne Pack:** ohne Nexo oder mit `generate_pack: false` steht eine
+  Zeile im Log, einmal je Grund, und der Lauf geht ohne das Pack.
+- **Ein Zip, das sich nicht lesen lässt,** etwa während Nexo es bei
+  `/nexo reload` neu schreibt, oder eines, das PackSquash mit seinen
+  Kniffen gegen das Auspacken schreibt: Dann nimmt der Lauf das zuletzt
+  ausgepackte Pack, sonst keines, mit einer Zeile im Log. Dasselbe Zip,
+  gleich gross und gleich alt, versucht das Plugin nicht noch einmal.
+- **Ohne Basis,** also ohne `renderer.assets` und ohne
+  `renderer.download-client-jar`, kommt das Pack nicht dazu, mit einer
+  Zeile im Log: Sonst zeichnete der Renderer nur das Pack, statt nach der
+  Zustimmung zum Client-Jar zu fragen.
+- **Mit `karte.von`** rendert dieser Server nicht selbst; `renderer.nexo`
+  tut dort nichts und sagt das einmal im Log, siehe
+  [Mehrere Server](mehrere-server.md).
+- **Kosten:** Jedes neue Pack, also jede Änderung an einem Item, einer
+  Textur oder einem Modell in Nexo, gibt andere Assets und damit einen
+  vollen Lauf über jeden Baum: Ein Update bricht dann ab, im Status steht
+  „neue Assets: erst /heroicmap render <ordner>“, siehe [Läufe](laeufe.md),
+  „Der Kindprozess“. Wer an Nexo oft baut, schaltet `renderer.nexo` erst
+  ein, wenn die Blöcke stehen. Auf der Platte liegt das ausgepackte Pack
+  einmal.
 
 ## Bäume
 

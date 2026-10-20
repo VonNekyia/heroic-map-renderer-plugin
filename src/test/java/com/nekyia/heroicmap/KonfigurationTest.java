@@ -119,6 +119,16 @@ class KonfigurationTest {
     }
 
     @Test
+    void nexo_vorgabe_aus_mit_true_an() throws Exception {
+        Files.createFile(server.resolve("r"));
+        var c = vorgabe();
+        c.set("renderer.binary", "r");
+        assertFalse(Konfiguration.aus(c, server, server).nexo(), "Vorgabe in config.yml: false");
+        c.set("renderer.nexo", true);
+        assertTrue(Konfiguration.aus(c, server, server).nexo());
+    }
+
+    @Test
     void webserver_mit_https() throws Exception {
         Files.createFile(server.resolve("r"));
         Files.createFile(server.resolve("kette.pem"));

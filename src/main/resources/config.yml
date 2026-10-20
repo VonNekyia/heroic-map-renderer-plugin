@@ -7,6 +7,9 @@ renderer:
   # --assets, in dieser Reihenfolge; spätere überschreiben frühere.
   # Leer nur mit download-client-jar: true, siehe unten.
   assets: []
+  # true: das Pack von Nexo als letzte Asset-Wurzel, so zeichnet die Karte
+  # dessen eigene Blöcke. Jedes neue Pack braucht einen vollen Lauf.
+  nexo: false
   # --data, in dieser Reihenfolge.
   data: []
   # true: die Grafikkarte darf zeichnen (--gpu auto), sonst nur die CPU.
