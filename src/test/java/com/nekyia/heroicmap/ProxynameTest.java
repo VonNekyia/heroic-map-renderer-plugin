@@ -10,14 +10,20 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 /** Der Name vom Proxy über GetServer, und welcher Name der Karte gilt. Ohne Bukkit. */
 class ProxynameTest {
 
     private static final UUID SAM = new UUID(0, 1);
     private static final UUID ALEX = new UUID(0, 2);
+
+    @TempDir
+    Path tmp;
 
     /** Eine Antwort des Proxys, zwei Strings nach DataOutput.writeUTF. */
     private static byte[] antwort(String erst, String name) throws IOException {
@@ -38,7 +44,7 @@ class ProxynameTest {
 
     @Test
     void antwort_nur_auf_die_eigene_frage_ueber_denselben_spieler() throws IOException {
-        var p = new Proxyname();
+        var p = new Proxyname(true);
         assertFalse(p.antwort(SAM, antwort("GetServer", "main")), "ungefragt");
         assertTrue(p.frage(SAM, 0));
         assertTrue(p.wartet(Proxyname.FRIST_MS - 1));
@@ -56,8 +62,31 @@ class ProxynameTest {
     }
 
     @Test
+    void sicher_hinter_einem_proxy_nur_mit_weiterleitung() throws IOException {
+        assertFalse(Proxyname.hinterProxy(tmp), "ohne Dateien");
+        Files.createDirectories(tmp.resolve("config"));
+        Files.writeString(tmp.resolve("config/paper-global.yml"), "proxies:\n  velocity:\n    enabled: false\n");
+        Files.writeString(tmp.resolve("spigot.yml"), "settings:\n  bungeecord: false\n");
+        assertFalse(Proxyname.hinterProxy(tmp), "beides aus");
+        Files.writeString(tmp.resolve("config/paper-global.yml"), "proxies:\n  velocity:\n    enabled: true\n");
+        assertTrue(Proxyname.hinterProxy(tmp), "Weiterleitung von Velocity");
+        Files.writeString(tmp.resolve("config/paper-global.yml"), "proxies:\n  velocity:\n    enabled: false\n");
+        Files.writeString(tmp.resolve("spigot.yml"), "settings:\n  bungeecord: true\n");
+        assertTrue(Proxyname.hinterProxy(tmp), "BungeeCord-Modus");
+    }
+
+    @Test
+    void ohne_proxy_keine_frage_und_keine_antwort() throws IOException {
+        var p = new Proxyname(false);
+        assertFalse(p.frage(SAM, 0), "ein Client könnte den Kanal anmelden und selbst antworten");
+        assertFalse(p.wartet(0), "show wartet nicht");
+        assertFalse(p.antwort(SAM, antwort("GetServer", "main")));
+        assertNull(p.name());
+    }
+
+    @Test
     void neu_fragen_nach_der_frist_hoechstens_dreimal() {
-        var p = new Proxyname();
+        var p = new Proxyname(true);
         assertTrue(p.frage(SAM, 0));
         assertFalse(p.frage(ALEX, Proxyname.FRIST_MS - 1), "eine Frage ist offen");
         assertTrue(p.frage(ALEX, Proxyname.FRIST_MS), "nach der Frist neu, über einen anderen Spieler");

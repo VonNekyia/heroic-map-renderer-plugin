@@ -9,7 +9,7 @@ Links und die Hinweise aus `NOTICE` setzt
 
 ## 0.14.0
 
-- **One map per server behind a proxy:** the plugin tells the companion mod the name of the map, so two servers with the same world no longer share one folder in the mod. The name comes from the proxy via `GetServer` on the BungeeCord channel: Velocity answers with `bungee-plugin-message-channel = true`, or a plugin on the proxy does. Otherwise set `karte.name` in `config.yml`.
+- **One map per server behind a proxy:** the plugin tells the companion mod the name of the map, so two servers with the same world no longer share one folder in the mod. The name comes from the proxy via `GetServer` on the BungeeCord channel: Velocity answers with `bungee-plugin-message-channel = true`, or a plugin on the proxy does. The plugin only asks when Paper runs behind a proxy with forwarding (Velocity forwarding or BungeeCord mode); otherwise set `karte.name` in `config.yml`.
 
 ## 0.13.3
 

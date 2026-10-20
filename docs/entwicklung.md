@@ -246,7 +246,9 @@ Plugin das seiner Plattform aus, siehe [Konfiguration](konfiguration.md),
   HMAC gegen die Testvektoren `ips` in `token.json` des Renderers,
   IPv4-gemappt wie IPv4, sortiert, ohne geteilte IP und ohne `ip-aus`, das
   über einen Neustart gilt.
-- **`ProxynameTest`:** die Frage `GetServer`, wie der Proxy sie liest; eine
+- **`ProxynameTest`:** nur sicher hinter einem Proxy, mit der Weiterleitung
+  von Velocity oder im BungeeCord-Modus, sonst keine Frage; die Frage
+  `GetServer`, wie der Proxy sie liest; eine
   Antwort nur auf die eigene Frage, über denselben Spieler, mit einem Namen,
   der als Ordner taugt, die erste gilt; die Frist, neu fragen höchstens
   dreimal; welcher Name der Karte gilt.

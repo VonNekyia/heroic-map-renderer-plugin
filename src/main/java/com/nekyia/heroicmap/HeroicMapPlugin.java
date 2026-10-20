@@ -72,7 +72,7 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
     /** karte.name aus config.yml, leer ohne. Siehe docs/mehrere-server.md. */
     private String kartenName = "";
     /** Nur im Hauptthread. */
-    private final Proxyname proxyname = new Proxyname();
+    private Proxyname proxyname = new Proxyname(false);
     private boolean ohneProxyKanalGemeldet;
     /** Die Anmeldung auf der Webkarte; null ohne. Siehe docs/anmeldung.md. */
     private volatile SpielerOrdner spieler;
@@ -112,9 +112,14 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
         // Zum Empfangen auch ohne Simple Voice Chat, damit show eine Antwort mit Grund bekommt.
         getServer().getMessenger().registerOutgoingPluginChannel(this, Download.KANAL);
         getServer().getMessenger().registerIncomingPluginChannel(this, Download.KANAL, this);
-        // Für GetServer, den Namen dieses Servers vom Proxy. Siehe docs/mehrere-server.md, „Name vom Proxy“.
-        getServer().getMessenger().registerOutgoingPluginChannel(this, Proxyname.KANAL);
-        getServer().getMessenger().registerIncomingPluginChannel(this, Proxyname.KANAL, this);
+        // Für GetServer, den Namen dieses Servers vom Proxy; nur sicher hinter einem. Siehe docs/mehrere-server.md,
+        // „Name vom Proxy“.
+        boolean hinterProxy = Proxyname.hinterProxy(server);
+        proxyname = new Proxyname(hinterProxy);
+        if (hinterProxy) {
+            getServer().getMessenger().registerOutgoingPluginChannel(this, Proxyname.KANAL);
+            getServer().getMessenger().registerIncomingPluginChannel(this, Proxyname.KANAL, this);
+        }
         kartenName = konf.kartenName();
         getServer().getPluginManager().registerEvents(this, this);
         // Ebenen brauchen keinen Renderer; geladen wird ausserhalb des Hauptthreads. Siehe docs/ebenen.md.
@@ -247,12 +252,12 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
     }
 
     /**
-     * Im Hauptthread: fragt den Proxy über {@code p} nach dem Namen dieses Servers, wenn er noch fehlt. Nur, wenn der
-     * Proxy den Kanal bei diesem Spieler angemeldet hat; Paper schickt sonst nichts. Siehe docs/mehrere-server.md,
-     * „Name vom Proxy“.
+     * Im Hauptthread: fragt den Proxy über {@code p} nach dem Namen dieses Servers, wenn er noch fehlt. Nur hinter
+     * einem Proxy ({@link Proxyname#frage}), und nur, wenn er den Kanal bei diesem Spieler angemeldet hat; Paper schickt
+     * sonst nichts. Siehe docs/mehrere-server.md, „Name vom Proxy“.
      */
     private void frageProxy(Player p) {
-        if (proxyname.name() != null) {
+        if (!proxyname.hinterProxy() || proxyname.name() != null) {
             return;
         }
         if (!p.getListeningPluginChannels().contains(Proxyname.KANAL)) {

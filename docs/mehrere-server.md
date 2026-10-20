@@ -45,6 +45,15 @@ Die Antwort auf `show` trägt `karte`, den Namen der Karte, siehe
 Beim Join fragt das Plugin den Proxy über diesen Spieler mit `GetServer`
 auf dem Kanal `BungeeCord`, nach dem Namen des Servers, auf dem er ist.
 
+- **Nur sicher hinter einem Proxy** (`Proxyname.hinterProxy`): mit der
+  Weiterleitung von Velocity, `proxies.velocity.enabled` in
+  `config/paper-global.yml`, oder im BungeeCord-Modus, `settings.bungeecord`
+  in `spigot.yml`. Dann kommt jeder Spieler über den Proxy. Sonst könnte
+  ein Client den Kanal selbst anmelden und `GetServer` beantworten, und sein
+  Name gälte für alle. Ohne Proxy meldet das Plugin den Kanal gar nicht an,
+  und es gilt `karte.name`. Liegen die Dateien woanders, etwa über einen
+  Schalter beim Start, gilt das wie ohne Proxy. Im BungeeCord-Modus
+  darf der Port des Servers wie immer nur für den Proxy offen sein.
 - **Nur mit dem Kanal:** Paper schickt eine Nachricht nur auf einem Kanal,
   den die Gegenseite angemeldet hat (`CraftPlayer.sendPluginMessage`).
   Velocity meldet `bungeecord:main` beim Server nur mit
@@ -54,9 +63,10 @@ auf dem Kanal `BungeeCord`, nach dem Namen des Servers, auf dem er ist.
   Kanal, fragt das Plugin nicht, nennt das einmal im Log, und es gilt
   `karte.name`.
 - **Wer antworten kann:** Nachrichten eines Clients auf dem BungeeCord-Kanal
-  verwirft Velocity immer (`ClientPlaySessionHandler`). Eine Antwort kommt
-  also nur vom Proxy oder einem Plugin dort. Belegt am Code von Velocity,
-  Commit 06ade4775e, und von Paper, 7ec11b289e, am 20.10.
+  verwirft Velocity immer (`ClientPlaySessionHandler`), BungeeCord ebenso
+  (`UpstreamBridge`). Eine Antwort kommt also nur vom Proxy oder einem
+  Plugin dort. Belegt am Code von Velocity, Commit 06ade4775e, von
+  BungeeCord, c2f28c7572, und von Paper, 7ec11b289e, am 20.10.
 - **Angenommen** wird nur die Antwort auf die eigene Frage, über den
   Spieler, über den gefragt wurde, mit einem Namen nach der Regel oben,
   klein geschrieben. Die erste gilt für die Laufzeit, nur im Speicher;
