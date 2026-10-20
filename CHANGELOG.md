@@ -7,6 +7,10 @@ Links und die Hinweise aus `NOTICE` setzt
 [`.github/notizen.sh`](.github/notizen.sh) dazu. Siehe
 [Entwicklung](docs/entwicklung.md), „Release“.
 
+## 0.14.2
+
+- **Renderer 0.13.2** inside: layers on the web map move with the map without stutter. No full render needed.
+
 ## 0.14.1
 
 - **`karte.von-oeffentlich`:** a server with `karte.von` can point the mod to the public address of the other server's web map. The mod then loads the images and banners of the layers there, and this server needs no web server of its own. "Open in browser" is off on it, since its login would not work there.
