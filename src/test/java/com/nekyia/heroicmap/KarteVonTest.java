@@ -4,6 +4,7 @@ import static com.nekyia.heroicmap.EbenenBeispiel.png;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -15,11 +16,13 @@ import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -155,6 +158,22 @@ class KarteVonTest {
         abrufe.clear();
         von.hole(new ArrayList<>());
         assertEquals("/tiles/layers.json", abrufe.getFirst(), "nach einem Fehler ohne ETag, damit es wieder versucht");
+    }
+
+    @Test
+    void im_anlauf_info_danach_warnung() {
+        var start = Instant.parse("2026-10-20T12:00:00Z");
+        var von = new KarteVon(url, OBERWELT, start);
+        var weg = List.of("Connection refused");
+        var fehlt = List.of("layers.json: HTTP 404");
+        assertEquals(Level.INFO, von.meldung(weg, start.plusSeconds(1)), "der andere Server startet vielleicht noch");
+        assertNull(von.meldung(weg, start.plusSeconds(30)), "unverändert nichts");
+        assertEquals(Level.INFO, von.meldung(fehlt, start.plusSeconds(40)));
+        assertEquals(Level.WARNING, von.meldung(fehlt, start.plusSeconds(60)), "überdauert den Anlauf: einmal als Warnung");
+        assertNull(von.meldung(fehlt, start.plusSeconds(70)));
+        assertEquals(Level.INFO, von.meldung(List.of(), start.plusSeconds(80)), "wieder da: die Zeile mit der Zahl");
+        assertNull(von.meldung(List.of(), start.plusSeconds(90)));
+        assertEquals(Level.WARNING, von.meldung(weg, start.plusSeconds(100)), "nach dem Anlauf gleich als Warnung");
     }
 
     @Test

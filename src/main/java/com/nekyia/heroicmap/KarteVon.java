@@ -13,11 +13,13 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
+import java.util.logging.Level;
 
 /**
  * Die öffentlichen Ebenen der Karte eines anderen Servers, über HTTP von dessen Webserver: layers.json mit ETag, dann
@@ -27,6 +29,8 @@ import java.util.TreeMap;
 final class KarteVon {
 
     private static final Duration FRIST = Duration.ofSeconds(10);
+    /** So lange nach dem Start ist ein Fehler eine INFO: Der andere Server startet vielleicht noch. */
+    static final Duration ANLAUF = Duration.ofSeconds(60);
 
     private final String tiles;
     private final String dimension;
@@ -36,11 +40,37 @@ final class KarteVon {
     /** Je Kennung die version aus layers.json dort und die Ebene, wie sie hier gilt. */
     private Map<String, String> versionDort = Map.of();
     private volatile List<Ebene> stand = List.of();
+    private final Instant start;
+    /** Die Fehler, die zuletzt im Log standen, und ob als INFO; nur in einem Faden. */
+    private List<String> gemeldet = List.of();
+    private boolean alsInfo;
 
     /** {@code url} wie webserver.url des anderen Servers, ohne / am Ende; {@code dimension} die von tiles hier. */
     KarteVon(String url, String dimension) {
+        this(url, dimension, Instant.now());
+    }
+
+    /** Wie oben, mit dem Start, ab dem {@link #ANLAUF} zählt. */
+    KarteVon(String url, String dimension, Instant start) {
         this.tiles = url + "/tiles";
         this.dimension = dimension;
+        this.start = start;
+    }
+
+    /**
+     * Mit welcher Stufe die Fehler eines Holens ins Log kommen, oder null, wenn nichts neu ist: nur, wenn sie sich
+     * ändern; im {@link #ANLAUF} als INFO, danach als WARNING. Ein Fehler, der den Anlauf überdauert, kommt dann
+     * einmal als WARNING; keine Fehler mehr nach welchen als INFO, für die Zeile mit der Zahl. Siehe
+     * docs/mehrere-server.md, „Karte von“.
+     */
+    Level meldung(List<String> fehler, Instant jetzt) {
+        boolean anlauf = Duration.between(start, jetzt).compareTo(ANLAUF) < 0;
+        if (fehler.equals(gemeldet) && !(alsInfo && !anlauf && !fehler.isEmpty())) {
+            return null;
+        }
+        gemeldet = List.copyOf(fehler);
+        alsInfo = anlauf && !fehler.isEmpty();
+        return anlauf || fehler.isEmpty() ? Level.INFO : Level.WARNING;
     }
 
     /** Die zuletzt geholten Ebenen, sortiert wie layers.json dort. */

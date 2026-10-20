@@ -261,7 +261,9 @@ Plugin das seiner Plattform aus, siehe [Konfiguration](konfiguration.md),
   Ebenen mit Bildern, ohne Aktionsebenen, danach nur `304`; nur Ebenen mit
   neuer `version` neu holen; ungültige Kennung, fehlende Datei und
   fehlendes Bild mit Fehler und ohne ETag, kein Pfad mit `..`; ohne den
-  Server dort der alte Stand; eine eigene Datei vor der von main.
+  Server dort der alte Stand; eine eigene Datei vor der von main; im
+  Anlauf nach dem Start Fehler als INFO, danach und wenn sie bleiben als
+  WARN.
 - **`KoepfeTest`:** das Bild aus einem Skin, Gesicht deckend, Hut mit
   Alpha darüber, alter Skin ohne durchsichtigen Hut-Bereich, falsche Masse;
   nur vom Host der Skins und nur `/texture/<hex>`; gegen einen Webserver
