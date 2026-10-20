@@ -67,7 +67,7 @@ final class KarteVon {
      */
     Level meldung(List<String> fehler, int zahl, Instant jetzt) {
         if (fehler.isEmpty()) {
-            if (gemeldet.isEmpty() && zahl == gemeldetZahl) {
+            if (gemeldet.isEmpty()) {
                 return null;
             }
             gemeldet = List.of();
