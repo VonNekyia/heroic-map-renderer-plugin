@@ -354,7 +354,7 @@ final class Download {
     private Ausgestellt stelleAus(UUID spieler, long s, String baum, Satz satz, int massstab, boolean voll) {
         int stufe = satz.stufe(massstab);
         long bytes = satz.bytesBis(stufe);
-        long deckel = voll ? bytes + bytes / 2 : bytes / 2 + satz.nebenher() + RESERVE;
+        long deckel = voll ? bytes + bytes / 2 : bytes / 10 + satz.nebenher() + RESERVE;
         long ablauf = s + GUELTIG.toSeconds();
         byte[] z = new byte[Token.ZUFALL];
         zufall.nextBytes(z);
