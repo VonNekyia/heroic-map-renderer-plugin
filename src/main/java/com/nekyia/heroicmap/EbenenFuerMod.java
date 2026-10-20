@@ -620,6 +620,14 @@ final class EbenenFuerMod {
         return a;
     }
 
+    /**
+     * Die Adresse für „Im Browser öffnen“: die eigene; mit karte.von-oeffentlich keine, denn den Link baut der Mod aus
+     * der Adresse der anderen Karte, und das Token dieses Servers gilt dort nicht.
+     */
+    static JsonObject adresseFuerWeb(Konfiguration.Webserver w, Konfiguration.Karte k) {
+        return k.vonOeffentlich().isEmpty() ? adresse(w) : new JsonObject();
+    }
+
     private static JsonObject kopf(String typ, long jetzt) {
         var o = new JsonObject();
         o.addProperty("v", 1);

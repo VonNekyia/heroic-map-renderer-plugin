@@ -146,7 +146,7 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
         // „Karte von“.
         var webKonf = konf.webserver();
         var vonAdresse = EbenenFuerMod.adresse(konf.karte());
-        modAdresse = vonAdresse.size() > 0 ? new JsonObject() : EbenenFuerMod.adresse(webKonf);
+        modAdresse = EbenenFuerMod.adresseFuerWeb(webKonf, konf.karte());
         fuerMod = new EbenenFuerMod(() -> vonAdresse.size() > 0 ? vonAdresse
                 : webserver != null && webserver.bereit() ? EbenenFuerMod.adresse(webKonf) : new JsonObject(),
                 Banner.geheim(getDataFolder().toPath()), getLogger(), ebenen.api().knoepfe());
