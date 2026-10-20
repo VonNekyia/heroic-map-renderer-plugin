@@ -152,7 +152,8 @@ final class Staedte {
 | Methode | Wirkung |
 |---|---|
 | `HeroicMapApi.layer(plugin, name)` | die Ebene `<modname>:<name>`, beim ersten Aufruf angelegt |
-| `Layer.name(de, en)`, `visible`, `order`, `web`, `permission` | der Kopf, wie in der Datei |
+| `Layer.name(de, en)`, `visible`, `web`, `permission` | der Kopf, wie in der Datei |
+| `Layer.order(gewicht)` | das Gewicht der Ebene: die höhere liegt oben und steht in der Liste vorn; Vorgabe 0; siehe [Ebenen](ebenen.md), „Gewicht“ |
 | `Layer.image(pfad, bytes)`, `removeImage(pfad)` | ein Bild des Besitzers, siehe „Bilder“ |
 | `Layer.design(name, entwurf)`, `removeDesign(name)` | ein Entwurf der Banner am Kopf der Ebene, siehe „Entwürfe“ |
 | `Layer.forPlayer(uuid)` | die eigenen Objekte eines Spielers; das erste macht die Ebene zur Aktionsebene, siehe „Aktionsebenen und Knöpfe“ |

@@ -120,6 +120,21 @@ class EbenenApiTest {
     }
 
     @Test
+    void gewicht_ueber_order_in_liste_und_mod() {
+        var a = api(0);
+        a.layer("Nations", "staedte").order(100);
+        Layer routen = a.layer("Proficisci", "routen");
+        routen.put(Pin.at("hafen", 0, 0));
+        assertEquals(100, ebene(a, "nations:staedte").json().get("order").getAsInt(), "im Kopf, also in jeder Datei und Fassung");
+        assertEquals(100, EbenenSchreiber.eintrag(ebene(a, "nations:staedte")).get("order").getAsInt(),
+                "in layers.json und der Liste an den Mod");
+        assertEquals(0, EbenenSchreiber.eintrag(ebene(a, "proficisci:routen")).get("order").getAsInt(), "ohne Angabe 0");
+        routen.order(Integer.MIN_VALUE);
+        assertEquals(Integer.MIN_VALUE, EbenenSchreiber.eintrag(ebene(a, "proficisci:routen")).get("order").getAsInt(),
+                "der ganze Bereich von int");
+    }
+
+    @Test
     void kennung_aus_dem_namen_des_plugins() {
         var a = api(0);
         assertEquals("beispiel_plugin:staedte", a.layer("Beispiel Plugin", "staedte").id());
