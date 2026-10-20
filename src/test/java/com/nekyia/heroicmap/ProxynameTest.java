@@ -85,6 +85,24 @@ class ProxynameTest {
     }
 
     @Test
+    void kein_proxy_erst_nach_der_frist_und_nur_ohne_antwort() throws IOException {
+        var spaet = new Proxyname(true);
+        assertTrue(spaet.ohneKanal(1000), "der erste Spieler ohne den Kanal");
+        assertFalse(spaet.ohneKanal(2000), "nur das erste Mal");
+        assertFalse(spaet.ohneProxy(1000 + Proxyname.KANAL_FRIST_MS - 1), "vor der Frist nichts im Log");
+        // Das Register kam kurz nach dem Join, die Antwort gleich danach: dann nur die Zeile mit dem Namen.
+        assertTrue(spaet.frage(SAM, 2000));
+        assertTrue(spaet.antwort(SAM, antwort("GetServer", "main")));
+        assertFalse(spaet.ohneProxy(1000 + Proxyname.KANAL_FRIST_MS), "mit Namen kein „kein Proxy“");
+
+        var ohne = new Proxyname(true);
+        assertFalse(ohne.ohneProxy(0), "ohne Spieler ohne Kanal nichts");
+        ohne.ohneKanal(0);
+        assertTrue(ohne.ohneProxy(Proxyname.KANAL_FRIST_MS), "nach der Frist ohne Antwort");
+        assertFalse(ohne.ohneProxy(2 * Proxyname.KANAL_FRIST_MS), "nur einmal");
+    }
+
+    @Test
     void neu_fragen_nach_der_frist_hoechstens_dreimal() {
         var p = new Proxyname(true);
         assertTrue(p.frage(SAM, 0));

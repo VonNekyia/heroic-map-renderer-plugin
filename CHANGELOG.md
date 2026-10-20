@@ -9,6 +9,7 @@ Links und die Hinweise aus `NOTICE` setzt
 
 ## 0.16.1
 
+- **No misleading "no proxy" line:** behind a proxy, the plugin now waits 10 seconds after the first join without the BungeeCord channel before it logs that no proxy reports it. The proxy sometimes registers the channel just after the join; then only the line with the server's name appears.
 - **`karte.von`, number of layers in the log:** the line with the number of layers fetched from the other server now also appears when that number changes, not only after an error.
 
 ## 0.16.0

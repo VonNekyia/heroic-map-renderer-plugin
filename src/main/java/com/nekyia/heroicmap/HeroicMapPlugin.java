@@ -76,7 +76,6 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
     private Konfiguration.Karte kartenKonf = Konfiguration.Karte.OHNE;
     /** Nur im Hauptthread. */
     private Proxyname proxyname = new Proxyname(false);
-    private boolean ohneProxyKanalGemeldet;
     /** Die Anmeldung auf der Webkarte; null ohne. Siehe docs/anmeldung.md. */
     private volatile SpielerOrdner spieler;
     /** Die Köpfe für die Webkarte; null ohne Anmeldung oder mit karte.von. Siehe docs/koepfe.md. */
@@ -306,9 +305,13 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
             return;
         }
         if (!p.getListeningPluginChannels().contains(Proxyname.KANAL)) {
-            if (!ohneProxyKanalGemeldet) {
-                ohneProxyKanalGemeldet = true;
-                getLogger().info("Kein Proxy meldet den Kanal BungeeCord; der Name dieses Servers kommt aus karte.name.");
+            // Erst nach der Frist ins Log: Das Register des Proxys kommt manchmal kurz nach dem Join.
+            if (proxyname.ohneKanal(System.currentTimeMillis())) {
+                getServer().getGlobalRegionScheduler().runDelayed(this, t -> {
+                    if (proxyname.ohneProxy(System.currentTimeMillis())) {
+                        getLogger().info("Kein Proxy meldet den Kanal BungeeCord; der Name dieses Servers kommt aus karte.name.");
+                    }
+                }, Proxyname.KANAL_FRIST_MS / 50 + 1);
             }
             return;
         }
