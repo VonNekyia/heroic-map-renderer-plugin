@@ -9,7 +9,7 @@ Links und die Hinweise aus `NOTICE` setzt
 
 ## 0.15.0
 
-- **Renderer 0.13.2** inside: layers on the web map move with the map without stutter. No full render needed.
+- **Renderer 0.14.0** inside: layers on the web map move with the map without stutter, each viewer can reorder them, and the server delivers the players' heads. No full render needed.
 
 ## 0.14.1
 
