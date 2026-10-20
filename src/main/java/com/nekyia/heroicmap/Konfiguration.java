@@ -44,11 +44,11 @@ record Konfiguration(
     }
 
     /**
-     * Der Name dieses Servers, falls der Proxy keinen meldet; die Karte eines anderen, die dieser zeigt, und die Adresse
-     * von dessen Webserver; je leer ohne. Siehe docs/mehrere-server.md.
+     * Der Name dieses Servers, falls der Proxy keinen meldet; die Karte eines anderen, die dieser zeigt, die Adresse
+     * von dessen Webserver für diesen Server und die für Spieler; je leer ohne. Siehe docs/mehrere-server.md.
      */
-    record Karte(String name, String von, String vonUrl) {
-        static final Karte OHNE = new Karte("", "", "");
+    record Karte(String name, String von, String vonUrl, String vonOeffentlich) {
+        static final Karte OHNE = new Karte("", "", "", "");
     }
 
     private static final Pattern SCHRAEG = Pattern.compile("(\\d+):(\\d+)");
@@ -215,7 +215,8 @@ record Konfiguration(
             }
             baeume.add(new Baum(kamera, richtung, (Integer) scale, cinematic, download, web, flat));
         }
-        if (baeume.isEmpty() && fehler.isEmpty()) {
+        // Mit karte.von rendert dieser Server nichts selbst. Siehe docs/mehrere-server.md, „Karte von“.
+        if (baeume.isEmpty() && fehler.isEmpty() && c.getString("karte.von", "").isBlank()) {
             fehler.add("trees: kein Baum");
         }
 
@@ -312,9 +313,13 @@ record Konfiguration(
             }
             karten.add(n == null ? "" : n);
         }
-        String vonUrl = c.getString("karte.von-url", "").strip().replaceAll("/+$", "");
-        if (!vonUrl.isEmpty() && (!ADRESSE.matcher(vonUrl).matches() || karten.get(1).isEmpty())) {
-            fehler.add("karte.von-url: mit http:// oder https:// und Host, etwa \"http://127.0.0.1:8080\", und nur mit karte.von");
+        var urls = new ArrayList<String>();
+        for (String schluessel : List.of("karte.von-url", "karte.von-oeffentlich")) {
+            String u = c.getString(schluessel, "").strip().replaceAll("/+$", "");
+            if (!u.isEmpty() && (!ADRESSE.matcher(u).matches() || karten.get(1).isEmpty())) {
+                fehler.add(schluessel + ": mit http:// oder https:// und Host, etwa \"http://127.0.0.1:8080\", und nur mit karte.von");
+            }
+            urls.add(u);
         }
         // Ein Download legte die Kacheln dieses Servers in den Ordner der anderen Karte.
         if (!karten.get(1).isEmpty() && download) {
@@ -342,7 +347,7 @@ record Konfiguration(
                         titel, beschreibung, bild, oeffentlich, proxys, erkennen),
                 new ClientJar(c.getBoolean("renderer.download-client-jar"), c.getString("renderer.client-version", "").strip()),
                 c.getBoolean("renderer.compact"),
-                new Karte(karten.get(0), karten.get(1), vonUrl));
+                new Karte(karten.get(0), karten.get(1), urls.get(0), urls.get(1)));
     }
 
     /** Dieselbe Konfiguration mit diesem Binär. */

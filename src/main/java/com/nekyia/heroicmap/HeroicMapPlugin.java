@@ -141,10 +141,14 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
                 getLogger().info(geladen);
             }
         });
-        // Die Adresse erst, wenn der Webserver bereit ist, wie bei freigabe.
+        // Die Adresse erst, wenn der Webserver bereit ist, wie bei freigabe. Mit karte.von-oeffentlich die der anderen
+        // Karte, und ohne „Im Browser öffnen“: Das Token dieses Servers gilt dort nicht. Siehe docs/mehrere-server.md,
+        // „Karte von“.
         var webKonf = konf.webserver();
-        modAdresse = EbenenFuerMod.adresse(webKonf);
-        fuerMod = new EbenenFuerMod(() -> webserver != null && webserver.bereit() ? EbenenFuerMod.adresse(webKonf) : new JsonObject(),
+        var vonAdresse = EbenenFuerMod.adresse(konf.karte());
+        modAdresse = EbenenFuerMod.adresseFuerWeb(webKonf, konf.karte());
+        fuerMod = new EbenenFuerMod(() -> vonAdresse.size() > 0 ? vonAdresse
+                : webserver != null && webserver.bereit() ? EbenenFuerMod.adresse(webKonf) : new JsonObject(),
                 Banner.geheim(getDataFolder().toPath()), getLogger(), ebenen.api().knoepfe());
         if (von != null) {
             getServer().getAsyncScheduler().runAtFixedRate(this, t -> holeVon(von), 0, 10, TimeUnit.SECONDS);
@@ -173,10 +177,13 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
         laeufe.markiere();
         // Die Sprites der Banner: nach dem ersten Schreiben der Ebenen, nach neuen Entwürfen und nach einem Lauf mit
         // neuen Bäumen; nie vor dem ersten Laden. Siehe docs/laeufe.md, „Banner“.
-        banner = new Banner(konf, List.of(konf.renderer().toString()), laeufe.quellen(), getLogger(),
-                getDataFolder().toPath(), ebenen::stand, ebenen::sprites);
-        laeufe.nachLauf(banner::nachLauf);
-        ebenen.nachEntwuerfen(banner::bestelle);
+        // Mit karte.von-oeffentlich holt der Mod die Sprites bei der anderen Karte.
+        if (konf.karte().vonOeffentlich().isEmpty()) {
+            banner = new Banner(konf, List.of(konf.renderer().toString()), laeufe.quellen(), getLogger(),
+                    getDataFolder().toPath(), ebenen::stand, ebenen::sprites);
+            laeufe.nachLauf(banner::nachLauf);
+            ebenen.nachEntwuerfen(banner::bestelle);
+        }
         for (var w : getServer().getWorlds()) {
             if (!w.isAutoSave() && w.getWorldFolder().toPath().toAbsolutePath().normalize().equals(konf.welt().normalize())) {
                 getLogger().warning("Der Autosave der Welt " + w.getName() + " ist aus. Änderungen kommen erst beim "

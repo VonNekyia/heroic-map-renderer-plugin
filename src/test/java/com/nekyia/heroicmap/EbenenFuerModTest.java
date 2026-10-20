@@ -692,6 +692,18 @@ class EbenenFuerModTest {
     }
 
     @Test
+    void mit_karte_von_oeffentlich_die_adresse_der_anderen_karte() {
+        assertEquals("{\"url\":\"https://karte.example.org/tiles\"}",
+                EbenenFuerMod.adresse(new Konfiguration.Karte("", "main", "", "https://karte.example.org")).toString());
+        assertEquals("{}", EbenenFuerMod.adresse(new Konfiguration.Karte("", "main", "http://127.0.0.1:8080", "")).toString(),
+                "ohne: die eigene");
+        var w = new Konfiguration.Webserver(true, "0.0.0.0:8080", "", null, null, "", "", "", 0);
+        assertEquals("{}", EbenenFuerMod.adresseFuerWeb(w, new Konfiguration.Karte("", "main", "", "https://karte.example.org"))
+                .toString(), "kein „Im Browser öffnen“: das Token gilt bei der anderen Karte nicht");
+        assertEquals("{\"port\":8080}", EbenenFuerMod.adresseFuerWeb(w, Konfiguration.Karte.OHNE).toString());
+    }
+
+    @Test
     void adresse_wie_freigabe_und_neu_wenn_sie_kommt() {
         assertEquals("{\"port\":8080}", EbenenFuerMod.adresse(
                 new Konfiguration.Webserver(true, "0.0.0.0:8080", "", null, null, "", "", "", 0)).toString());

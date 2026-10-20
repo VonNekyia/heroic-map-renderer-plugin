@@ -99,7 +99,8 @@ Bukkit, und in `Kanal`, der den Kanal und den Stand im Spieler bedient.
     Server vorgibt. Die Karte liegt dort, wo `/tiles` endet.
   - `webserver` heisst: keine Anmeldung auf diesem Server, keine Adresse
     für den Mod, etwa HTTPS ohne `url`, oder der Webserver läuft gerade
-    nicht. `sonst`: Die Platte ging nicht; das steht im Log, nie das Token.
+    nicht; ebenso mit `karte.von-oeffentlich`, siehe
+    [Mehrere Server](mehrere-server.md), „Karte von“. `sonst`: Die Platte ging nicht; das steht im Log, nie das Token.
   - Ein altes Plugin kennt `web` nicht und hat kein `web` in der Antwort
     auf `show`; dann fragt der Mod nicht.
 - **`dimension`** im `angebot` folgt aus `world` in `config.yml`. Die

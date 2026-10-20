@@ -158,7 +158,8 @@ Plugin das seiner Plattform aus, siehe [Konfiguration](konfiguration.md),
   Fehler auf einmal. `webserver.trusted-proxy` nur mit IP-Literalen,
   `webserver.erkennen-url` nur mit `url`, der Ursprung ohne Pfad und klein.
   `karte.name` und `karte.von` klein, ein Name mit `/` ist ein Fehler,
-  `karte.von-url` nur mit `karte.von`, `karte.von` nicht mit Download.
+  `karte.von-url` und `karte.von-oeffentlich` nur mit `karte.von`,
+  `karte.von` nicht mit Download, aber ohne Baum.
 - **`VorlageTest`:** eine alte `config.yml` mit eigenen Werten und
   Kommentaren, auch in `trees`, und unbekannten Schlüsseln: Jede ihrer
   Zeilen bleibt, jeder Schlüssel der Vorlage ist danach da, mit Vorgabe und
@@ -221,6 +222,7 @@ Plugin das seiner Plattform aus, siehe [Konfiguration](konfiguration.md),
   Spieler und Sekunde, ihre Antworten im Budget, der Hauptthread rechnet
   nicht,
   Rechte samt `heroicmap.layers`, die Adresse und ihr späteres Kommen,
+  mit `karte.von-oeffentlich` die der anderen Karte,
   höchstens 1 MiB je Sekunde. Dazu Banner geheimer Ebenen auf Anfrage: mit
   `satz` und `png` nur bei aktueller `version` und bekanntem Entwurf, ohne
   bei alter `version`, fremdem Entwurf oder einem Pfad statt eines Namens,
