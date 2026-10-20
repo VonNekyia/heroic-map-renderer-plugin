@@ -133,7 +133,7 @@ final class Proxyname {
      * Kanal, und nur, wenn bis dahin kein Name vom Proxy kam. Siehe docs/mehrere-server.md, „Name vom Proxy“.
      */
     boolean ohneProxy(long ms) {
-        if (ohneProxyGemeldet || name != null || ohneKanalSeit < 0 || ms - ohneKanalSeit < KANAL_FRIST_MS) {
+        if (ohneProxyGemeldet || ohneKanalSeit < 0 || ms - ohneKanalSeit < KANAL_FRIST_MS) {
             return false;
         }
         ohneProxyGemeldet = true;
