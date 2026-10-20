@@ -14,7 +14,9 @@ Die Webkarte zeigt sich und die Mitspieler mit ihrem Kopf statt als Punkt
 (heroic-map-renderer#324). Das Plugin macht dafür aus dem Skin jedes
 Spielers ein kleines Bild, legt es öffentlich ab und nennt seinen Namen in
 `sicht.json`. Fehlt ein Kopf, zeigt die Karte den Punkt wie bisher. Den
-Pfad liefert der Server des Renderers aus; die Karte zeichnet ihn.
+Pfad liefert der Server des Renderers aus, ab Renderer 0.14.0; die Karte
+zeichnet ihn. Entschieden in
+[0114](https://github.com/VonNekyia/heroic-map-renderer/blob/master/docs/entscheidungen/0114-koepfe-der-mitspieler.md).
 
 ## Wann
 
