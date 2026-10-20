@@ -27,6 +27,7 @@ import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Supplier;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
@@ -123,6 +124,8 @@ final class Ebenen {
     private final String dimension;
     private final EbenenSchreiber schreiber;
     private final Logger log;
+    /** Mit karte.von die öffentlichen Ebenen der anderen Karte, sonst keine. */
+    private final Supplier<List<Ebene>> fremde;
     private final EbenenApi api;
     /** Die Ebenen aus den Dateien; mit denen der API zusammen ergeben sie im Takt den Stand. */
     private volatile List<Ebene> ausDateien = List.of();
@@ -149,6 +152,15 @@ final class Ebenen {
 
     /** {@code dimension} ist die der Wurzel von tiles; sie geht in jede version ein. */
     Ebenen(Path ordner, String dimension, EbenenSchreiber schreiber, Logger log) {
+        this(ordner, dimension, schreiber, log, List::of);
+    }
+
+    /**
+     * Mit {@code fremde}, den Ebenen der Karte eines anderen Servers: Jedes {@link #ladeNeu} nimmt sie zu den Dateien
+     * dazu, wo keine Datei dieselbe Kennung hat. Siehe docs/mehrere-server.md, „Karte von“.
+     */
+    Ebenen(Path ordner, String dimension, EbenenSchreiber schreiber, Logger log, Supplier<List<Ebene>> fremde) {
+        this.fremde = fremde;
         this.ordner = ordner;
         this.dimension = dimension;
         this.schreiber = schreiber;
@@ -178,6 +190,8 @@ final class Ebenen {
         }
         var neu = new ArrayList<>(g.ebenen());
         ausDateien.stream().filter(e -> g.nichtGelesen().contains(e.modname())).forEach(neu::add);
+        var eigene = neu.stream().map(Ebene::id).collect(Collectors.toSet());
+        fremde.get().stream().filter(e -> !eigene.contains(e.id())).forEach(neu::add);
         neu.sort(Comparator.comparing(Ebene::id));
         // Erst zusammenführen, dann schneiden: Auch alte Ebenen eines unlesbaren Mods zählen zu den 64.
         if (neu.size() > HOECHSTENS) {

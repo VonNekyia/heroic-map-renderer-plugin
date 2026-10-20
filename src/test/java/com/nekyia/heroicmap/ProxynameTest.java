@@ -97,9 +97,10 @@ class ProxynameTest {
 
     @Test
     void name_der_karte() {
-        assertEquals("build", Proxyname.karte("bau", "build"), "der Proxy vor karte.name");
-        assertEquals("bau", Proxyname.karte("bau", null));
-        assertNull(Proxyname.karte("", null), "ohne Namen kein Feld");
+        assertEquals("main", Proxyname.karte(new Konfiguration.Karte("bau", "main", ""), "build"), "karte.von vor allem");
+        assertEquals("build", Proxyname.karte(new Konfiguration.Karte("bau", "", ""), "build"), "der Proxy vor karte.name");
+        assertEquals("bau", Proxyname.karte(new Konfiguration.Karte("bau", "", ""), null));
+        assertNull(Proxyname.karte(Konfiguration.Karte.OHNE, null), "ohne Namen kein Feld");
         assertEquals("main", Proxyname.gueltig(" Main "));
         assertNull(Proxyname.gueltig("welt/5"));
         assertNull(Proxyname.gueltig("x".repeat(65)));

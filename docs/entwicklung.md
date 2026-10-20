@@ -30,6 +30,7 @@ code:
   - src/test/java/com/nekyia/heroicmap/MitspielerTest.java
   - src/test/java/com/nekyia/heroicmap/VorlageTest.java
   - src/test/java/com/nekyia/heroicmap/ProxynameTest.java
+  - src/test/java/com/nekyia/heroicmap/KarteVonTest.java
 ---
 
 # Entwicklung
@@ -156,7 +157,8 @@ Plugin das seiner Plattform aus, siehe [Konfiguration](konfiguration.md),
   `renderer.binary`, Pfade, Bäume und ihre Ordner wie im Renderer, alle
   Fehler auf einmal. `webserver.trusted-proxy` nur mit IP-Literalen,
   `webserver.erkennen-url` nur mit `url`, der Ursprung ohne Pfad und klein.
-  `karte.name` klein, ein Name mit `/` ist ein Fehler.
+  `karte.name` und `karte.von` klein, ein Name mit `/` ist ein Fehler,
+  `karte.von-url` nur mit `karte.von`, `karte.von` nicht mit Download.
 - **`VorlageTest`:** eine alte `config.yml` mit eigenen Werten und
   Kommentaren, auch in `trees`, und unbekannten Schlüsseln: Jede ihrer
   Zeilen bleibt, jeder Schlüssel der Vorlage ist danach da, mit Vorgabe und
@@ -252,6 +254,11 @@ Plugin das seiner Plattform aus, siehe [Konfiguration](konfiguration.md),
   Antwort nur auf die eigene Frage, über denselben Spieler, mit einem Namen,
   der als Ordner taugt, die erste gilt; die Frist, neu fragen höchstens
   dreimal; welcher Name der Karte gilt.
+- **`KarteVonTest`:** gegen einen Webserver aus dem JDK: die öffentlichen
+  Ebenen mit Bildern, ohne Aktionsebenen, danach nur `304`; nur Ebenen mit
+  neuer `version` neu holen; ungültige Kennung, fehlende Datei und
+  fehlendes Bild mit Fehler und ohne ETag, kein Pfad mit `..`; ohne den
+  Server dort der alte Stand; eine eigene Datei vor der von main.
 - **`TokenTest`:** stellt jedes gültige Token aus den Testvektoren des
   Renderers Zeichen für Zeichen gleich aus, ebenso jede Anmeldung
   (Fassung 2), lehnt ab, was kein gültiges ergäbe.
