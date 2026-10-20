@@ -84,6 +84,8 @@ final class Laeufe {
 
     /** Tests setzen einen eigenen. */
     Path musl = MUSL;
+    /** Das Pack von Nexo, nur mit renderer.nexo; Tests setzen ein eigenes. */
+    Nexo nexo;
 
     /** {@code daten} ist der Datenordner des Plugins, mit der PID-Datei und dem Cache des Client-Jars. */
     Laeufe(Konfiguration konf, Logger log, Path daten) {
@@ -91,6 +93,12 @@ final class Laeufe {
         this.log = log;
         this.pidDatei = daten.resolve("renderer.pid");
         this.cache = daten.resolve("client-jar");
+        // Mit karte.von rendert dieser Server nicht selbst; das Pack holt der andere. Siehe docs/mehrere-server.md.
+        boolean von = !konf.karte().von().isEmpty();
+        if (konf.nexo() && von) {
+            log.info("renderer.nexo gilt hier nicht: Mit karte.von zeigt dieser Server die Karte von " + konf.karte().von());
+        }
+        this.nexo = konf.nexo() && !von ? new Nexo(Path.of("").toAbsolutePath(), daten.resolve("nexo"), log) : null;
     }
 
     /** Startet einen Lauf über alle Bäume und sagt, was geschah. */
@@ -469,7 +477,9 @@ final class Laeufe {
     private void arbeite(String name, List<Auftrag> auftraege) {
         List<String> ergebnisse = new ArrayList<>();
         try {
-            for (Auftrag a : auftraege) {
+            // Erst hier, im Faden des Laufs: Auspacken dauert. Siehe docs/konfiguration.md, „Nexo“.
+            Path pack = nexo == null ? null : nexo.bereite();
+            for (Auftrag a : auftraege.stream().map(a -> mitPack(a, pack)).toList()) {
                 synchronized (this) {
                     laeuft = name + ", Baum " + a.baum();
                 }
@@ -627,14 +637,26 @@ final class Laeufe {
         }
     }
 
+    /** Der Auftrag mit dem Pack von Nexo als letzter Asset-Wurzel; ohne Pack, wie er ist. */
+    static Auftrag mitPack(Auftrag a, Path pack) {
+        if (pack == null) {
+            return a;
+        }
+        var befehl = new ArrayList<>(a.befehl());
+        befehl.addAll(List.of("--assets", pack.toString()));
+        return new Auftrag(a.baum(), List.copyOf(befehl), a.leise());
+    }
+
     /**
      * Die Zeile „Error: …“ für den Status; braucht ein Update erst einen vollen Lauf, weil der Stand von einem
-     * anderen Build des Renderers stammt, steht dort, was zu tun ist, für genau diesen Baum. Siehe docs/laeufe.md,
-     * „Der Kindprozess“.
+     * anderen Build des Renderers oder von anderen Assets oder Daten stammt, steht dort, was zu tun ist, für genau
+     * diesen Baum. Siehe docs/laeufe.md, „Der Kindprozess“.
      */
     static String kurz(String fehler, String baum) {
-        return fehler.contains("stammt von einem anderen Build des Renderers")
-                ? "neuer Renderer: erst /heroicmap render " + baum : fehler;
+        if (fehler.contains("stammt von einem anderen Build des Renderers")) {
+            return "neuer Renderer: erst /heroicmap render " + baum;
+        }
+        return fehler.contains("stammt von anderen Assets oder Daten") ? "neue Assets: erst /heroicmap render " + baum : fehler;
     }
 
     /**

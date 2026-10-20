@@ -184,6 +184,23 @@ Plugin das seiner Plattform aus, siehe [Konfiguration](konfiguration.md),
   Richtungen, `cancel` und ein neuer Aufruf danach, der Ausgang
   „verdichtet“, der das Manifest neu lesen lässt, aber nicht als Stand für
   `abdeckt_bis` zählt.
+- **`NexoTest`:** ein eigenes kleines Pack im Format von Nexo, ein Zustand
+  des Notenblocks mit Modell und Textur: nur `assets/` ohne Präfix, jede
+  Datei mit der Zeit 1980-01-01, derselbe Ordner für denselben Inhalt in
+  anderer Reihenfolge und mit anderer Zeit, ein neuer für neuen Inhalt, der
+  alte weg; Einträge mit `..`, `\` oder `//` und zu viele Einträge oder
+  Bytes brechen ohne Reste ab; `settings.yml` mit und ohne `output_path`,
+  `generate_pack: false`, ohne Nexo und ein unlesbares Zip je mit einer
+  Zeile im Log; ausgepackt nur bei neuem Zip.
+- **`LaeufeTest`, Nexo:** das Pack als letztes `--assets` im Befehl des
+  Laufs, ohne Pack der Auftrag, wie er war; mit `karte.von` kein Pack und
+  eine Zeile im Log; „neue Assets: erst /heroicmap render“ im Status.
+  Am 20.10. dazu 13 Mutationen an `Nexo` und `Laeufe`, jede fiel: ohne die
+  feste Zeit, ohne die Prüfung des Pfads, ohne eine der beiden Grenzen, der
+  Hash mit der Zeit der Einträge, alte Ordner bleiben, immer neu
+  auspacken, ohne `generate_pack`, die Meldung jedes Mal, das Pack nicht
+  oder zuerst angehängt, der Status ohne „neue Assets“, Nexo auch mit
+  `karte.von`.
 - **`LaeufeTest`, Prozesse:** mit `FalscherRenderer`, einer Testklasse, die
   der Test direkt über `java` startet, ohne Hülle wie `cmd` oder `sh`
   dazwischen. So trifft ein Abbruch den Prozess selbst. Geprüft:
