@@ -7,6 +7,10 @@ Links und die Hinweise aus `NOTICE` setzt
 [`.github/notizen.sh`](.github/notizen.sh) dazu. Siehe
 [Entwicklung](docs/entwicklung.md), „Release“.
 
+## 0.14.0
+
+- **One map per server behind a proxy:** the plugin tells the companion mod the name of the map, so two servers with the same world no longer share one folder in the mod. The name comes from the proxy via `GetServer` on the BungeeCord channel: Velocity answers with `bungee-plugin-message-channel = true`, or a plugin on the proxy does. The plugin only asks when Paper runs behind a proxy with forwarding (Velocity forwarding or BungeeCord mode); otherwise set `karte.name` in `config.yml`.
+
 ## 0.13.3
 
 - **Renderer 0.13.1** inside: an update that is cancelled, for example by a server stop, no longer makes the next update much larger; with cinematic it grew many times over with each cancel. No full render needed. A tree that already grew large after many cancelled updates is faster with one full render.

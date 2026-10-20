@@ -69,6 +69,11 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
     private Laeufe laeufe;
     private Banner banner;
     private volatile Webserver webserver;
+    /** karte.name aus config.yml, leer ohne. Siehe docs/mehrere-server.md. */
+    private String kartenName = "";
+    /** Nur im Hauptthread. */
+    private Proxyname proxyname = new Proxyname(false);
+    private boolean ohneProxyKanalGemeldet;
     /** Die Anmeldung auf der Webkarte; null ohne. Siehe docs/anmeldung.md. */
     private volatile SpielerOrdner spieler;
     private byte[] geheimnis;
@@ -107,6 +112,15 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
         // Zum Empfangen auch ohne Simple Voice Chat, damit show eine Antwort mit Grund bekommt.
         getServer().getMessenger().registerOutgoingPluginChannel(this, Download.KANAL);
         getServer().getMessenger().registerIncomingPluginChannel(this, Download.KANAL, this);
+        // Für GetServer, den Namen dieses Servers vom Proxy; nur sicher hinter einem. Siehe docs/mehrere-server.md,
+        // „Name vom Proxy“.
+        boolean hinterProxy = Proxyname.hinterProxy(server);
+        proxyname = new Proxyname(hinterProxy);
+        if (hinterProxy) {
+            getServer().getMessenger().registerOutgoingPluginChannel(this, Proxyname.KANAL);
+            getServer().getMessenger().registerIncomingPluginChannel(this, Proxyname.KANAL, this);
+        }
+        kartenName = konf.kartenName();
         getServer().getPluginManager().registerEvents(this, this);
         // Ebenen brauchen keinen Renderer; geladen wird ausserhalb des Hauptthreads. Siehe docs/ebenen.md.
         Path ebenenOrdner = getDataFolder().toPath().resolve("ebenen");
@@ -191,6 +205,12 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
      */
     @Override
     public void onPluginMessageReceived(String channel, Player player, byte[] message) {
+        if (channel.equals(Proxyname.KANAL) || channel.equals("bungeecord:main")) {
+            if (proxyname.antwort(player.getUniqueId(), message)) {
+                getLogger().info("Der Proxy meldet den Namen dieses Servers: " + proxyname.name());
+            }
+            return;
+        }
         if (EbenenFuerMod.istKnopf(message)) {
             klick(player, message);
             return;
@@ -207,7 +227,48 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
         boolean web = player.hasPermission(WEB) && spieler != null && modAdresse.size() > 0;
         var antwort = mitspieler.show(message, player.getUniqueId(), player.hasPermission(SHOW), simpleVoiceChat, web, Instant.now());
         if (antwort != null) {
-            player.sendPluginMessage(this, Download.KANAL, antwort.toString().getBytes(StandardCharsets.UTF_8));
+            frageProxy(player);
+            sendeShow(player, antwort);
+        }
+    }
+
+    /**
+     * Im Hauptthread: die Antwort auf show mit karte, dem Namen der Karte für den Ordner im Mod. Wartet der Name noch
+     * auf den Proxy, höchstens {@link Proxyname#FRIST_MS}, kommt sie danach; sonst schickt der Mod show erst nach einer
+     * Änderung der Wahl. Siehe docs/mehrere-server.md, „Format“.
+     */
+    private void sendeShow(Player p, JsonObject antwort) {
+        if (proxyname.wartet(System.currentTimeMillis())) {
+            getServer().getGlobalRegionScheduler().runDelayed(this, t -> sendeShow(p, antwort), 2);
+            return;
+        }
+        String karte = Proxyname.karte(kartenName, proxyname.name());
+        if (karte != null) {
+            antwort.addProperty("karte", karte);
+        }
+        if (p.isOnline()) {
+            p.sendPluginMessage(this, Download.KANAL, antwort.toString().getBytes(StandardCharsets.UTF_8));
+        }
+    }
+
+    /**
+     * Im Hauptthread: fragt den Proxy über {@code p} nach dem Namen dieses Servers, wenn er noch fehlt. Nur hinter
+     * einem Proxy ({@link Proxyname#frage}), und nur, wenn er den Kanal bei diesem Spieler angemeldet hat; Paper schickt
+     * sonst nichts. Siehe docs/mehrere-server.md, „Name vom Proxy“.
+     */
+    private void frageProxy(Player p) {
+        if (!proxyname.hinterProxy() || proxyname.name() != null) {
+            return;
+        }
+        if (!p.getListeningPluginChannels().contains(Proxyname.KANAL)) {
+            if (!ohneProxyKanalGemeldet) {
+                ohneProxyKanalGemeldet = true;
+                getLogger().info("Kein Proxy meldet den Kanal BungeeCord; der Name dieses Servers kommt aus karte.name.");
+            }
+            return;
+        }
+        if (proxyname.frage(p.getUniqueId(), System.currentTimeMillis())) {
+            p.sendPluginMessage(this, Proxyname.KANAL, Proxyname.frage());
         }
     }
 
@@ -229,6 +290,7 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
             });
         }
         ipsNeu(null);
+        frageProxy(e.getPlayer());
     }
 
     @EventHandler
