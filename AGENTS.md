@@ -30,8 +30,10 @@ mit Backend und Frontend ab.
 - **Issues:** Plan und Aufträge stehen im Renderer, etwa
   heroic-map-renderer#153. Eine Nummer ohne Repo meint dieses.
 - **Prüfung der Doku:** das Skript des Renderers, vom Branch `master`
-  geladen, damit es es nur einmal gibt:
-  `curl -fsSL https://raw.githubusercontent.com/VonNekyia/heroic-map-renderer/master/.github/pruefe-doku.sh | bash`.
+  geladen, damit es es nur einmal gibt, wie in der CI ohne die
+  Testvektoren unter `src/test/resources/`: Sie sind Kopien aus dem
+  Renderer, Byte für Byte, und ihre Verweise meinen dessen `docs/`:
+  `curl -fsSL https://raw.githubusercontent.com/VonNekyia/heroic-map-renderer/master/.github/pruefe-doku.sh | bash -s -- ':!src/test/resources/*.json'`.
 - **Messungen:** Wer hier baut oder testet, prüft vorher die Sperrdatei
   `messung.lock` im Repo des Renderers (Regel 3), denn beide teilen den
   Rechner.
