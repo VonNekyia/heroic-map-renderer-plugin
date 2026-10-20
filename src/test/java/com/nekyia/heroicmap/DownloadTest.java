@@ -241,8 +241,8 @@ class DownloadTest {
         d.anfrage(anfrage("top-north-s", 4, "voll"), SPIELER, stand, JETZT);
         var a = d.anfrage(anfrage("top-north-s", 4, "abgleich"), SPIELER, stand, JETZT.plusSeconds(60));
         assertEquals("abgleich", a.get("art").getAsString());
-        assertEquals(1_160, a.get("bytes").getAsLong());
-        assertEquals(1_160 + satz.nebenher() + Download.RESERVE, inhalt(a.get("token").getAsString()).getLong(25),
+        assertEquals(5_800, a.get("bytes").getAsLong(), "die Hälfte des Satzes");
+        assertEquals(5_800 + satz.nebenher() + Download.RESERVE, inhalt(a.get("token").getAsString()).getLong(25),
                 "Platz für map.json, manifest und neuere Kacheln");
         assertEquals(1, stand.abgleich.length);
 
@@ -483,7 +483,7 @@ class DownloadTest {
         assertEquals("freigabe", f.get("typ").getAsString());
         assertEquals("abgleich", f.get("art").getAsString());
         assertEquals(2, f.get("massstab").getAsInt());
-        assertEquals(160, f.get("bytes").getAsLong());
+        assertEquals(800, f.get("bytes").getAsLong(), "die Hälfte der 1 600 Byte bis Stufe 2");
         assertEquals(heute.getEpochSecond(), stand.baeume.get("top-north-s").abgeglichen);
         assertEquals(1, stand.abgleich.length, "der tägliche zählt");
         assertEquals(List.of(), d.beimJoin(SPIELER, stand, heute.plusSeconds(3600)), "einmal am Tag");
@@ -506,7 +506,7 @@ class DownloadTest {
         var f = d.beimJoin(SPIELER, stand, Instant.parse("2026-10-06T06:00:00Z")).get(0);
         assertEquals("abgleich", f.get("art").getAsString());
         long kacheln = f.get("bytes").getAsLong();
-        assertEquals(satz.bytesBis(satz.stufe(4)) / 10, kacheln, "für Kacheln weiter 10 % des Satzes");
+        assertEquals(satz.bytesBis(satz.stufe(4)) / 2, kacheln, "für Kacheln die Hälfte des Satzes");
         long deckel = inhalt(f.get("token").getAsString()).getLong(25);
         Path baum = tmp.resolve("top-north-s");
         long gebucht = Files.size(baum.resolve("map.json")) + Files.size(baum.resolve("manifest")) + kacheln;
