@@ -348,13 +348,13 @@ final class Download {
     }
 
     /**
-     * Voll: Deckel das 1,5-Fache des Satzes; Abgleich: 10 % für Kacheln, dazu map.json, manifest und
+     * Voll: Deckel das 1,5-Fache des Satzes; Abgleich: die Hälfte für Kacheln, dazu map.json, manifest und
      * {@link #RESERVE}, denn der Server bucht alles auf das Token. Siehe docs/download.md, „Token“.
      */
     private Ausgestellt stelleAus(UUID spieler, long s, String baum, Satz satz, int massstab, boolean voll) {
         int stufe = satz.stufe(massstab);
         long bytes = satz.bytesBis(stufe);
-        long deckel = voll ? bytes + bytes / 2 : bytes / 10 + satz.nebenher() + RESERVE;
+        long deckel = voll ? bytes + bytes / 2 : bytes / 2 + satz.nebenher() + RESERVE;
         long ablauf = s + GUELTIG.toSeconds();
         byte[] z = new byte[Token.ZUFALL];
         zufall.nextBytes(z);

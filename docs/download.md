@@ -256,10 +256,11 @@ des Renderers. `TokenTest` prüft gegen dessen Testvektoren. Die Kopie in
 - **Ablauf:** 24 h nach dem Ausstellen.
 - **Stufe:** die zum Massstab.
 - **Deckel:** bei `voll` das 1,5-Fache der Bytes des Satzes, bei `abgleich`
-  10 % für Kacheln, dazu die Bytes von `map.json` und `manifest` und 1 MiB
+  50 % für Kacheln, dazu die Bytes von `map.json` und `manifest` und 1 MiB
   Reserve für Kacheln, die neuer und grösser als im Manifest sind. Der
   Server bucht alles, was er unter `/download/` ausliefert, auf das Token,
-  auch `map.json` und `manifest`. Bis 0.3.2 war der Deckel eines Abgleichs
+  auch `map.json` und `manifest`. Bis 0.16.0 waren es bei `abgleich` 10 %.
+  Bis 0.3.2 war der Deckel eines Abgleichs
   genau die Grenze des Mods; brauchte ein Abgleich mehr als 10 %, etwa
   wenn der Mod für Baum und Massstab keinen Stand hat, kam vor dem Kappen
   429 und im Mod „budget used up“. Belegt am 10.10. mit `DownloadTest`,
