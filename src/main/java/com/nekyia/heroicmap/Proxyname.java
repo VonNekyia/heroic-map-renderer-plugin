@@ -23,6 +23,11 @@ final class Proxyname {
     static final long FRIST_MS = 2000;
     /** So oft fragt das Plugin je Laufzeit, wenn keine Antwort kam. */
     static final int VERSUCHE = 3;
+    /**
+     * So lange nach dem ersten Join ohne den Kanal wartet die Zeile „kein Proxy“: Das Register des Proxys kommt
+     * manchmal erst kurz nach dem Join, die Antwort gleich danach.
+     */
+    static final long KANAL_FRIST_MS = 10_000;
     /** Ein Name wie ein Teil einer Kennung, klein; so taugt er im Mod als Ordner. */
     private static final Pattern NAME = Pattern.compile("[a-z0-9_-]{1,64}");
 
@@ -31,6 +36,9 @@ final class Proxyname {
     private UUID ueber;
     private long gefragtUm;
     private int versuche;
+    /** Wann ein Spieler zuerst ohne den Kanal kam, in ms; -1 vorher. */
+    private long ohneKanalSeit = -1;
+    private boolean ohneProxyGemeldet;
 
     /** @param hinterProxy aus {@link #hinterProxy(Path)}; ohne fragt es nie und nimmt keine Antwort an. */
     Proxyname(boolean hinterProxy) {
@@ -106,6 +114,30 @@ final class Proxyname {
     /** Ob die Antwort auf show noch auf den Namen wartet: gefragt, keine Antwort, die Frist läuft. */
     boolean wartet(long ms) {
         return name == null && ueber != null && ms - gefragtUm < FRIST_MS;
+    }
+
+    /**
+     * Ein Spieler kam ohne den Kanal. True nur beim ersten Mal; dann fragt der Aufrufer nach {@link #KANAL_FRIST_MS}
+     * mit {@link #ohneProxy}, ob die Zeile „kein Proxy“ ins Log gehört.
+     */
+    boolean ohneKanal(long ms) {
+        if (ohneKanalSeit >= 0) {
+            return false;
+        }
+        ohneKanalSeit = ms;
+        return true;
+    }
+
+    /**
+     * Gehört „kein Proxy“ jetzt ins Log? Nur einmal, erst {@link #KANAL_FRIST_MS} nach dem ersten Spieler ohne den
+     * Kanal, und nur, wenn bis dahin kein Name vom Proxy kam. Siehe docs/mehrere-server.md, „Name vom Proxy“.
+     */
+    boolean ohneProxy(long ms) {
+        if (ohneProxyGemeldet || name != null || ohneKanalSeit < 0 || ms - ohneKanalSeit < KANAL_FRIST_MS) {
+            return false;
+        }
+        ohneProxyGemeldet = true;
+        return true;
     }
 
     /** Ob Paper sicher hinter einem Proxy läuft, siehe {@link #hinterProxy(Path)}. */

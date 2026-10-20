@@ -64,8 +64,12 @@ auf dem Kanal `BungeeCord`, nach dem Namen des Servers, auf dem er ist.
   `bungee-plugin-message-channel = true` in `velocity.toml` an
   (`BackendPlaySessionHandler.activated`); ein Plugin auf dem Proxy kann
   den Kanal auch selbst anmelden und `GetServer` beantworten. Fehlt der
-  Kanal, fragt das Plugin nicht, nennt das einmal im Log, und es gilt
-  `karte.name`.
+  Kanal, fragt das Plugin nicht, und es gilt `karte.name`.
+- **„Kein Proxy“ im Log** erst 10 s nach dem ersten Join ohne den Kanal
+  (`Proxyname.KANAL_FRIST_MS`), und nur, wenn bis dahin kein Name vom
+  Proxy kam; einmal je Laufzeit. Das Register des Proxys kommt manchmal
+  erst kurz nach dem Join, die Antwort eine Sekunde später; gleich gemeldet,
+  stand die Zeile irreführend vor „Der Proxy meldet den Namen …“.
 - **Wer antworten kann:** Nachrichten eines Clients auf dem BungeeCord-Kanal
   verwirft Velocity immer (`ClientPlaySessionHandler`), BungeeCord ebenso
   (`UpstreamBridge`). Eine Antwort kommt also nur vom Proxy oder einem
