@@ -41,9 +41,12 @@ final class Nexo {
     private final Path ziel;
     private final Logger log;
     private final Set<String> gemeldet = new HashSet<>();
-    /** Das Zip, wie es beim letzten Auspacken war, und der Ordner daraus. */
+    /** Das Zip, wie es beim letzten Auspacken war, und der Ordner daraus; das Zip des letzten Fehlschlags. */
     private Kennung letzte;
     private Path ordner;
+    private Kennung fehlgeschlagen;
+    /** So oft hat das Plugin auszupacken versucht; für die Tests. */
+    int versuche;
 
     private record Kennung(Path zip, long groesse, FileTime zeit) {}
 
@@ -56,8 +59,9 @@ final class Nexo {
 
     /**
      * Der Ordner mit den Namensräumen aus dem Pack, ausgepackt nur, wenn das Zip seit dem letzten Mal anders ist;
-     * {@code null} ohne Nexo, ohne Pack oder mit einem Zip, das sich nicht lesen lässt, je mit einer Zeile im Log.
-     * Für den Faden des Laufs: Auspacken dauert.
+     * {@code null} ohne Nexo oder ohne Pack, je mit einer Zeile im Log. Lässt sich das Zip nicht lesen, etwa
+     * während Nexo es bei /nexo reload neu schreibt, bleibt der letzte Ordner, und dasselbe Zip versucht das Plugin
+     * nicht noch einmal. Für den Faden des Laufs: Auspacken dauert.
      */
     synchronized Path bereite() {
         Path einstellungen = server.resolve("plugins/Nexo/settings.yml");
@@ -70,19 +74,40 @@ final class Nexo {
                     + "); die Karte bleibt ohne sein Pack");
         }
         Path zip = server.resolve(c.getString("Pack.generation.output_path", "plugins/Nexo/pack/pack.zip"));
+        Kennung k;
         try {
-            var k = new Kennung(zip, Files.size(zip), Files.getLastModifiedTime(zip));
-            if (!k.equals(letzte) || ordner == null || !Files.isDirectory(ordner)) {
-                ordner = packeAus(zip, ziel);
-                letzte = k;
-                gemeldet.clear();
-                log.info("renderer.nexo: das Pack " + zip + " liegt ausgepackt in " + ordner);
-            }
+            k = new Kennung(zip, Files.size(zip), Files.getLastModifiedTime(zip));
+        } catch (IOException e) {
+            return letzterOder("renderer.nexo: " + zip + " fehlt oder wird gerade geschrieben (" + e.getMessage() + ")");
+        }
+        if (k.equals(letzte) && ordner != null && Files.isDirectory(ordner)) {
+            return ordner;
+        }
+        if (k.equals(fehlgeschlagen)) {
+            return letzterOder(null);
+        }
+        try {
+            versuche++;
+            ordner = packeAus(zip, ziel);
+            letzte = k;
+            fehlgeschlagen = null;
+            gemeldet.clear();
+            log.info("renderer.nexo: das Pack " + zip + " liegt ausgepackt in " + ordner);
             return ordner;
         } catch (IOException e) {
-            return ohne("renderer.nexo: " + zip + " lässt sich nicht lesen (" + e.getMessage()
-                    + "); ein Zip von PackSquash kann das sein. Die Karte bleibt ohne sein Pack");
+            fehlgeschlagen = k;
+            return letzterOder("renderer.nexo: " + zip + " lässt sich nicht lesen (" + e.getMessage()
+                    + "); ein Zip von PackSquash kann das sein");
         }
+    }
+
+    /** Der letzte heile Ordner, sonst {@code null}; {@code text} einmal im Log, mit dem, was daraus folgt. */
+    private Path letzterOder(String text) {
+        boolean heil = ordner != null && Files.isDirectory(ordner);
+        if (text != null) {
+            ohne(text + (heil ? ". Die Karte nimmt weiter das letzte Pack aus " + ordner : ". Die Karte bleibt ohne sein Pack"));
+        }
+        return heil ? ordner : null;
     }
 
     private Path ohne(String text) {
@@ -156,8 +181,13 @@ final class Nexo {
             }
             return fertig;
         } catch (IOException | RuntimeException e) {
-            loesche(neu);
-            throw e instanceof IOException io ? io : new IOException(e.getMessage(), e);
+            IOException fehler = e instanceof IOException io ? io : new IOException(e.getMessage(), e);
+            try {
+                loesche(neu);
+            } catch (IOException f) {
+                fehler.addSuppressed(f);
+            }
+            throw fehler;
         }
     }
 

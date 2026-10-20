@@ -629,6 +629,27 @@ class LaeufeTest {
     }
 
     @Test
+    void ohne_basis_kommt_das_pack_nicht_dazu_und_der_renderer_fragt_weiter_nach_der_zustimmung() throws Exception {
+        Files.createDirectories(tmp.resolve("plugins/Nexo"));
+        Files.writeString(tmp.resolve("plugins/Nexo/settings.yml"), "Pack:\n  generation:\n    generate_pack: true\n    output_path: pack.zip\n");
+        try (var z = new java.util.zip.ZipOutputStream(Files.newOutputStream(tmp.resolve("pack.zip")))) {
+            z.putNextEntry(new java.util.zip.ZipEntry("assets/minecraft/blockstates/note_block.json"));
+            z.write("{}".getBytes(StandardCharsets.UTF_8));
+        }
+        var k = konf(JAVA, false, List.of());
+        var ohneBasis = new Konfiguration(k.renderer(), k.welt(), k.kacheln(), List.of(), k.daten(), false, 1, 1, 30, List.of(),
+                DOWNLOAD, k.webserver(), Konfiguration.ClientJar.OHNE, false, Konfiguration.Karte.OHNE, true);
+        var l = new Laeufe(ohneBasis, logger, tmp);
+        l.nexo = new Nexo(tmp, tmp.resolve("nexo"), logger);
+        l.starte("Update", List.of(new Auftrag("a", falscher("zustimmung"), false)));
+        assertTrue(l.warte(30_000));
+        assertTrue(l.status().contains("ohne --assets braucht der Lauf das Client-Jar von Mojang"), l::status);
+        assertTrue(log.stream().anyMatch(z -> z.startsWith("Update, Baum a: ") && !z.contains("--assets")), log::toString);
+        assertTrue(log.stream().anyMatch(z -> z.startsWith("renderer.nexo: ohne renderer.assets und ohne renderer.download-client-jar")), log::toString);
+        assertEquals(0, l.nexo.versuche, "ohne Basis packt das Plugin nicht aus");
+    }
+
+    @Test
     void mit_karte_von_tut_renderer_nexo_nichts_und_sagt_es_einmal() {
         var k = konf(JAVA, false, List.of());
         var mitVon = new Konfiguration(k.renderer(), k.welt(), k.kacheln(), k.assets(), k.daten(), false, 1, 1, 30, List.of(),

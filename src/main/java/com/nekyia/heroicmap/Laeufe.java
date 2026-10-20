@@ -477,8 +477,14 @@ final class Laeufe {
     private void arbeite(String name, List<Auftrag> auftraege) {
         List<String> ergebnisse = new ArrayList<>();
         try {
-            // Erst hier, im Faden des Laufs: Auspacken dauert. Siehe docs/konfiguration.md, „Nexo“.
-            Path pack = nexo == null ? null : nexo.bereite();
+            // Erst hier, im Faden des Laufs: Auspacken dauert. Ohne Basis aus renderer.assets oder dem Client-Jar
+            // zeichnete der Renderer nur das Pack, statt nach der Zustimmung zu fragen. Siehe docs/konfiguration.md, „Nexo“.
+            boolean basis = !konf.assets().isEmpty() || konf.clientJar().zugestimmt();
+            if (nexo != null && !basis) {
+                hinweis("renderer.nexo: ohne renderer.assets und ohne renderer.download-client-jar fehlt die Basis unter dem Pack; "
+                        + "die Karte bleibt ohne das Pack von Nexo");
+            }
+            Path pack = nexo == null || !basis ? null : nexo.bereite();
             for (Auftrag a : auftraege.stream().map(a -> mitPack(a, pack)).toList()) {
                 synchronized (this) {
                     laeuft = name + ", Baum " + a.baum();

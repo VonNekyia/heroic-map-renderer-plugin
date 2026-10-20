@@ -158,6 +158,30 @@ class NexoTest {
     }
 
     @Test
+    void ein_kurz_unlesbares_zip_laesst_das_letzte_pack_und_wird_nicht_bei_jedem_lauf_neu_versucht() throws Exception {
+        einstellungen("Pack:\n  generation:\n    generate_pack: true\n");
+        Path zip = zip(server.resolve("plugins/Nexo/pack/pack.zip"), pack("rot"), 0);
+        var nexo = new Nexo(server, server.resolve("nexo"), logger);
+        Path ordner = nexo.bereite();
+        // Wie bei /nexo reload: Nexo schreibt das Zip neu, ein Lauf liest es halb.
+        Files.writeString(zip, "halb geschrieben");
+        Files.setLastModifiedTime(zip, FileTime.fromMillis(Files.getLastModifiedTime(zip).toMillis() + 5_000));
+        assertEquals(ordner, nexo.bereite());
+        assertEquals(ordner, nexo.bereite());
+        assertEquals(2, nexo.versuche, "dasselbe kaputte Zip nur einmal");
+        assertEquals("rot", Files.readString(ordner.resolve("nexo/textures/block/kupfererz.png")), "der alte Ordner ist heil");
+        assertEquals(1, log.stream().filter(z -> z.contains("lässt sich nicht lesen") && z.contains("nimmt weiter das letzte Pack")).count(), log::toString);
+        // Auch ohne Datei, mitten im Schreiben, bleibt der letzte Ordner.
+        Files.delete(zip);
+        assertEquals(ordner, nexo.bereite());
+        // Ist es fertig geschrieben, packt das Plugin das neue aus.
+        zip(zip, pack("blau"), 0);
+        Files.setLastModifiedTime(zip, FileTime.fromMillis(System.currentTimeMillis() + 60_000));
+        assertEquals("blau", Files.readString(nexo.bereite().resolve("nexo/textures/block/kupfererz.png")));
+        assertEquals(3, nexo.versuche);
+    }
+
+    @Test
     void ohne_nexo_ohne_pack_oder_mit_unlesbarem_zip_eine_zeile_im_log_und_kein_ordner() throws Exception {
         var nexo = new Nexo(server, server.resolve("nexo"), logger);
         assertNull(nexo.bereite());

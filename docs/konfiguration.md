@@ -173,10 +173,17 @@ der Renderer nicht.
 - **An den Renderer:** als letztes `--assets`, nach `renderer.assets`, also
   über allem anderen. Die Sprites der Banner zeichnet das Plugin ohne das
   Pack.
-- **Ohne Pack:** ohne Nexo, mit `generate_pack: false`, ohne Datei oder mit
-  einem Zip, das Java nicht lesen kann, steht eine Zeile im Log, einmal je
-  Grund, und der Lauf geht ohne das Pack. Ein Zip, das PackSquash mit
-  seinen Kniffen gegen das Auspacken schreibt, kann so eines sein.
+- **Ohne Pack:** ohne Nexo oder mit `generate_pack: false` steht eine
+  Zeile im Log, einmal je Grund, und der Lauf geht ohne das Pack.
+- **Ein Zip, das sich nicht lesen lässt,** etwa während Nexo es bei
+  `/nexo reload` neu schreibt, oder eines, das PackSquash mit seinen
+  Kniffen gegen das Auspacken schreibt: Dann nimmt der Lauf das zuletzt
+  ausgepackte Pack, sonst keines, mit einer Zeile im Log. Dasselbe Zip,
+  gleich gross und gleich alt, versucht das Plugin nicht noch einmal.
+- **Ohne Basis,** also ohne `renderer.assets` und ohne
+  `renderer.download-client-jar`, kommt das Pack nicht dazu, mit einer
+  Zeile im Log: Sonst zeichnete der Renderer nur das Pack, statt nach der
+  Zustimmung zum Client-Jar zu fragen.
 - **Mit `karte.von`** rendert dieser Server nicht selbst; `renderer.nexo`
   tut dort nichts und sagt das einmal im Log, siehe
   [Mehrere Server](mehrere-server.md).

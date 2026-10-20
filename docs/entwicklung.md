@@ -191,16 +191,21 @@ Plugin das seiner Plattform aus, siehe [Konfiguration](konfiguration.md),
   alte weg; Einträge mit `..`, `\` oder `//` und zu viele Einträge oder
   Bytes brechen ohne Reste ab; `settings.yml` mit und ohne `output_path`,
   `generate_pack: false`, ohne Nexo und ein unlesbares Zip je mit einer
-  Zeile im Log; ausgepackt nur bei neuem Zip.
+  Zeile im Log; ausgepackt nur bei neuem Zip; ein halb geschriebenes oder
+  fehlendes Zip lässt den letzten Ordner, dasselbe kaputte nur einmal
+  versucht.
 - **`LaeufeTest`, Nexo:** das Pack als letztes `--assets` im Befehl des
   Laufs, ohne Pack der Auftrag, wie er war; mit `karte.von` kein Pack und
-  eine Zeile im Log; „neue Assets: erst /heroicmap render“ im Status.
-  Am 20.10. dazu 13 Mutationen an `Nexo` und `Laeufe`, jede fiel: ohne die
+  eine Zeile im Log; ohne Basis kein Pack, kein Auspacken, und der Renderer
+  fragt weiter nach der Zustimmung; „neue Assets: erst /heroicmap render“
+  im Status.
+  Am 20.10. dazu 16 Mutationen an `Nexo` und `Laeufe`, jede fiel: ohne die
   feste Zeit, ohne die Prüfung des Pfads, ohne eine der beiden Grenzen, der
   Hash mit der Zeit der Einträge, alte Ordner bleiben, immer neu
-  auspacken, ohne `generate_pack`, die Meldung jedes Mal, das Pack nicht
-  oder zuerst angehängt, der Status ohne „neue Assets“, Nexo auch mit
-  `karte.von`.
+  auspacken, ohne den letzten Ordner bei kaputtem Zip, der Fehlschlag
+  nicht gemerkt, das Pack auch ohne Basis, ohne `generate_pack`, die
+  Meldung jedes Mal, das Pack nicht oder zuerst angehängt, der Status ohne
+  „neue Assets“, Nexo auch mit `karte.von`.
 - **`LaeufeTest`, Prozesse:** mit `FalscherRenderer`, einer Testklasse, die
   der Test direkt über `java` startet, ohne Hülle wie `cmd` oder `sh`
   dazwischen. So trifft ein Abbruch den Prozess selbst. Geprüft:
