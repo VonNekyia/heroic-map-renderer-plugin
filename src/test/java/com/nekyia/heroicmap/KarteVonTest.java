@@ -108,9 +108,9 @@ class KarteVonTest {
         var ebenen = new Ebenen(eigene, tiles.resolve("layers"), OBERWELT, null, still(meldungen));
         ebenen.ladeNeu();
         assertEquals(List.of(), meldungen, "banner/ unter layers/ von main ist kein Fehler");
-        ebenen.api().layer("Proficisci", "routen").put(Pin.at("hafen", 0, 0));
+        ebenen.api().layer("Wege", "routen").put(Pin.at("hafen", 0, 0));
         ebenen.takt();
-        assertEquals(List.of("bau:werkstatt", "main:orte", "proficisci:routen"), ebenen.stand().stream().map(Ebene::id).toList(),
+        assertEquals(List.of("bau:werkstatt", "main:orte", "wege:routen"), ebenen.stand().stream().map(Ebene::id).toList(),
                 "eigene, API und die öffentlichen von main; banner/ dort ist kein Fehler");
 
         assertEquals(vorher, bild(tiles), "keine Datei neu, keine geändert, keine weg");

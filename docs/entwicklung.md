@@ -29,6 +29,8 @@ code:
   - jitpack.yml
   - src/test/java/com/nekyia/heroicmap/MitspielerTest.java
   - src/test/java/com/nekyia/heroicmap/VorlageTest.java
+  - src/test/java/com/nekyia/heroicmap/ProxynameTest.java
+  - src/test/java/com/nekyia/heroicmap/KarteVonTest.java
 ---
 
 # Entwicklung
@@ -155,6 +157,7 @@ Plugin das seiner Plattform aus, siehe [Konfiguration](konfiguration.md),
   `renderer.binary`, Pfade, Bäume und ihre Ordner wie im Renderer, alle
   Fehler auf einmal. `webserver.trusted-proxy` nur mit IP-Literalen,
   `webserver.erkennen-url` nur mit `url`, der Ursprung ohne Pfad und klein.
+  `karte.name` und `karte.von` klein, ein Name mit `/` ist ein Fehler.
 - **`VorlageTest`:** eine alte `config.yml` mit eigenen Werten und
   Kommentaren, auch in `trees`, und unbekannten Schlüsseln: Jede ihrer
   Zeilen bleibt, jeder Schlüssel der Vorlage ist danach da, mit Vorgabe und
@@ -244,6 +247,15 @@ Plugin das seiner Plattform aus, siehe [Konfiguration](konfiguration.md),
   HMAC gegen die Testvektoren `ips` in `token.json` des Renderers,
   IPv4-gemappt wie IPv4, sortiert, ohne geteilte IP und ohne `ip-aus`, das
   über einen Neustart gilt.
+- **`ProxynameTest`:** die Frage `GetServer`, wie der Proxy sie liest; eine
+  Antwort nur auf die eigene Frage, über denselben Spieler, mit einem Namen,
+  der als Ordner taugt, die erste gilt; die Frist, neu fragen höchstens
+  dreimal; welcher Name der Karte gilt.
+- **`KarteVonTest`:** mit `karte.von` bleibt die Wurzel von main nach
+  Läufen, `markiere`, `status`, Laden und Takt der Ebenen samt einer Ebene
+  der API Datei für Datei gleich, ohne Warnung im Log; dazu die
+  öffentlichen Ebenen von main, eine eigene Datei vor der von main, neu
+  geladen nach einer neuen `layers.json` dort.
 - **`TokenTest`:** stellt jedes gültige Token aus den Testvektoren des
   Renderers Zeichen für Zeichen gleich aus, ebenso jede Anmeldung
   (Fassung 2), lehnt ab, was kein gültiges ergäbe.

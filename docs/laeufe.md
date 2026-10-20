@@ -32,6 +32,10 @@ ist die Entscheidung des Maintainers in heroic-map-renderer#153.
 | `cancel` | bricht den Lauf ab |
 | `layers` | lädt die Ebenen neu, auch ohne Renderer, siehe [Ebenen](ebenen.md) |
 
+Mit `karte.von` läuft hier kein Lauf: `render`, `update` und `compact`
+antworten mit einem Hinweis, der Zeitplan fällt weg, `status` beginnt mit
+„Karte von …“, siehe [Mehrere Server](mehrere-server.md), „Karte von“.
+
 Vor einem vollen Lauf warnt das Plugin noch nicht. Die Schätzung und die
 Bestätigung kommen mit heroic-map-renderer#149.
 
@@ -347,7 +351,8 @@ Die Sprites der Banner zu den Entwürfen der Ebenen zeichnet der Renderer mit
 „Banner zeichnen: `--banners`“. Der Code steht in `Banner` in
 [`Banner.java`](../src/main/java/com/nekyia/heroicmap/Banner.java).
 
-- **Wann:**
+- **Wann:** nie mit `karte.von`, dann zeichnet der andere Server;
+  sonst
   - beim Start, aber erst nach dem ersten Laden der Dateien und dem
     Schreiben danach (`Ebenen.nachEntwuerfen`): Ein Aufruf ohne sie räumte
     jedes Sprite weg. Ein Takt davor, etwa nach einer Ebene der API, ruft

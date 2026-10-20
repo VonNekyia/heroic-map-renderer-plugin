@@ -239,7 +239,7 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
 
     /**
      * Im Hauptthread: die Antwort auf show mit karte, dem Namen der Karte für den Ordner im Mod. Wartet der Name noch
-     * auf den Proxy, höchstens {@link Proxyname#FRIST_MS}, kommt sie danach; ein zweites show schickt der Mod nicht.
+     * auf den Proxy, höchstens {@link Proxyname#FRIST_MS}, kommt sie danach; sonst schickt der Mod show erst nach einer Änderung der Wahl.
      * Siehe docs/mehrere-server.md, „Format“.
      */
     private void sendeShow(Player p, JsonObject antwort) {
