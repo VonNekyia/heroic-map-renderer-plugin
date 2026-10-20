@@ -285,7 +285,7 @@ Plugin das seiner Plattform aus, siehe [Konfiguration](konfiguration.md),
   fehlendes Bild mit Fehler und ohne ETag, kein Pfad mit `..`; ohne den
   Server dort der alte Stand; eine eigene Datei vor der von main; im
   Anlauf nach dem Start Fehler als INFO, danach und wenn sie bleiben als
-  WARN.
+  WARN; die Zeile mit der Zahl auch, wenn sich die Zahl ändert.
 - **`KoepfeTest`:** das Bild aus einem Skin, Gesicht deckend, Hut mit
   Alpha darüber, alter Skin ohne durchsichtigen Hut-Bereich, falsche Masse;
   nur vom Host der Skins und nur `/texture/<hex>`; gegen einen Webserver

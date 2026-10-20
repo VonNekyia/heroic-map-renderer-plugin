@@ -287,7 +287,7 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
             Thread.currentThread().interrupt();
             return;
         }
-        Level stufe = von.meldung(fehler, Instant.now());
+        Level stufe = von.meldung(fehler, von.stand().size(), Instant.now());
         if (stufe != null) {
             fehler.forEach(f -> getLogger().log(stufe, "Ebenen von " + kartenKonf.von() + ": " + f));
             if (fehler.isEmpty()) {

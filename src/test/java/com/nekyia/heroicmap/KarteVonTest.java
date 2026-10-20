@@ -166,14 +166,26 @@ class KarteVonTest {
         var von = new KarteVon(url, OBERWELT, start);
         var weg = List.of("Connection refused");
         var fehlt = List.of("layers.json: HTTP 404");
-        assertEquals(Level.INFO, von.meldung(weg, start.plusSeconds(1)), "der andere Server startet vielleicht noch");
-        assertNull(von.meldung(weg, start.plusSeconds(30)), "unverändert nichts");
-        assertEquals(Level.INFO, von.meldung(fehlt, start.plusSeconds(40)));
-        assertEquals(Level.WARNING, von.meldung(fehlt, start.plusSeconds(60)), "überdauert den Anlauf: einmal als Warnung");
-        assertNull(von.meldung(fehlt, start.plusSeconds(70)));
-        assertEquals(Level.INFO, von.meldung(List.of(), start.plusSeconds(80)), "wieder da: die Zeile mit der Zahl");
-        assertNull(von.meldung(List.of(), start.plusSeconds(90)));
-        assertEquals(Level.WARNING, von.meldung(weg, start.plusSeconds(100)), "nach dem Anlauf gleich als Warnung");
+        assertEquals(Level.INFO, von.meldung(weg, 4, start.plusSeconds(1)), "der andere Server startet vielleicht noch");
+        assertNull(von.meldung(weg, 4, start.plusSeconds(30)), "unverändert nichts");
+        assertEquals(Level.INFO, von.meldung(fehlt, 4, start.plusSeconds(40)));
+        assertEquals(Level.WARNING, von.meldung(fehlt, 4, start.plusSeconds(60)), "überdauert den Anlauf: einmal als Warnung");
+        assertNull(von.meldung(fehlt, 4, start.plusSeconds(70)));
+        assertEquals(Level.INFO, von.meldung(List.of(), 4, start.plusSeconds(80)), "wieder da: die Zeile mit der Zahl");
+        assertNull(von.meldung(List.of(), 4, start.plusSeconds(90)));
+        assertEquals(Level.WARNING, von.meldung(weg, 4, start.plusSeconds(100)), "nach dem Anlauf gleich als Warnung");
+    }
+
+    @Test
+    void die_zeile_mit_der_zahl_auch_wenn_sie_sich_aendert() {
+        var start = Instant.parse("2026-10-20T12:00:00Z");
+        var von = new KarteVon(url, OBERWELT, start);
+        assertEquals(Level.INFO, von.meldung(List.of(), 3, start.plusSeconds(10)), "die erste Zahl");
+        assertNull(von.meldung(List.of(), 3, start.plusSeconds(20)), "gleich: nichts, das Log füllt sich nicht");
+        assertEquals(Level.INFO, von.meldung(List.of(), 4, start.plusSeconds(30)), "aus 3 werden 4");
+        assertNull(von.meldung(List.of(), 4, start.plusSeconds(40)));
+        assertEquals(Level.INFO, von.meldung(List.of("layers.json: HTTP 404"), 4, start.plusSeconds(50)));
+        assertEquals(Level.INFO, von.meldung(List.of(), 4, start.plusSeconds(60)), "wieder da, dieselbe Zahl");
     }
 
     @Test

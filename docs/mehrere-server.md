@@ -118,7 +118,9 @@ denselben Wegpunkten, Regionen und eigenen Ebenen. Entschieden in
     startet vielleicht gerade, etwa „Connection refused“ oder
     `layers.json: HTTP 404`, bevor seine Ebenen liegen; danach als WARN.
     Ein Fehler, der den Anlauf überdauert, kommt dann einmal als WARN.
-    Klappt es wieder, eine Zeile mit der Zahl der geholten Ebenen.
+    Ohne Fehler steht eine Zeile mit der Zahl der geholten Ebenen als
+    INFO: beim ersten Holen, wenn es nach einem Fehler wieder klappt und
+    wenn sich die Zahl ändert, sonst nicht.
 - **Zusammen mit den eigenen:** Die Ebenen von main kommen zu den Dateien
   von build, wie eine weitere Datei; eine eigene Datei mit derselben
   Kennung gilt vor der von main. Dann gilt alles wie für Dateien: Das
