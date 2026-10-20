@@ -483,7 +483,7 @@ class DownloadTest {
         assertEquals("freigabe", f.get("typ").getAsString());
         assertEquals("abgleich", f.get("art").getAsString());
         assertEquals(2, f.get("massstab").getAsInt());
-        assertEquals(160, f.get("bytes").getAsLong());
+        assertEquals(800, f.get("bytes").getAsLong(), "die Hälfte der 1 600 Byte bis Stufe 2");
         assertEquals(heute.getEpochSecond(), stand.baeume.get("top-north-s").abgeglichen);
         assertEquals(1, stand.abgleich.length, "der tägliche zählt");
         assertEquals(List.of(), d.beimJoin(SPIELER, stand, heute.plusSeconds(3600)), "einmal am Tag");
