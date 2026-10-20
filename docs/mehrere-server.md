@@ -1,12 +1,15 @@
 ---
 title: Mehrere Server hinter einem Proxy
-description: Wie der Mod Server hinter einem Proxy auseinanderhält, auch bei gleicher Welt, mit dem Namen der Karte an der Antwort auf show, und wie das Plugin den Namen dieses Servers vom Proxy erfragt oder aus karte.name nimmt.
+description: Wie der Mod Server hinter einem Proxy auseinanderhält, auch bei gleicher Welt, mit dem Namen der Karte an der Antwort auf show; wie das Plugin den Namen dieses Servers vom Proxy erfragt oder aus karte.name nimmt; und wie ein Server mit karte.von die Karte eines anderen zeigt, mit dessen öffentlichen Ebenen über HTTP.
 code:
   - src/main/java/com/nekyia/heroicmap/Proxyname.java
   - src/main/java/com/nekyia/heroicmap/HeroicMapPlugin.java
   - src/main/java/com/nekyia/heroicmap/Konfiguration.java
+  - src/main/java/com/nekyia/heroicmap/KarteVon.java
+  - src/main/java/com/nekyia/heroicmap/Ebenen.java
   - src/main/resources/config.yml
   - src/test/java/com/nekyia/heroicmap/ProxynameTest.java
+  - src/test/java/com/nekyia/heroicmap/KarteVonTest.java
 ---
 
 # Mehrere Server hinter einem Proxy
@@ -15,9 +18,9 @@ Hinter einem Proxy sieht der Mod nur den Proxy. Zwei Server mit derselben
 Welt, etwa eine Kopie zum Bauen, legte er darum in denselben Ordner. Jetzt
 nennt das Plugin dem Mod den Namen der Karte, und jeder Server hat seinen
 Ordner (heroic-map-renderer#318, Wunsch des Users vom 20.10.). Wie der Mod
-den Ordner bildet, steht in seiner Doku, `download.md`, „Ablage“. Dass ein
-Server die Karte eines anderen zeigt, ist dort geplant, aber noch nicht
-gebaut.
+den Ordner bildet, steht in seiner Doku, `download.md`, „Ablage“. Mit
+`karte.von` zeigt ein Server bewusst die Karte eines anderen, siehe „Karte
+von“.
 
 ## Format
 
@@ -34,9 +37,10 @@ Die Antwort auf `show` trägt `karte`, den Namen der Karte, siehe
 - **Wert:** klein, `a–z 0–9 _ -`, höchstens 64 Zeichen, so taugt er im Mod
   als Ordner (`Proxyname.gueltig`).
 - **Welcher Name** (`Proxyname.karte`):
-  1. der Name vom Proxy, siehe „Name vom Proxy“;
-  2. sonst `karte.name` aus `config.yml`;
-  3. sonst fehlt das Feld, und der Mod legt ab wie bisher.
+  1. `karte.von`, siehe „Karte von“;
+  2. sonst der Name vom Proxy, siehe „Name vom Proxy“;
+  3. sonst `karte.name` aus `config.yml`;
+  4. sonst fehlt das Feld, und der Mod legt ab wie bisher.
 - **Keine neue Version:** Ein alter Mod überspringt das Feld, ein altes
   Plugin schickt es nicht.
 
@@ -78,3 +82,43 @@ auf dem Kanal `BungeeCord`, nach dem Namen des Servers, auf dem er ist.
   anderen Namen als die übrigen.
 - **Neu fragen:** Kommt keine Antwort, fragt das Plugin beim nächsten Join
   wieder, höchstens dreimal je Laufzeit (`Proxyname.VERSUCHE`).
+
+## Karte von
+
+Mit `karte.von: main` zeigt ein Server, etwa build, im Mod die Karte von
+main. Das Plugin von build nennt dem Mod `karte: main`; der Mod nimmt den
+Ordner von main, mit der Karte, die der Spieler auf main geladen hat, und
+denselben Wegpunkten, Regionen und eigenen Ebenen. Entschieden in
+[0014](entscheidungen/0014-karte-von-ueber-den-namen.md).
+
+- **Kein Download auf build:** Ein Baum mit `download: true` ist mit
+  `karte.von` ein Fehler beim Start; er legte Kacheln von build in den
+  Ordner von main. Die Karte im Mod frischt sich nur auf main auf, mit dem
+  Download dort.
+- **Gleiche Welt:** Der Ordner im Mod hängt auch am Hash des Seeds je
+  Dimension. Eine Kopie der Welt von main hat denselben; mit einem anderen
+  Seed legt der Mod einen neuen Ordner an, und die Karte von main fehlt.
+- **Die Ebenen von main** holt build mit `karte.von-url` über HTTP vom
+  Webserver von main, nur öffentliche Pfade, wie ein Browser (`KarteVon`):
+  - alle 10 s `/tiles/layers.json` mit `If-None-Match`, meist `304`;
+  - ist sie neu, jede Ebene, deren `version` dort sich änderte, aus
+    `/tiles/layers/<modname>/<ebene>.json`, mit ihren Bildern;
+  - geprüft wie eine Datei, mit den Grenzen von dort: 4 MiB je Ebene,
+    256 KiB je Bild, 64 Ebenen; eine `id`, die keine Kennung ist, holt es
+    nicht;
+  - nur im Speicher, nie auf der Platte von build; nach einem Neustart
+    holt es neu;
+  - keine Weiterleitung, Frist 10 s. Ist main nicht zu erreichen, gilt der
+    alte Stand. Fehler stehen im Log, nur wenn sie sich ändern; nach einem
+    Fehler fragt es ohne ETag, bis alles da ist.
+- **Zusammen mit den eigenen:** Die Ebenen von main kommen zu den Dateien
+  von build, wie eine weitere Datei; eine eigene Datei mit derselben
+  Kennung gilt vor der von main. Dann gilt alles wie für Dateien: Das
+  Plugin von build schreibt sie für seine Webkarte und schickt sie dem Mod
+  mit seiner eigenen Adresse.
+- **Grenzen:**
+  - Nur die Objekte der Dimension der Wurzel von main: Mehr schreibt main
+    nicht für die Webkarte.
+  - Ebenen mit `permission`, mit `web: false` und Aktionsebenen von main
+    fehlen; sie stehen nicht öffentlich unter `/tiles/`.
+  - Ohne `karte.von-url` nur der Name, keine Ebenen von main.

@@ -39,6 +39,12 @@ tiles: plugins/HeroicMap/tiles
 karte:
   # Name dieses Servers, etwa "main"; nur, wenn der Proxy ihn nicht meldet.
   name: ""
+  # Die Karte eines anderen Servers zeigen, etwa "main": Der Mod nimmt dann
+  # ihren Ordner. Ohne Baum mit download: true. Leer: die eigene Karte.
+  von: ""
+  # Der Webserver von "von", wie dieser Server ihn erreicht, etwa
+  # "http://127.0.0.1:8080": für dessen öffentliche Ebenen. Leer: keine.
+  von-url: ""
 
 # Alle so viele Minuten ein Update; 0 schaltet den Zeitplan ab.
 # Dazu den Autosave von Paper auf 60 s, siehe docs/laeufe.md.

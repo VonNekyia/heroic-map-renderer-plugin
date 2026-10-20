@@ -13,6 +13,7 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -69,11 +70,13 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
     private Laeufe laeufe;
     private Banner banner;
     private volatile Webserver webserver;
-    /** karte.name aus config.yml, leer ohne. Siehe docs/mehrere-server.md. */
-    private String kartenName = "";
+    /** Der Abschnitt karte aus config.yml. Siehe docs/mehrere-server.md. */
+    private Konfiguration.Karte kartenKonf = Konfiguration.Karte.OHNE;
     /** Nur im Hauptthread. */
     private Proxyname proxyname = new Proxyname(false);
     private boolean ohneProxyKanalGemeldet;
+    /** Nur in {@link #holeVon}. */
+    private List<String> vonFehler = List.of();
     /** Die Anmeldung auf der Webkarte; null ohne. Siehe docs/anmeldung.md. */
     private volatile SpielerOrdner spieler;
     private byte[] geheimnis;
@@ -120,11 +123,15 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
             getServer().getMessenger().registerOutgoingPluginChannel(this, Proxyname.KANAL);
             getServer().getMessenger().registerIncomingPluginChannel(this, Proxyname.KANAL, this);
         }
-        kartenName = konf.kartenName();
+        kartenKonf = konf.karte();
         getServer().getPluginManager().registerEvents(this, this);
         // Ebenen brauchen keinen Renderer; geladen wird ausserhalb des Hauptthreads. Siehe docs/ebenen.md.
         Path ebenenOrdner = getDataFolder().toPath().resolve("ebenen");
-        ebenen = new Ebenen(ebenenOrdner, konf.dimension(), new EbenenSchreiber(konf.kacheln(), konf.dimension()), getLogger());
+        // Mit karte.von und ihrer url die öffentlichen Ebenen der anderen Karte dazu. Siehe docs/mehrere-server.md,
+        // „Karte von“.
+        var von = konf.karte().vonUrl().isEmpty() ? null : new KarteVon(konf.karte().vonUrl(), konf.dimension());
+        ebenen = new Ebenen(ebenenOrdner, konf.dimension(), new EbenenSchreiber(konf.kacheln(), konf.dimension()), getLogger(),
+                von == null ? List::of : von::stand);
         // Die API für andere Plugins; ihre Ebenen gehen mit dem Plugin, dem sie gehören. Siehe docs/api.md.
         getServer().getServicesManager().register(HeroicMapApi.class, ebenen.api(), this, ServicePriority.Normal);
         getServer().getPluginManager().registerEvents(ebenen.api(), this);
@@ -139,6 +146,9 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
         modAdresse = EbenenFuerMod.adresse(webKonf);
         fuerMod = new EbenenFuerMod(() -> webserver != null && webserver.bereit() ? EbenenFuerMod.adresse(webKonf) : new JsonObject(),
                 Banner.geheim(getDataFolder().toPath()), getLogger(), ebenen.api().knoepfe());
+        if (von != null) {
+            getServer().getAsyncScheduler().runAtFixedRate(this, t -> holeVon(von), 0, 10, TimeUnit.SECONDS);
+        }
         getServer().getAsyncScheduler().runAtFixedRate(this, t -> {
             ebenen.takt();
             fuerMod.bereite(ebenen.stand());
@@ -242,7 +252,7 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
             getServer().getGlobalRegionScheduler().runDelayed(this, t -> sendeShow(p, antwort), 2);
             return;
         }
-        String karte = Proxyname.karte(kartenName, proxyname.name());
+        String karte = Proxyname.karte(kartenKonf, proxyname.name());
         if (karte != null) {
             antwort.addProperty("karte", karte);
         }
@@ -252,12 +262,37 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
     }
 
     /**
+     * Ausserhalb des Hauptthreads, alle 10 s: die öffentlichen Ebenen der anderen Karte; neu laden, wenn sie sich
+     * änderten. Fehler stehen im Log, nur wenn sie sich ändern.
+     */
+    private void holeVon(KarteVon von) {
+        var fehler = new ArrayList<String>();
+        try {
+            if (von.hole(fehler)) {
+                ebenen.ladeNeu();
+            }
+        } catch (IOException e) {
+            fehler.add(e.getMessage());
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return;
+        }
+        if (!fehler.equals(vonFehler)) {
+            vonFehler = fehler;
+            fehler.forEach(f -> getLogger().warning("Ebenen von " + kartenKonf.von() + ": " + f));
+            if (fehler.isEmpty()) {
+                getLogger().info("Ebenen von " + kartenKonf.von() + ": " + von.stand().size() + " geholt");
+            }
+        }
+    }
+
+    /**
      * Im Hauptthread: fragt den Proxy über {@code p} nach dem Namen dieses Servers, wenn er noch fehlt. Nur hinter
      * einem Proxy ({@link Proxyname#frage}), und nur, wenn er den Kanal bei diesem Spieler angemeldet hat; Paper schickt
      * sonst nichts. Siehe docs/mehrere-server.md, „Name vom Proxy“.
      */
     private void frageProxy(Player p) {
-        if (!proxyname.hinterProxy() || proxyname.name() != null) {
+        if (!proxyname.hinterProxy() || !kartenKonf.von().isEmpty() || proxyname.name() != null) {
             return;
         }
         if (!p.getListeningPluginChannels().contains(Proxyname.KANAL)) {

@@ -33,14 +33,22 @@ record Konfiguration(
         Webserver webserver,
         ClientJar clientJar,
         boolean kompakt,
-        String kartenName) {
+        Karte karte) {
 
-    /** Ohne karte.name, für Tests und alte Aufrufe. */
+    /** Ohne Abschnitt karte, für Tests und alte Aufrufe. */
     Konfiguration(Path renderer, Path welt, Path kacheln, List<Path> assets, List<Path> daten, boolean grafikkarte,
             int threads, int vollThreads, int updateMinuten, List<Baum> baeume, Download download, Webserver webserver,
             ClientJar clientJar, boolean kompakt) {
         this(renderer, welt, kacheln, assets, daten, grafikkarte, threads, vollThreads, updateMinuten, baeume, download,
-                webserver, clientJar, kompakt, "");
+                webserver, clientJar, kompakt, Karte.OHNE);
+    }
+
+    /**
+     * Der Name dieses Servers, falls der Proxy keinen meldet; die Karte eines anderen, die dieser zeigt, und die Adresse
+     * von dessen Webserver; je leer ohne. Siehe docs/mehrere-server.md.
+     */
+    record Karte(String name, String von, String vonUrl) {
+        static final Karte OHNE = new Karte("", "", "");
     }
 
     private static final Pattern SCHRAEG = Pattern.compile("(\\d+):(\\d+)");
@@ -294,12 +302,23 @@ record Konfiguration(
             }
         }
 
-        // Der Name dieses Servers, falls der Proxy keinen meldet; klein, so taugt er im Mod als Ordner. Siehe
-        // docs/mehrere-server.md.
-        String kartenRoh = c.getString("karte.name", "").strip();
-        String kartenName = kartenRoh.isEmpty() ? "" : Proxyname.gueltig(kartenRoh);
-        if (kartenName == null) {
-            fehler.add("karte.name: " + kartenRoh + " ist kein Name aus a-z, 0-9, _ und -, höchstens 64 Zeichen");
+        // Namen klein, so taugen sie im Mod als Ordner. Siehe docs/mehrere-server.md.
+        var karten = new ArrayList<String>();
+        for (String schluessel : List.of("karte.name", "karte.von")) {
+            String roh = c.getString(schluessel, "").strip();
+            String n = roh.isEmpty() ? "" : Proxyname.gueltig(roh);
+            if (n == null) {
+                fehler.add(schluessel + ": " + roh + " ist kein Name aus a-z, 0-9, _ und -, höchstens 64 Zeichen");
+            }
+            karten.add(n == null ? "" : n);
+        }
+        String vonUrl = c.getString("karte.von-url", "").strip().replaceAll("/+$", "");
+        if (!vonUrl.isEmpty() && (!ADRESSE.matcher(vonUrl).matches() || karten.get(1).isEmpty())) {
+            fehler.add("karte.von-url: mit http:// oder https:// und Host, etwa \"http://127.0.0.1:8080\", und nur mit karte.von");
+        }
+        // Ein Download legte die Kacheln dieses Servers in den Ordner der anderen Karte.
+        if (!karten.get(1).isEmpty() && download) {
+            fehler.add("karte.von: kein Baum mit download: true, der Download kommt vom Server " + karten.get(1));
         }
 
         if (!fehler.isEmpty()) {
@@ -323,13 +342,13 @@ record Konfiguration(
                         titel, beschreibung, bild, oeffentlich, proxys, erkennen),
                 new ClientJar(c.getBoolean("renderer.download-client-jar"), c.getString("renderer.client-version", "").strip()),
                 c.getBoolean("renderer.compact"),
-                kartenName);
+                new Karte(karten.get(0), karten.get(1), vonUrl));
     }
 
     /** Dieselbe Konfiguration mit diesem Binär. */
     Konfiguration mitRenderer(Path binaer) {
         return new Konfiguration(binaer, welt, kacheln, assets, daten, grafikkarte, threads, vollThreads, updateMinuten,
-                baeume, download, webserver, clientJar, kompakt, kartenName);
+                baeume, download, webserver, clientJar, kompakt, karte);
     }
 
     /**

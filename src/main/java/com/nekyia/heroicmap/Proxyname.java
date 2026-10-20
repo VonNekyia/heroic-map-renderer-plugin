@@ -119,10 +119,13 @@ final class Proxyname {
     }
 
     /**
-     * Der Name der Karte für den Mod: {@code vomProxy}, sonst {@code kartenName} aus karte.name; null ohne. Siehe
+     * Der Name der Karte für den Mod: karte.von, sonst {@code vomProxy}, sonst karte.name; null ohne. Siehe
      * docs/mehrere-server.md, „Format“.
      */
-    static String karte(String kartenName, String vomProxy) {
-        return vomProxy != null ? vomProxy : kartenName.isEmpty() ? null : kartenName;
+    static String karte(Konfiguration.Karte k, String vomProxy) {
+        if (!k.von().isEmpty()) {
+            return k.von();
+        }
+        return vomProxy != null ? vomProxy : k.name().isEmpty() ? null : k.name();
     }
 }
