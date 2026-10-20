@@ -13,6 +13,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.BooleanSupplier;
+import java.util.function.Function;
 import java.util.logging.Logger;
 
 /**
@@ -142,9 +143,16 @@ final class Mitspieler {
      * „Mitspieler“.
      */
     static JsonObject sicht(Spieler ich, List<Spieler> andere, String dimension) {
+        return sicht(ich, andere, dimension, u -> null);
+    }
+
+    /** Wie oben, mit {@code kopf} je Spieler, wenn {@code kopf} einen nennt. Siehe docs/koepfe.md, „sicht.json“. */
+    static JsonObject sicht(Spieler ich, List<Spieler> andere, String dimension, Function<UUID, String> kopf) {
         var o = new JsonObject();
         if (ich.dimension().equals(dimension)) {
-            o.add("ich", lage(ich));
+            var l = lage(ich);
+            mitKopf(l, kopf.apply(ich.uuid()));
+            o.add("ich", l);
         }
         var liste = new JsonArray();
         andere.stream().filter(p -> p.dimension().equals(dimension)).limit(IM_WEB).forEach(p -> {
@@ -154,10 +162,17 @@ final class Mitspieler {
             e.addProperty("name", p.name());
             e.add("x", l.get("x"));
             e.add("z", l.get("z"));
+            mitKopf(e, kopf.apply(p.uuid()));
             liste.add(e);
         });
         o.add("spieler", liste);
         return o;
+    }
+
+    private static void mitKopf(JsonObject o, String kopf) {
+        if (kopf != null) {
+            o.addProperty("kopf", kopf);
+        }
     }
 
     private static JsonObject lage(Spieler p) {

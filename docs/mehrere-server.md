@@ -132,6 +132,8 @@ denselben Wegpunkten, Regionen und eigenen Ebenen. Entschieden in
 
   Ohne `karte.von-oeffentlich` nennt build seine eigene Adresse wie sonst,
   und sein Webserver liefert alles, auch die Bilder von main.
+- **Keine Köpfe:** Mit `karte.von` schreibt und löscht das Plugin keine
+  Köpfe für die Webkarte, siehe [Köpfe](koepfe.md), „Wann“.
 - **Grenzen:**
   - Nur die Objekte der Dimension der Wurzel von main: Mehr schreibt main
     nicht für die Webkarte.

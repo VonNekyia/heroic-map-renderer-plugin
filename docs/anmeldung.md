@@ -217,7 +217,9 @@ wen sieht“ und „Webkarte“. Ohne Simple Voice Chat sieht er nur sich.
   - nur Spieler aus der Dimension der Wurzel, denn die Webkarte kennt die
     Dimension ihres Baums nicht; ist er selbst woanders, fehlt `ich`;
   - x und z auf Blöcke abgerundet, kein `y`;
-  - höchstens 256 Mitspieler (`Mitspieler.IM_WEB`).
+  - höchstens 256 Mitspieler (`Mitspieler.IM_WEB`);
+  - je Spieler und in `ich` `kopf`, wenn es einen gibt, siehe
+    [Köpfe](koepfe.md), „sicht.json“.
 - **Geschrieben** ausserhalb des Hauptthreads (`SpielerOrdner.schreibeSicht`):
   - bei einer Änderung sofort;
   - sonst alle 5 s mit neuem `jetzt`, als Herzschlag

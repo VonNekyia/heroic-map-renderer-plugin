@@ -31,6 +31,7 @@ code:
   - src/test/java/com/nekyia/heroicmap/VorlageTest.java
   - src/test/java/com/nekyia/heroicmap/ProxynameTest.java
   - src/test/java/com/nekyia/heroicmap/KarteVonTest.java
+  - src/test/java/com/nekyia/heroicmap/KoepfeTest.java
 ---
 
 # Entwicklung
@@ -261,6 +262,13 @@ Plugin das seiner Plattform aus, siehe [Konfiguration](konfiguration.md),
   neuer `version` neu holen; ungültige Kennung, fehlende Datei und
   fehlendes Bild mit Fehler und ohne ETag, kein Pfad mit `..`; ohne den
   Server dort der alte Stand; eine eigene Datei vor der von main.
+- **`KoepfeTest`:** das Bild aus einem Skin, Gesicht deckend, Hut mit
+  Alpha darüber, alter Skin ohne durchsichtigen Hut-Bereich, falsche Masse;
+  nur vom Host der Skins und nur `/texture/<hex>`; gegen einen Webserver
+  aus dem JDK einmal je Skin, Name gleich SHA-256, keine halbe Datei,
+  mtime beim Join, ohne Skin, 404 und zu gross kein Kopf; Aufräumen nach
+  Alter und Zahl, nie ein Kopf online, fremde Dateien bleiben; `kopf` in
+  `sicht.json`.
 - **`TokenTest`:** stellt jedes gültige Token aus den Testvektoren des
   Renderers Zeichen für Zeichen gleich aus, ebenso jede Anmeldung
   (Fassung 2), lehnt ab, was kein gültiges ergäbe.

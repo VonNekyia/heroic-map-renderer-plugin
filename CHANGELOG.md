@@ -9,6 +9,7 @@ Links und die Hinweise aus `NOTICE` setzt
 
 ## 0.15.0
 
+- **Heads on the web map:** with login on the web map, each player's face from their skin, with the hat layer as in the game, replaces the dot for themselves and the players they see. The plugin fetches skins only from `textures.minecraft.net` and stores small 8 × 8 images under `koepfe/` in the tiles root; heads unused for 30 days, or beyond 4096, are removed. Without a skin, or with `karte.von`, the dot stays.
 - **Renderer 0.14.0** inside: layers on the web map move with the map without stutter, each viewer can reorder them, and the server delivers the players' heads. No full render needed.
 
 ## 0.14.1
