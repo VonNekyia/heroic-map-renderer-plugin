@@ -9,6 +9,7 @@ Links und die Hinweise aus `NOTICE` setzt
 
 ## 0.15.1
 
+- **`renderer.nexo`:** with `true`, the map draws the custom blocks of Nexo with their own textures instead of the vanilla block they sit on. The plugin unpacks the `assets/` of Nexo's generated pack into `plugins/HeroicMap/nexo/` and passes it as the last asset root; furniture stays out, it is entities. Each new pack needs one full render; `/heroicmap status` then says "neue Assets: erst /heroicmap render <tree>", also after a change to `renderer.assets` or `renderer.data`.
 - **Quieter start with `karte.von`:** while the other server is still starting, errors fetching its layers in the first 60 seconds are logged as info instead of warnings. An error that lasts longer is then logged once as a warning.
 
 ## 0.15.0

@@ -147,6 +147,11 @@ entschieden in [0003](entscheidungen/0003-live-render-ueber-autosave-und-zeitpla
   gehen Updates wieder; die übrigen Bäume bleiben, wie sie sind. Erkannt am Wortlaut „stammt von einem anderen Build des
   Renderers“ aus `stand_fuer_update` in `cli.rs` des Renderers, seit 0.6.0
   mit „, der anders zeichnet“ dahinter; der ganze Text steht weiter im Log.
+- **Neue Assets:** Ebenso bricht ein Update ab, wenn sich `renderer.assets`,
+  `renderer.data` oder das Pack von Nexo geändert hat. Dann steht im Status
+  „neue Assets: erst /heroicmap render <ordner>“. Erkannt am Wortlaut
+  „stammt von anderen Assets oder Daten“ aus demselben `stand_fuer_update`;
+  siehe [Konfiguration](konfiguration.md), „Nexo“.
 - **Faden:** ein eigener Faden `HeroicMap-Lauf`, nicht einer aus dem Pool
   des Schedulers, denn ein voller Lauf dauert Stunden.
 - **Hangar:** Der Scanner stuft `Runtime.exec` als `HIGHEST` ein,

@@ -596,6 +596,73 @@ class LaeufeTest {
     }
 
     @Test
+    void update_mit_anderen_assets_nennt_den_vollen_lauf() throws Exception {
+        var l = laeufe();
+        l.starte("Update", List.of(new Auftrag("a", falscher("andere-assets"), false)));
+        assertTrue(l.warte(30_000));
+        assertTrue(l.status().endsWith(", Fehler, Code 1: neue Assets: erst /heroicmap render a"), l::status);
+        assertTrue(log.stream().anyMatch(z -> z.contains("stammt von anderen Assets oder Daten")), "der Text des Renderers steht weiter im Log");
+    }
+
+    @Test
+    void das_pack_von_nexo_kommt_im_faden_des_laufs_als_letztes_assets_dazu() throws Exception {
+        var a = new Auftrag("a", List.of("r", "--assets", "a1", "--assets", "a2", "--data", "d"), true);
+        assertEquals(List.of("r", "--assets", "a1", "--assets", "a2", "--data", "d", "--assets", "nexo"),
+                Laeufe.mitPack(a, Path.of("nexo")).befehl());
+        assertEquals(a, Laeufe.mitPack(a, null), "ohne Pack bleibt der Auftrag");
+        // Ein Lauf mit Nexo: der Befehl im Log endet mit dem ausgepackten Pack.
+        Files.createDirectories(tmp.resolve("plugins/Nexo"));
+        Files.writeString(tmp.resolve("plugins/Nexo/settings.yml"), "Pack:\n  generation:\n    generate_pack: true\n    output_path: pack.zip\n");
+        try (var z = new java.util.zip.ZipOutputStream(Files.newOutputStream(tmp.resolve("pack.zip")))) {
+            z.putNextEntry(new java.util.zip.ZipEntry("assets/minecraft/blockstates/note_block.json"));
+            z.write("{}".getBytes(StandardCharsets.UTF_8));
+        }
+        var l = laeufe();
+        l.nexo = new Nexo(tmp, tmp.resolve("nexo"), logger);
+        l.starte("Update", List.of(new Auftrag("a", falscher("exit", "0"), false)));
+        assertTrue(l.warte(30_000));
+        Path ordner;
+        try (var s = Files.list(tmp.resolve("nexo"))) {
+            ordner = s.findFirst().orElseThrow();
+        }
+        assertTrue(log.stream().anyMatch(z -> z.startsWith("Update, Baum a: ") && z.endsWith(" --assets " + ordner)), log::toString);
+    }
+
+    @Test
+    void ohne_basis_kommt_das_pack_nicht_dazu_und_der_renderer_fragt_weiter_nach_der_zustimmung() throws Exception {
+        Files.createDirectories(tmp.resolve("plugins/Nexo"));
+        Files.writeString(tmp.resolve("plugins/Nexo/settings.yml"), "Pack:\n  generation:\n    generate_pack: true\n    output_path: pack.zip\n");
+        try (var z = new java.util.zip.ZipOutputStream(Files.newOutputStream(tmp.resolve("pack.zip")))) {
+            z.putNextEntry(new java.util.zip.ZipEntry("assets/minecraft/blockstates/note_block.json"));
+            z.write("{}".getBytes(StandardCharsets.UTF_8));
+        }
+        var k = konf(JAVA, false, List.of());
+        var ohneBasis = new Konfiguration(k.renderer(), k.welt(), k.kacheln(), List.of(), k.daten(), false, 1, 1, 30, List.of(),
+                DOWNLOAD, k.webserver(), Konfiguration.ClientJar.OHNE, false, Konfiguration.Karte.OHNE, true);
+        var l = new Laeufe(ohneBasis, logger, tmp);
+        l.nexo = new Nexo(tmp, tmp.resolve("nexo"), logger);
+        l.starte("Update", List.of(new Auftrag("a", falscher("zustimmung"), false)));
+        assertTrue(l.warte(30_000));
+        assertTrue(l.status().contains("ohne --assets braucht der Lauf das Client-Jar von Mojang"), l::status);
+        assertTrue(log.stream().anyMatch(z -> z.startsWith("Update, Baum a: ") && !z.contains("--assets")), log::toString);
+        assertTrue(log.stream().anyMatch(z -> z.startsWith("renderer.nexo: ohne renderer.assets und ohne renderer.download-client-jar")), log::toString);
+        assertEquals(0, l.nexo.versuche, "ohne Basis packt das Plugin nicht aus");
+    }
+
+    @Test
+    void mit_karte_von_tut_renderer_nexo_nichts_und_sagt_es_einmal() {
+        var k = konf(JAVA, false, List.of());
+        var mitVon = new Konfiguration(k.renderer(), k.welt(), k.kacheln(), k.assets(), k.daten(), false, 1, 1, 30, List.of(),
+                DOWNLOAD, k.webserver(), k.clientJar(), false, new Konfiguration.Karte("bau", "main", "", ""), true);
+        var l = new Laeufe(mitVon, logger, tmp);
+        assertNull(l.nexo);
+        assertTrue(log.stream().anyMatch(z -> z.equals("renderer.nexo gilt hier nicht: Mit karte.von zeigt dieser Server die Karte von main")), log::toString);
+        var ohneVon = new Konfiguration(k.renderer(), k.welt(), k.kacheln(), k.assets(), k.daten(), false, 1, 1, 30, List.of(),
+                DOWNLOAD, k.webserver(), k.clientJar(), false, Konfiguration.Karte.OHNE, true);
+        assertTrue(new Laeufe(ohneVon, logger, tmp).nexo != null);
+    }
+
+    @Test
     void volle_laeufe_mit_eigenen_threads_updates_mit_wenigen() throws Exception {
         var k = konf(JAVA, false, List.of(KARTE));
         var mitDrei = new Konfiguration(k.renderer(), k.welt(), k.kacheln(), k.assets(), k.daten(), false, 1, 3, 30,
