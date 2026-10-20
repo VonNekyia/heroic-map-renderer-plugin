@@ -5,6 +5,8 @@ import com.nekyia.heroicmap.api.HeroicMapApi;
 import com.nekyia.heroicmap.api.MapButtonClickEvent;
 import java.io.IOException;
 import java.net.InetAddress;
+import java.net.URI;
+import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -79,6 +81,8 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
     private List<String> vonFehler = List.of();
     /** Die Anmeldung auf der Webkarte; null ohne. Siehe docs/anmeldung.md. */
     private volatile SpielerOrdner spieler;
+    /** Die Köpfe für die Webkarte; null ohne Anmeldung oder mit karte.von. Siehe docs/koepfe.md. */
+    private volatile Koepfe koepfe;
     private byte[] geheimnis;
     private String kartenUrl;
     /** url oder port für den Mod, wie in der Liste ebenen; leer, wenn er keine Adresse bekäme. */
@@ -333,11 +337,39 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
         }
         ipsNeu(null);
         frageProxy(e.getPlayer());
+        kopf(e.getPlayer());
+    }
+
+    /** Im Hauptthread: den Skin aus dem Profil lesen, den Kopf ausserhalb holen. Siehe docs/koepfe.md. */
+    private void kopf(Player p) {
+        var k = koepfe;
+        if (k == null) {
+            return;
+        }
+        UUID u = p.getUniqueId();
+        URL skin = p.getPlayerProfile().getTextures().getSkin();
+        getServer().getAsyncScheduler().runNow(this, t -> k.betreten(u, skin));
+    }
+
+    /** Ausserhalb des Hauptthreads, beim Start und dann täglich: alte Köpfe weg. Siehe docs/koepfe.md, „Aufräumen“. */
+    private void raeumeKoepfeAuf(Koepfe k) {
+        try {
+            int weg = k.raeumeAuf(Instant.now());
+            if (weg > 0) {
+                getLogger().info("Köpfe: " + weg + " alte gelöscht");
+            }
+        } catch (IOException e) {
+            getLogger().log(Level.WARNING, "Köpfe nicht aufgeräumt", e);
+        }
     }
 
     @EventHandler
     public void beimVerlassen(PlayerQuitEvent e) {
         mitspieler.vergiss(e.getPlayer().getUniqueId());
+        var k = koepfe;
+        if (k != null) {
+            k.verlassen(e.getPlayer().getUniqueId());
+        }
         letzteAnmeldung.remove(e.getPlayer().getUniqueId());
         if (fuerMod != null) {
             fuerMod.vergiss(e.getPlayer().getUniqueId());
@@ -384,7 +416,8 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
                 var l = p.getLocation();
                 var ich = new Mitspieler.Spieler(u, p.getName(), p.getWorld().getKey().toString(), l.getX(), l.getY(),
                         l.getZ(), Mitspieler.Stimme.STUMM, true, false);
-                inhalte.put(u, Mitspieler.sicht(ich, mitspieler.imWeb(u), s.dimension()));
+                var k = koepfe;
+                inhalte.put(u, Mitspieler.sicht(ich, mitspieler.imWeb(u), s.dimension(), k == null ? v -> null : k::von));
                 namen.put(u, p.getName());
             }
         }
@@ -569,6 +602,14 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
         }
         if (kartenUrl.isEmpty()) {
             getLogger().warning("Ohne webserver.url gibt /karte anmelden keinen Link.");
+        }
+        // Die Köpfe nur unter der eigenen Wurzel: Mit karte.von schreibt und löscht dieses Plugin keine. Siehe
+        // docs/koepfe.md.
+        if (konf.karte().von().isEmpty()) {
+            var k = new Koepfe(konf.kacheln(), URI.create("https://textures.minecraft.net"), getLogger());
+            koepfe = k;
+            getServer().getAsyncScheduler().runAtFixedRate(this, t -> raeumeKoepfeAuf(k), 1, 24 * 60, TimeUnit.MINUTES);
+            getServer().getOnlinePlayers().forEach(this::kopf);
         }
         return ordner;
     }

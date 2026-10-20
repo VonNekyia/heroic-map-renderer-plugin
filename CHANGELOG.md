@@ -7,6 +7,10 @@ Links und die Hinweise aus `NOTICE` setzt
 [`.github/notizen.sh`](.github/notizen.sh) dazu. Siehe
 [Entwicklung](docs/entwicklung.md), „Release“.
 
+## 0.15.0
+
+- **Heads on the web map:** with login on the web map, each player's face from their skin, with the hat layer as in the game, replaces the dot for themselves and the players they see. The plugin fetches skins only from `textures.minecraft.net` and stores small 8 × 8 images under `koepfe/` in the tiles root; heads unused for 30 days, or beyond 4096, are removed. Needs a renderer that serves `koepfe/`. Without a skin, or with `karte.von`, the dot stays.
+
 ## 0.14.1
 
 - **`karte.von-oeffentlich`:** a server with `karte.von` can point the mod to the public address of the other server's web map. The mod then loads the images and banners of the layers there, and this server needs no web server of its own. "Open in browser" is off on it, since its login would not work there.
