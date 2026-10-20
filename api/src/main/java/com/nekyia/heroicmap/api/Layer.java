@@ -24,7 +24,11 @@ public interface Layer {
     /** Whether the layer is shown until the viewer changes it. Default: true. */
     void visible(boolean visible);
 
-    /** Higher lies on top. Default: 0. */
+    /**
+     * The weight of the layer: a higher one is drawn on top and listed first; on a tie, the smaller id is on top.
+     * Default: 0, which keeps the order of layers without a weight. Each player can reorder the layers for themselves
+     * in the mod and on the web map; this is only the default of the server.
+     */
     void order(int order);
 
     /**

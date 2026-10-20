@@ -123,6 +123,25 @@ Zwei Lesarten, die das Format offenlässt, abgestimmt mit dem Reviewer am
   darum auch in einem Baum `2:1` mit dem Sprite von vorn. Das ist gewollt,
   bis jemand mehr braucht.
 
+## Gewicht
+
+Das Gewicht einer Ebene ist `order` im Kopf, aus der Datei oder aus
+`Layer.order` der [API](api.md) (heroic-map-renderer#317). Ein zweites
+Feld gibt es nicht.
+
+- **Bedeutung,** wie im Format des Renderers: eine ganze Zahl, die höhere
+  Ebene liegt oben und steht in der Liste vorn; bei Gleichstand liegt die
+  kleinere `id` oben. Vorgabe `0`; ohne Angabe bleibt so die Reihenfolge
+  nach `id`.
+- **Weitergegeben** an jeder Stelle mit dem Kopf: in `layers.json` und
+  der Liste `ebenen` an den Mod (`EbenenSchreiber.eintrag`), in jeder
+  Datei unter `layers/` und in den Fassungen je Spieler
+  (`EbenenSchreiber.fuerWebkarte`). Der Server des Renderers liefert die
+  Dateien aus, wie sie sind.
+- **Je Spieler umstellen** kann jeder im Mod und auf der Webkarte für
+  sich, gespeichert dort. Das Plugin schickt nur die Vorgabe und weiss
+  davon nichts.
+
 ## Webkarte
 
 `EbenenSchreiber.schreibe` bringt die Wurzel von `tiles` auf den Stand der
