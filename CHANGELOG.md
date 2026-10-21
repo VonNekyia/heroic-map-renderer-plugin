@@ -7,6 +7,11 @@ Links und die Hinweise aus `NOTICE` setzt
 [`.github/notizen.sh`](.github/notizen.sh) dazu. Siehe
 [Entwicklung](docs/entwicklung.md), „Release“.
 
+## 0.16.2
+
+- **Renderer 0.15.1** inside: on the web map, a click into an area that has only a name and no panel no longer leaves a focus box around it in Chromium, and the arrow keys move the map again afterwards. No full render needed.
+- **rustls-webpki 0.103.16** in the renderer, against RUSTSEC-2026-0382.
+
 ## 0.16.1
 
 - **No misleading "no proxy" line:** behind a proxy, the plugin now waits 10 seconds after the first join without the BungeeCord channel before it logs that no proxy reports it. The proxy sometimes registers the channel just after the join; then only the line with the server's name appears.
