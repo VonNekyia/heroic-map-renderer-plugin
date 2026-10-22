@@ -7,6 +7,10 @@ Links und die Hinweise aus `NOTICE` setzt
 [`.github/notizen.sh`](.github/notizen.sh) dazu. Siehe
 [Entwicklung](docs/entwicklung.md), „Release“.
 
+## 0.16.3
+
+- **Renderer 0.15.2** inside: on the web map, pins and banners with their names shrink to half per zoom level once a pixel shows more than 16 blocks, so city names far out no longer pile up; a name that would fall below 6 pixels is hidden. Only the web map changes; no full render needed.
+
 ## 0.16.2
 
 - **Renderer 0.15.1** inside: on the web map, a click into an area that has only a name and no panel no longer leaves a focus box around it in Chromium, and the arrow keys move the map again afterwards. No full render needed.
