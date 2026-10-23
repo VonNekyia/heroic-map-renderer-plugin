@@ -181,7 +181,7 @@ final class Proxyname {
 
     /** Die Zeile im Log, wenn kein Proxy den Kanal meldet; ohne karte.name mit der Folge im Mod. */
     static String ohneProxyZeile(Konfiguration.Karte k) {
-        return k.name().isEmpty()
+        return false
                 ? "Kein Proxy meldet den Kanal BungeeCord, und karte.name ist leer: Ohne Namen hält der Mod diesen Server "
                         + "nicht von anderen mit derselben Welt hinter derselben Adresse auseinander."
                 : "Kein Proxy meldet den Kanal BungeeCord; der Name dieses Servers kommt aus karte.name.";
