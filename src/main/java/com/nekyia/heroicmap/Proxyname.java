@@ -175,7 +175,6 @@ final class Proxyname {
         }
         String backend = backend(k, vomProxy);
         if (backend != null) {
-            antwort.addProperty("backend", backend);
         }
     }
 
