@@ -77,7 +77,6 @@ final class EbenenSchreiber {
                 var eintrag = eintrag(e);
                 // Nur die Vorgabe der Webkarte; die Wahl eines Betrachters geht vor. Siehe docs/konfiguration.md.
                 if (!an.isEmpty() && !an.contains(e.id())) {
-                    eintrag.addProperty("visible", false);
                 }
                 if (e.aktion()) {
                     // Ihre Datei gibt es nur je Spieler, siehe SpielerOrdner.
