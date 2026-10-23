@@ -164,7 +164,7 @@ final class Proxyname {
      * karte.von. Siehe docs/mehrere-server.md, „Format“.
      */
     static String backend(Konfiguration.Karte k, String vomProxy) {
-        return vomProxy != null ? vomProxy : k.name().isEmpty() ? null : k.name();
+        return !k.von().isEmpty() ? k.von() : vomProxy != null ? vomProxy : k.name().isEmpty() ? null : k.name();
     }
 
     /** Setzt karte und backend an die Antwort auf show, soweit es sie gibt. */
