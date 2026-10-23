@@ -7,6 +7,11 @@ Links und die Hinweise aus `NOTICE` setzt
 [`.github/notizen.sh`](.github/notizen.sh) dazu. Siehe
 [Entwicklung](docs/entwicklung.md), „Release“.
 
+## 0.16.4
+
+- **Renderer 0.15.3** inside: it also reads version 2 of the leaf-colour data contract `heroicmap:leaf_colors`, with a secondary and a blossom colour per group. Both are checked but not drawn yet; leaves look exactly as with version 1. No full render needed.
+- **tokio 1.54.1** in the renderer, against RUSTSEC-2026-0386.
+
 ## 0.16.3
 
 - **Renderer 0.15.2** inside: on the web map, pins and banners with their names shrink to half per zoom level once a pixel shows more than 16 blocks, so city names far out no longer pile up; a name that would fall below 6 pixels is hidden. Only the web map changes; no full render needed.
