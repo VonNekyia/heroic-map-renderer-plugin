@@ -7,6 +7,10 @@ Links und die Hinweise aus `NOTICE` setzt
 [`.github/notizen.sh`](.github/notizen.sh) dazu. Siehe
 [Entwicklung](docs/entwicklung.md), „Release“.
 
+## 0.17.1
+
+- **`webserver.ebenen-an`:** a list of layer ids, such as `["beispiel:staedte"]`, that are on when the web map opens; every other layer, also those of other plugins, starts off. What a viewer picks on the web map still wins. Empty, the default: each layer as its `visible` says. The mod is not affected.
+
 ## 0.17.0
 
 - **Heads on pins:** a plugin can now show a pin of its layer as the face of a skin instead of the shield, with `Pin.withHead(texture)` in the API. It passes only the hash of a texture on textures.minecraft.net, the part after `/texture/`; HeroicMap fetches the skin itself, at most one per second, and keeps the head under `koepfe/` like the heads of players. Until the head is there, and if it cannot be fetched, the pin shows. At most 256 different heads per layer, also on layers with a permission. Web maps and mods that do not know heads yet show the pin.

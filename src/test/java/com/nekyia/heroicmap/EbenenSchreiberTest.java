@@ -43,6 +43,27 @@ class EbenenSchreiberTest {
     }
 
     @Test
+    void ebenen_an_schaltet_die_uebrigen_beim_oeffnen_aus() throws IOException {
+        var staedte = ebene("beispiel:staedte", "", Map.of());
+        var wege = ebene("andere:wege", ", \"visible\": true", Map.of());
+        var aus = ebene("andere:aus", ", \"visible\": false", Map.of());
+        Path wurzel = tmp.resolve("tiles");
+        new EbenenSchreiber(wurzel, OBERWELT, Set.of("beispiel:staedte", "andere:aus")).schreibe(List.of(staedte, wege, aus), Set.of());
+        assertEquals(Map.of("beispiel:staedte", true, "andere:wege", false, "andere:aus", false), sichtbar(wurzel),
+                "genannt: visible wie in der Ebene; jede andere aus, auch die anderer Plugins");
+        new EbenenSchreiber(wurzel, OBERWELT).schreibe(List.of(staedte, wege, aus), Set.of());
+        assertEquals(Map.of("beispiel:staedte", true, "andere:wege", true, "andere:aus", false), sichtbar(wurzel),
+                "ohne Liste wie bisher");
+    }
+
+    private static Map<String, Boolean> sichtbar(Path wurzel) throws IOException {
+        var m = new LinkedHashMap<String, Boolean>();
+        Ebenen.lies(Files.readString(wurzel.resolve("layers.json"))).getAsJsonArray("layers").forEach(e ->
+                m.put(e.getAsJsonObject().get("id").getAsString(), e.getAsJsonObject().get("visible").getAsBoolean()));
+        return m;
+    }
+
+    @Test
     void webkarte_bekommt_liste_ebenen_und_bilder() throws IOException {
         var staedte = staedte();
         Files.write(tmp.resolve("ebenen/beispiel/images/entwurf.png"), png(3, 3));

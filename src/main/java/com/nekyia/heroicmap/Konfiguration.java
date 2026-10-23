@@ -89,7 +89,15 @@ record Konfiguration(
 
     /** Der Server des Renderers; ohne Zertifikat HTTP; {@code url} die Adresse für Spieler. Siehe docs/webserver.md. */
     record Webserver(boolean an, String adresse, String url, Path zertifikat, Path schluessel, String titel,
-            String beschreibung, String bild, int oeffentlicherPort, List<String> vertrauteProxys, String erkennenUrl) {
+            String beschreibung, String bild, int oeffentlicherPort, List<String> vertrauteProxys, String erkennenUrl,
+            List<String> ebenenAn) {
+
+        /** Ohne Vorgabe, welche Ebenen beim Öffnen der Webkarte an sind. */
+        Webserver(boolean an, String adresse, String url, Path zertifikat, Path schluessel, String titel,
+                String beschreibung, String bild, int oeffentlicherPort, List<String> vertrauteProxys, String erkennenUrl) {
+            this(an, adresse, url, zertifikat, schluessel, titel, beschreibung, bild, oeffentlicherPort, vertrauteProxys,
+                    erkennenUrl, List.of());
+        }
 
         /** Ohne vertraute Proxys und ohne zweiten Namen für die Erkennung. Siehe docs/anmeldung.md, „Erkennung per IP“. */
         Webserver(boolean an, String adresse, String url, Path zertifikat, Path schluessel, String titel,
@@ -274,6 +282,13 @@ record Konfiguration(
                 fehler.add("webserver.trusted-proxy: " + p + " ist keine IP wie \"127.0.0.1\" oder \"::1\"");
             }
         }
+        // Eine Kennung, die es noch nicht gibt, ist kein Fehler: Ebenen der API kommen erst zur Laufzeit.
+        var ebenenAn = c.getStringList("webserver.ebenen-an").stream().map(String::strip).toList();
+        for (String id : ebenenAn) {
+            if (!EbenenSchreiber.kennung(id)) {
+                fehler.add("webserver.ebenen-an: " + id + " ist keine Kennung einer Ebene wie \"beispiel:staedte\"");
+            }
+        }
         String erkennen = c.getString("webserver.erkennen-url", "").strip().replaceAll("/+$", "");
         if (webserver && !erkennen.isEmpty() && (!ADRESSE.matcher(erkennen).matches() || url.isEmpty())) {
             fehler.add("webserver.erkennen-url: mit http:// oder https:// und Host, und nur mit webserver.url");
@@ -354,7 +369,7 @@ record Konfiguration(
                         c.getString("download.server-name", "").strip().toLowerCase(Locale.ROOT)),
                 new Webserver(webserver, adresse, url,
                         cert.isBlank() ? null : server.resolve(cert), key.isBlank() ? null : server.resolve(key),
-                        titel, beschreibung, bild, oeffentlich, proxys, erkennen),
+                        titel, beschreibung, bild, oeffentlich, proxys, erkennen, ebenenAn),
                 new ClientJar(c.getBoolean("renderer.download-client-jar"), c.getString("renderer.client-version", "").strip()),
                 c.getBoolean("renderer.compact"),
                 new Karte(karten.get(0), karten.get(1), urls.get(0), urls.get(1)),
