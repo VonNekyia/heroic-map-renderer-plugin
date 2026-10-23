@@ -190,6 +190,33 @@ class EbenenPruefungTest {
     }
 
     @Test
+    void kopf_an_der_nadel_auch_mit_permission_hoechstens_256() {
+        var geheim = JsonParser.parseString("""
+                {"id": "beispiel:geheim", "name": {"de": "Geheim"}, "permission": "beispiel.karte",
+                 "objects": [{"id": "a", "type": "pin", "at": [0, 0], "head": "%s"}]}""".formatted("ab".repeat(32))).getAsJsonObject();
+        assertEquals(List.of(), EbenenPruefung.pruefe("beispiel:geheim", geheim, gelesen(Map.of())).fehler(),
+                "ein Kopf ist kein Bild unter layers/");
+        enthaelt(fehler(j -> objekt(j, 0).addProperty("head", "AB".repeat(32))), ".head: kein Name eines Kopfs");
+        enthaelt(fehler(j -> objekt(j, 0).addProperty("head", "0abc")), ".head: kein Name eines Kopfs");
+        var viele = JsonParser.parseString("""
+                {"id": "beispiel:viele", "name": {"de": "Viele"}, "objects": []}""").getAsJsonObject();
+        for (int i = 0; i <= EbenenPruefung.KOEPFE; i++) {
+            var o = new JsonObject();
+            o.addProperty("id", "n" + i);
+            o.addProperty("type", "pin");
+            var at = new JsonArray();
+            at.add(i);
+            at.add(0);
+            o.add("at", at);
+            o.addProperty("head", "%064x".formatted(i));
+            viele.getAsJsonArray("objects").add(o);
+        }
+        enthaelt(EbenenPruefung.pruefe("beispiel:viele", viele, gelesen(Map.of())).fehler(), "mehr als 256 verschiedene Köpfe");
+        viele.getAsJsonArray("objects").remove(0);
+        assertEquals(List.of(), EbenenPruefung.pruefe("beispiel:viele", viele, gelesen(Map.of())).fehler(), "256 gehen");
+    }
+
+    @Test
     void banner_mit_bild_bis_32_mal_64_zaehlt_wie_eine_nadel() {
         var bilder = new java.util.HashMap<>(bilder());
         bilder.put("images/nation.png", png(22, 40));

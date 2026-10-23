@@ -1,5 +1,8 @@
 package com.nekyia.heroicmap;
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonPrimitive;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -20,18 +23,23 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Consumer;
 import java.util.logging.Logger;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 import javax.imageio.ImageIO;
 
 /**
- * Die Köpfe der Spieler für die Webkarte: aus dem Skin im Profil ein Bild 8 × 8, das Gesicht mit dem Hut darüber,
- * wie der Client es zeichnet, unter {@code koepfe/<sha256>.png} in der Wurzel von tiles. Holen und Schreiben nie im
- * Hauptthread. Siehe docs/koepfe.md.
+ * Die Köpfe der Spieler für die Webkarte und der Nadeln von Ebenen: aus einem Skin ein Bild 8 × 8, das Gesicht mit
+ * dem Hut darüber, wie der Client es zeichnet, unter {@code koepfe/<sha256>.png} in der Wurzel von tiles. Holen und
+ * Schreiben nie im Hauptthread. Siehe docs/koepfe.md.
  */
 final class Koepfe {
 
@@ -45,6 +53,14 @@ final class Koepfe {
     private static final Duration FRIST = Duration.ofSeconds(10);
     private static final Pattern DATEI = Pattern.compile("[0-9a-f]{64}\\.png");
     private static final Pattern TEXTUR = Pattern.compile("/texture/[0-9a-f]{1,64}");
+    /** Der Hash einer Textur, wie die API ihn nimmt: der Teil nach /texture/. */
+    static final Pattern HASH = Pattern.compile("[0-9a-f]{1,64}");
+    /** So viele Texturen von Ebenen warten höchstens: 64 Ebenen zu je 256 Köpfen. */
+    static final int WARTEND = Ebenen.HOECHSTENS * EbenenPruefung.KOEPFE;
+    /** So lange fragt es eine Textur einer Ebene nicht wieder, die nicht zu holen war. */
+    static final Duration FEHLER_PAUSE = Duration.ofHours(1);
+    /** So lange ruht die Schlange der Ebenen nach 429 oder 5xx. */
+    static final Duration RUHE = Duration.ofSeconds(60);
 
     private final Path ordner;
     private final URI basis;
@@ -56,6 +72,15 @@ final class Koepfe {
     private final Map<String, String> jeSkin = new ConcurrentHashMap<>();
     /** Je Spieler online sein Kopf, erst wenn die Datei liegt. */
     private final Map<UUID, String> jeSpieler = new ConcurrentHashMap<>();
+    /** Die Texturen von Ebenen, die noch zu holen sind, nach der ersten Frage; nur unter ihrer Sperre. */
+    private final Set<String> wartend = new LinkedHashSet<>();
+    /** Je Textur einer Ebene, die nicht zu holen war, ab wann es sie wieder fragt. */
+    private final Map<String, Instant> fehlerBis = new ConcurrentHashMap<>();
+    /** Die Texturen, deren Fehler schon im Log stand. */
+    private final Set<String> gemeldet = ConcurrentHashMap.newKeySet();
+    private volatile Instant ruheBis = Instant.MIN;
+    private final AtomicBoolean holt = new AtomicBoolean();
+    private volatile Consumer<String> neu = t -> {};
 
     /**
      * {@code wurzel} ist die von tiles; {@code basis} der Server der Skins, {@code https://textures.minecraft.net}. Nur
@@ -71,6 +96,113 @@ final class Koepfe {
     /** Der Kopf von {@code spieler} für sicht.json, oder null. */
     String von(UUID spieler) {
         return jeSpieler.get(spieler);
+    }
+
+    /** {@code c} bekommt jede Textur einer Ebene, sobald ihr Kopf liegt, im Faden von {@link #holeEinen}. */
+    void beiNeuemKopf(Consumer<String> c) {
+        neu = c;
+    }
+
+    /**
+     * Der Name des Kopfs zur Textur {@code hash} einer Ebene, oder null. Ohne Namen reiht es die Textur ein, ausser
+     * sie war vor weniger als {@link #FEHLER_PAUSE} nicht zu holen oder {@link #WARTEND} warten schon. Siehe
+     * docs/koepfe.md, „Köpfe in Ebenen“.
+     */
+    String ausTextur(String hash, Instant jetzt) {
+        if (!HASH.matcher(hash).matches()) {
+            return null;
+        }
+        String adresse = textur(hash).toString();
+        String name = jeSkin.get(adresse);
+        if (name != null && Files.isRegularFile(ordner.resolve(name + ".png"), LinkOption.NOFOLLOW_LINKS)) {
+            return name;
+        }
+        if (name != null) {
+            // Inzwischen aufgeräumt: neu holen.
+            jeSkin.remove(adresse);
+        }
+        Instant bis = fehlerBis.get(hash);
+        if (bis == null || !jetzt.isBefore(bis)) {
+            synchronized (wartend) {
+                if (wartend.size() < WARTEND) {
+                    wartend.add(hash);
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Holt die älteste wartende Textur einer Ebene; nie zwei zugleich und nicht in der {@link #RUHE} nach 429 oder
+     * 5xx. Der Aufrufer ruft es höchstens einmal je Sekunde, ausserhalb des Hauptthreads. Siehe docs/koepfe.md,
+     * „Köpfe in Ebenen“.
+     */
+    void holeEinen(Instant jetzt) {
+        if (jetzt.isBefore(ruheBis) || !holt.compareAndSet(false, true)) {
+            return;
+        }
+        String hash;
+        synchronized (wartend) {
+            var i = wartend.iterator();
+            if (!i.hasNext()) {
+                holt.set(false);
+                return;
+            }
+            hash = i.next();
+            i.remove();
+        }
+        try {
+            URI ziel = textur(hash);
+            byte[] png = kopf(hole(ziel));
+            if (png == null) {
+                scheitert(hash, jetzt, "der Skin ist kein Bild 64 × 64 oder 64 × 32");
+                return;
+            }
+            String name = Ebenen.sha256(png);
+            schreiber.schreibe(ordner.resolve(name + ".png"), png);
+            jeSkin.put(ziel.toString(), name);
+            fehlerBis.remove(hash);
+            neu.accept(hash);
+        } catch (Ruhe e) {
+            ruheBis = jetzt.plus(RUHE);
+            nochmal(hash);
+        } catch (IOException e) {
+            scheitert(hash, jetzt, e.getMessage());
+        } catch (InterruptedException e) {
+            nochmal(hash);
+            Thread.currentThread().interrupt();
+        } finally {
+            holt.set(false);
+        }
+    }
+
+    /** Eine Textur war nicht zu holen: wieder frühestens nach {@link #FEHLER_PAUSE}, im Log einmal je Laufzeit. */
+    private void scheitert(String hash, Instant jetzt, String grund) {
+        fehlerBis.put(hash, jetzt.plus(FEHLER_PAUSE));
+        if (gemeldet.add(hash)) {
+            log.warning("Kopf der Textur " + hash + " für eine Ebene nicht geholt: " + grund);
+        }
+    }
+
+    private void nochmal(String hash) {
+        synchronized (wartend) {
+            wartend.add(hash);
+        }
+    }
+
+    /** Die Köpfe, die Nadeln der Ebenen mit {@code head} nennen. */
+    static Set<String> genannt(List<Ebenen.Ebene> ebenen) {
+        var k = new HashSet<String>();
+        for (var e : ebenen) {
+            if (e.json().get("objects") instanceof JsonArray objekte) {
+                for (var o : objekte) {
+                    if (o instanceof JsonObject j && j.get("head") instanceof JsonPrimitive h && h.isString()) {
+                        k.add(h.getAsString());
+                    }
+                }
+            }
+        }
+        return k;
     }
 
     /**
@@ -120,10 +252,11 @@ final class Koepfe {
 
     /**
      * Täglich und beim Start, ausserhalb des Hauptthreads: weg, was älter als {@link #ALTER} ist, ausser den Köpfen
-     * von Spielern online; danach über {@link #HOECHSTENS} die ältesten. Nur Dateien mit dem Namen eines Kopfs; einem
-     * Link folgt es nicht. Gibt die Zahl der gelöschten.
+     * von Spielern online; danach über {@link #HOECHSTENS} die ältesten. Was eine Ebene nennt ({@code genannt}),
+     * bleibt immer und zählt nicht mit. Nur Dateien mit dem Namen eines Kopfs; einem Link folgt es nicht. Gibt die
+     * Zahl der gelöschten.
      */
-    int raeumeAuf(Instant jetzt) throws IOException {
+    int raeumeAuf(Instant jetzt, Set<String> genannt) throws IOException {
         if (!Files.isDirectory(ordner, LinkOption.NOFOLLOW_LINKS)) {
             return 0;
         }
@@ -142,15 +275,17 @@ final class Koepfe {
         int weg = 0;
         FileTime grenze = FileTime.from(jetzt.minus(ALTER));
         for (Kopf k : alle) {
-            String name = k.datei().getFileName().toString();
-            boolean traegt = online.contains(name.substring(0, 64));
-            if (traegt || k.zeit().compareTo(grenze) >= 0 && bleiben < HOECHSTENS) {
+            String name = k.datei().getFileName().toString().substring(0, 64);
+            if (genannt.contains(name)) {
+                continue;
+            }
+            if (online.contains(name) || k.zeit().compareTo(grenze) >= 0 && bleiben < HOECHSTENS) {
                 bleiben++;
                 continue;
             }
             Files.deleteIfExists(k.datei());
             schreiber.vergiss(k.datei());
-            jeSkin.values().remove(name.substring(0, 64));
+            jeSkin.values().removeIf(name::equals);
             weg++;
         }
         return weg;
@@ -168,15 +303,40 @@ final class Koepfe {
             return null;
         }
         try {
-            return new URI(basis.getScheme(), null, basis.getHost(), basis.getPort(), skin.getPath(), null, null);
+            return adresse(basis, skin.getPath());
         } catch (URISyntaxException e) {
             return null;
+        }
+    }
+
+    /** Die Adresse der Textur {@code hash} beim Host von {@code basis}; dieselbe wie {@link #ziel} für einen Skin dort. */
+    private URI textur(String hash) {
+        try {
+            return adresse(basis, "/texture/" + hash);
+        } catch (URISyntaxException e) {
+            throw new IllegalArgumentException(e);
+        }
+    }
+
+    private static URI adresse(URI basis, String pfad) throws URISyntaxException {
+        return new URI(basis.getScheme(), null, basis.getHost(), basis.getPort(), pfad, null, null);
+    }
+
+    /** 429 oder 5xx: Der Host der Skins will eine Pause. */
+    private static final class Ruhe extends IOException {
+        private static final long serialVersionUID = 1L;
+
+        Ruhe(String grund) {
+            super(grund);
         }
     }
 
     private byte[] hole(URI ziel) throws IOException, InterruptedException {
         var antwort = http.send(HttpRequest.newBuilder(ziel).timeout(FRIST).build(), HttpResponse.BodyHandlers.ofInputStream());
         try (InputStream rumpf = antwort.body()) {
+            if (antwort.statusCode() == 429 || antwort.statusCode() >= 500) {
+                throw new Ruhe("HTTP " + antwort.statusCode());
+            }
             if (antwort.statusCode() != 200) {
                 throw new IOException("HTTP " + antwort.statusCode());
             }

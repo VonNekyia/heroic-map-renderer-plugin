@@ -10,6 +10,7 @@ import com.nekyia.heroicmap.api.MapButton;
 import com.nekyia.heroicmap.api.PlayerLayer;
 import com.nekyia.heroicmap.api.MapObject;
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
@@ -53,6 +54,8 @@ final class EbenenApi implements HeroicMapApi, Listener {
     private final Supplier<List<Ebene>> ausDateien;
     private final String dimension;
     private final Logger log;
+    /** Die Köpfe der Nadeln; null mit karte.von, dann bleibt jede Nadel mit Kopf eine Nadel. */
+    private volatile Koepfe koepfe;
 
     /** {@code ausDateien} gibt die Ebenen aus Dateien, für die Grenze von 64 zusammen; {@code dimension} wie bei {@link Ebenen}. */
     EbenenApi(Supplier<List<Ebene>> ausDateien, String dimension, Logger log) {
@@ -81,6 +84,23 @@ final class EbenenApi implements HeroicMapApi, Listener {
 
     Knoepfe knoepfe() {
         return knoepfe;
+    }
+
+    /**
+     * Ab jetzt mit Köpfen: Nadeln mit head bekommen ihren Kopf, sobald er liegt; dann bauen die Ebenen mit der
+     * Textur neu. Siehe docs/koepfe.md, „Köpfe in Ebenen“.
+     */
+    void koepfe(Koepfe k) {
+        k.beiNeuemKopf(textur -> {
+            for (var e : ebenen.values()) {
+                synchronized (e) {
+                    if (e.texturen.containsValue(textur)) {
+                        e.geaendert();
+                    }
+                }
+            }
+        });
+        koepfe = k;
     }
 
     /** Der modname: der Name des Plugins klein, Leerzeichen als _. */
@@ -189,6 +209,8 @@ final class EbenenApi implements HeroicMapApi, Listener {
         private boolean aktion;
         /** Die Bilder, die ein Objekt nennt, je id; nur Objekte mit Bildern. */
         private final Map<String, Set<String>> bilderJeObjekt = new HashMap<>();
+        /** Je id einer Nadel mit Kopf ihre Textur; den Namen des Kopfs setzt erst der Schnappschuss. */
+        private final Map<String, String> texturen = new HashMap<>();
         private int nadeln;
         private long bytes;
         private volatile boolean geloescht;
@@ -366,6 +388,16 @@ final class EbenenApi implements HeroicMapApi, Listener {
         public synchronized void put(MapObject m) {
             lebt();
             Objects.requireNonNull(m);
+            String textur = textur(m);
+            var neueTexturen = new HashMap<>(texturen);
+            if (textur == null) {
+                neueTexturen.remove(m.id());
+            } else {
+                neueTexturen.put(m.id(), textur);
+            }
+            if (new HashSet<>(neueTexturen.values()).size() > EbenenPruefung.KOEPFE) {
+                throw new IllegalArgumentException("Objekt " + m.id() + ": höchstens 256 verschiedene Köpfe je Ebene");
+            }
             JsonObject j = ApiJson.json(m);
             var pool = bilderVon();
             synchronized (pool) {
@@ -389,8 +421,22 @@ final class EbenenApi implements HeroicMapApi, Listener {
                 }
                 nadeln = neueNadeln;
                 bytes = neueBytes;
+                texturen.clear();
+                texturen.putAll(neueTexturen);
             }
             geaendert();
+        }
+
+        /** Die Textur einer Nadel mit Kopf, oder null; wirft, wenn sie kein Hash einer Textur ist. */
+        private static String textur(MapObject m) {
+            if (!(m instanceof MapObject.Pin p) || p.head() == null) {
+                return null;
+            }
+            if (!Koepfe.HASH.matcher(p.head()).matches()) {
+                throw new IllegalArgumentException("Objekt " + m.id()
+                        + ": head ist kein Hash einer Textur, 1 bis 64 Zeichen 0-9 a-f, der Teil nach /texture/");
+            }
+            return p.head();
         }
 
         /** Die Grenzen einer Ebene für {@code objekte}, {@code nadeln} und {@code bytes}, dazu {@code mehr} je Feld. */
@@ -455,6 +501,9 @@ final class EbenenApi implements HeroicMapApi, Listener {
                     JsonObject j = ApiJson.json(m);
                     if (objekte.containsKey(m.id())) {
                         throw new IllegalArgumentException("Objekt " + m.id() + ": die id hat ein Objekt, das alle sehen");
+                    }
+                    if (textur(m) != null) {
+                        throw new IllegalArgumentException("Objekt " + m.id() + ": eigene Objekte eines Spielers zeigen keine Köpfe");
                     }
                     var pool = bilderVon();
                     synchronized (pool) {
@@ -537,6 +586,7 @@ final class EbenenApi implements HeroicMapApi, Listener {
             synchronized (bilderVon()) {
                 alt = objekte.remove(objektId);
                 bilderJeObjekt.remove(objektId);
+                texturen.remove(objektId);
             }
             if (alt != null) {
                 nadeln -= nadel(alt);
@@ -551,6 +601,7 @@ final class EbenenApi implements HeroicMapApi, Listener {
             synchronized (bilderVon()) {
                 objekte.clear();
                 bilderJeObjekt.clear();
+                texturen.clear();
             }
             nadeln = 0;
             bytes = 0;
@@ -577,6 +628,25 @@ final class EbenenApi implements HeroicMapApi, Listener {
             if (!f.isEmpty()) {
                 throw new IllegalArgumentException("Ebene " + id + ": " + fehler(f));
             }
+        }
+
+        /**
+         * Die Objekte, eine Nadel mit Kopf mit head, sobald der Kopf liegt; nur diese kopiert. Ohne Köpfe und solange
+         * er fehlt, die Nadel. Siehe docs/koepfe.md, „Köpfe in Ebenen“.
+         */
+        private List<JsonObject> mitKoepfen() {
+            var k = koepfe;
+            var jetzt = Instant.now();
+            return objekte.entrySet().stream().map(e -> {
+                String textur = texturen.get(e.getKey());
+                String name = textur == null || k == null ? null : k.ausTextur(textur, jetzt);
+                if (name == null) {
+                    return e.getValue();
+                }
+                var mit = e.getValue().deepCopy();
+                mit.addProperty("head", name);
+                return mit;
+            }).toList();
         }
 
         /** Die Ebene als JSON im Format einer Datei; die Objekte nicht kopiert, denn niemand ändert sie. */
@@ -623,7 +693,7 @@ final class EbenenApi implements HeroicMapApi, Listener {
                 }
                 // Erst zurücksetzen, dann kopieren: Was danach kommt, setzt veraltet wieder.
                 veraltet = false;
-                json = json(permission, objekte.values());
+                json = json(permission, mitKoepfen());
                 if (aktion) {
                     // Kopie und Hash nur für Spieler, deren Objekte sich seit dem letzten Mal änderten.
                     var je = new HashMap<UUID, Ebenen.Eigene>();
