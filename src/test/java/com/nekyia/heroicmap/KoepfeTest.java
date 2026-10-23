@@ -2,10 +2,13 @@ package com.nekyia.heroicmap;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.google.gson.JsonObject;
+import com.nekyia.heroicmap.api.MapObject.Pin;
 import com.sun.net.httpserver.HttpServer;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
@@ -22,6 +25,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -32,7 +36,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
-/** Die Köpfe der Spieler für die Webkarte, siehe docs/koepfe.md. */
+/** Die Köpfe der Spieler für die Webkarte und der Nadeln von Ebenen, siehe docs/koepfe.md. */
 class KoepfeTest {
 
     private static final UUID SAM = new UUID(0, 1);
@@ -44,6 +48,8 @@ class KoepfeTest {
     Path tmp;
 
     private final Map<String, byte[]> dateien = new ConcurrentHashMap<>();
+    /** Je Pfad ein Status statt der Datei, etwa 429. */
+    private final Map<String, Integer> status = new ConcurrentHashMap<>();
     private final List<String> abrufe = new CopyOnWriteArrayList<>();
     private HttpServer server;
     private URI basis;
@@ -54,7 +60,10 @@ class KoepfeTest {
         server.createContext("/", t -> {
             abrufe.add(t.getRequestURI().getPath());
             byte[] b = dateien.get(t.getRequestURI().getPath());
-            if (b == null) {
+            Integer s = status.get(t.getRequestURI().getPath());
+            if (s != null) {
+                t.sendResponseHeaders(s, -1);
+            } else if (b == null) {
                 t.sendResponseHeaders(404, -1);
             } else {
                 t.sendResponseHeaders(200, b.length);
@@ -203,7 +212,7 @@ class KoepfeTest {
         Path fremd = Files.writeString(ordner.resolve("liesmich.txt"), "x");
         Files.setLastModifiedTime(fremd, FileTime.from(jetzt.minus(Duration.ofDays(400))));
 
-        assertEquals(1, k.raeumeAuf(jetzt));
+        assertEquals(1, k.raeumeAuf(jetzt, Set.of()));
         assertFalse(Files.exists(alt), "älter als 30 Tage");
         assertTrue(Files.exists(jung));
         assertTrue(Files.exists(traegt), "trägt ein Spieler online");
@@ -213,9 +222,107 @@ class KoepfeTest {
         for (int i = 0; i < Koepfe.HOECHSTENS; i++) {
             kopfDatei(ordner, "c" + i, jetzt.minus(Duration.ofMinutes(i)));
         }
-        assertEquals(1, k.raeumeAuf(jetzt));
+        assertEquals(1, k.raeumeAuf(jetzt, Set.of()));
         assertFalse(Files.exists(jung), "der älteste");
         assertTrue(Files.exists(traegt));
+    }
+
+    @Test
+    void wasEineEbeneNenntBleibtUndZaehltNicht() throws Exception {
+        var k = new Koepfe(tmp, basis, still());
+        Path ordner = tmp.resolve("koepfe");
+        var jetzt = Instant.now();
+        Path genannt = kopfDatei(ordner, "n", jetzt.minus(Duration.ofDays(400)));
+        Path alt = kopfDatei(ordner, "a", jetzt.minus(Duration.ofDays(31)));
+        for (int i = 0; i < Koepfe.HOECHSTENS; i++) {
+            kopfDatei(ordner, "c" + i, jetzt.minus(Duration.ofMinutes(i)));
+        }
+        assertEquals(1, k.raeumeAuf(jetzt, Set.of(genannt.getFileName().toString().substring(0, 64))));
+        assertTrue(Files.exists(genannt), "nennt eine Ebene, wie alt auch immer, und zählt nicht gegen die 4096");
+        assertFalse(Files.exists(alt));
+    }
+
+    @Test
+    void ebeneHoltJedeTexturEinmalNacheinander() throws Exception {
+        dateien.put("/texture/0abc", skin(64, true));
+        var k = new Koepfe(tmp, basis, still());
+        var neu = new CopyOnWriteArrayList<String>();
+        k.beiNeuemKopf(neu::add);
+        var jetzt = Instant.now();
+        assertNull(k.ausTextur("0abc", jetzt), "noch nicht geholt");
+        assertNull(k.ausTextur("0abc", jetzt), "zweimal gefragt, einmal in der Schlange");
+        assertNull(k.ausTextur("../x", jetzt), "kein Hash, nie eine Adresse");
+        k.holeEinen(jetzt);
+        assertEquals(List.of("0abc"), neu, "gemeldet, sobald die Datei liegt");
+        String name = k.ausTextur("0abc", jetzt);
+        assertNotNull(name);
+        assertTrue(Files.isRegularFile(tmp.resolve("koepfe/" + name + ".png")));
+        k.holeEinen(jetzt);
+        assertEquals(List.of("/texture/0abc"), abrufe, "einmal geholt, die Schlange ist leer");
+
+        k.betreten(SAM, URI.create(basis + "/texture/0abc").toURL());
+        assertEquals(name, k.von(SAM), "derselbe Skin eines Spielers ohne Abruf");
+        assertEquals(1, abrufe.size());
+
+        Files.delete(tmp.resolve("koepfe/" + name + ".png"));
+        assertNull(k.ausTextur("0abc", jetzt), "inzwischen weg: neu holen");
+        k.holeEinen(jetzt);
+        assertEquals(name, k.ausTextur("0abc", jetzt));
+    }
+
+    @Test
+    void nachEinemFehlerErstNachEinerStundeWieder() throws Exception {
+        var k = new Koepfe(tmp, basis, still());
+        var jetzt = Instant.now();
+        k.ausTextur("0fe1", jetzt);
+        k.holeEinen(jetzt);
+        assertEquals(List.of("/texture/0fe1"), abrufe, "404");
+        dateien.put("/texture/0fe1", skin(64, true));
+        assertNull(k.ausTextur("0fe1", jetzt.plus(Koepfe.FEHLER_PAUSE).minusSeconds(1)));
+        k.holeEinen(jetzt.plusSeconds(5));
+        assertEquals(1, abrufe.size(), "vor der Pause nicht wieder in der Schlange");
+        assertNull(k.ausTextur("0fe1", jetzt.plus(Koepfe.FEHLER_PAUSE)));
+        k.holeEinen(jetzt.plus(Koepfe.FEHLER_PAUSE));
+        assertEquals(2, abrufe.size());
+        assertNotNull(k.ausTextur("0fe1", jetzt.plus(Koepfe.FEHLER_PAUSE)));
+    }
+
+    @Test
+    void nach429RuhtDieSchlangeUndHoltDieTexturDanach() throws Exception {
+        dateien.put("/texture/0aaa", skin(64, true));
+        status.put("/texture/0aaa", 429);
+        var k = new Koepfe(tmp, basis, still());
+        var jetzt = Instant.now();
+        k.ausTextur("0aaa", jetzt);
+        k.holeEinen(jetzt);
+        assertEquals(1, abrufe.size());
+        status.remove("/texture/0aaa");
+        k.holeEinen(jetzt.plus(Koepfe.RUHE).minusSeconds(1));
+        assertEquals(1, abrufe.size(), "in der Ruhe kein Abruf");
+        k.holeEinen(jetzt.plus(Koepfe.RUHE));
+        assertEquals(2, abrufe.size(), "danach dieselbe Textur, ohne neue Frage");
+        assertNotNull(k.ausTextur("0aaa", jetzt.plus(Koepfe.RUHE)));
+    }
+
+    @Test
+    void nadelBekommtIhrenKopfSobaldErLiegt() throws Exception {
+        dateien.put("/texture/0abc", skin(64, true));
+        var k = new Koepfe(tmp, basis, still());
+        var api = new EbenenApi(List::of, "minecraft:overworld", still());
+        api.koepfe(k);
+        api.layer("Npcs", "npcs").put(Pin.at("npc-1", 0.5, 0.5).withName("Sam").withHead("0abc"));
+        var vorher = api.ebenen().get(0);
+        assertFalse(objekt(vorher).has("head"), "solange der Kopf fehlt, die Nadel");
+        k.holeEinen(Instant.now());
+        var nachher = api.ebenen().get(0);
+        String name = objekt(nachher).get("head").getAsString();
+        assertTrue(Files.isRegularFile(tmp.resolve("koepfe/" + name + ".png")), "erst die Datei, dann der Name");
+        assertNotEquals(vorher.version(), nachher.version(), "neue version: Webkarte und Mod laden nach");
+        assertEquals(Set.of(name), Koepfe.genannt(List.of(nachher)));
+    }
+
+    private static JsonObject objekt(Ebenen.Ebene e) {
+        return e.json().getAsJsonArray("objects").get(0).getAsJsonObject();
     }
 
     private static Path kopfDatei(Path ordner, String saat, Instant zeit) throws IOException {

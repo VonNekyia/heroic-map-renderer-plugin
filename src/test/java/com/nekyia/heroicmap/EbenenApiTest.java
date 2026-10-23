@@ -120,6 +120,28 @@ class EbenenApiTest {
     }
 
     @Test
+    void kopf_nur_als_hash_hoechstens_256_und_nie_bei_einem_spieler() {
+        var a = api(0);
+        Layer l = a.layer("Npcs", "npcs");
+        for (String falsch : List.of("https://textures.minecraft.net/texture/0abc", "0ABC", "", "a".repeat(65))) {
+            assertThrows(IllegalArgumentException.class, () -> l.put(Pin.at("x", 0, 0).withHead(falsch)), falsch);
+        }
+        for (int i = 1; i <= EbenenPruefung.KOEPFE; i++) {
+            l.put(Pin.at("n" + i, i, 0).withHead(Integer.toHexString(i)));
+        }
+        l.put(Pin.at("gleich", 0, 0).withHead("1"));
+        var e = assertThrows(IllegalArgumentException.class, () -> l.put(Pin.at("mehr", 0, 0).withHead("fff")));
+        assertTrue(e.getMessage().contains("256 verschiedene Köpfe"), e.getMessage());
+        l.put(Pin.at("n2", 2, 0).withHead("fff"));
+        l.remove("n3");
+        l.put(Pin.at("mehr", 0, 0).withHead("eee"));
+        assertThrows(IllegalArgumentException.class, () -> l.forPlayer(UUID.randomUUID()).put(Pin.at("eigen", 0, 0).withHead("1")),
+                "eigene Objekte eines Spielers zeigen keine Köpfe");
+        assertTrue(ebene(a, "npcs:npcs").json().getAsJsonArray("objects").asList().stream()
+                .noneMatch(o -> o.getAsJsonObject().has("head")), "ohne Köpfe, etwa mit karte.von, bleibt jede die Nadel");
+    }
+
+    @Test
     void gewicht_ueber_order_in_liste_und_mod() {
         var a = api(0);
         a.layer("Nations", "staedte").order(100);

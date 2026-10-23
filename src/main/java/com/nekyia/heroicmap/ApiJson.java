@@ -39,6 +39,7 @@ final class ApiJson {
                     o.add("symbol", s);
                 }
                 o.addProperty("color", p.color());
+                // head der API ist eine Textur; den Namen des Kopfs setzt EbenenApi im Schnappschuss.
                 tafel(o, p.panel());
             }
             case Banner b -> {

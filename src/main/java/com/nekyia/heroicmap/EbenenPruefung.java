@@ -30,6 +30,9 @@ final class EbenenPruefung {
     private static final int PUNKTE = 10_000;
     private static final int LOECHER = 100;
     private static final int BILDER = 200;
+    /** Verschiedene Köpfe je Ebene. Siehe docs/ebenen.md, „Prüfen“. */
+    static final int KOEPFE = 256;
+    private static final Pattern KOPF = Pattern.compile("[0-9a-f]{64}");
     private static final int ENTWUERFE = 200;
     private static final int LAGEN = 16;
     /** Die 16 Farbstoffe des Spiels, wie in einem Entwurf. */
@@ -45,6 +48,7 @@ final class EbenenPruefung {
 
     private final List<String> fehler = new ArrayList<>();
     private final Set<String> benutzt = new TreeSet<>();
+    private final Set<String> koepfe = new HashSet<>();
     private final Function<String, Bild> vorhanden;
     private boolean mitPermission;
     /** Die Namen der Entwürfe am Kopf; leer ohne designs. */
@@ -64,6 +68,9 @@ final class EbenenPruefung {
         p.ebene(id, ebene);
         if (p.benutzt.size() > BILDER) {
             p.fehler.add("mehr als 200 Bilder");
+        }
+        if (p.koepfe.size() > KOEPFE) {
+            p.fehler.add("mehr als 256 verschiedene Köpfe");
         }
         if (ebene.toString().getBytes(StandardCharsets.UTF_8).length > EBENE_BYTES) {
             p.fehler.add("als JSON grösser als 4 MiB");
@@ -166,12 +173,19 @@ final class EbenenPruefung {
     }
 
     private void nadel(JsonObject o, String s) {
-        gemeinsam(o, s, true, "at", "y", "name", "size", "symbol", "color");
+        gemeinsam(o, s, true, "at", "y", "name", "size", "symbol", "color", "head");
         punkt(o.get("at"), s + ".at");
         ganz(o, "y", s, -4096, 4096, false);
         text(o, "name", s, 64, false);
         auswahl(o, "size", s, "large", "medium", "small");
         farbe(o, "color", s);
+        // Ein Kopf liegt unter koepfe/, nicht unter layers/: Auch mit permission ist er erlaubt.
+        String kopf = text(o, "head", s, 64, false);
+        if (kopf != null && !KOPF.matcher(kopf).matches()) {
+            fehler.add(s + ".head: kein Name eines Kopfs, 64 Zeichen 0-9 a-f");
+        } else if (kopf != null) {
+            koepfe.add(kopf);
+        }
         if (!o.has("symbol")) {
             return;
         }

@@ -94,6 +94,10 @@ Bausteine der Tafel und ihre Tiefe, die Bilder. Dazu eigene Regeln:
   Bilder eines Banners höchstens 32 × 64, Bilder der Tafel höchstens
   512 × 512, jedes höchstens 256 KiB, höchstens 200 je Ebene.
 - **Nadeln und Banner** zählen zusammen gegen die 1000 einer Ebene.
+- **Köpfe:** `head` an einer Nadel nur als Name eines Kopfs, genau 64
+  Zeichen `0-9 a-f`, höchstens 256 verschiedene je Ebene; auch mit
+  `permission`, denn ein Kopf liegt nicht unter `layers/`. Siehe
+  [Köpfe](koepfe.md), „Köpfe in Ebenen“.
 - **Entwürfe** der Banner am Kopf, `designs`: höchstens 200 je Ebene,
   Namen wie unter „Dateien“, je Entwurf `base` und höchstens 16 `layers`
   aus `pattern` und `color`. Farben sind nur die 16 Namen der Farbstoffe,

@@ -216,7 +216,8 @@ Plugin das seiner Plattform aus, siehe [Konfiguration](konfiguration.md),
   ein Binär, das fehlt, und verwaiste Prozesse.
 - **`EbenenPruefungTest`:** das Beispiel der Städte aus dem Format, Fehler
   mit Stelle, jede Grenze des Formats und des Plugins, die Namen wie der
-  Server sie ausliefert, Bildköpfe von PNG und WebP `VP8L` samt Endung.
+  Server sie ausliefert, Bildköpfe von PNG und WebP `VP8L` samt Endung;
+  `head` nur mit 64 hex, auch mit `permission`, höchstens 256.
 - **`EbenenTest`:** Laden je Datei und je Mod, nur genannte Bilder nach
   ihrer Grösse, die ersten 64 nach Kennung, der alte Stand bei einem
   unlesbaren Ordner, der Deckel fürs Log, `version` mit Dimension und mit
@@ -257,7 +258,9 @@ Plugin das seiner Plattform aus, siehe [Konfiguration](konfiguration.md),
   Aufruf, Nadeln und Banner zusammen an der Grenze von 1000 mit Ersetzen
   und Entfernen, alle Arten und Bausteine als gültiges JSON, Banner mit
   geteiltem Bild, Bilder je Besitzer,
-  `permission`, Löschen und ein Plugin, das geht, Vorrang vor der Datei.
+  `permission`, Löschen und ein Plugin, das geht, Vorrang vor der Datei;
+  `withHead` nur als Hash, 256 verschiedene mit Ersetzen und Entfernen,
+  nie bei einem Spieler, ohne Köpfe kein `head`.
 - **`KnoepfeTest`:** Label und Grenzen der Knöpfe, Anhängen, Zustand je
   Spieler und Objekt, vier je Objekt in der Reihenfolge des Anhängens,
   Anhang und Zustand zusammen, Löschen.
@@ -293,7 +296,11 @@ Plugin das seiner Plattform aus, siehe [Konfiguration](konfiguration.md),
   aus dem JDK einmal je Skin, Name gleich SHA-256, keine halbe Datei,
   mtime beim Join, ohne Skin, 404 und zu gross kein Kopf; Aufräumen nach
   Alter und Zahl, nie ein Kopf online, fremde Dateien bleiben; `kopf` in
-  `sicht.json`.
+  `sicht.json`. Köpfe in Ebenen: jede Textur einmal in der Schlange,
+  gemeldet erst mit Datei, derselbe Skin wie ein Spieler ohne Abruf, neu
+  geholt, wenn die Datei fehlt; nach `404` erst nach 1 h wieder, nach `429`
+  60 s Ruhe; eine Nadel bekommt `head` und eine neue `version`, sobald der
+  Kopf liegt; was eine Ebene nennt, bleibt beim Aufräumen.
 - **`TokenTest`:** stellt jedes gültige Token aus den Testvektoren des
   Renderers Zeichen für Zeichen gleich aus, ebenso jede Anmeldung
   (Fassung 2), lehnt ab, was kein gültiges ergäbe.

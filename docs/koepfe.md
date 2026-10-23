@@ -1,10 +1,11 @@
 ---
 title: Köpfe auf der Webkarte
-description: Wie das Plugin für die Webkarte aus dem Skin jedes Spielers einen Kopf 8 × 8 macht, Gesicht mit Hut wie im Client, ihn unter koepfe/<sha256>.png in der Wurzel von tiles ablegt, in sicht.json nennt und nach Alter und Zahl aufräumt; nur vom Host der Skins, nie mit karte.von.
+description: Wie das Plugin aus dem Skin jedes Spielers und aus der Textur einer Nadel mit Kopf ein Bild 8 × 8 macht, Gesicht mit Hut wie im Client, es unter koepfe/<sha256>.png in der Wurzel von tiles ablegt, in sicht.json und in der Ebene nennt und nach Alter und Zahl aufräumt; nur vom Host der Skins, die Texturen der Ebenen einzeln mit Pause nach Fehlern, nie mit karte.von.
 code:
   - src/main/java/com/nekyia/heroicmap/Koepfe.java
   - src/main/java/com/nekyia/heroicmap/Mitspieler.java
   - src/main/java/com/nekyia/heroicmap/HeroicMapPlugin.java
+  - src/main/java/com/nekyia/heroicmap/EbenenApi.java
   - src/test/java/com/nekyia/heroicmap/KoepfeTest.java
 ---
 
@@ -17,12 +18,14 @@ Spielers ein kleines Bild, legt es öffentlich ab und nennt seinen Namen in
 Pfad liefert der Server des Renderers aus, ab Renderer 0.14.0; die Karte
 zeichnet ihn. Entschieden in
 [0114](https://github.com/VonNekyia/heroic-map-renderer/blob/master/docs/entscheidungen/0114-koepfe-der-mitspieler.md).
+Seit 0.17.0 zeigt auch eine Nadel einer Ebene einen Kopf, siehe „Köpfe in
+Ebenen“.
 
 ## Wann
 
-- **Nur mit Anmeldung auf der Webkarte,** also mit dem Ordner je Spieler,
-  denn nur `sicht.json` nennt Köpfe, siehe [Anmeldung](anmeldung.md),
-  „Mitspieler“.
+- **Köpfe der Spieler nur mit Anmeldung auf der Webkarte,** also mit dem
+  Ordner je Spieler, denn nur `sicht.json` nennt sie, siehe
+  [Anmeldung](anmeldung.md), „Mitspieler“. Köpfe der Ebenen auch ohne.
 - **Nie mit `karte.von`:** Dann schreibt und löscht das Plugin keine Köpfe,
   siehe [Mehrere Server](mehrere-server.md), „Karte von“. Köpfe schreibt
   und löscht nur, wer seine Wurzel selbst rendert; so löscht keins einen
@@ -40,8 +43,8 @@ zeichnet ihn. Entschieden in
   immer `https`, auch wenn das Profil `http` nennt.
 - **Grenzen:** keine Weiterleitung, Frist 10 s, höchstens 64 KiB
   (`Koepfe.SKIN_BYTES`). Ein Skin von Mojang hat wenige KiB.
-- **Einmal je Skin** und Laufzeit: Tragen zwei Spieler denselben, holt es
-  ihn einmal. Nach einem Neustart holt es je Skin wieder einmal.
+- **Einmal je Skin** und Laufzeit: Tragen zwei Spieler denselben, oder ein
+  Spieler und eine Nadel, holt es ihn einmal. Nach einem Neustart holt es je Skin wieder einmal.
 - **Hinter einem Proxy** mit Weiterleitung kommen die Eigenschaften des
   Profils samt Skin mit. Ohne Weiterleitung im Offline-Modus hat ein
   Spieler keinen Skin und bekommt den Punkt.
@@ -89,6 +92,39 @@ Je Mitspieler und in `ich` optional `kopf`, der Name ohne `.png`
 Fehlt `kopf`, zeigt die Karte den Punkt: ohne Skin, mit einem fremden
 Host, solange der Kopf noch nicht liegt, oder mit `karte.von`.
 
+## Köpfe in Ebenen
+
+Seit 0.17.0 zeigt eine Nadel einer Ebene auf Wunsch ein Gesicht statt des
+Schilds, über die API mit `Pin.withHead(textur)`, siehe [API](api.md),
+„Köpfe“. Das Format steht im Renderer,
+[Ebenen](https://github.com/VonNekyia/heroic-map-renderer/blob/master/docs/benutzung/ebenen.md), „Nadel“;
+warum so:
+[0118](https://github.com/VonNekyia/heroic-map-renderer/blob/master/docs/entscheidungen/0118-koepfe-in-ebenen.md).
+
+- **Von der Textur zum Namen** (`Koepfe.ausTextur`): Die API nimmt nur den
+  Hash einer Textur, 1 bis 64 Zeichen `0-9 a-f`. Die Adresse baut das
+  Plugin selbst, `https://textures.minecraft.net/texture/<hash>`. Holen,
+  Bild und Ablage wie oben, mit demselben Speicher je Skin.
+- **Erst die Datei, dann der Name:** Der Schnappschuss der Ebene
+  (`EbenenApi`) schreibt `head` nur, wenn der Kopf liegt; sonst reiht er
+  die Textur ein, und die Nadel bleibt. Liegt der Kopf, baut das Plugin
+  jede Ebene mit dieser Textur neu, mit neuer `version`; Webkarte und Mod
+  laden nach. Fehlt die Datei inzwischen, holt es sie neu.
+- **Eine Schlange** (`Koepfe.holeEinen`): jede Sekunde höchstens eine
+  Textur, nie zwei zugleich, ausserhalb des Hauptthreads. Jede Textur
+  steht einmal darin, höchstens 16 384 (`Koepfe.WARTEND`, 64 Ebenen zu je
+  256 Köpfen). Nach einem Neustart holt es jede Textur wieder einmal; bis
+  dahin zeigen die Nadeln das Schild, bei 256 Texturen gut 4 min.
+- **Fehler:** Eine Textur, die nicht zu holen war, etwa `404`, kein Skin
+  64 × 64 oder 64 × 32 oder zu gross, reiht es frühestens nach 1 h wieder
+  ein (`Koepfe.FEHLER_PAUSE`). Im Log steht je Textur und Laufzeit eine
+  Warnung. Nach `429` oder `5xx` ruht die Schlange 60 s (`Koepfe.RUHE`),
+  dann holt sie dieselbe Textur.
+- **Auch mit `permission`:** Ein Kopf liegt nicht unter `layers/`, siehe
+  0118.
+- **Nie mit `karte.von`:** wie unter „Wann“; jede Nadel bleibt dort eine
+  Nadel.
+
 ## Aufräumen
 
 - **Die Zeit der Datei ist das Datum:** Bei jedem Join eines Spielers mit
@@ -98,6 +134,8 @@ Host, solange der Kopf noch nicht liegt, oder mit `karte.von`.
   - weg, was älter als 30 Tage ist (`Koepfe.ALTER`);
   - über 4096 Köpfe (`Koepfe.HOECHSTENS`) die ältesten zuerst;
   - nie der Kopf eines Spielers online;
+  - nie ein Kopf, den eine Ebene nennt (`Koepfe.genannt`), wie alt er auch
+    ist; er zählt auch nicht gegen die 4096;
   - nur Dateien mit dem Namen eines Kopfs; anderes unter `koepfe/` bleibt.
 - **Grösse:** Ein Kopf hat ein paar hundert Byte; 4096 Köpfe kosten unter
   2 MB.

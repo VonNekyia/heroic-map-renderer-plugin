@@ -92,53 +92,70 @@ public sealed interface MapObject {
 
     /**
      * A point of the map as a shield with symbol and name. {@code color} tints the shield; its alpha has no effect
-     * there.
+     * there. With {@code head}, the hash of a skin texture, the map shows the face of that skin instead of the
+     * shield; see {@link #withHead}.
      */
     record Pin(String id, Point at, String dimension, Integer y, String name, Size size, Symbol symbol, String color,
-            Panel panel) implements MapObject {
+            Panel panel, String head) implements MapObject {
         public Pin {
             Objects.requireNonNull(id);
             Objects.requireNonNull(at);
         }
 
+        /** As before 0.17.0: a pin without a head. */
+        public Pin(String id, Point at, String dimension, Integer y, String name, Size size, Symbol symbol, String color,
+                Panel panel) {
+            this(id, at, dimension, y, name, size, symbol, color, panel, null);
+        }
+
         /** A pin at {@code x}, {@code z}, without name, symbol and panel. */
         public static Pin at(String id, double x, double z) {
-            return new Pin(id, new Point(x, z), null, null, null, null, null, null, null);
+            return new Pin(id, new Point(x, z), null, null, null, null, null, null, null, null);
         }
 
         /** A copy in this dimension. */
         public Pin withDimension(String d) {
-            return new Pin(id, at, d, y, name, size, symbol, color, panel);
+            return new Pin(id, at, d, y, name, size, symbol, color, panel, head);
         }
 
         /** A copy standing on this block. */
         public Pin withY(int blockY) {
-            return new Pin(id, at, dimension, blockY, name, size, symbol, color, panel);
+            return new Pin(id, at, dimension, blockY, name, size, symbol, color, panel, head);
         }
 
         /** A copy with this name. */
         public Pin withName(String n) {
-            return new Pin(id, at, dimension, y, n, size, symbol, color, panel);
+            return new Pin(id, at, dimension, y, n, size, symbol, color, panel, head);
         }
 
         /** A copy of this size. */
         public Pin withSize(Size s) {
-            return new Pin(id, at, dimension, y, name, s, symbol, color, panel);
+            return new Pin(id, at, dimension, y, name, s, symbol, color, panel, head);
         }
 
         /** A copy with this symbol. */
         public Pin withSymbol(Symbol s) {
-            return new Pin(id, at, dimension, y, name, size, s, color, panel);
+            return new Pin(id, at, dimension, y, name, size, s, color, panel, head);
         }
 
         /** A copy with this color of the shield. */
         public Pin withColor(String c) {
-            return new Pin(id, at, dimension, y, name, size, symbol, c, panel);
+            return new Pin(id, at, dimension, y, name, size, symbol, c, panel, head);
         }
 
         /** A copy with this panel, shown when the pointer rests on the pin. */
         public Pin withPanel(Panel p) {
-            return new Pin(id, at, dimension, y, name, size, symbol, color, p);
+            return new Pin(id, at, dimension, y, name, size, symbol, color, p, head);
+        }
+
+        /**
+         * A copy shown as the face of this skin instead of the shield, with the name below it: the hash of a texture on
+         * {@code textures.minecraft.net}, the part after {@code /texture/}, 1 to 64 lower-case hex characters, never
+         * an address. HeroicMap fetches the skin itself; until the head is there, and if it cannot be fetched, the
+         * map shows the pin. At most 256 different heads per layer; objects of single players have none.
+         */
+        public Pin withHead(String texture) {
+            return new Pin(id, at, dimension, y, name, size, symbol, color, panel, texture);
         }
     }
 

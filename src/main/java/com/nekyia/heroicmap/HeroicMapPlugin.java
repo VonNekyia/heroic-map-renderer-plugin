@@ -78,7 +78,7 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
     private Proxyname proxyname = new Proxyname(false);
     /** Die Anmeldung auf der Webkarte; null ohne. Siehe docs/anmeldung.md. */
     private volatile SpielerOrdner spieler;
-    /** Die Köpfe für die Webkarte; null ohne Anmeldung oder mit karte.von. Siehe docs/koepfe.md. */
+    /** Die Köpfe der Spieler und der Nadeln von Ebenen; null mit karte.von. Siehe docs/koepfe.md. */
     private volatile Koepfe koepfe;
     private byte[] geheimnis;
     private String kartenUrl;
@@ -133,6 +133,15 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
         var von = konf.karte().vonUrl().isEmpty() ? null : new KarteVon(konf.karte().vonUrl(), konf.dimension());
         ebenen = new Ebenen(ebenenOrdner, konf.dimension(), new EbenenSchreiber(konf.kacheln(), konf.dimension()), getLogger(),
                 von == null ? List::of : von::stand);
+        // Die Köpfe nur unter der eigenen Wurzel: Mit karte.von schreibt und löscht dieses Plugin keine. Die der
+        // Ebenen holt es einen je Sekunde. Siehe docs/koepfe.md.
+        if (konf.karte().von().isEmpty()) {
+            var k = new Koepfe(konf.kacheln(), URI.create("https://textures.minecraft.net"), getLogger());
+            koepfe = k;
+            ebenen.api().koepfe(k);
+            getServer().getAsyncScheduler().runAtFixedRate(this, t -> raeumeKoepfeAuf(k), 1, 24 * 60, TimeUnit.MINUTES);
+            getServer().getAsyncScheduler().runAtFixedRate(this, t -> k.holeEinen(Instant.now()), 1, 1, TimeUnit.SECONDS);
+        }
         // Die API für andere Plugins; ihre Ebenen gehen mit dem Plugin, dem sie gehören. Siehe docs/api.md.
         getServer().getServicesManager().register(HeroicMapApi.class, ebenen.api(), this, ServicePriority.Normal);
         getServer().getPluginManager().registerEvents(ebenen.api(), this);
@@ -342,10 +351,13 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
         kopf(e.getPlayer());
     }
 
-    /** Im Hauptthread: den Skin aus dem Profil lesen, den Kopf ausserhalb holen. Siehe docs/koepfe.md. */
+    /**
+     * Im Hauptthread, nur mit Anmeldung: den Skin aus dem Profil lesen, den Kopf ausserhalb holen. Siehe
+     * docs/koepfe.md.
+     */
     private void kopf(Player p) {
         var k = koepfe;
-        if (k == null) {
+        if (k == null || spieler == null) {
             return;
         }
         UUID u = p.getUniqueId();
@@ -356,7 +368,7 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
     /** Ausserhalb des Hauptthreads, beim Start und dann täglich: alte Köpfe weg. Siehe docs/koepfe.md, „Aufräumen“. */
     private void raeumeKoepfeAuf(Koepfe k) {
         try {
-            int weg = k.raeumeAuf(Instant.now());
+            int weg = k.raeumeAuf(Instant.now(), Koepfe.genannt(ebenen.stand()));
             if (weg > 0) {
                 getLogger().info("Köpfe: " + weg + " alte gelöscht");
             }
@@ -605,14 +617,8 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
         if (kartenUrl.isEmpty()) {
             getLogger().warning("Ohne webserver.url gibt /karte anmelden keinen Link.");
         }
-        // Die Köpfe nur unter der eigenen Wurzel: Mit karte.von schreibt und löscht dieses Plugin keine. Siehe
-        // docs/koepfe.md.
-        if (konf.karte().von().isEmpty()) {
-            var k = new Koepfe(konf.kacheln(), URI.create("https://textures.minecraft.net"), getLogger());
-            koepfe = k;
-            getServer().getAsyncScheduler().runAtFixedRate(this, t -> raeumeKoepfeAuf(k), 1, 24 * 60, TimeUnit.MINUTES);
-            getServer().getOnlinePlayers().forEach(this::kopf);
-        }
+        // Erst jetzt, mit spieler: Köpfe der Spieler gibt es nur mit Anmeldung. Siehe docs/koepfe.md.
+        getServer().getOnlinePlayers().forEach(this::kopf);
         return ordner;
     }
 

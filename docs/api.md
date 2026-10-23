@@ -231,6 +231,33 @@ Optionale Felder sind null; `with…` gibt eine Kopie mit einem Feld mehr.
 - **Öffentlich,** sobald eine Ebene ein Bild nennt, unter
   `layers/<modname>/images/`, auch bei `web: false`.
 
+## Köpfe
+
+Seit 0.17.0 zeigt eine Nadel auf Wunsch das Gesicht eines Skins statt des
+Schilds, entschieden im Renderer in
+[0118](https://github.com/VonNekyia/heroic-map-renderer/blob/master/docs/entscheidungen/0118-koepfe-in-ebenen.md).
+
+```java
+npcs.put(MapObject.Pin.at("npc-12", 120.5, -340.5)
+        .withName("Händlerin")
+        .withHead("3f1c…"));   // der Teil nach /texture/
+```
+
+- **Nur der Hash einer Textur** von `textures.minecraft.net`, der Teil
+  nach `/texture/`, 1 bis 64 Zeichen `0-9 a-f`. Eine Adresse oder
+  Grossbuchstaben wirft `put` als `IllegalArgumentException`. Den Skin holt
+  HeroicMap selbst, siehe [Köpfe](koepfe.md), „Köpfe in Ebenen“.
+- **Erst die Nadel:** Bis der Kopf liegt, und wenn er nicht zu holen ist,
+  zeigen Webkarte und Mod die Nadel mit `size`, `symbol` und `color`.
+  Kommt der Kopf, bekommt die Ebene eine neue `version`.
+- **Höchstens 256 verschiedene Köpfe je Ebene;** Nadeln mit derselben
+  Textur zählen einmal. Darüber wirft `put`.
+- **Auch mit `permission`:** Ein Kopf ist kein Bild unter `layers/`.
+- **Nicht bei einem Spieler:** Eigene Objekte eines Spielers zeigen keine
+  Köpfe; `put` wirft, wie bei Bildern.
+- **Mit `karte.von`** holt dieses Plugin keine Köpfe; jede Nadel bleibt
+  eine Nadel.
+
 ## Entwürfe
 
 Seit 0.6.0 zeichnet ein Banner auf Wunsch der Renderer, aus einem Entwurf
@@ -294,8 +321,8 @@ void klick(MapButtonClickEvent e) {
   eine Ebene der API zur Aktionsebene, für immer; `forPlayer` allein ändert
   nichts. Jeder Spieler sieht die Objekte, die alle sehen,
   und seine eigenen (`PlayerLayer.put`, `remove`, `clear`).
-  - Eigene Objekte nennen keine Bilder; ihre `id` ist keine, die alle sehen,
-    und umgekehrt.
+  - Eigene Objekte nennen keine Bilder und zeigen keine Köpfe; ihre `id` ist
+    keine, die alle sehen, und umgekehrt.
   - Grenzen je Spieler 1000 Objekte und 1 MiB, mit denen, die alle sehen,
     zusammen die Grenzen einer Ebene.
   - `Layer.clear()` lässt die eigenen Objekte stehen.
