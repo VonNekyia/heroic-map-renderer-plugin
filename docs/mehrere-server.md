@@ -1,6 +1,6 @@
 ---
 title: Mehrere Server hinter einem Proxy
-description: Wie der Mod Server hinter einem Proxy auseinanderhält, auch bei gleicher Welt, mit dem Namen der Karte an der Antwort auf show; wie das Plugin den Namen dieses Servers vom Proxy erfragt oder aus karte.name nimmt; und wie ein Server mit karte.von die Karte eines anderen zeigt, mit dessen öffentlichen Ebenen über HTTP.
+description: Wie der Mod Server hinter einem Proxy auseinanderhält, auch bei gleicher Welt, mit dem Namen der Karte und dem Namen dieses Servers an der Antwort auf show; wie das Plugin den Namen dieses Servers vom Proxy erfragt oder aus karte.name nimmt; und wie ein Server mit karte.von die Karte eines anderen zeigt, mit dessen öffentlichen Ebenen über HTTP.
 code:
   - src/main/java/com/nekyia/heroicmap/Proxyname.java
   - src/main/java/com/nekyia/heroicmap/HeroicMapPlugin.java
@@ -24,11 +24,11 @@ von“.
 
 ## Format
 
-Die Antwort auf `show` trägt `karte`, den Namen der Karte, siehe
-[Download](download.md), „Kanal“:
+Die Antwort auf `show` trägt `karte`, den Namen der Karte, und `backend`,
+den Namen dieses Servers, siehe [Download](download.md), „Kanal“:
 
 ```json
-{"v":1,"typ":"show","jetzt":1760000000,"erlaubt":true,"web":true,"karte":"main"}
+{"v":1,"typ":"show","jetzt":1760000000,"erlaubt":true,"web":true,"karte":"main","backend":"build"}
 ```
 
 - **Warum an `show`:** Der Ordner gilt auch ohne Download, für Wegpunkte
@@ -41,14 +41,23 @@ Die Antwort auf `show` trägt `karte`, den Namen der Karte, siehe
   2. sonst der Name vom Proxy, siehe „Name vom Proxy“;
   3. sonst `karte.name` aus `config.yml`;
   4. sonst fehlt das Feld, und der Mod legt ab wie bisher.
-- **Keine neue Version:** Ein alter Mod überspringt das Feld, ein altes
-  Plugin schickt es nicht.
+- **`backend`** (`Proxyname.backend`): der Name vom Proxy, sonst
+  `karte.name`, nie `karte.von`; sonst fehlt das Feld. `karte` sagt, welche
+  Karte ein Server zeigt, `backend`, wer er ist; mit `karte.von: main`
+  nennt build also `karte: main` und `backend: build`. Der Mod hält damit
+  Server mit derselben Welt auseinander. Warum so:
+  [0015](entscheidungen/0015-eigener-name-an-show.md).
+- **Keine neue Version:** Ein alter Mod überspringt beide Felder, ein altes
+  Plugin schickt sie nicht. Mod 0.2.68 liest aus der Antwort auf `show` nur
+  `erlaubt`, `grund`, `token`, `web` und `karte`.
 
 ## Name vom Proxy
 
 Beim Join fragt das Plugin den Proxy über diesen Spieler mit `GetServer`
 auf dem Kanal `BungeeCord`, nach dem Namen des Servers, auf dem er ist.
 
+- **Auch mit `karte.von`:** `karte` kommt dann aus der Config, aber
+  `backend` braucht den eigenen Namen.
 - **Nur sicher hinter einem Proxy** (`Proxyname.hinterProxy`): mit der
   Weiterleitung von Velocity, `proxies.velocity.enabled` in
   `config/paper-global.yml`, oder im BungeeCord-Modus, `settings.bungeecord`
@@ -67,7 +76,9 @@ auf dem Kanal `BungeeCord`, nach dem Namen des Servers, auf dem er ist.
   Kanal, fragt das Plugin nicht, und es gilt `karte.name`.
 - **„Kein Proxy“ im Log** erst 10 s nach dem ersten Join ohne den Kanal
   (`Proxyname.KANAL_FRIST_MS`), und nur, wenn bis dahin kein Name vom
-  Proxy kam; einmal je Laufzeit. Das Register des Proxys kommt manchmal
+  Proxy kam; einmal je Laufzeit. Ist `karte.name` leer, sagt sie dazu, dass
+  der Mod diesen Server dann nicht von anderen mit derselben Welt hinter
+  derselben Adresse trennt (`Proxyname.ohneProxyZeile`). Das Register des Proxys kommt manchmal
   erst kurz nach dem Join, die Antwort eine Sekunde später; gleich gemeldet,
   stand die Zeile irreführend vor „Der Proxy meldet den Namen …“.
 - **Wer antworten kann:** Nachrichten eines Clients auf dem BungeeCord-Kanal

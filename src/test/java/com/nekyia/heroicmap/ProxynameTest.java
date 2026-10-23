@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.google.gson.JsonObject;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
@@ -111,6 +112,25 @@ class ProxynameTest {
         assertTrue(p.frage(SAM, 2 * Proxyname.FRIST_MS));
         assertFalse(p.frage(SAM, 3 * Proxyname.FRIST_MS), "höchstens " + Proxyname.VERSUCHE + " Mal");
         assertFalse(p.wartet(3 * Proxyname.FRIST_MS));
+    }
+
+    @Test
+    void backend_ist_der_eigene_name_auch_mit_karte_von() {
+        var bau = new Konfiguration.Karte("bau", "main", "", "");
+        assertEquals("build", Proxyname.backend(bau, "build"), "der Proxy vor karte.name");
+        assertEquals("bau", Proxyname.backend(bau, null), "nie karte.von");
+        assertNull(Proxyname.backend(Konfiguration.Karte.OHNE, null));
+
+        var antwort = new JsonObject();
+        Proxyname.nenne(antwort, new Konfiguration.Karte("", "main", "", ""), "build");
+        assertEquals("main", antwort.get("karte").getAsString(), "die Karte, die build zeigt");
+        assertEquals("build", antwort.get("backend").getAsString(), "und wer build ist");
+        var ohne = new JsonObject();
+        Proxyname.nenne(ohne, Konfiguration.Karte.OHNE, null);
+        assertEquals(0, ohne.size(), "ohne Namen keins der Felder");
+
+        assertTrue(Proxyname.ohneProxyZeile(Konfiguration.Karte.OHNE).contains("karte.name ist leer"));
+        assertFalse(Proxyname.ohneProxyZeile(bau).contains("leer"));
     }
 
     @Test
