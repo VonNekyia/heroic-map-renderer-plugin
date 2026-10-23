@@ -114,7 +114,7 @@ final class Koepfe {
         }
         String adresse = textur(hash).toString();
         String name = jeSkin.get(adresse);
-        if (name != null && Files.isRegularFile(ordner.resolve(name + ".png"), LinkOption.NOFOLLOW_LINKS)) {
+        if (name != null) {
             return name;
         }
         if (name != null) {
