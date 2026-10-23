@@ -11,6 +11,11 @@ Links und die Hinweise aus `NOTICE` setzt
 
 - **Heads on pins:** a plugin can now show a pin of its layer as the face of a skin instead of the shield, with `Pin.withHead(texture)` in the API. It passes only the hash of a texture on textures.minecraft.net, the part after `/texture/`; HeroicMap fetches the skin itself, at most one per second, and keeps the head under `koepfe/` like the heads of players. Until the head is there, and if it cannot be fetched, the pin shows. At most 256 different heads per layer, also on layers with a permission. Web maps and mods that do not know heads yet show the pin.
 
+## 0.16.4
+
+- **Renderer 0.15.3** inside: it also reads version 2 of the leaf-colour data contract `heroicmap:leaf_colors`, with a secondary and a blossom colour per group. Both are checked but not drawn yet; leaves look exactly as with version 1. No full render needed.
+- **tokio 1.54.1** in the renderer, against RUSTSEC-2026-0386.
+
 ## 0.16.3
 
 - **Renderer 0.15.2** inside: on the web map, pins and banners with their names shrink to half per zoom level once a pixel shows more than 16 blocks, so city names far out no longer pile up; a name that would fall below 6 pixels is hidden. Only the web map changes; no full render needed.
