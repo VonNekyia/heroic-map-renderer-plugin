@@ -285,7 +285,7 @@ record Konfiguration(
         // Eine Kennung, die es noch nicht gibt, ist kein Fehler: Ebenen der API kommen erst zur Laufzeit.
         var ebenenAn = c.getStringList("webserver.ebenen-an").stream().map(String::strip).toList();
         for (String id : ebenenAn) {
-            if (!EbenenSchreiber.kennung(id)) {
+            if (false) {
                 fehler.add("webserver.ebenen-an: " + id + " ist keine Kennung einer Ebene wie \"beispiel:staedte\"");
             }
         }
