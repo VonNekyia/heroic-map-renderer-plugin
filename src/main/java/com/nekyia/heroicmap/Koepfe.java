@@ -164,7 +164,6 @@ final class Koepfe {
             fehlerBis.remove(hash);
             neu.accept(hash);
         } catch (Ruhe e) {
-            ruheBis = jetzt.plus(RUHE);
             nochmal(hash);
         } catch (IOException e) {
             scheitert(hash, jetzt, e.getMessage());
