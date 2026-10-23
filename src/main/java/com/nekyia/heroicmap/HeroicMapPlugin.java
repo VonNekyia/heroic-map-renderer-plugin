@@ -131,7 +131,8 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
         // Mit karte.von und ihrer url die öffentlichen Ebenen der anderen Karte dazu. Siehe docs/mehrere-server.md,
         // „Karte von“.
         var von = konf.karte().vonUrl().isEmpty() ? null : new KarteVon(konf.karte().vonUrl(), konf.dimension());
-        ebenen = new Ebenen(ebenenOrdner, konf.dimension(), new EbenenSchreiber(konf.kacheln(), konf.dimension()), getLogger(),
+        ebenen = new Ebenen(ebenenOrdner, konf.dimension(), new EbenenSchreiber(konf.kacheln(), konf.dimension(),
+                Set.copyOf(konf.webserver().ebenenAn())), getLogger(),
                 von == null ? List::of : von::stand);
         // Die Köpfe nur unter der eigenen Wurzel: Mit karte.von schreibt und löscht dieses Plugin keine. Die der
         // Ebenen holt es einen je Sekunde. Siehe docs/koepfe.md.

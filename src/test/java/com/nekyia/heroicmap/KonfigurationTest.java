@@ -243,6 +243,15 @@ class KonfigurationTest {
         assertEquals("webserver.trusted-proxy: localhost ist keine IP wie \"127.0.0.1\" oder \"::1\"; "
                 + "webserver.trusted-proxy: 10.0.0.0/8 ist keine IP wie \"127.0.0.1\" oder \"::1\"", proxyName.getMessage(),
                 "nur IP-Literale, kein Name und kein Netz");
+        assertEquals(List.of("beispiel:staedte", "andere:wege"), Konfiguration.aus(yaml(baum
+                + "  listen: 0.0.0.0:8080\n  ebenen-an: [\"beispiel:staedte\", \" andere:wege \"]\n"), server, server).webserver().ebenenAn());
+        assertEquals(List.of(), Konfiguration.aus(yaml(baum + "  listen: 0.0.0.0:8080\n"), server, server).webserver().ebenenAn(),
+                "ohne Liste keine Vorgabe");
+        var keineKennung = assertThrows(IllegalArgumentException.class, () -> Konfiguration.aus(yaml(baum
+                + "  listen: 0.0.0.0:8080\n  ebenen-an: [staedte, \"Beispiel:Staedte\"]\n"), server, server));
+        assertEquals("webserver.ebenen-an: staedte ist keine Kennung einer Ebene wie \"beispiel:staedte\"; "
+                + "webserver.ebenen-an: Beispiel:Staedte ist keine Kennung einer Ebene wie \"beispiel:staedte\"",
+                keineKennung.getMessage());
         var erkennenOhneUrl = assertThrows(IllegalArgumentException.class, () -> Konfiguration.aus(yaml(baum
                 + "  listen: 0.0.0.0:8080\n  erkennen-url: https://karte4.example.org\n"), server, server));
         assertEquals("webserver.erkennen-url: mit http:// oder https:// und Host, und nur mit webserver.url",

@@ -56,6 +56,7 @@ Die Statistik über bStats hat hier keinen Schlüssel; sie schaltet
 | `webserver.title` | leer | `--site-title` | Titel der Seite; nur mit `description` und `url`, siehe [Webserver](webserver.md), „Angaben der Seite“ |
 | `webserver.description` | leer | `--site-description` | Beschreibung der Seite; nur mit `title` und `url` |
 | `webserver.image` | leer | `--site-image` | Vorschaubild, relativ zu `url` oder eine Adresse; nur mit `title` und `description` |
+| `webserver.ebenen-an` | `[]` | – | nur diese Ebenen sind beim Öffnen der Webkarte an, Kennungen wie `"beispiel:staedte"`: Jede andere steht in `layers.json` mit `visible: false`, auch die anderer Plugins; die genannten mit `visible` wie in der Ebene. Was ein Betrachter selbst wählt, geht vor. Nur die Webkarte, nicht der Mod. Leer: `visible` jeder Ebene. Eine Kennung, die es nicht gibt, ist kein Fehler; Ebenen der API kommen erst zur Laufzeit |
 | `webserver.tls-cert` | leer | `--tls-cert` | HTTPS: die Kette der Zertifikate als PEM; nur mit `tls-key` |
 | `webserver.tls-key` | leer | `--tls-key` | der Schlüssel dazu als PEM; nur mit `tls-cert` |
 | `webserver.trusted-proxy` | `[]` | `--trusted-proxy` | Proxys vor dem Webserver, deren `X-Real-IP` er glaubt, nur IP-Literale wie `"127.0.0.1"`, kein Name und kein Netz; für die Erkennung per IP, siehe [Anmeldung](anmeldung.md), „Erkennung per IP“ |

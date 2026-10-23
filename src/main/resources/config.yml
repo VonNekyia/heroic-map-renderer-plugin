@@ -84,6 +84,10 @@ webserver:
   description: ""
   # Vorschaubild, relativ zu url oder eine Adresse; leer: keins.
   image: ""
+  # Nur diese Ebenen sind beim Öffnen der Webkarte an, etwa
+  # ["beispiel:staedte"]; alle anderen aus. Was ein Betrachter selbst
+  # wählt, geht vor. Leer: visible jeder Ebene.
+  ebenen-an: []
   # HTTPS: Kette und Schlüssel als PEM, beide oder keins. Leer: HTTP.
   tls-cert: ""
   tls-key: ""

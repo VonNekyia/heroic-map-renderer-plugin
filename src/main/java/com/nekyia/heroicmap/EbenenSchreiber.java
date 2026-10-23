@@ -39,10 +39,19 @@ final class EbenenSchreiber {
     /** Der SHA-256 dessen, was zuletzt in jeder Datei landete; so liest das Schreiben zum Vergleich keine Datei. */
     private final Map<Path, String> geschrieben = new HashMap<>();
 
+    /** Die Ebenen aus webserver.ebenen-an; leer: keine Vorgabe. */
+    private final Set<String> an;
+
     /** {@code wurzel} ist die von --tiles, {@code dimension} die ihrer Welt. */
     EbenenSchreiber(Path wurzel, String dimension) {
+        this(wurzel, dimension, Set.of());
+    }
+
+    /** Wie oben; ist {@code an} nicht leer, steht jede andere Ebene in layers.json mit visible: false. */
+    EbenenSchreiber(Path wurzel, String dimension, Set<String> an) {
         this.wurzel = wurzel;
         this.dimension = dimension;
+        this.an = Set.copyOf(an);
     }
 
     /**
@@ -66,6 +75,10 @@ final class EbenenSchreiber {
         for (Ebene e : sortiert) {
             if (e.web()) {
                 var eintrag = eintrag(e);
+                // Nur die Vorgabe der Webkarte; die Wahl eines Betrachters geht vor. Siehe docs/konfiguration.md.
+                if (!an.isEmpty() && !an.contains(e.id())) {
+                    eintrag.addProperty("visible", false);
+                }
                 if (e.aktion()) {
                     // Ihre Datei gibt es nur je Spieler, siehe SpielerOrdner.
                     eintrag.addProperty("player", true);
@@ -127,7 +140,7 @@ final class EbenenSchreiber {
         return aus;
     }
 
-    private static boolean kennung(String id) {
+    static boolean kennung(String id) {
         int i = id.indexOf(':');
         return i > 0 && EbenenPruefung.teil(id.substring(0, i)) && EbenenPruefung.teil(id.substring(i + 1));
     }

@@ -156,7 +156,7 @@ Ebenen, neben `trees.json`:
 
 | Datei | Inhalt |
 |---|---|
-| `layers.json` | je Ebene mit `web` `id`, `name`, `visible`, `order`, `version`; bei einer Aktionsebene dazu `"player": true` |
+| `layers.json` | je Ebene mit `web` `id`, `name`, `visible`, `order`, `version`; bei einer Aktionsebene dazu `"player": true`. Mit `webserver.ebenen-an` steht jede Ebene, die die Liste nicht nennt, mit `visible: false`, siehe [Konfiguration](konfiguration.md) |
 | `layers/<modname>/<ebene>.json` | Kopf samt `designs` und Objekte der Ebene, ohne `web` und `permission`; nie eine Aktionsebene |
 | `layers/<modname>/images/…` | die Bilder, die eine Ebene nennt |
 | `layers/<modname>/banner/…` | die Sprites der Banner; sie schreibt der Renderer, siehe [Läufe](laeufe.md), „Banner“ |
