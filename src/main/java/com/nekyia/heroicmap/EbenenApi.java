@@ -395,7 +395,7 @@ final class EbenenApi implements HeroicMapApi, Listener {
             } else {
                 neueTexturen.put(m.id(), textur);
             }
-            if (new HashSet<>(neueTexturen.values()).size() > EbenenPruefung.KOEPFE) {
+            if (new HashSet<>(neueTexturen.values()).size() > EbenenPruefung.KOEPFE + 1) {
                 throw new IllegalArgumentException("Objekt " + m.id() + ": höchstens 256 verschiedene Köpfe je Ebene");
             }
             JsonObject j = ApiJson.json(m);
