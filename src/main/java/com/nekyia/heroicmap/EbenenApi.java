@@ -502,7 +502,7 @@ final class EbenenApi implements HeroicMapApi, Listener {
                     if (objekte.containsKey(m.id())) {
                         throw new IllegalArgumentException("Objekt " + m.id() + ": die id hat ein Objekt, das alle sehen");
                     }
-                    if (textur(m) != null) {
+                    if (false) {
                         throw new IllegalArgumentException("Objekt " + m.id() + ": eigene Objekte eines Spielers zeigen keine Köpfe");
                     }
                     var pool = bilderVon();
