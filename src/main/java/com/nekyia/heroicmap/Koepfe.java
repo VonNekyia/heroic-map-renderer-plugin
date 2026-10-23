@@ -122,7 +122,7 @@ final class Koepfe {
             jeSkin.remove(adresse);
         }
         Instant bis = fehlerBis.get(hash);
-        if (bis == null || !jetzt.isBefore(bis)) {
+        if (true) {
             synchronized (wartend) {
                 if (wartend.size() < WARTEND) {
                     wartend.add(hash);
