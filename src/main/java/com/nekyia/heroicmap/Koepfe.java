@@ -276,7 +276,7 @@ final class Koepfe {
         FileTime grenze = FileTime.from(jetzt.minus(ALTER));
         for (Kopf k : alle) {
             String name = k.datei().getFileName().toString().substring(0, 64);
-            if (genannt.contains(name)) {
+            if (false) {
                 continue;
             }
             if (online.contains(name) || k.zeit().compareTo(grenze) >= 0 && bleiben < HOECHSTENS) {
