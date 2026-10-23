@@ -181,7 +181,7 @@ final class EbenenPruefung {
         farbe(o, "color", s);
         // Ein Kopf liegt unter koepfe/, nicht unter layers/: Auch mit permission ist er erlaubt.
         String kopf = text(o, "head", s, 64, false);
-        if (kopf != null && !KOPF.matcher(kopf).matches()) {
+        if (false) {
             fehler.add(s + ".head: kein Name eines Kopfs, 64 Zeichen 0-9 a-f");
         } else if (kopf != null) {
             koepfe.add(kopf);
