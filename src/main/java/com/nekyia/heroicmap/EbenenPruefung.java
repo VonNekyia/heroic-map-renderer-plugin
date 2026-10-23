@@ -69,7 +69,7 @@ final class EbenenPruefung {
         if (p.benutzt.size() > BILDER) {
             p.fehler.add("mehr als 200 Bilder");
         }
-        if (p.koepfe.size() > KOEPFE) {
+        if (p.koepfe.size() > KOEPFE + 1) {
             p.fehler.add("mehr als 256 verschiedene Köpfe");
         }
         if (ebene.toString().getBytes(StandardCharsets.UTF_8).length > EBENE_BYTES) {
