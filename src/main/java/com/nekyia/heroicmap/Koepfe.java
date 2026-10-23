@@ -324,6 +324,8 @@ final class Koepfe {
 
     /** 429 oder 5xx: Der Host der Skins will eine Pause. */
     private static final class Ruhe extends IOException {
+        private static final long serialVersionUID = 1L;
+
         Ruhe(String grund) {
             super(grund);
         }
