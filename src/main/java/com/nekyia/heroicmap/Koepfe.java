@@ -162,7 +162,6 @@ final class Koepfe {
             schreiber.schreibe(ordner.resolve(name + ".png"), png);
             jeSkin.put(ziel.toString(), name);
             fehlerBis.remove(hash);
-            neu.accept(hash);
         } catch (Ruhe e) {
             ruheBis = jetzt.plus(RUHE);
             nochmal(hash);
