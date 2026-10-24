@@ -419,7 +419,7 @@ final class Laeufe {
     }
 
     /**
-     * Die Art des abgebrochenen Laufs aus dem Kopf von stand-neu.bin, sonst null.
+     * Die Art des abgebrochenen Laufs aus dem Kopf von stand-neu.bin, Fassung 1 oder 2, sonst null.
      * Siehe docs/laeufe.md, „Fortsetzen“.
      */
     static Art angefangen(Path ordner) {
@@ -431,7 +431,7 @@ final class Laeufe {
         }
         if (kopf.length < 13
                 || !Arrays.equals(kopf, 0, 8, MAGIE, 0, 8)
-                || ByteBuffer.wrap(kopf, 8, 4).order(ByteOrder.LITTLE_ENDIAN).getInt() != 1) {
+                || !List.of(1, 2).contains(ByteBuffer.wrap(kopf, 8, 4).order(ByteOrder.LITTLE_ENDIAN).getInt())) {
             return null;
         }
         return switch (kopf[12]) {
