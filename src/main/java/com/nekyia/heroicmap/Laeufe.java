@@ -332,7 +332,7 @@ final class Laeufe {
         }
         if (kopf.length < 13
                 || !Arrays.equals(kopf, 0, 8, MAGIE, 0, 8)
-                || !List.of(1, 2).contains(ByteBuffer.wrap(kopf, 8, 4).order(ByteOrder.LITTLE_ENDIAN).getInt())) {
+                || ByteBuffer.wrap(kopf, 8, 4).order(ByteOrder.LITTLE_ENDIAN).getInt() != 1) {
             return null;
         }
         return switch (kopf[12]) {
