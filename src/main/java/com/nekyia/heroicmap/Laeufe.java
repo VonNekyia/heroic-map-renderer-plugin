@@ -382,7 +382,8 @@ final class Laeufe {
 
     /**
      * Hat unter {@code ordner} etwas eine Zeit ab {@code grenze}? Files.find nimmt die Zeit aus dem Lesen des Ordners,
-     * ohne eigenen Aufruf je Datei. Nicht lesbar zählt als ja: lieber einmal zu viel zeichnen.
+     * ohne eigenen Aufruf je Datei. Es prüft auch den Ordner selbst; dessen Zeit ändert sich nur mit einer neuen oder
+     * gelöschten Datei, das ist vorsichtiger. Nicht lesbar zählt als ja: lieber einmal zu viel zeichnen.
      */
     private static boolean neuIn(Path ordner, FileTime grenze) {
         if (!Files.isDirectory(ordner)) {
