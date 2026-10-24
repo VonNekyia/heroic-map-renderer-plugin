@@ -317,7 +317,7 @@ final class EbenenApi implements HeroicMapApi, Listener {
                 throw new IllegalArgumentException("Ebene " + id + ": " + fehler(f));
             }
             var alt = entwuerfe.get(name);
-            if (alt == null && entwuerfe.size() >= EbenenPruefung.ENTWUERFE) {
+            if (alt == null && entwuerfe.size() > EbenenPruefung.ENTWUERFE) {
                 throw new IllegalArgumentException("Ebene " + id + ": designs: mehr als 200 Entwürfe");
             }
             long neu = entwurfBytes + groesse(name, j) - (alt == null ? 0 : groesse(name, alt));
