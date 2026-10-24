@@ -1,6 +1,6 @@
 ---
 title: Köpfe auf der Webkarte
-description: Wie das Plugin aus dem Skin jedes Spielers und aus der Textur einer Nadel mit Kopf ein Bild 8 × 8 macht, Gesicht mit Hut wie im Client, es unter koepfe/<sha256>.png in der Wurzel von tiles ablegt, in sicht.json und in der Ebene nennt und nach Alter und Zahl aufräumt; nur vom Host der Skins, die Texturen der Ebenen einzeln mit Pause nach Fehlern, nie mit karte.von.
+description: Wie das Plugin aus dem Skin jedes Spielers und aus der Textur einer Nadel mit Kopf ein Bild 8 × 8 macht, Gesicht mit Hut wie im Client, es unter koepfe/<sha256>.png in der Wurzel von tiles ablegt, in sicht.json und in der Ebene nennt und nach Alter und Zahl aufräumt; nur vom Host der Skins, die Texturen der Ebenen einzeln mit Pause nach Fehlern, nie mit karte.von-oeffentlich.
 code:
   - src/main/java/com/nekyia/heroicmap/Koepfe.java
   - src/main/java/com/nekyia/heroicmap/Mitspieler.java
@@ -26,8 +26,9 @@ Ebenen“.
 - **Köpfe der Spieler nur mit Anmeldung auf der Webkarte,** also mit dem
   Ordner je Spieler, denn nur `sicht.json` nennt sie, siehe
   [Anmeldung](anmeldung.md), „Mitspieler“. Köpfe der Ebenen auch ohne.
-- **Nie mit `karte.von`:** Dann schreibt und löscht das Plugin keine Köpfe,
-  siehe [Mehrere Server](mehrere-server.md), „Karte von“. Köpfe schreibt
+- **Nie mit `karte.von-oeffentlich`:** Dann holt der Mod Bilder und Köpfe
+  beim anderen Server, und das Plugin schreibt und löscht keine, siehe
+  [Mehrere Server](mehrere-server.md), „Karte von“. Köpfe schreibt
   und löscht nur, wer seine Wurzel selbst rendert; so löscht keins einen
   Kopf, den ein anderes noch nennt.
 - **Beim Join** jedes Spielers und beim Start für alle online
@@ -90,7 +91,7 @@ Je Mitspieler und in `ich` optional `kopf`, der Name ohne `.png`
 ```
 
 Fehlt `kopf`, zeigt die Karte den Punkt: ohne Skin, mit einem fremden
-Host, solange der Kopf noch nicht liegt, oder mit `karte.von`.
+Host, solange der Kopf noch nicht liegt, oder mit `karte.von-oeffentlich`.
 
 ## Köpfe in Ebenen
 
@@ -122,8 +123,8 @@ warum so:
   dann holt sie dieselbe Textur.
 - **Auch mit `permission`:** Ein Kopf liegt nicht unter `layers/`, siehe
   0118.
-- **Nie mit `karte.von`:** wie unter „Wann“; jede Nadel bleibt dort eine
-  Nadel.
+- **Nie mit `karte.von-oeffentlich`:** wie unter „Wann“; jede Nadel bleibt
+  dort eine Nadel.
 
 ## Aufräumen
 

@@ -42,15 +42,15 @@ tiles: plugins/HeroicMap/tiles
 karte:
   # Name dieses Servers, etwa "main"; nur, wenn der Proxy ihn nicht meldet.
   name: ""
-  # Die Karte eines anderen Servers zeigen, etwa "main": Der Mod nimmt dann
-  # ihren Ordner. Ohne Baum mit download: true. Leer: die eigene Karte.
-  von: ""
-  # Der Webserver von "von", wie dieser Server ihn erreicht, etwa
-  # "http://127.0.0.1:8080": für dessen öffentliche Ebenen. Leer: keine.
+  # Der Webserver eines anderen Servers, wie dieser ihn erreicht, etwa
+  # "http://127.0.0.1:8080": für dessen öffentliche Ebenen. Mit ihr darf
+  # trees leer sein. Die Karte im Mod teilen Spieler selbst über einen
+  # Zeiger in der Kartenliste. Leer: keine.
   von-url: ""
-  # Der Webserver von "von", wie Spieler ihn erreichen, etwa dessen
+  # Derselbe Webserver, wie Spieler ihn erreichen, etwa dessen
   # webserver.url: Der Mod holt Bilder und Banner der Ebenen dort, und
-  # dieser Server braucht keinen eigenen Webserver. Leer: der eigene.
+  # dieser Server braucht keinen eigenen Webserver. Nur mit von-url.
+  # Leer: der eigene.
   von-oeffentlich: ""
 
 # Alle so viele Minuten ein Update; 0 schaltet den Zeitplan ab.

@@ -115,16 +115,16 @@ class ProxynameTest {
     }
 
     @Test
-    void backend_ist_der_eigene_name_auch_mit_karte_von() {
-        var bau = new Konfiguration.Karte("bau", "main", "", "");
+    void backend_ist_der_eigene_name_und_karte_derselbe() {
+        var bau = new Konfiguration.Karte("bau", "", "");
         assertEquals("build", Proxyname.backend(bau, "build"), "der Proxy vor karte.name");
-        assertEquals("bau", Proxyname.backend(bau, null), "nie karte.von");
+        assertEquals("bau", Proxyname.backend(bau, null));
         assertNull(Proxyname.backend(Konfiguration.Karte.OHNE, null));
 
         var antwort = new JsonObject();
-        Proxyname.nenne(antwort, new Konfiguration.Karte("", "main", "", ""), "build");
-        assertEquals("main", antwort.get("karte").getAsString(), "die Karte, die build zeigt");
-        assertEquals("build", antwort.get("backend").getAsString(), "und wer build ist");
+        Proxyname.nenne(antwort, new Konfiguration.Karte("", "http://127.0.0.1:8080", ""), "build");
+        assertEquals("build", antwort.get("karte").getAsString(), "seit karte.von weg ist, derselbe Name");
+        assertEquals("build", antwort.get("backend").getAsString());
         var ohne = new JsonObject();
         Proxyname.nenne(ohne, Konfiguration.Karte.OHNE, null);
         assertEquals(0, ohne.size(), "ohne Namen keins der Felder");
@@ -135,9 +135,8 @@ class ProxynameTest {
 
     @Test
     void name_der_karte() {
-        assertEquals("main", Proxyname.karte(new Konfiguration.Karte("bau", "main", "", ""), "build"), "karte.von vor allem");
-        assertEquals("build", Proxyname.karte(new Konfiguration.Karte("bau", "", "", ""), "build"), "der Proxy vor karte.name");
-        assertEquals("bau", Proxyname.karte(new Konfiguration.Karte("bau", "", "", ""), null));
+        assertEquals("build", Proxyname.karte(new Konfiguration.Karte("bau", "", ""), "build"), "der Proxy vor karte.name");
+        assertEquals("bau", Proxyname.karte(new Konfiguration.Karte("bau", "", ""), null));
         assertNull(Proxyname.karte(Konfiguration.Karte.OHNE, null), "ohne Namen kein Feld");
         assertEquals("main", Proxyname.gueltig(" Main "));
         assertNull(Proxyname.gueltig("welt/5"));

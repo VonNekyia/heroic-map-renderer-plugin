@@ -10,6 +10,9 @@ Links und die Hinweise aus `NOTICE` setzt
 ## 0.19.0
 
 - **Renderer 0.18.0** inside. No full render needed. Updates write only the regions that changed and draw a changed chunk only from where it blocks the light, if nothing changed below; in a test, 42 % fewer tiles per update. The plugin resumes an aborted run with the new state as before. After the first finished run the state is in a new format; going back to an older plugin then needs a full render.
+- **`karte.von` is gone.** A server no longer decides in its config that the mod shows another server's map; players decide in the mod instead, with a link in the map list (mod 0.2.69 and newer). Whoever saw main's map on build that way gets the link once by itself. If `karte.von` is still in `config.yml`, the log says so at start; it is not an error. Remove it after updating the mod on the players' side.
+- **`karte.von-url` and `karte.von-oeffentlich` stay** for the public layers and images of another server, now on their own: `trees: []` is allowed with `karte.von-url`, and `karte.von-oeffentlich` needs `karte.von-url`. A tree with `download: true` is no longer an error there.
+- **The answer to `show`** now carries the server's own name in both `karte` and `backend`.
 - **`designs` in `layers.json`:** `layers.json` marks each layer with banner designs with `"designs": true`; a coming web map uses it to fetch the banner sprites together with the layer. Older web maps and mods ignore the field.
 
 ## 0.18.0

@@ -54,11 +54,11 @@ record Konfiguration(
     }
 
     /**
-     * Der Name dieses Servers, falls der Proxy keinen meldet; die Karte eines anderen, die dieser zeigt, die Adresse
-     * von dessen Webserver für diesen Server und die für Spieler; je leer ohne. Siehe docs/mehrere-server.md.
+     * Der Name dieses Servers, falls der Proxy keinen meldet; der Webserver eines anderen Servers, wie dieser ihn
+     * erreicht, für dessen öffentliche Ebenen, und wie Spieler ihn erreichen; je leer ohne. Siehe docs/mehrere-server.md.
      */
-    record Karte(String name, String von, String vonUrl, String vonOeffentlich) {
-        static final Karte OHNE = new Karte("", "", "", "");
+    record Karte(String name, String vonUrl, String vonOeffentlich) {
+        static final Karte OHNE = new Karte("", "", "");
     }
 
     private static final Pattern SCHRAEG = Pattern.compile("(\\d+):(\\d+)");
@@ -159,6 +159,16 @@ record Konfiguration(
     private static final Pattern ADRESSE = Pattern.compile("https?://[^/\\s]+(/\\S*)?");
 
     /**
+     * Die Zeile fürs Log, wenn noch {@code karte.von} in der Config steht; null sonst. Ein Fehler ist das nicht. Siehe
+     * docs/mehrere-server.md, „Karte von“.
+     */
+    static String veraltet(ConfigurationSection c) {
+        String von = c.getString("karte.von", "").strip();
+        return von.isEmpty() ? null : "karte.von gibt es nicht mehr und gilt nicht: Spieler nutzen die Karte von " + von
+                + " im Mod über einen Zeiger in der Kartenliste; die Ebenen von " + von + " kommen weiter über karte.von-url.";
+    }
+
+    /**
      * Liest die Einstellungen; relative Pfade gelten ab {@code server}, ohne Welt gilt
      * {@code hauptwelt}. Wirft mit allen Fehlern auf einmal.
      */
@@ -250,8 +260,9 @@ record Konfiguration(
             baeume.add(new Baum(kamera, richtung, (Integer) scale, cinematic, download, web, flat,
                     relief.equals("none") ? null : (String) relief));
         }
-        // Mit karte.von rendert dieser Server nichts selbst. Siehe docs/mehrere-server.md, „Karte von“.
-        if (baeume.isEmpty() && fehler.isEmpty() && c.getString("karte.von", "").isBlank()) {
+        // Mit karte.von-url zeigt dieser Server die Ebenen eines anderen und rendert nichts selbst. Siehe
+        // docs/mehrere-server.md, „Karte von“.
+        if (baeume.isEmpty() && fehler.isEmpty() && c.getString("karte.von-url", "").isBlank()) {
             fehler.add("trees: kein Baum");
         }
 
@@ -346,26 +357,22 @@ record Konfiguration(
         }
 
         // Namen klein, so taugen sie im Mod als Ordner. Siehe docs/mehrere-server.md.
-        var karten = new ArrayList<String>();
-        for (String schluessel : List.of("karte.name", "karte.von")) {
-            String roh = c.getString(schluessel, "").strip();
-            String n = roh.isEmpty() ? "" : Proxyname.gueltig(roh);
-            if (n == null) {
-                fehler.add(schluessel + ": " + roh + " ist kein Name aus a-z, 0-9, _ und -, höchstens 64 Zeichen");
-            }
-            karten.add(n == null ? "" : n);
+        String roh = c.getString("karte.name", "").strip();
+        String kartenname = roh.isEmpty() ? "" : Proxyname.gueltig(roh);
+        if (kartenname == null) {
+            fehler.add("karte.name: " + roh + " ist kein Name aus a-z, 0-9, _ und -, höchstens 64 Zeichen");
+            kartenname = "";
         }
         var urls = new ArrayList<String>();
         for (String schluessel : List.of("karte.von-url", "karte.von-oeffentlich")) {
             String u = c.getString(schluessel, "").strip().replaceAll("/+$", "");
-            if (!u.isEmpty() && (!ADRESSE.matcher(u).matches() || karten.get(1).isEmpty())) {
-                fehler.add(schluessel + ": mit http:// oder https:// und Host, etwa \"http://127.0.0.1:8080\", und nur mit karte.von");
+            if (!u.isEmpty() && !ADRESSE.matcher(u).matches()) {
+                fehler.add(schluessel + ": mit http:// oder https:// und Host, etwa \"http://127.0.0.1:8080\"");
             }
             urls.add(u);
         }
-        // Ein Download legte die Kacheln dieses Servers in den Ordner der anderen Karte.
-        if (!karten.get(1).isEmpty() && download) {
-            fehler.add("karte.von: kein Baum mit download: true, der Download kommt vom Server " + karten.get(1));
+        if (urls.get(0).isEmpty() && !urls.get(1).isEmpty()) {
+            fehler.add("karte.von-oeffentlich: nur mit karte.von-url");
         }
 
         if (!fehler.isEmpty()) {
@@ -389,7 +396,7 @@ record Konfiguration(
                         titel, beschreibung, bild, oeffentlich, proxys, erkennen, ebenenAn),
                 new ClientJar(c.getBoolean("renderer.download-client-jar"), c.getString("renderer.client-version", "").strip()),
                 c.getBoolean("renderer.compact"),
-                new Karte(karten.get(0), karten.get(1), urls.get(0), urls.get(1)),
+                new Karte(kartenname, urls.get(0), urls.get(1)),
                 c.getBoolean("renderer.nexo"));
     }
 

@@ -11,6 +11,9 @@ code:
 
 # 0014: Karte von über den Namen
 
+Teilweise abgelöst durch [0016](0016-ohne-karte-von.md): `karte.von` gilt
+nicht mehr; die Ebenen über HTTP mit `karte.von-url` gelten weiter.
+
 Wunsch des Users zu heroic-map-renderer#318: Ein Server, etwa build, zeigt
 die Karte von main, mit denselben Wegpunkten, Regionen und Ebenen im Mod.
 Entschieden vom Reviewer nach einem Vergleich der Wege, am 20.10. Wie es
