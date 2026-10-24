@@ -228,7 +228,7 @@ final class Laeufe {
             b.add("--cinematic");
         }
         if (baum.relief() != null) {
-            b.addAll(List.of("--relief", baum.relief()));
+            
         }
         b.addAll(List.of("--gpu", konf.grafikkarte() ? "auto" : "off"));
         // Hinter dem Server: niedrigste Priorität. Siehe docs/laeufe.md, „Der Kindprozess“.
