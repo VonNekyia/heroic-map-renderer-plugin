@@ -836,7 +836,8 @@ class LaeufeTest {
         Files.setLastModifiedTime(mca, FileTime.from(beginn.minusSeconds(1)));
         assertEquals(1, l.plane(Art.UPDATE, null, true).size(), "geschrieben kurz vor dem Beginn");
         alt(beginn, mca);
-        Files.setLastModifiedTime(mca, FileTime.from(beginn.plusSeconds(1)));
+        // Nach der eigenen Uhr, nicht nach dem gemerkten Beginn: 0,5 s nach dem Start liegt mitten im Lauf von 3 s.
+        Files.setLastModifiedTime(mca, FileTime.from(vorher.plusMillis(500)));
         assertEquals(1, l.plane(Art.UPDATE, null, true).size(), "geschrieben während des Laufs");
         alt(beginn, mca);
 
