@@ -211,7 +211,7 @@ final class Laeufe {
                 hinweis(baum.ordner() + ": noch kein voller Lauf, erst /heroicmap render");
                 continue;
             }
-            if (imTakt && ruht(baum, ordner)) {
+            if (ruht(baum, ordner)) {
                 continue;
             }
             // Ein Update lässt map.json ohne ground, wie sie ist. Siehe docs/laeufe.md, „Boden ohne Laub“.
