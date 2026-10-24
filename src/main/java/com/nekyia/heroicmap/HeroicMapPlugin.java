@@ -66,6 +66,8 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
     private final Mitspieler mitspieler = new Mitspieler();
     /** Ob die Brücke zu Simple Voice Chat läuft. */
     private boolean simpleVoiceChat;
+    /** Ob das Log schon sagte, dass die Antwort auf show nicht alle Welten nennt; einmal je Laufzeit. */
+    private boolean weltenGekuerzt;
 
     private Ebenen ebenen;
     private EbenenFuerMod fuerMod;
@@ -265,8 +267,8 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
     }
 
     /**
-     * Im Hauptthread: die Antwort auf show mit karte, dem Namen der Karte für den Ordner im Mod, und backend, dem
-     * Namen dieses Servers. Wartet der Name noch
+     * Im Hauptthread: die Antwort auf show mit karte, dem Namen der Karte für den Ordner im Mod, backend, dem
+     * Namen dieses Servers, und welten, Schlüssel und UID jeder Welt. Wartet der Name noch
      * auf den Proxy, höchstens {@link Proxyname#FRIST_MS}, kommt sie danach; sonst schickt der Mod show erst nach einer
      * Änderung der Wahl. Siehe docs/mehrere-server.md, „Format“.
      */
@@ -276,6 +278,12 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
             return;
         }
         Proxyname.nenne(antwort, kartenKonf, proxyname.name());
+        var welten = new HashMap<String, UUID>();
+        getServer().getWorlds().forEach(w -> welten.put(w.getKey().toString(), w.getUID()));
+        if (Welten.nenne(antwort, welten) && !weltenGekuerzt) {
+            weltenGekuerzt = true;
+            getLogger().info("Die Antwort auf show nennt nur " + Welten.HOECHSTENS + " von " + welten.size() + " Welten, nach Schlüssel sortiert");
+        }
         if (p.isOnline()) {
             p.sendPluginMessage(this, Download.KANAL, antwort.toString().getBytes(StandardCharsets.UTF_8));
         }

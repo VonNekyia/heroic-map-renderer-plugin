@@ -3,6 +3,7 @@ title: Mehrere Server hinter einem Proxy
 description: Wie der Mod Server hinter einem Proxy auseinanderhält, auch bei gleicher Welt, mit dem Namen dieses Servers an der Antwort auf show; wie das Plugin ihn vom Proxy erfragt oder aus karte.name nimmt; dass karte.von seit 0.19.0 nicht mehr gilt und Spieler die Karte eines anderen im Mod über einen Zeiger nutzen; und wie ein Server mit karte.von-url die öffentlichen Ebenen eines anderen über HTTP zeigt.
 code:
   - src/main/java/com/nekyia/heroicmap/Proxyname.java
+  - src/main/java/com/nekyia/heroicmap/Welten.java
   - src/main/java/com/nekyia/heroicmap/HeroicMapPlugin.java
   - src/main/java/com/nekyia/heroicmap/Konfiguration.java
   - src/main/java/com/nekyia/heroicmap/KarteVon.java
@@ -29,8 +30,11 @@ Die Antwort auf `show` trägt `karte`, den Namen der Karte, und `backend`,
 den Namen dieses Servers, siehe [Download](download.md), „Kanal“:
 
 ```json
-{"v":1,"typ":"show","jetzt":1760000000,"erlaubt":true,"web":true,"karte":"build","backend":"build"}
+{"v":1,"typ":"show","jetzt":1760000000,"erlaubt":true,"web":true,"karte":"build","backend":"build",
+ "welten":{"minecraft:overworld":{"uid":"0d9c4b2e-…"},"minecraft:the_nether":{"uid":"7a1e…"},"minecraft:the_end":{"uid":"…"}}}
 ```
+
+Ab 0.20.1 kommt `welten` dazu, siehe „Welten“.
 
 - **Warum an `show`:** Der Ordner gilt auch ohne Download, für Wegpunkte
   und eigene Ebenen. Ein `angebot` schickt das Plugin nur mit einem Baum
@@ -49,6 +53,34 @@ den Namen dieses Servers, siehe [Download](download.md), „Kanal“:
 - **Keine neue Version:** Ein alter Mod überspringt beide Felder, ein altes
   Plugin schickt sie nicht. Mod 0.2.68 liest aus der Antwort auf `show` nur
   `erlaubt`, `grund`, `token`, `web` und `karte`.
+
+## Welten
+
+Ab 0.20.1 nennt die Antwort auf `show` unter `welten` jede Welt dieses
+Servers mit ihrer UID (`Welten.nenne`, aus `HeroicMapPlugin.sendeShow`).
+Daran erkennt der Mod eine neue Welt hinter demselben Schlüssel und Seed,
+etwa nach einem Reset.
+
+- **Format:** eine Map von `World#getKey()`, etwa `minecraft:overworld`,
+  auf ein Objekt `{"uid": "<uuid>"}`. Die UUID ist klein geschrieben, mit
+  Bindestrichen, 36 Zeichen. Weitere Felder je Welt passen später in das
+  Objekt, ohne das Format zu brechen.
+- **Alle Welten auf einmal,** nicht nur die des Spielers: Ein Wechsel in
+  den Nether ist kein neuer Login, und `show` kommt dabei nicht neu.
+- **Höchstens 64** (`Welten.HOECHSTENS`), nach Schlüssel sortiert. Sind es
+  mehr, fehlen die übrigen, und das Log sagt es einmal je Laufzeit.
+- **Woher die UID kommt,** belegt per javap an Paper 26.3:
+  - `World#getUID` gibt `ServerLevel.uuid` zurück. Paper liest sie je
+    Dimension aus `data/paper/metadata.dat` unter dem Pfad der Dimension,
+    Feld `uuid` (`PaperWorldMetadata`, `PaperWorldLoader`).
+  - Fehlt die Datei, würfelt Paper eine neue UID (`UUID.randomUUID`) und
+    speichert sie: `SavedDataStorage.set` markiert sie dafür.
+  - Eine `uid.dat` wie früher bei Bukkit gibt es nicht mehr.
+- **Was daraus folgt:** Eine Kopie des Ordners samt `data/` trägt dieselbe
+  UID, ein Reset mit neuem Ordner bekommt eine neue. Den Server trennt der
+  Mod ohnehin über `backend`, siehe „Format“.
+- **Keine neue Version:** Ein alter Mod überspringt das Feld. Ohne `welten`
+  gilt im Mod wie bisher nur Hash und Name.
 
 ## Name vom Proxy
 
