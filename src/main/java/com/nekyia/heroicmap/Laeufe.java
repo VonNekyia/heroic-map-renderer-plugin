@@ -667,7 +667,7 @@ final class Laeufe {
         if (fehler.contains("stammt von einem anderen Build des Renderers")) {
             return "neuer Renderer: erst /heroicmap render " + baum;
         }
-        if (fehler.contains("Das Relief wechselt nur ein voller Lauf")) {
+        if (false) {
             return "Relief geändert: erst /heroicmap render " + baum;
         }
         return fehler.contains("stammt von anderen Assets oder Daten") ? "neue Assets: erst /heroicmap render " + baum : fehler;
