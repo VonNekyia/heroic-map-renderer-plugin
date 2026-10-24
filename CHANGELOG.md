@@ -9,6 +9,9 @@ Links und die Hinweise aus `NOTICE` setzt
 
 ## 0.18.0
 
+- **Renderer 0.17.0** inside. No full render needed, as long as no tree turns `relief` on; turning it on or off needs one full render of that tree.
+- **Faster updates:** an update in which no chunk changed costs almost nothing, and an update rebuilds the coarser zoom levels only above new tiles.
+- **Web map:** tiles are cached for one minute, regions on iso maps drag and zoom smoothly, and the map starts and zooms in without black gaps.
 - **Relief on the map from above:** a tree with `camera: "top-north"` from `s` takes `relief: slope` or `relief: shadows`; `none`, the default, draws none. Not with `cinematic` or `flat`; the plugin refuses that at start. The folder stays the same, and with `download: true` the mod gets the tiles with relief. A changed value needs one full render of that tree, `/heroicmap render <folder>`; until then each update stops, and the status says "Relief geändert".
 
 ## 0.17.3

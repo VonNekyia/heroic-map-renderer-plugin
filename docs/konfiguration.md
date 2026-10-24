@@ -90,7 +90,7 @@ in `Binaer` in [`Binaer.java`](../src/main/java/com/nekyia/heroicmap/Binaer.java
 | `Linux` | `amd64` oder `x86_64` | `renderer/linux-x64/heroic-map-renderer.xz` |
 
 - **Auspacken:** mit xz nach `plugins/HeroicMap/bin/<version>/`, etwa
-  `bin/0.16.0/heroic-map-renderer`, nur wenn die Datei dort fehlt oder ihre
+  `bin/0.17.0/heroic-map-renderer`, nur wenn die Datei dort fehlt oder ihre
   SHA-256 nicht die aus dem Build ist. Sonst bleibt sie, wie sie ist; die
   Prüfung liest sie einmal je Start. Die SHA-256 gilt dem ausgepackten
   Binär.
@@ -241,8 +241,8 @@ Jeder Eintrag unter `trees` ist ein Kachelbaum, siehe
   `scale`, `cinematic` oder `download` meldet das Plugin einen Fehler, denn
   der Renderer nimmt `--flat` mit keinem davon, und zum Download gibt es
   nur scale 4. Die CPU zeichnet, auch mit `renderer.gpu: true`.
-- **`relief`** zeichnet ein Relief in die Karte von oben, `slope` oder
-  `shadows`, siehe im Renderer
+- **`relief`** zeichnet ab Renderer 0.17.0 ein Relief in die Karte von
+  oben, `slope` oder `shadows`, siehe im Renderer
   [Relief](https://github.com/VonNekyia/heroic-map-renderer/blob/master/docs/renderer/relief.md); `none`, die
   Vorgabe, zeichnet keins. Nur mit `camera: "top-north"` aus `s`, ohne
   `cinematic` und ohne `flat`, sonst meldet das Plugin einen Fehler. Der
