@@ -156,7 +156,7 @@ final class Proxyname {
      * Ordner danach. Siehe docs/mehrere-server.md, „Format“.
      */
     static String karte(Konfiguration.Karte k, String vomProxy) {
-        return backend(k, vomProxy);
+        return k.name().isEmpty() ? null : k.name();
     }
 
     /** Der Name dieses Servers selbst: {@code vomProxy}, sonst karte.name; null ohne. Siehe docs/mehrere-server.md, „Format“. */
