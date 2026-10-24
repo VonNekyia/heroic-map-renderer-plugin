@@ -38,7 +38,7 @@ Die Statistik über bStats hat hier keinen Schlüssel; sie schaltet
 | `world` | leer: die Hauptwelt | `--world` | die Weltwurzel mit `level.dat` |
 | `tiles` | `plugins/HeroicMap/tiles` | `--tiles` | die Wurzel der Kachelbäume |
 | `karte.name` | leer | – | der Name dieses Servers für den Ordner im Mod, etwa `main`; nur, wenn der Proxy keinen meldet, siehe [Mehrere Server](mehrere-server.md), „Name vom Proxy“ |
-| `karte.von` | – | – | gilt seit 0.18.0 nicht mehr; steht er noch da, nennt das Log es beim Start. Die Karte eines anderen Servers nutzen Spieler im Mod über einen Zeiger, siehe [Mehrere Server](mehrere-server.md), „Karte von“ |
+| `karte.von` | – | – | gilt seit 0.19.0 nicht mehr; steht er noch da, nennt das Log es beim Start. Die Karte eines anderen Servers nutzen Spieler im Mod über einen Zeiger, siehe [Mehrere Server](mehrere-server.md), „Karte von“ |
 | `karte.von-url` | leer | – | der Webserver eines anderen Servers, wie dieser Server ihn erreicht, etwa `"http://127.0.0.1:8080"`, für dessen öffentliche Ebenen; mit ihr darf `trees` leer sein. Den Ordner im Mod ändert sie nicht |
 | `karte.von-oeffentlich` | leer: der eigene | – | derselbe Webserver, wie Spieler ihn erreichen, etwa dessen `webserver.url`; der Mod holt Bilder und Banner dort, ohne „Im Browser öffnen“, und dieser Server braucht keinen Webserver; nur mit `karte.von-url`, siehe [Mehrere Server](mehrere-server.md), „Karte von“ |
 | `update-minutes` | `2` | – | Abstand der Updates in Minuten, `0` schaltet sie ab; dazu der Autosave von Paper auf 60 s, siehe [Läufe](laeufe.md), „Zeitplan“ |
@@ -90,7 +90,7 @@ in `Binaer` in [`Binaer.java`](../src/main/java/com/nekyia/heroicmap/Binaer.java
 | `Linux` | `amd64` oder `x86_64` | `renderer/linux-x64/heroic-map-renderer.xz` |
 
 - **Auspacken:** mit xz nach `plugins/HeroicMap/bin/<version>/`, etwa
-  `bin/0.15.3/heroic-map-renderer`, nur wenn die Datei dort fehlt oder ihre
+  `bin/0.16.0/heroic-map-renderer`, nur wenn die Datei dort fehlt oder ihre
   SHA-256 nicht die aus dem Build ist. Sonst bleibt sie, wie sie ist; die
   Prüfung liest sie einmal je Start. Die SHA-256 gilt dem ausgepackten
   Binär.

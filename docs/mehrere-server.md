@@ -1,6 +1,6 @@
 ---
 title: Mehrere Server hinter einem Proxy
-description: Wie der Mod Server hinter einem Proxy auseinanderhält, auch bei gleicher Welt, mit dem Namen dieses Servers an der Antwort auf show; wie das Plugin ihn vom Proxy erfragt oder aus karte.name nimmt; dass karte.von seit 0.18.0 nicht mehr gilt und Spieler die Karte eines anderen im Mod über einen Zeiger nutzen; und wie ein Server mit karte.von-url die öffentlichen Ebenen eines anderen über HTTP zeigt.
+description: Wie der Mod Server hinter einem Proxy auseinanderhält, auch bei gleicher Welt, mit dem Namen dieses Servers an der Antwort auf show; wie das Plugin ihn vom Proxy erfragt oder aus karte.name nimmt; dass karte.von seit 0.19.0 nicht mehr gilt und Spieler die Karte eines anderen im Mod über einen Zeiger nutzen; und wie ein Server mit karte.von-url die öffentlichen Ebenen eines anderen über HTTP zeigt.
 code:
   - src/main/java/com/nekyia/heroicmap/Proxyname.java
   - src/main/java/com/nekyia/heroicmap/HeroicMapPlugin.java
@@ -41,7 +41,7 @@ den Namen dieses Servers, siehe [Download](download.md), „Kanal“:
   1. der Name vom Proxy, siehe „Name vom Proxy“;
   2. sonst `karte.name` aus `config.yml`;
   3. sonst fehlen beide Felder, und der Mod legt ab wie bisher.
-- **`karte` und `backend`** tragen seit 0.18.0 denselben Namen. `karte`
+- **`karte` und `backend`** tragen seit 0.19.0 denselben Namen. `karte`
   bleibt für ältere Mods, die den Ordner danach benennen; `backend` sagt
   dem Mod ab 0.2.69, wer der Server ist, siehe
   [0015](entscheidungen/0015-eigener-name-an-show.md). Bis 0.17.2 nannte
@@ -99,7 +99,7 @@ auf dem Kanal `BungeeCord`, nach dem Namen des Servers, auf dem er ist.
 
 Bis 0.17.2 zeigte ein Server mit `karte.von: main`, etwa build, im Mod die
 Karte von main: Er nannte `karte: main`, und der Mod nahm den Ordner von
-main. Seit 0.18.0 gilt `karte.von` nicht mehr. Ob ein Spieler auf build die
+main. Seit 0.19.0 gilt `karte.von` nicht mehr. Ob ein Spieler auf build die
 Karte von main sieht, entscheidet er im Mod über einen Zeiger in der
 Kartenliste, siehe im Mod
 [`download.md`, „Ablage“](https://github.com/VonNekyia/heroic-map-renderer-mod/blob/main/docs/download.md#ablage); wer sie bisher so

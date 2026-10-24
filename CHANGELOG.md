@@ -7,11 +7,17 @@ Links und die Hinweise aus `NOTICE` setzt
 [`.github/notizen.sh`](.github/notizen.sh) dazu. Siehe
 [Entwicklung](docs/entwicklung.md), „Release“.
 
-## 0.18.0
+## 0.19.0
 
 - **`karte.von` is gone.** A server no longer decides in its config that the mod shows another server's map; players decide in the mod instead, with a link in the map list (mod 0.2.69 and newer). Whoever saw main's map on build that way gets the link once by itself. If `karte.von` is still in `config.yml`, the log says so at start; it is not an error. Remove it after updating the mod on the players' side.
 - **`karte.von-url` and `karte.von-oeffentlich` stay** for the public layers and images of another server, now on their own: `trees: []` is allowed with `karte.von-url`, and `karte.von-oeffentlich` needs `karte.von-url`. A tree with `download: true` is no longer an error there.
 - **The answer to `show`** now carries the server's own name in both `karte` and `backend`.
+
+## 0.17.3
+
+- **Renderer 0.16.0** inside. No full render needed.
+- **Banners from the front:** the banner sprites of every tree now face the viewer like the top-down set, also on iso maps, so cloth and name stand straight. The plugin's `--banners` call at server start redraws them by itself.
+- **Web map:** pins with a head (`Pin.withHead`) now show the face; pins, heads and banners keep their size on every zoom level, and far out only their names shrink smoothly and fade; with one top-down and one iso tree, a 2D/3D button replaces the list of trees, and the views with 1 and 2 px per block are gone from the web map.
 
 ## 0.17.2
 
