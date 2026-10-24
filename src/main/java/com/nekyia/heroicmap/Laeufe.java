@@ -227,6 +227,9 @@ final class Laeufe {
         if (baum.cinematic()) {
             b.add("--cinematic");
         }
+        if (baum.relief() != null) {
+            b.addAll(List.of("--relief", baum.relief()));
+        }
         b.addAll(List.of("--gpu", konf.grafikkarte() ? "auto" : "off"));
         // Hinter dem Server: niedrigste Priorität. Siehe docs/laeufe.md, „Der Kindprozess“.
         b.addAll(List.of("--threads", Integer.toString(threads(art)), "--low-priority", "--progress", "json"));
@@ -657,12 +660,15 @@ final class Laeufe {
 
     /**
      * Die Zeile „Error: …“ für den Status; braucht ein Update erst einen vollen Lauf, weil der Stand von einem
-     * anderen Build des Renderers oder von anderen Assets oder Daten stammt, steht dort, was zu tun ist, für genau
+     * anderen Build des Renderers oder von anderen Assets oder Daten stammt oder das Relief wechselt, steht dort, was zu tun ist, für genau
      * diesen Baum. Siehe docs/laeufe.md, „Der Kindprozess“.
      */
     static String kurz(String fehler, String baum) {
         if (fehler.contains("stammt von einem anderen Build des Renderers")) {
             return "neuer Renderer: erst /heroicmap render " + baum;
+        }
+        if (fehler.contains("Das Relief wechselt nur ein voller Lauf")) {
+            return "Relief geändert: erst /heroicmap render " + baum;
         }
         return fehler.contains("stammt von anderen Assets oder Daten") ? "neue Assets: erst /heroicmap render " + baum : fehler;
     }

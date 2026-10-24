@@ -65,13 +65,18 @@ record Konfiguration(
 
     /**
      * Ein Kachelbaum, mit Kamera und Richtung, wie der Renderer sie schreibt; mit {@code download} für
-     * den Mod angeboten, ohne {@code web} nicht auf der Webkarte; mit {@code flat} die einfarbige Ansicht.
+     * den Mod angeboten, ohne {@code web} nicht auf der Webkarte; mit {@code flat} die einfarbige Ansicht;
+     * {@code relief} ist slope oder shadows, null ohne Relief.
      */
     record Baum(String kamera, String richtung, Integer scale, boolean cinematic, boolean download, boolean web,
-            boolean flat) {
+            boolean flat, String relief) {
 
         Baum(String kamera, String richtung, Integer scale, boolean cinematic, boolean download, boolean web) {
             this(kamera, richtung, scale, cinematic, download, web, false);
+        }
+
+        Baum(String kamera, String richtung, Integer scale, boolean cinematic, boolean download, boolean web, boolean flat) {
+            this(kamera, richtung, scale, cinematic, download, web, flat, null);
         }
 
         /** Der Ordner unter der Wurzel, wie `baum_name` im Renderer. Siehe docs/konfiguration.md, „Bäume“. */
@@ -231,7 +236,19 @@ record Konfiguration(
                 fehler.add("trees: download nur mit camera \"top-north\", scale 4 und ohne cinematic");
                 continue;
             }
-            baeume.add(new Baum(kamera, richtung, (Integer) scale, cinematic, download, web, flat));
+            // Das Relief gibt es nur von oben, genordet; none statt off, das YAML 1.1 als false liest.
+            // Siehe docs/konfiguration.md, „Bäume“.
+            Object relief = m.containsKey("relief") ? m.get("relief") : "none";
+            if (!List.of("none", "slope", "shadows").contains(relief)) {
+                fehler.add("trees: relief " + relief + " ist nicht none, slope oder shadows");
+                continue;
+            }
+            if (!relief.equals("none") && (flat || cinematic || !kamera.equals("top-north") || !richtung.equals("s"))) {
+                fehler.add("trees: relief nur mit camera \"top-north\", direction s, ohne cinematic und flat");
+                continue;
+            }
+            baeume.add(new Baum(kamera, richtung, (Integer) scale, cinematic, download, web, flat,
+                    relief.equals("none") ? null : (String) relief));
         }
         // Mit karte.von rendert dieser Server nichts selbst. Siehe docs/mehrere-server.md, „Karte von“.
         if (baeume.isEmpty() && fehler.isEmpty() && c.getString("karte.von", "").isBlank()) {
