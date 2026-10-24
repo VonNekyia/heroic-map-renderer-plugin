@@ -1,6 +1,6 @@
 ---
 title: Mehrere Server hinter einem Proxy
-description: Wie der Mod Server hinter einem Proxy auseinanderhält, auch bei gleicher Welt, mit dem Namen der Karte und dem Namen dieses Servers an der Antwort auf show; wie das Plugin den Namen dieses Servers vom Proxy erfragt oder aus karte.name nimmt; und wie ein Server mit karte.von die Karte eines anderen zeigt, mit dessen öffentlichen Ebenen über HTTP.
+description: Wie der Mod Server hinter einem Proxy auseinanderhält, auch bei gleicher Welt, mit dem Namen dieses Servers an der Antwort auf show; wie das Plugin ihn vom Proxy erfragt oder aus karte.name nimmt; dass karte.von seit 0.18.0 nicht mehr gilt und Spieler die Karte eines anderen im Mod über einen Zeiger nutzen; und wie ein Server mit karte.von-url die öffentlichen Ebenen eines anderen über HTTP zeigt.
 code:
   - src/main/java/com/nekyia/heroicmap/Proxyname.java
   - src/main/java/com/nekyia/heroicmap/HeroicMapPlugin.java
@@ -18,9 +18,10 @@ Hinter einem Proxy sieht der Mod nur den Proxy. Zwei Server mit derselben
 Welt, etwa eine Kopie zum Bauen, legte er darum in denselben Ordner. Jetzt
 nennt das Plugin dem Mod den Namen der Karte, und jeder Server hat seinen
 Ordner (heroic-map-renderer#318, Wunsch des Users vom 20.10.). Wie der Mod
-den Ordner bildet, steht in seiner Doku, `download.md`, „Ablage“. Mit
-`karte.von` zeigt ein Server bewusst die Karte eines anderen, siehe „Karte
-von“.
+den Ordner bildet, steht in seiner Doku, `download.md`, „Ablage“. Die Karte
+eines anderen Servers mit derselben Welt nutzt ein Spieler im Mod über
+einen Zeiger; die Ebenen eines anderen zeigt ein Server mit
+`karte.von-url`, siehe „Karte von“.
 
 ## Format
 
@@ -28,7 +29,7 @@ Die Antwort auf `show` trägt `karte`, den Namen der Karte, und `backend`,
 den Namen dieses Servers, siehe [Download](download.md), „Kanal“:
 
 ```json
-{"v":1,"typ":"show","jetzt":1760000000,"erlaubt":true,"web":true,"karte":"main","backend":"build"}
+{"v":1,"typ":"show","jetzt":1760000000,"erlaubt":true,"web":true,"karte":"build","backend":"build"}
 ```
 
 - **Warum an `show`:** Der Ordner gilt auch ohne Download, für Wegpunkte
@@ -36,17 +37,15 @@ den Namen dieses Servers, siehe [Download](download.md), „Kanal“:
   `download: true`; `show` beantwortet es immer.
 - **Wert:** klein, `a–z 0–9 _ -`, höchstens 64 Zeichen, so taugt er im Mod
   als Ordner (`Proxyname.gueltig`).
-- **Welcher Name** (`Proxyname.karte`):
-  1. `karte.von`, siehe „Karte von“;
-  2. sonst der Name vom Proxy, siehe „Name vom Proxy“;
-  3. sonst `karte.name` aus `config.yml`;
-  4. sonst fehlt das Feld, und der Mod legt ab wie bisher.
-- **`backend`** (`Proxyname.backend`): der Name vom Proxy, sonst
-  `karte.name`, nie `karte.von`; sonst fehlt das Feld. `karte` sagt, welche
-  Karte ein Server zeigt, `backend`, wer er ist; mit `karte.von: main`
-  nennt build also `karte: main` und `backend: build`. Der Mod hält damit
-  Server mit derselben Welt auseinander. Warum so:
-  [0015](entscheidungen/0015-eigener-name-an-show.md).
+- **Welcher Name** (`Proxyname.backend`):
+  1. der Name vom Proxy, siehe „Name vom Proxy“;
+  2. sonst `karte.name` aus `config.yml`;
+  3. sonst fehlen beide Felder, und der Mod legt ab wie bisher.
+- **`karte` und `backend`** tragen seit 0.18.0 denselben Namen. `karte`
+  bleibt für ältere Mods, die den Ordner danach benennen; `backend` sagt
+  dem Mod ab 0.2.69, wer der Server ist, siehe
+  [0015](entscheidungen/0015-eigener-name-an-show.md). Bis 0.17.2 nannte
+  ein Server mit `karte.von: main` dort `karte: main`.
 - **Keine neue Version:** Ein alter Mod überspringt beide Felder, ein altes
   Plugin schickt sie nicht. Mod 0.2.68 liest aus der Antwort auf `show` nur
   `erlaubt`, `grund`, `token`, `web` und `karte`.
@@ -56,8 +55,6 @@ den Namen dieses Servers, siehe [Download](download.md), „Kanal“:
 Beim Join fragt das Plugin den Proxy über diesen Spieler mit `GetServer`
 auf dem Kanal `BungeeCord`, nach dem Namen des Servers, auf dem er ist.
 
-- **Auch mit `karte.von`:** `karte` kommt dann aus der Config, aber
-  `backend` braucht den eigenen Namen.
 - **Nur sicher hinter einem Proxy** (`Proxyname.hinterProxy`): mit der
   Weiterleitung von Velocity, `proxies.velocity.enabled` in
   `config/paper-global.yml`, oder im BungeeCord-Modus, `settings.bungeecord`
@@ -100,22 +97,24 @@ auf dem Kanal `BungeeCord`, nach dem Namen des Servers, auf dem er ist.
 
 ## Karte von
 
-Mit `karte.von: main` zeigt ein Server, etwa build, im Mod die Karte von
-main. Das Plugin von build nennt dem Mod `karte: main`; der Mod nimmt den
-Ordner von main, mit der Karte, die der Spieler auf main geladen hat, und
-denselben Wegpunkten, Regionen und eigenen Ebenen. Entschieden in
-[0014](entscheidungen/0014-karte-von-ueber-den-namen.md).
+Bis 0.17.2 zeigte ein Server mit `karte.von: main`, etwa build, im Mod die
+Karte von main: Er nannte `karte: main`, und der Mod nahm den Ordner von
+main. Seit 0.18.0 gilt `karte.von` nicht mehr. Ob ein Spieler auf build die
+Karte von main sieht, entscheidet er im Mod über einen Zeiger in der
+Kartenliste, siehe im Mod
+[`download.md`, „Ablage“](https://github.com/VonNekyia/heroic-map-renderer-mod/blob/main/docs/download.md#ablage); wer sie bisher so
+sah, bekommt den Zeiger dort einmal von selbst. Warum so:
+[0016](entscheidungen/0016-ohne-karte-von.md), auf Wunsch des Users.
+Steht `karte.von` noch in `config.yml`, nennt das Log es beim Start, ein
+Fehler ist es nicht (`Konfiguration.veraltet`).
 
-- **Kein Download auf build:** Ein Baum mit `download: true` ist mit
-  `karte.von` ein Fehler beim Start; er legte Kacheln von build in den
-  Ordner von main. Die Karte im Mod frischt sich nur auf main auf, mit dem
-  Download dort.
-- **Ohne Bäume:** Mit `karte.von` darf `trees` leer sein, `trees: []`.
+Was bleibt, sind die öffentlichen Ebenen und Bilder eines anderen Servers,
+mit `karte.von-url` und `karte.von-oeffentlich`. Sie ändern den Ordner im
+Mod nicht.
+
+- **Ohne Bäume:** Mit `karte.von-url` darf `trees` leer sein, `trees: []`.
   Dann rendert build nichts, braucht keine Assets und belegt weder CPU
   noch Platte für Kacheln; ein Update findet keinen Baum und tut nichts.
-- **Gleiche Welt:** Der Ordner im Mod hängt auch am Hash des Seeds je
-  Dimension. Eine Kopie der Welt von main hat denselben; mit einem anderen
-  Seed legt der Mod einen neuen Ordner an, und die Karte von main fehlt.
 - **Die Ebenen von main** holt build mit `karte.von-url` über HTTP vom
   Webserver von main, nur öffentliche Pfade, wie ein Browser (`KarteVon`):
   - alle 10 s `/tiles/layers.json` mit `If-None-Match`, meist `304`;
@@ -154,17 +153,16 @@ denselben Wegpunkten, Regionen und eigenen Ebenen. Entschieden in
 
   Ohne `karte.von-oeffentlich` nennt build seine eigene Adresse wie sonst,
   und sein Webserver liefert alles, auch die Bilder von main.
-- **Keine Köpfe:** Mit `karte.von` schreibt und löscht das Plugin keine
-  Köpfe für die Webkarte, siehe [Köpfe](koepfe.md), „Wann“. Nadeln mit
-  Kopf aus eigenen Ebenen bleiben Nadeln. Köpfe in Ebenen von main zeigt
-  der Mod nur mit `karte.von-oeffentlich`, denn sie liegen bei main;
-  sonst die Nadel.
+- **Keine Köpfe:** Mit `karte.von-oeffentlich` schreibt und löscht das
+  Plugin keine Köpfe, siehe [Köpfe](koepfe.md), „Wann“: Der Mod holt sie
+  bei main, denn die Köpfe in Ebenen von main liegen dort. Nadeln mit Kopf
+  aus eigenen Ebenen bleiben dann Nadeln.
 - **Grenzen:**
   - Nur die Objekte der Dimension der Wurzel von main: Mehr schreibt main
     nicht für die Webkarte.
   - Ebenen mit `permission`, mit `web: false` und Aktionsebenen von main
     fehlen; sie stehen nicht öffentlich unter `/tiles/`.
-  - Ohne `karte.von-url` nur der Name, keine Ebenen von main.
+  - Ohne `karte.von-url` keine Ebenen von main.
   - Mit `karte.von-oeffentlich` fehlen im Mod Bilder und Banner eigener
     Ebenen von build, aus Dateien oder der API: Der Mod sucht sie bei
     main. Objekte ohne Bild gehen.

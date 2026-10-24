@@ -158,9 +158,10 @@ Plugin das seiner Plattform aus, siehe [Konfiguration](konfiguration.md),
   `renderer.binary`, Pfade, Bäume und ihre Ordner wie im Renderer, alle
   Fehler auf einmal. `webserver.trusted-proxy` nur mit IP-Literalen,
   `webserver.erkennen-url` nur mit `url`, der Ursprung ohne Pfad und klein.
-  `karte.name` und `karte.von` klein, ein Name mit `/` ist ein Fehler,
-  `karte.von-url` und `karte.von-oeffentlich` nur mit `karte.von`,
-  `karte.von` nicht mit Download, aber ohne Baum.
+  `karte.name` klein, ein Name mit `/` ist ein Fehler,
+  `karte.von-url` und `karte.von-oeffentlich` ohne `karte.von`,
+  `-oeffentlich` nur mit `-url`, ohne Baum nur mit `karte.von-url`;
+  `karte.von` gilt nicht mehr, ist kein Fehler und gibt eine Zeile im Log.
 - **`VorlageTest`:** eine alte `config.yml` mit eigenen Werten und
   Kommentaren, auch in `trees`, und unbekannten Schlüsseln: Jede ihrer
   Zeilen bleibt, jeder Schlüssel der Vorlage ist danach da, mit Vorgabe und
@@ -195,7 +196,7 @@ Plugin das seiner Plattform aus, siehe [Konfiguration](konfiguration.md),
   fehlendes Zip lässt den letzten Ordner, dasselbe kaputte nur einmal
   versucht.
 - **`LaeufeTest`, Nexo:** das Pack als letztes `--assets` im Befehl des
-  Laufs, ohne Pack der Auftrag, wie er war; mit `karte.von` kein Pack und
+  Laufs, ohne Pack der Auftrag, wie er war; ohne Bäume kein Pack und
   eine Zeile im Log; ohne Basis kein Pack, kein Auspacken, und der Renderer
   fragt weiter nach der Zustimmung; „neue Assets: erst /heroicmap render“
   im Status.
@@ -205,7 +206,7 @@ Plugin das seiner Plattform aus, siehe [Konfiguration](konfiguration.md),
   auspacken, ohne den letzten Ordner bei kaputtem Zip, der Fehlschlag
   nicht gemerkt, das Pack auch ohne Basis, ohne `generate_pack`, die
   Meldung jedes Mal, das Pack nicht oder zuerst angehängt, der Status ohne
-  „neue Assets“, Nexo auch mit `karte.von`.
+  „neue Assets“, Nexo auch ohne Bäume.
 - **`LaeufeTest`, Prozesse:** mit `FalscherRenderer`, einer Testklasse, die
   der Test direkt über `java` startet, ohne Hülle wie `cmd` oder `sh`
   dazwischen. So trifft ein Abbruch den Prozess selbst. Geprüft:
@@ -278,7 +279,7 @@ Plugin das seiner Plattform aus, siehe [Konfiguration](konfiguration.md),
   über einen Neustart gilt.
 - **`ProxynameTest`:** „kein Proxy“ erst nach der Frist und nur ohne
   Antwort, einmal, ohne `karte.name` mit der Folge im Mod; `backend` vom
-  Proxy oder aus `karte.name`, nie `karte.von`, an `show` neben `karte`; nur sicher hinter einem Proxy, mit der Weiterleitung
+  Proxy oder aus `karte.name`, an `show` neben `karte`, beide derselbe Name; nur sicher hinter einem Proxy, mit der Weiterleitung
   von Velocity oder im BungeeCord-Modus, sonst keine Frage; die Frage
   `GetServer`, wie der Proxy sie liest; eine
   Antwort nur auf die eigene Frage, über denselben Spieler, mit einem Namen,

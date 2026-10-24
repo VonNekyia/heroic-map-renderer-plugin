@@ -255,8 +255,8 @@ npcs.put(MapObject.Pin.at("npc-12", 120.5, -340.5)
 - **Auch mit `permission`:** Ein Kopf ist kein Bild unter `layers/`.
 - **Nicht bei einem Spieler:** Eigene Objekte eines Spielers zeigen keine
   Köpfe; `put` wirft, wie bei Bildern.
-- **Mit `karte.von`** holt dieses Plugin keine Köpfe; jede Nadel bleibt
-  eine Nadel.
+- **Mit `karte.von-oeffentlich`** holt dieses Plugin keine Köpfe; jede
+  Nadel bleibt eine Nadel.
 
 ## Entwürfe
 

@@ -152,17 +152,14 @@ final class Proxyname {
     }
 
     /**
-     * Der Name der Karte für den Mod: karte.von, sonst {@code vomProxy}, sonst karte.name; null ohne. Siehe
-     * docs/mehrere-server.md, „Format“.
+     * Der Name der Karte für den Mod, seit karte.von weg ist derselbe wie {@link #backend}; ein älterer Mod benennt den
+     * Ordner danach. Siehe docs/mehrere-server.md, „Format“.
      */
     static String karte(Konfiguration.Karte k, String vomProxy) {
-        return !k.von().isEmpty() ? k.von() : backend(k, vomProxy);
+        return backend(k, vomProxy);
     }
 
-    /**
-     * Der Name dieses Servers selbst: {@code vomProxy}, sonst karte.name; null ohne. Anders als {@link #karte} nie
-     * karte.von. Siehe docs/mehrere-server.md, „Format“.
-     */
+    /** Der Name dieses Servers selbst: {@code vomProxy}, sonst karte.name; null ohne. Siehe docs/mehrere-server.md, „Format“. */
     static String backend(Konfiguration.Karte k, String vomProxy) {
         return vomProxy != null ? vomProxy : k.name().isEmpty() ? null : k.name();
     }

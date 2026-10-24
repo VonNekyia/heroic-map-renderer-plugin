@@ -124,7 +124,7 @@ final class Ebenen {
     private final String dimension;
     private final EbenenSchreiber schreiber;
     private final Logger log;
-    /** Mit karte.von die öffentlichen Ebenen der anderen Karte, sonst keine. */
+    /** Mit karte.von-url die öffentlichen Ebenen eines anderen Servers, sonst keine. */
     private final Supplier<List<Ebene>> fremde;
     private final EbenenApi api;
     /** Die Ebenen aus den Dateien; mit denen der API zusammen ergeben sie im Takt den Stand. */

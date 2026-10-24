@@ -54,7 +54,7 @@ final class EbenenApi implements HeroicMapApi, Listener {
     private final Supplier<List<Ebene>> ausDateien;
     private final String dimension;
     private final Logger log;
-    /** Die Köpfe der Nadeln; null mit karte.von, dann bleibt jede Nadel mit Kopf eine Nadel. */
+    /** Die Köpfe der Nadeln; null mit karte.von-oeffentlich, dann bleibt jede Nadel mit Kopf eine Nadel. */
     private volatile Koepfe koepfe;
 
     /** {@code ausDateien} gibt die Ebenen aus Dateien, für die Grenze von 64 zusammen; {@code dimension} wie bei {@link Ebenen}. */

@@ -7,6 +7,12 @@ Links und die Hinweise aus `NOTICE` setzt
 [`.github/notizen.sh`](.github/notizen.sh) dazu. Siehe
 [Entwicklung](docs/entwicklung.md), „Release“.
 
+## 0.18.0
+
+- **`karte.von` is gone.** A server no longer decides in its config that the mod shows another server's map; players decide in the mod instead, with a link in the map list (mod 0.2.69 and newer). Whoever saw main's map on build that way gets the link once by itself. If `karte.von` is still in `config.yml`, the log says so at start; it is not an error. Remove it after updating the mod on the players' side.
+- **`karte.von-url` and `karte.von-oeffentlich` stay** for the public layers and images of another server, now on their own: `trees: []` is allowed with `karte.von-url`, and `karte.von-oeffentlich` needs `karte.von-url`. A tree with `download: true` is no longer an error there.
+- **The answer to `show`** now carries the server's own name in both `karte` and `backend`.
+
 ## 0.17.2
 
 - **The server's own name for the mod:** the answer to the mod's `show` now also carries `backend`, the name of this server, from the proxy or `karte.name`, never `karte.von`. With `karte.von: main`, build now also asks the proxy for its own name. Older mods ignore the field; a coming mod version uses it to keep what each server shows apart, also when two servers share one map. Without any name, the log line "Kein Proxy meldet …" now says so.

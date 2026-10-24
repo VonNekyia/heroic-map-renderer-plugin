@@ -93,12 +93,12 @@ final class Laeufe {
         this.log = log;
         this.pidDatei = daten.resolve("renderer.pid");
         this.cache = daten.resolve("client-jar");
-        // Mit karte.von rendert dieser Server nicht selbst; das Pack holt der andere. Siehe docs/mehrere-server.md.
-        boolean von = !konf.karte().von().isEmpty();
-        if (konf.nexo() && von) {
-            log.info("renderer.nexo gilt hier nicht: Mit karte.von zeigt dieser Server die Karte von " + konf.karte().von());
+        // Ohne Bäume rendert dieser Server nicht; ein Pack bräuchte niemand. Siehe docs/konfiguration.md, „Nexo“.
+        boolean ohneBaeume = konf.baeume().isEmpty();
+        if (konf.nexo() && ohneBaeume) {
+            log.info("renderer.nexo gilt hier nicht: Ohne Bäume rendert dieser Server nichts");
         }
-        this.nexo = konf.nexo() && !von ? new Nexo(Path.of("").toAbsolutePath(), daten.resolve("nexo"), log) : null;
+        this.nexo = konf.nexo() && !ohneBaeume ? new Nexo(Path.of("").toAbsolutePath(), daten.resolve("nexo"), log) : null;
     }
 
     /** Startet einen Lauf über alle Bäume und sagt, was geschah. */

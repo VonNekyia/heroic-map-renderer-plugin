@@ -655,16 +655,16 @@ class LaeufeTest {
     }
 
     @Test
-    void mit_karte_von_tut_renderer_nexo_nichts_und_sagt_es_einmal() {
+    void ohne_baeume_tut_renderer_nexo_nichts_und_sagt_es_einmal() {
         var k = konf(JAVA, false, List.of());
-        var mitVon = new Konfiguration(k.renderer(), k.welt(), k.kacheln(), k.assets(), k.daten(), false, 1, 1, 30, List.of(),
-                DOWNLOAD, k.webserver(), k.clientJar(), false, new Konfiguration.Karte("bau", "main", "", ""), true);
-        var l = new Laeufe(mitVon, logger, tmp);
+        var ohneBaeume = new Konfiguration(k.renderer(), k.welt(), k.kacheln(), k.assets(), k.daten(), false, 1, 1, 30, List.of(),
+                DOWNLOAD, k.webserver(), k.clientJar(), false, new Konfiguration.Karte("bau", "http://127.0.0.1:8080", ""), true);
+        var l = new Laeufe(ohneBaeume, logger, tmp);
         assertNull(l.nexo);
-        assertTrue(log.stream().anyMatch(z -> z.equals("renderer.nexo gilt hier nicht: Mit karte.von zeigt dieser Server die Karte von main")), log::toString);
-        var ohneVon = new Konfiguration(k.renderer(), k.welt(), k.kacheln(), k.assets(), k.daten(), false, 1, 1, 30, List.of(),
+        assertTrue(log.stream().anyMatch(z -> z.equals("renderer.nexo gilt hier nicht: Ohne Bäume rendert dieser Server nichts")), log::toString);
+        var mitBaum = new Konfiguration(k.renderer(), k.welt(), k.kacheln(), k.assets(), k.daten(), false, 1, 1, 30, List.of(KARTE),
                 DOWNLOAD, k.webserver(), k.clientJar(), false, Konfiguration.Karte.OHNE, true);
-        assertTrue(new Laeufe(ohneVon, logger, tmp).nexo != null);
+        assertTrue(new Laeufe(mitBaum, logger, tmp).nexo != null);
     }
 
     @Test

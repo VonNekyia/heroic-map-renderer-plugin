@@ -29,7 +29,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
-/** karte.von: die öffentlichen Ebenen von main über HTTP, wie der Webserver dort sie ausliefert. */
+/** karte.von-url: die öffentlichen Ebenen von main über HTTP, wie der Webserver dort sie ausliefert. */
 class KarteVonTest {
 
     private static final String OBERWELT = "minecraft:overworld";

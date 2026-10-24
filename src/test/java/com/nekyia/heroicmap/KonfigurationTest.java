@@ -37,38 +37,39 @@ class KonfigurationTest {
     }
 
     @Test
-    void karte_name_und_von() throws Exception {
+    void karte_name_und_ebenen_von() throws Exception {
         Files.createFile(server.resolve("heroic-map-renderer"));
         var c = vorgabe();
         c.set("renderer.binary", "heroic-map-renderer");
         c.set("renderer.assets", List.of("vanilla-assets"));
         assertEquals(Konfiguration.Karte.OHNE, Konfiguration.aus(c, server, server).karte(), "Vorgabe: kein Name");
+        assertNull(Konfiguration.veraltet(c));
         c.set("karte.name", " Build ");
-        c.set("karte.von", "Main");
         c.set("karte.von-url", "http://127.0.0.1:8080/");
         c.set("karte.von-oeffentlich", "https://karte.example.org/");
-        assertEquals(new Konfiguration.Karte("build", "main", "http://127.0.0.1:8080", "https://karte.example.org"),
-                Konfiguration.aus(c, server, server).karte(), "klein geschrieben, ohne / am Ende");
+        assertEquals(new Konfiguration.Karte("build", "http://127.0.0.1:8080", "https://karte.example.org"),
+                Konfiguration.aus(c, server, server).karte(), "klein geschrieben, ohne / am Ende, ohne karte.von");
+        c.set("karte.von", "main");
+        assertEquals(new Konfiguration.Karte("build", "http://127.0.0.1:8080", "https://karte.example.org"),
+                Konfiguration.aus(c, server, server).karte(), "karte.von gilt nicht mehr, ist aber kein Fehler");
+        assertTrue(Konfiguration.veraltet(c).startsWith("karte.von gibt es nicht mehr"), "eine Zeile im Log");
         c.set("karte.name", "../main");
         var fehler = assertThrows(IllegalArgumentException.class, () -> Konfiguration.aus(c, server, server));
         assertEquals("karte.name: ../main ist kein Name aus a-z, 0-9, _ und -, höchstens 64 Zeichen", fehler.getMessage());
         c.set("karte.name", "");
-        c.set("karte.von", "");
-        fehler = assertThrows(IllegalArgumentException.class, () -> Konfiguration.aus(c, server, server));
-        assertEquals("karte.von-url: mit http:// oder https:// und Host, etwa \"http://127.0.0.1:8080\", und nur mit karte.von; "
-                + "karte.von-oeffentlich: mit http:// oder https:// und Host, etwa \"http://127.0.0.1:8080\", und nur mit karte.von",
-                fehler.getMessage());
-        c.set("karte.von", "main");
         c.set("karte.von-url", "ftp://127.0.0.1");
-        assertThrows(IllegalArgumentException.class, () -> Konfiguration.aus(c, server, server), "nur http und https");
-        c.set("karte.von-url", "");
-        c.set("trees", List.of(Map.of("camera", "top-north", "scale", 4, "download", true)));
         fehler = assertThrows(IllegalArgumentException.class, () -> Konfiguration.aus(c, server, server));
-        assertEquals("karte.von: kein Baum mit download: true, der Download kommt vom Server main", fehler.getMessage());
+        assertEquals("karte.von-url: mit http:// oder https:// und Host, etwa \"http://127.0.0.1:8080\"", fehler.getMessage());
+        c.set("karte.von-url", "");
+        fehler = assertThrows(IllegalArgumentException.class, () -> Konfiguration.aus(c, server, server));
+        assertEquals("karte.von-oeffentlich: nur mit karte.von-url", fehler.getMessage());
+        c.set("karte.von-oeffentlich", "");
+        c.set("trees", List.of(Map.of("camera", "top-north", "scale", 4, "download", true)));
+        assertEquals(1, Konfiguration.aus(c, server, server).baeume().size(), "ein Download ist kein Fehler mehr");
     }
 
     @Test
-    void mit_karte_von_ohne_baeume() throws Exception {
+    void mit_ebenen_von_ohne_baeume() throws Exception {
         Files.createFile(server.resolve("heroic-map-renderer"));
         var c = vorgabe();
         c.set("renderer.binary", "heroic-map-renderer");
@@ -77,6 +78,9 @@ class KonfigurationTest {
         var fehler = assertThrows(IllegalArgumentException.class, () -> Konfiguration.aus(c, server, server));
         assertEquals("trees: kein Baum", fehler.getMessage());
         c.set("karte.von", "main");
+        fehler = assertThrows(IllegalArgumentException.class, () -> Konfiguration.aus(c, server, server));
+        assertEquals("trees: kein Baum", fehler.getMessage(), "karte.von allein reicht nicht mehr");
+        c.set("karte.von-url", "http://127.0.0.1:8080");
         assertEquals(List.of(), Konfiguration.aus(c, server, server).baeume(), "build rendert nichts selbst");
     }
 

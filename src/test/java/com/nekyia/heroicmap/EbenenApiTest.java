@@ -138,7 +138,7 @@ class EbenenApiTest {
         assertThrows(IllegalArgumentException.class, () -> l.forPlayer(UUID.randomUUID()).put(Pin.at("eigen", 0, 0).withHead("1")),
                 "eigene Objekte eines Spielers zeigen keine Köpfe");
         assertTrue(ebene(a, "npcs:npcs").json().getAsJsonArray("objects").asList().stream()
-                .noneMatch(o -> o.getAsJsonObject().has("head")), "ohne Köpfe, etwa mit karte.von, bleibt jede die Nadel");
+                .noneMatch(o -> o.getAsJsonObject().has("head")), "ohne Köpfe, etwa mit karte.von-oeffentlich, bleibt jede die Nadel");
     }
 
     @Test

@@ -78,7 +78,7 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
     private Proxyname proxyname = new Proxyname(false);
     /** Die Anmeldung auf der Webkarte; null ohne. Siehe docs/anmeldung.md. */
     private volatile SpielerOrdner spieler;
-    /** Die Köpfe der Spieler und der Nadeln von Ebenen; null mit karte.von. Siehe docs/koepfe.md. */
+    /** Die Köpfe der Spieler und der Nadeln von Ebenen; null mit karte.von-oeffentlich. Siehe docs/koepfe.md. */
     private volatile Koepfe koepfe;
     private byte[] geheimnis;
     private String kartenUrl;
@@ -105,6 +105,10 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
         Konfiguration konf;
         try {
             konf = Konfiguration.aus(getConfig(), server, hauptwelt);
+            String veraltet = Konfiguration.veraltet(getConfig());
+            if (veraltet != null) {
+                getLogger().warning(veraltet);
+            }
         } catch (IllegalArgumentException e) {
             getLogger().severe("config.yml: " + e.getMessage());
             getServer().getPluginManager().disablePlugin(this);
@@ -128,15 +132,15 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
         getServer().getPluginManager().registerEvents(this, this);
         // Ebenen brauchen keinen Renderer; geladen wird ausserhalb des Hauptthreads. Siehe docs/ebenen.md.
         Path ebenenOrdner = getDataFolder().toPath().resolve("ebenen");
-        // Mit karte.von und ihrer url die öffentlichen Ebenen der anderen Karte dazu. Siehe docs/mehrere-server.md,
+        // Mit karte.von-url die öffentlichen Ebenen eines anderen Servers dazu. Siehe docs/mehrere-server.md,
         // „Karte von“.
         var von = konf.karte().vonUrl().isEmpty() ? null : new KarteVon(konf.karte().vonUrl(), konf.dimension());
         ebenen = new Ebenen(ebenenOrdner, konf.dimension(), new EbenenSchreiber(konf.kacheln(), konf.dimension(),
                 Set.copyOf(konf.webserver().ebenenAn())), getLogger(),
                 von == null ? List::of : von::stand);
-        // Die Köpfe nur unter der eigenen Wurzel: Mit karte.von schreibt und löscht dieses Plugin keine. Die der
-        // Ebenen holt es einen je Sekunde. Siehe docs/koepfe.md.
-        if (konf.karte().von().isEmpty()) {
+        // Die Köpfe nur, wenn der Mod sie hier holt: Mit karte.von-oeffentlich holt er sie beim anderen Server. Die
+        // der Ebenen holt es einen je Sekunde. Siehe docs/koepfe.md.
+        if (konf.karte().vonOeffentlich().isEmpty()) {
             var k = new Koepfe(konf.kacheln(), URI.create("https://textures.minecraft.net"), getLogger());
             koepfe = k;
             ebenen.api().koepfe(k);
@@ -296,9 +300,9 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
         }
         Level stufe = von.meldung(fehler, von.stand().size(), Instant.now());
         if (stufe != null) {
-            fehler.forEach(f -> getLogger().log(stufe, "Ebenen von " + kartenKonf.von() + ": " + f));
+            fehler.forEach(f -> getLogger().log(stufe, "Ebenen von " + kartenKonf.vonUrl() + ": " + f));
             if (fehler.isEmpty()) {
-                getLogger().info("Ebenen von " + kartenKonf.von() + ": " + von.stand().size() + " geholt");
+                getLogger().info("Ebenen von " + kartenKonf.vonUrl() + ": " + von.stand().size() + " geholt");
             }
         }
     }
@@ -309,7 +313,6 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
      * sonst nichts. Siehe docs/mehrere-server.md, „Name vom Proxy“.
      */
     private void frageProxy(Player p) {
-        // Auch mit karte.von: Den eigenen Namen braucht backend an show.
         if (!proxyname.hinterProxy() || proxyname.name() != null) {
             return;
         }

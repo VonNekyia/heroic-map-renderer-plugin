@@ -65,7 +65,7 @@ plugins/HeroicMap/ebenen/
   Lesefehler nichts von der Webkarte.
 - **Höchstens 64,** auch mit den alten Ebenen eines unlesbaren Ordners;
   gezählt wird nach dem Zusammenführen.
-- **Mit `karte.von`** dazu die öffentlichen Ebenen des anderen Servers,
+- **Mit `karte.von-url`** dazu die öffentlichen Ebenen des anderen Servers,
   über HTTP geholt; eine eigene Datei mit derselben Kennung gilt vor ihnen,
   siehe [Mehrere Server](mehrere-server.md), „Karte von“.
 - **Der Befehl** antwortet mit der Zahl der geladenen Ebenen; `/heroicmap
