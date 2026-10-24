@@ -110,7 +110,8 @@ auf dem Kanal `BungeeCord`, nach dem Namen des Servers, auf dem er ist.
   Namen und Eigenschaften des Spielers, nicht den Namen des Servers
   (`PlayerDataForwarding.createForwardingData`). Belegt am Code von
   Velocity, Commit 77274a8fb, am 24.10. Hinter einem Velocity ohne den
-  Kanal trägt darum jeder Server seinen Namen in `karte.name`.
+  Kanal trägt darum jeder Server seinen Namen in `karte.name`; sonst
+  bleibt „Ort …“ im Mod, siehe „Ohne Namen“.
 - **„Kein Proxy“ im Log** erst 10 s nach dem ersten Join ohne den Kanal
   (`Proxyname.KANAL_FRIST_MS`), und nur, wenn bis dahin kein Name vom
   Proxy kam; einmal je Laufzeit. Ist `karte.name` leer, sagt sie dazu, dass
@@ -118,6 +119,11 @@ auf dem Kanal `BungeeCord`, nach dem Namen des Servers, auf dem er ist.
   derselben Adresse trennt (`Proxyname.ohneProxyZeile`). Das Register des Proxys kommt manchmal
   erst kurz nach dem Join, die Antwort eine Sekunde später; gleich gemeldet,
   stand die Zeile irreführend vor „Der Proxy meldet den Namen …“.
+- **Ohne Namen:** Ohne Kanal und ohne `karte.name` fehlt `backend`, und der
+  Mod trennt die Server hinter derselben Adresse mit derselben Welt nicht.
+  Ab Mod 0.2.70 ordnet der Spieler eine Karte dann selbst einem Server zu,
+  mit „Ort …“ in der Kartenliste, siehe im Mod
+  [`download.md`, „Ort ändern“](https://github.com/VonNekyia/heroic-map-renderer-mod/blob/main/docs/download.md#ort-ändern).
 - **Wer antworten kann:** Nachrichten eines Clients auf dem BungeeCord-Kanal
   verwirft Velocity immer (`ClientPlaySessionHandler`), BungeeCord ebenso
   (`UpstreamBridge`). Eine Antwort kommt also nur vom Proxy oder einem
