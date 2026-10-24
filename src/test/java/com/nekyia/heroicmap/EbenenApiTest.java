@@ -289,6 +289,138 @@ class EbenenApiTest {
     }
 
     @Test
+    void hoechstens_200_entwuerfe_je_ebene() {
+        var a = api(0);
+        Layer l = a.layer("Beispiel", "staedte");
+        entwerfe(l, 0);
+        var e = assertThrows(IllegalArgumentException.class, () -> l.design("d200", entwurf(0)));
+        assertTrue(e.getMessage().contains("designs: mehr als 200 Entwürfe"), e.getMessage());
+        l.design("d0", entwurf(1));
+        l.removeDesign("d0");
+        l.design("d200", entwurf(0));
+        assertEquals(200, ebene(a, "beispiel:staedte").json().getAsJsonObject("designs").size());
+    }
+
+    @Test
+    void entwuerfe_zaehlen_zu_den_4_mib() {
+        var a = api(0);
+        Layer l = a.layer("Beispiel", "gross");
+        // 199, damit der nächste an der Grösse scheitert, nicht an der Zahl.
+        for (int i = 0; i < 199; i++) {
+            l.design("d" + i, entwurf(i));
+        }
+        bisAnDieGrenze(l);
+        var e = assertThrows(IllegalArgumentException.class, () -> l.design("noch-einer", entwurf(0)));
+        assertTrue(e.getMessage().contains("Entwurf noch-einer: die Ebene würde grösser als 4 MiB"), e.getMessage());
+        l.design("d0", entwurf(1));
+        int bytes = ebene(a, "beispiel:gross").json().toString().getBytes(StandardCharsets.UTF_8).length;
+        assertTrue(bytes <= EbenenPruefung.EBENE_BYTES, bytes + " Byte");
+        assertEquals(List.of(), log, "der Schnappschuss besteht die Prüfung, mit den Entwürfen");
+    }
+
+    @Test
+    void namen_der_koepfe_zaehlen_zu_den_4_mib() {
+        var a = api(0);
+        Layer l = a.layer("Npcs", "npcs");
+        for (int i = 0; i < 1000; i++) {
+            l.put(Pin.at("n" + i, i, 0).withHead(Integer.toHexString(i % EbenenPruefung.KOEPFE + 1)));
+        }
+        bisAnDieGrenze(l);
+        int bytes = ebene(a, "npcs:npcs").json().toString().getBytes(StandardCharsets.UTF_8).length;
+        assertTrue(bytes + 1000 * 74 <= EbenenPruefung.EBENE_BYTES,
+                bytes + " Byte ohne die Namen der Köpfe; liegen die Köpfe, hängt der Schnappschuss je Nadel ,\"head\":\"…\" an");
+    }
+
+    /** Füllt die Ebene mit Linien, dann mit kleinen Kreisen, bis put an den 4 MiB scheitert. */
+    private static void bisAnDieGrenze(Layer l) {
+        var punkte = new ArrayList<Point>();
+        for (int i = 0; i < 10_000; i++) {
+            punkte.add(new Point(i + 0.123456789, -i - 0.987654321));
+        }
+        var e = assertThrows(IllegalArgumentException.class, () -> {
+            for (int i = 0; ; i++) {
+                l.put(Line.through("l" + i, punkte));
+            }
+        });
+        assertTrue(e.getMessage().contains("die Ebene würde grösser als 4 MiB"), e.getMessage());
+        e = assertThrows(IllegalArgumentException.class, () -> {
+            for (int i = 0; ; i++) {
+                l.put(Circle.around("k" + i, 1, 1, 5));
+            }
+        });
+        assertTrue(e.getMessage().contains("die Ebene würde grösser als 4 MiB"), e.getMessage());
+    }
+
+    /**
+     * put und design prüfen nur, was sie ändern: Was sie kosten, wächst nicht mit den übrigen Objekten und Entwürfen
+     * der Ebene. Verglichen mit einer Ebene aus einem Banner und einem Entwurf. Nations ruft beides im Hauptthread.
+     * Die Zeiten stehen in der Ausgabe.
+     */
+    @Test
+    void put_und_design_kosten_nicht_mit_der_ebene() {
+        var a = api(0);
+        Layer einer = a.layer("Beispiel", "einer");
+        Layer gross = a.layer("Beispiel", "gross");
+        einer.design("d0", entwurf(0));
+        entwerfe(gross, 0);
+        double putEiner = Double.MAX_VALUE;
+        double putGross = Double.MAX_VALUE;
+        double designEiner = Double.MAX_VALUE;
+        double designGross = Double.MAX_VALUE;
+        // Das Beste von vier Runden: Die erste wärmt auf und füllt, die übrigen glätten Störungen.
+        for (int r = 0; r < 4; r++) {
+            int runde = r;
+            putEiner = Math.min(putEiner, ms(() -> fuelle(einer, 1, 1, runde)));
+            putGross = Math.min(putGross, ms(() -> fuelle(gross, 1000, 200, runde)));
+            designEiner = Math.min(designEiner, ms(() -> {
+                for (int i = 0; i < 200; i++) {
+                    einer.design("d0", entwurf(i + runde));
+                }
+            }));
+            designGross = Math.min(designGross, ms(() -> entwerfe(gross, runde)));
+        }
+        System.out.printf("1000 put: %.1f ms auf 1 Banner mit 1 Entwurf, %.1f ms in 1000 Banner mit 200 Entwürfen;"
+                + " 200 design: %.1f ms und %.1f ms%n", putEiner, putGross, designEiner, designGross);
+        assertTrue(putGross < 10 * putEiner + 20, putGross + " ms gegen " + putEiner + " ms");
+        assertTrue(designGross < 10 * designEiner + 20, designGross + " ms gegen " + designEiner + " ms");
+    }
+
+    /** Ein Entwurf mit 16 Lagen; {@code k} wechselt die Farben. */
+    private static BannerDesign entwurf(int k) {
+        var d = BannerDesign.of(DyeColor.WHITE);
+        for (int i = 0; i < 16; i++) {
+            d = d.with("minecraft:globe", DyeColor.values()[(k + i) % 16]);
+        }
+        return d;
+    }
+
+    /** Die Entwürfe d0 bis d199; {@code runde} wechselt die Farben. */
+    private static void entwerfe(Layer l, int runde) {
+        for (int i = 0; i < 200; i++) {
+            l.design("d" + i, entwurf(i + runde));
+        }
+    }
+
+    /**
+     * 1000 put von Bannern mit Tafel unter den ersten {@code ids} ids, aus den ersten {@code entwuerfe} Entwürfen;
+     * {@code runde} wechselt den Namen.
+     */
+    private static void fuelle(Layer l, int ids, int entwuerfe, int runde) {
+        for (int i = 0; i < 1000; i++) {
+            var tafel = Panel.of(new Panel.Title("Stadt " + i, "#40E53F"), Panel.Lines.of("Nation: Nordreich", "Level: 3"),
+                    new Panel.Rating(List.of(new Panel.Row("Bergbau", 2, 4, "#7F8C8D"), new Panel.Row("Handel", 3, 4, "#FFD54F"))));
+            l.put(Banner.at("b" + i % ids, i, -i).withDesign("d" + i % entwuerfe).withName("Stadt " + i + " " + runde)
+                    .withPanel(tafel));
+        }
+    }
+
+    private static double ms(Runnable r) {
+        long a = System.nanoTime();
+        r.run();
+        return (System.nanoTime() - a) / 1e6;
+    }
+
+    @Test
     void alle_arten_und_bausteine_ergeben_gueltiges_json() {
         var a = api(0);
         Layer l = a.layer("Beispiel", "alles");
@@ -459,7 +591,7 @@ class EbenenApiTest {
         assertFalse(c.has("capital"), "capital nur, wenn true");
 
         var e = assertThrows(IllegalArgumentException.class, () -> l.removeDesign("nordreich"));
-        assertTrue(e.getMessage().contains("kein Entwurf dieser Ebene: nordreich"), e.getMessage());
+        assertTrue(e.getMessage().contains("das Objekt b nennt den Entwurf nordreich noch"), e.getMessage());
         assertThrows(IllegalArgumentException.class, () -> l.design("Nord Reich", nation), "der Name wie ein Teil der Kennung");
         assertThrows(IllegalArgumentException.class, () -> l.design("x", nation.with("globe", DyeColor.RED)), "Muster als namespace:pfad");
         l.removeDesign("gibt-es-nicht");

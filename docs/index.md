@@ -34,6 +34,7 @@ Wie der Renderer arbeitet und was seine Schalter tun, steht in der
 ## Messungen
 
 - [Live-Render, Weg A](messungen/2026-10-05-live-render-weg-a.md): Autosave 60 s gegen 5 min an 4096 geänderten Chunks, `save-all` je Chunk, Update mit einem Kern mit und ohne Änderungen.
+- [Ebenen der API füllen](messungen/2026-10-24-ebenen-api-fuellen.md): das erste Füllen von Städten, Regionen und Kreisen über die API, 0.20.1 gegen die Prüfung nur des einen Objekts, klein und gross, kalt und warm.
 
 ## Entscheidungen
 
