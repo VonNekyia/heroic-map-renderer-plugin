@@ -371,7 +371,7 @@ final class Laeufe {
         if (baum.download() && (!Files.exists(ordner.resolve("manifest")) || mitOffenemManifest(ordner))) {
             return false;
         }
-        var grenze = FileTime.from(seit.minus(TOLERANZ));
+        var grenze = FileTime.from(seit);
         List<Path> regionen = regionen().stream().filter(Files::isDirectory).toList();
         // Ohne Ordner mit Regionen sähe der Takt nie eine Änderung; dann lieber jedes Mal zeichnen.
         return !regionen.isEmpty() && regionen.stream().noneMatch(r -> neuIn(r, grenze)) && !neuIn(wurzel().resolve("datapacks"), grenze);
