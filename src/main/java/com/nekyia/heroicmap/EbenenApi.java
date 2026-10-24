@@ -200,7 +200,9 @@ final class EbenenApi implements HeroicMapApi, Listener {
         private Boolean web;
         private String permission;
         /** Die Entwürfe der Banner am Kopf, Name → Entwurf als JSON. */
-        private Map<String, JsonObject> entwuerfe = new LinkedHashMap<>();
+        private final Map<String, JsonObject> entwuerfe = new LinkedHashMap<>();
+        /** Die Bytes der Entwürfe unter designs, für die 4 MiB der Ebene. */
+        private long entwurfBytes;
         private final LinkedHashMap<String, JsonObject> objekte = new LinkedHashMap<>();
         /**
          * Die eigenen Objekte je Spieler; ein Spieler ohne fällt heraus. Mit {@code aktion}, gesetzt beim ersten
@@ -295,8 +297,11 @@ final class EbenenApi implements HeroicMapApi, Listener {
             if (p != null && Boolean.TRUE.equals(web)) {
                 throw new IllegalArgumentException("Ebene " + id + ": eine Ebene mit permission kommt nie auf die Webkarte");
             }
-            // Ganz geprüft: Mit permission darf kein Objekt ein Bild nennen.
-            pruefeGanz(p, entwuerfe);
+            if (p != null && !bilderJeObjekt.isEmpty()) {
+                throw new IllegalArgumentException("Ebene " + id + ": eine Ebene mit permission hat keine Bilder, das Objekt "
+                        + bilderJeObjekt.keySet().iterator().next() + " nennt welche");
+            }
+            pruefeKopf(name, p);
             permission = p;
             geaendert();
         }
@@ -305,10 +310,20 @@ final class EbenenApi implements HeroicMapApi, Listener {
         public synchronized void design(String name, BannerDesign design) {
             lebt();
             Objects.requireNonNull(name);
-            var neu = new LinkedHashMap<>(entwuerfe);
-            neu.put(name, ApiJson.json(Objects.requireNonNull(design)));
-            pruefeGanz(permission, neu);
-            entwuerfe = neu;
+            var j = ApiJson.json(Objects.requireNonNull(design));
+            // Nur der eine Entwurf: Ein Banner nennt ihn beim Namen, keins wird durch ihn ungültig.
+            var f = EbenenPruefung.entwurf(name, j);
+            if (!f.isEmpty()) {
+                throw new IllegalArgumentException("Ebene " + id + ": " + fehler(f));
+            }
+            var alt = entwuerfe.get(name);
+            if (alt == null && entwuerfe.size() >= EbenenPruefung.ENTWUERFE) {
+                throw new IllegalArgumentException("Ebene " + id + ": designs: mehr als 200 Entwürfe");
+            }
+            long neu = entwurfBytes + groesse(name, j) - (alt == null ? 0 : groesse(name, alt));
+            grenzen("Entwurf " + name, objekte.size(), nadeln, bytes + neu, groessteEigene());
+            entwuerfe.put(name, j);
+            entwurfBytes = neu;
             geaendert();
         }
 
@@ -318,31 +333,21 @@ final class EbenenApi implements HeroicMapApi, Listener {
             if (!entwuerfe.containsKey(name)) {
                 return;
             }
+            nenntNicht(objekte.values(), name, "das Objekt ");
             for (var mein : eigene.values()) {
-                for (var j : mein.objekte.values()) {
-                    if (j.has("design") && j.get("design").getAsString().equals(name)) {
-                        throw new IllegalArgumentException("Ebene " + id + ": das eigene Objekt " + j.get("id").getAsString()
-                                + " eines Spielers nennt den Entwurf " + name + " noch");
-                    }
-                }
+                nenntNicht(mein.objekte.values(), name, "das eigene Objekt ");
             }
-            var neu = new LinkedHashMap<>(entwuerfe);
-            neu.remove(name);
-            // Ganz geprüft: Nennt ein Banner den Entwurf noch, wirft es.
-            pruefeGanz(permission, neu);
-            entwuerfe = neu;
+            entwurfBytes -= groesse(name, entwuerfe.remove(name));
             geaendert();
         }
 
-        /** Prüft die ganze Ebene mit {@code p} und den Entwürfen {@code d}; wirft mit allen Fehlern. */
-        private void pruefeGanz(String p, Map<String, JsonObject> d) {
-            var pool = bilderVon();
-            List<String> f;
-            synchronized (pool) {
-                f = EbenenPruefung.pruefe(id, json(p, d, objekte.values()), aus(pool)).fehler();
-            }
-            if (!f.isEmpty()) {
-                throw new IllegalArgumentException("Ebene " + id + ": " + fehler(f));
+        /** Wirft, wenn eins der Objekte den Entwurf {@code name} nennt. */
+        private void nenntNicht(Iterable<JsonObject> objekte, String name, String wer) {
+            for (var j : objekte) {
+                if (j.has("design") && j.get("design").getAsString().equals(name)) {
+                    throw new IllegalArgumentException("Ebene " + id + ": " + wer + j.get("id").getAsString()
+                            + " nennt den Entwurf " + name + " noch");
+                }
             }
         }
 
@@ -414,7 +419,7 @@ final class EbenenApi implements HeroicMapApi, Listener {
             JsonObject j = ApiJson.json(m);
             var pool = bilderVon();
             synchronized (pool) {
-                var p = EbenenPruefung.pruefe(id, json(permission, List.of(j)), aus(pool));
+                var p = EbenenPruefung.objekt(j, entwuerfe.keySet(), permission != null, aus(pool));
                 if (!p.fehler().isEmpty()) {
                     throw new IllegalArgumentException("Objekt " + m.id() + ": " + fehler(p.fehler()));
                 }
@@ -425,7 +430,7 @@ final class EbenenApi implements HeroicMapApi, Listener {
                     throw new IllegalArgumentException("Objekt " + m.id() + ": ein Spieler hat schon ein eigenes mit dieser id");
                 }
                 // Mit den eigenen Objekten des grössten Spielers zusammen, siehe grenzen.
-                grenzen(m.id(), objekte.size() + (alt == null ? 1 : 0), neueNadeln, neueBytes, groessteEigene());
+                grenzen("Objekt " + m.id(), objekte.size() + (alt == null ? 1 : 0), neueNadeln, neueBytes + entwurfBytes, groessteEigene());
                 objekte.put(m.id(), j);
                 if (p.bilder().isEmpty()) {
                     bilderJeObjekt.remove(m.id());
@@ -452,16 +457,19 @@ final class EbenenApi implements HeroicMapApi, Listener {
             return p.head();
         }
 
-        /** Die Grenzen einer Ebene für {@code objekte}, {@code nadeln} und {@code bytes}, dazu {@code mehr} je Feld. */
-        private static void grenzen(String objektId, int objekteZahl, int nadelZahl, long byteZahl, long[] mehr) {
+        /**
+         * Die Grenzen einer Ebene für {@code objekte}, {@code nadeln} und {@code bytes} samt Entwürfen, dazu {@code mehr}
+         * je Feld; {@code wer} beginnt den Fehler.
+         */
+        private static void grenzen(String wer, int objekteZahl, int nadelZahl, long byteZahl, long[] mehr) {
             if (objekteZahl + mehr[0] > 10_000) {
-                throw new IllegalArgumentException("Objekt " + objektId + ": höchstens 10 000 Objekte je Ebene");
+                throw new IllegalArgumentException(wer + ": höchstens 10 000 Objekte je Ebene");
             }
             if (nadelZahl + mehr[1] > 1000) {
-                throw new IllegalArgumentException("Objekt " + objektId + ": höchstens 1000 Nadeln und Banner je Ebene");
+                throw new IllegalArgumentException(wer + ": höchstens 1000 Nadeln und Banner je Ebene");
             }
             if (byteZahl + mehr[2] > EbenenPruefung.EBENE_BYTES - (64 << 10)) {
-                throw new IllegalArgumentException("Objekt " + objektId + ": die Ebene würde grösser als 4 MiB");
+                throw new IllegalArgumentException(wer + ": die Ebene würde grösser als 4 MiB");
             }
         }
 
@@ -520,7 +528,7 @@ final class EbenenApi implements HeroicMapApi, Listener {
                     }
                     var pool = bilderVon();
                     synchronized (pool) {
-                        var p = EbenenPruefung.pruefe(id, json(permission, List.of(j)), aus(pool));
+                        var p = EbenenPruefung.objekt(j, entwuerfe.keySet(), permission != null, aus(pool));
                         if (!p.fehler().isEmpty()) {
                             throw new IllegalArgumentException("Objekt " + m.id() + ": " + fehler(p.fehler()));
                         }
@@ -542,7 +550,7 @@ final class EbenenApi implements HeroicMapApi, Listener {
                     if (s[2] > 1 << 20) {
                         throw new IllegalArgumentException("Objekt " + m.id() + ": die eigenen Objekte würden grösser als 1 MiB");
                     }
-                    grenzen(m.id(), objekte.size(), nadeln, bytes, s);
+                    grenzen("Objekt " + m.id(), objekte.size(), nadeln, bytes + entwurfBytes, s);
                     mein.objekte.put(m.id(), j);
                     mein.nadeln = s[1];
                     mein.bytes = s[2];
@@ -590,6 +598,11 @@ final class EbenenApi implements HeroicMapApi, Listener {
 
         private static long groesse(JsonObject j) {
             return j.toString().getBytes(StandardCharsets.UTF_8).length + 1;
+        }
+
+        /** Ein Entwurf unter designs: "name":{…}, mit Komma; der Name ist ASCII. */
+        private static long groesse(String name, JsonObject j) {
+            return groesse(j) + name.length() + 3;
         }
 
         @Override
@@ -662,13 +675,11 @@ final class EbenenApi implements HeroicMapApi, Listener {
             }).toList();
         }
 
-        /** Die Ebene als JSON im Format einer Datei; die Objekte nicht kopiert, denn niemand ändert sie. */
+        /**
+         * Die Ebene als JSON im Format einer Datei, ohne Entwurf ohne designs; die Objekte nicht kopiert, denn niemand
+         * ändert sie.
+         */
         private JsonObject json(String p, Iterable<JsonObject> mitObjekten) {
-            return json(p, entwuerfe, mitObjekten);
-        }
-
-        /** Wie oben, mit den Entwürfen {@code d}; ohne Entwurf ohne designs. */
-        private JsonObject json(String p, Map<String, JsonObject> d, Iterable<JsonObject> mitObjekten) {
             var o = new JsonObject();
             o.addProperty("id", id);
             o.add("name", name.deepCopy());
@@ -678,9 +689,9 @@ final class EbenenApi implements HeroicMapApi, Listener {
             o.addProperty("web", web);
             o.addProperty("permission", p);
             o.entrySet().removeIf(e -> e.getValue().isJsonNull());
-            if (!d.isEmpty()) {
+            if (!entwuerfe.isEmpty()) {
                 var designs = new JsonObject();
-                d.forEach((n, j) -> designs.add(n, j.deepCopy()));
+                entwuerfe.forEach((n, j) -> designs.add(n, j.deepCopy()));
                 o.add("designs", designs);
             }
             var a = new JsonArray();

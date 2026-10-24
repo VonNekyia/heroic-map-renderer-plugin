@@ -35,7 +35,7 @@ final class EbenenPruefung {
     /** Höchstens so viele Blöcke je Pixel als Zoomgrenze einer Ebene; 0 heisst keine. Siehe docs/ebenen.md, „Zoomgrenze“. */
     static final double BLOECKE_JE_PIXEL = 1024;
     private static final Pattern KOPF = Pattern.compile("[0-9a-f]{64}");
-    private static final int ENTWUERFE = 200;
+    static final int ENTWUERFE = 200;
     private static final int LAGEN = 16;
     /** Die 16 Farbstoffe des Spiels, wie in einem Entwurf. */
     private static final String[] FARBSTOFFE = {"white", "orange", "magenta", "light_blue", "yellow", "lime", "pink",
@@ -80,6 +80,26 @@ final class EbenenPruefung {
         return new Ergebnis(List.copyOf(p.fehler), Set.copyOf(p.benutzt));
     }
 
+    /**
+     * Prüft ein Objekt allein, wie es als objects[0] einer Ebene mit den Entwürfen {@code entwuerfe} stünde, mit
+     * oder ohne permission. Der Kopf und die übrigen Objekte bleiben aussen vor: Was es kostet, wächst nur mit dem
+     * Objekt. Siehe docs/api.md, „Regeln“.
+     */
+    static Ergebnis objekt(JsonObject o, Set<String> entwuerfe, boolean mitPermission, Function<String, Bild> bilder) {
+        var p = new EbenenPruefung(bilder);
+        p.entwuerfe = entwuerfe;
+        p.mitPermission = mitPermission;
+        p.objekt(o, "objects[0]", new HashSet<>());
+        return new Ergebnis(List.copyOf(p.fehler), Set.copyOf(p.benutzt));
+    }
+
+    /** Prüft einen Entwurf allein, wie er unter designs stünde. */
+    static List<String> entwurf(String name, JsonObject entwurf) {
+        var p = new EbenenPruefung(pfad -> null);
+        p.pruefeEntwurf(name, entwurf);
+        return List.copyOf(p.fehler);
+    }
+
     private void ebene(String id, JsonObject e) {
         erlaubt(e, "", "id", "name", "visible", "order", "maxBlocksPerPixel", "web", "permission", "designs", "objects");
         if (!(e.get("id") instanceof JsonPrimitive i && i.isString() && i.getAsString().equals(id))) {
@@ -117,38 +137,38 @@ final class EbenenPruefung {
             String s = "objects[" + i + "]";
             if (!(objekte.get(i) instanceof JsonObject o)) {
                 fehler.add(s + ": kein Objekt");
-                continue;
-            }
-            String oid = text(o, "id", s, 64, true);
-            if (oid != null && (oid.isEmpty() || !ids.add(oid))) {
-                fehler.add(s + ".id: leer oder doppelt: " + oid);
-            }
-            String typ = text(o, "type", s, 16, true);
-            if (typ == null) {
-                continue;
-            }
-            switch (typ) {
-                case "pin" -> {
-                    nadeln++;
-                    nadel(o, s);
-                }
-                case "banner" -> {
-                    nadeln++;
-                    banner(o, s);
-                }
-                case "label" -> schrift(o, s);
-                case "region" -> region(o, s);
-                case "circle" -> kreis(o, s);
-                case "line" -> linie(o, s);
-                default -> fehler.add(s + ".type: unbekannt: " + typ);
-            }
-            if (EbenenFuerMod.fuerMod(o).getBytes(StandardCharsets.UTF_8).length > EbenenFuerMod.OBJEKT) {
-                fehler.add(s + ": für den Mod grösser als 1 MiB");
+            } else if (objekt(o, s, ids)) {
+                nadeln++;
             }
         }
         if (nadeln > NADELN) {
             fehler.add("objects: mehr als 1000 Nadeln und Banner");
         }
+    }
+
+    /** Ein Objekt an der Stelle {@code s}; {@code ids} sammelt die ids. Gibt true für eine Nadel oder ein Banner. */
+    private boolean objekt(JsonObject o, String s, Set<String> ids) {
+        String oid = text(o, "id", s, 64, true);
+        if (oid != null && (oid.isEmpty() || !ids.add(oid))) {
+            fehler.add(s + ".id: leer oder doppelt: " + oid);
+        }
+        String typ = text(o, "type", s, 16, true);
+        if (typ == null) {
+            return false;
+        }
+        switch (typ) {
+            case "pin" -> nadel(o, s);
+            case "banner" -> banner(o, s);
+            case "label" -> schrift(o, s);
+            case "region" -> region(o, s);
+            case "circle" -> kreis(o, s);
+            case "line" -> linie(o, s);
+            default -> fehler.add(s + ".type: unbekannt: " + typ);
+        }
+        if (EbenenFuerMod.fuerMod(o).getBytes(StandardCharsets.UTF_8).length > EbenenFuerMod.OBJEKT) {
+            fehler.add(s + ": für den Mod grösser als 1 MiB");
+        }
+        return typ.equals("pin") || typ.equals("banner");
     }
 
     private void name(JsonObject e) {
@@ -220,42 +240,46 @@ final class EbenenPruefung {
             fehler.add("designs: mehr als 200 Entwürfe");
         }
         for (var eintrag : d.entrySet()) {
-            String s = "designs." + eintrag.getKey();
-            if (!teil(eintrag.getKey())) {
-                fehler.add(s + ": kein Name wie ein Teil der Kennung");
-            }
-            if (!(eintrag.getValue() instanceof JsonObject entwurf)) {
-                fehler.add(s + ": kein Objekt");
-                continue;
-            }
-            erlaubt(entwurf, s, "base", "layers");
-            farbstoff(entwurf, "base", s);
-            if (!entwurf.has("layers")) {
-                continue;
-            }
-            if (!(entwurf.get("layers") instanceof JsonArray lagen)) {
-                fehler.add(s + ".layers: keine Liste");
-                continue;
-            }
-            if (lagen.size() > LAGEN) {
-                fehler.add(s + ".layers: mehr als 16 Lagen");
-            }
-            for (int i = 0; i < lagen.size(); i++) {
-                String l = s + ".layers[" + i + "]";
-                if (!(lagen.get(i) instanceof JsonObject lage)) {
-                    fehler.add(l + ": kein Objekt");
-                    continue;
-                }
-                erlaubt(lage, l, "pattern", "color");
-                // Dieselbe Form wie eine Dimension; welche Muster es gibt, weiss nur der Renderer.
-                String muster = text(lage, "pattern", l, 128, true);
-                if (muster != null && !DIMENSION.matcher(muster).matches()) {
-                    fehler.add(l + ".pattern: keine ID wie minecraft:globe");
-                }
-                farbstoff(lage, "color", l);
-            }
+            pruefeEntwurf(eintrag.getKey(), eintrag.getValue());
         }
         entwuerfe = Set.copyOf(d.keySet());
+    }
+
+    private void pruefeEntwurf(String name, JsonElement e) {
+        String s = "designs." + name;
+        if (!teil(name)) {
+            fehler.add(s + ": kein Name wie ein Teil der Kennung");
+        }
+        if (!(e instanceof JsonObject entwurf)) {
+            fehler.add(s + ": kein Objekt");
+            return;
+        }
+        erlaubt(entwurf, s, "base", "layers");
+        farbstoff(entwurf, "base", s);
+        if (!entwurf.has("layers")) {
+            return;
+        }
+        if (!(entwurf.get("layers") instanceof JsonArray lagen)) {
+            fehler.add(s + ".layers: keine Liste");
+            return;
+        }
+        if (lagen.size() > LAGEN) {
+            fehler.add(s + ".layers: mehr als 16 Lagen");
+        }
+        for (int i = 0; i < lagen.size(); i++) {
+            String l = s + ".layers[" + i + "]";
+            if (!(lagen.get(i) instanceof JsonObject lage)) {
+                fehler.add(l + ": kein Objekt");
+                continue;
+            }
+            erlaubt(lage, l, "pattern", "color");
+            // Dieselbe Form wie eine Dimension; welche Muster es gibt, weiss nur der Renderer.
+            String muster = text(lage, "pattern", l, 128, true);
+            if (muster != null && !DIMENSION.matcher(muster).matches()) {
+                fehler.add(l + ".pattern: keine ID wie minecraft:globe");
+            }
+            farbstoff(lage, "color", l);
+        }
     }
 
     private void farbstoff(JsonObject o, String feld, String s) {

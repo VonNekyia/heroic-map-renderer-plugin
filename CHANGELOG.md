@@ -7,6 +7,11 @@ Links und die Hinweise aus `NOTICE` setzt
 [`.github/notizen.sh`](.github/notizen.sh) dazu. Siehe
 [Entwicklung](docs/entwicklung.md), „Release“.
 
+## 0.20.2
+
+- **Layers from other plugins cost less on the server thread:** `put` checks only its own object and `design` only its own design, no longer every design and every object of the layer. Setting 197 designs and 300 banners takes about 11 ms instead of 470 ms once warm, and about 0.2 s instead of 1.05 s right after a start.
+- **Banner designs count toward the 4 MiB of a layer** when they are set. Before, a layer near the limit could grow past it with many designs; the map then kept its last valid state and the log said so.
+
 ## 0.20.1
 
 - **The answer to `show` names every world of the server:** `welten` maps each world key, such as `minecraft:overworld`, to `{"uid": "…"}`, the world's UID, at most 64 worlds. A coming mod uses it to tell a reset world from the old one behind the same key and seed. Older mods ignore the field.

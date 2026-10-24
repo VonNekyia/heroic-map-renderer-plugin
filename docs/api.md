@@ -175,10 +175,16 @@ Optionale Felder sind null; `with…` gibt eine Kopie mit einem Feld mehr.
   ohnehin alles. Entschieden vom Reviewer am 09.10. (#39). Für Namen gilt
   die Regel aus [Ebenen](ebenen.md), „Dateien“.
 - **Sofort geprüft:** Jeder Aufruf geht durch dieselbe Prüfung wie eine
-  Datei, nur für das eine Objekt, und wirft `IllegalArgumentException`,
-  wenn etwas nicht passt; dann ändert sich nichts. Dazu die Grenzen der
-  Ebene: 10 000 Objekte, 1000 Nadeln und Banner zusammen, 4 MiB. Ein `Stroke` mit nur `dash`
+  Datei, nur für das eine Objekt oder den einen Entwurf, und wirft
+  `IllegalArgumentException`, wenn etwas nicht passt; dann ändert sich
+  nichts. Dazu die Grenzen der Ebene: 10 000 Objekte, 1000 Nadeln und
+  Banner zusammen, 4 MiB samt Entwürfen. Ein `Stroke` mit nur `dash`
   oder nur `gap` wirft schon beim Anlegen.
+- **Kosten je Aufruf:** `put` und `design` kosten nur so viel wie ihr
+  Objekt oder Entwurf, nicht wie die übrigen der Ebene. `removeDesign`
+  sieht nur nach, ob ein Objekt den Namen nennt. Die ganze Ebene prüft
+  der Schnappschuss einmal je Stand, ausserhalb des Aufrufs. Gemessen in
+  [Ebenen der API füllen](messungen/2026-10-24-ebenen-api-fuellen.md).
 - **Jeder Thread:** Jede Methode darf aus jedem Thread kommen. Der Takt
   übernimmt Änderungen einmal je Sekunde. Aufrufe hintereinander ergeben
   meist ein Update, gesichert ist das nicht: Läuft der Takt zwischen
