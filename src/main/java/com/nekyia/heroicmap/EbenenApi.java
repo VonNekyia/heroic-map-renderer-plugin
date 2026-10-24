@@ -433,7 +433,7 @@ final class EbenenApi implements HeroicMapApi, Listener {
                 }
                 // Mit den eigenen Objekten des grössten Spielers zusammen, siehe grenzen.
                 grenzen("Objekt " + m.id(), objekte.size() + (alt == null ? 1 : 0), neueNadeln,
-                        neueBytes + ausserObjekten(entwurfBytes, neueTexturen.size()), groessteEigene());
+                        neueBytes + ausserObjekten(0, neueTexturen.size()), groessteEigene());
                 objekte.put(m.id(), j);
                 if (p.bilder().isEmpty()) {
                     bilderJeObjekt.remove(m.id());
