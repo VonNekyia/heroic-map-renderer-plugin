@@ -353,33 +353,36 @@ class EbenenApiTest {
 
     /**
      * put und design prüfen nur, was sie ändern: Was sie kosten, wächst nicht mit den übrigen Objekten und Entwürfen
-     * der Ebene. Nations ruft beides im Hauptthread. Die Zeiten stehen in der Ausgabe.
+     * der Ebene. Verglichen mit einer Ebene aus einem Banner und einem Entwurf. Nations ruft beides im Hauptthread.
+     * Die Zeiten stehen in der Ausgabe.
      */
     @Test
     void put_und_design_kosten_nicht_mit_der_ebene() {
         var a = api(0);
-        Layer klein = a.layer("Beispiel", "klein");
+        Layer einer = a.layer("Beispiel", "einer");
         Layer gross = a.layer("Beispiel", "gross");
-        Layer leer = a.layer("Beispiel", "leer");
-        klein.design("d0", entwurf(0));
+        einer.design("d0", entwurf(0));
         entwerfe(gross, 0);
-        entwerfe(leer, 0);
-        double putKlein = Double.MAX_VALUE;
+        double putEiner = Double.MAX_VALUE;
         double putGross = Double.MAX_VALUE;
-        double designLeer = Double.MAX_VALUE;
-        double designVoll = Double.MAX_VALUE;
-        // Das Beste von vier Runden: Die erste wärmt auf, die übrigen glätten Störungen.
+        double designEiner = Double.MAX_VALUE;
+        double designGross = Double.MAX_VALUE;
+        // Das Beste von vier Runden: Die erste wärmt auf und füllt, die übrigen glätten Störungen.
         for (int r = 0; r < 4; r++) {
             int runde = r;
-            putKlein = Math.min(putKlein, ms(() -> fuelle(klein, 1, runde)));
-            putGross = Math.min(putGross, ms(() -> fuelle(gross, 200, runde)));
-            designLeer = Math.min(designLeer, ms(() -> entwerfe(leer, runde)));
-            designVoll = Math.min(designVoll, ms(() -> entwerfe(gross, runde)));
+            putEiner = Math.min(putEiner, ms(() -> fuelle(einer, 1, 1, runde)));
+            putGross = Math.min(putGross, ms(() -> fuelle(gross, 1000, 200, runde)));
+            designEiner = Math.min(designEiner, ms(() -> {
+                for (int i = 0; i < 200; i++) {
+                    einer.design("d0", entwurf(i + runde));
+                }
+            }));
+            designGross = Math.min(designGross, ms(() -> entwerfe(gross, runde)));
         }
-        System.out.printf("1000 Banner: %.1f ms neben 1 Entwurf, %.1f ms neben 200; 200 Entwürfe: %.1f ms ohne Objekte,"
-                + " %.1f ms neben 1000 Bannern%n", putKlein, putGross, designLeer, designVoll);
-        assertTrue(putGross < 10 * putKlein + 20, putGross + " ms gegen " + putKlein + " ms");
-        assertTrue(designVoll < 10 * designLeer + 20, designVoll + " ms gegen " + designLeer + " ms");
+        System.out.printf("1000 put: %.1f ms auf 1 Banner mit 1 Entwurf, %.1f ms in 1000 Banner mit 200 Entwürfen;"
+                + " 200 design: %.1f ms und %.1f ms%n", putEiner, putGross, designEiner, designGross);
+        assertTrue(putGross < 10 * putEiner + 20, putGross + " ms gegen " + putEiner + " ms");
+        assertTrue(designGross < 10 * designEiner + 20, designGross + " ms gegen " + designEiner + " ms");
     }
 
     /** Ein Entwurf mit 16 Lagen; {@code k} wechselt die Farben. */
@@ -398,12 +401,16 @@ class EbenenApiTest {
         }
     }
 
-    /** 1000 Banner mit Tafel aus den ersten {@code entwuerfe} Entwürfen; {@code runde} wechselt den Namen. */
-    private static void fuelle(Layer l, int entwuerfe, int runde) {
+    /**
+     * 1000 put von Bannern mit Tafel unter den ersten {@code ids} ids, aus den ersten {@code entwuerfe} Entwürfen;
+     * {@code runde} wechselt den Namen.
+     */
+    private static void fuelle(Layer l, int ids, int entwuerfe, int runde) {
         for (int i = 0; i < 1000; i++) {
             var tafel = Panel.of(new Panel.Title("Stadt " + i, "#40E53F"), Panel.Lines.of("Nation: Nordreich", "Level: 3"),
                     new Panel.Rating(List.of(new Panel.Row("Bergbau", 2, 4, "#7F8C8D"), new Panel.Row("Handel", 3, 4, "#FFD54F"))));
-            l.put(Banner.at("b" + i, i, -i).withDesign("d" + i % entwuerfe).withName("Stadt " + i + " " + runde).withPanel(tafel));
+            l.put(Banner.at("b" + i % ids, i, -i).withDesign("d" + i % entwuerfe).withName("Stadt " + i + " " + runde)
+                    .withPanel(tafel));
         }
     }
 
