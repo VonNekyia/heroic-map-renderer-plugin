@@ -272,7 +272,7 @@ final class EbenenApi implements HeroicMapApi, Listener {
         public synchronized void maxBlocksPerPixel(double b) {
             lebt();
             // NaN, Unendlich und Negatives fallen hier durch, denn jeder Vergleich mit NaN ist falsch.
-            if (!(b >= 0 && b <= EbenenPruefung.BLOECKE_JE_PIXEL)) {
+            if (!(b >= 0 && b < Double.POSITIVE_INFINITY)) {
                 throw new IllegalArgumentException("Ebene " + id + ": maxBlocksPerPixel " + b + " ist keine Zahl von 0 bis 1024");
             }
             maxBlocksPerPixel = b == 0 ? null : b;
