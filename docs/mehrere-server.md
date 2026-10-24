@@ -68,9 +68,17 @@ auf dem Kanal `BungeeCord`, nach dem Namen des Servers, auf dem er ist.
   den die Gegenseite angemeldet hat (`CraftPlayer.sendPluginMessage`).
   Velocity meldet `bungeecord:main` beim Server nur mit
   `bungee-plugin-message-channel = true` in `velocity.toml` an
-  (`BackendPlaySessionHandler.activated`); ein Plugin auf dem Proxy kann
-  den Kanal auch selbst anmelden und `GetServer` beantworten. Fehlt der
-  Kanal, fragt das Plugin nicht, und es gilt `karte.name`.
+  (`BackendPlaySessionHandler.activated`) und beantwortet `GetServer` nur
+  dann selbst (`BungeeCordMessageResponder.process`). Die Vorgabe in
+  `velocity.toml` ist `true`. Ein Plugin auf dem Proxy kann den Kanal auch
+  selbst anmelden und `GetServer` beantworten. Fehlt der Kanal, fragt das
+  Plugin nicht, und es gilt `karte.name`.
+- **Andere Wege zum Namen gibt es nicht.** Ein eigenes Plugin für Velocity
+  gibt es nicht. Modern Forwarding bringt dem Server Version, Adresse, UUID,
+  Namen und Eigenschaften des Spielers, nicht den Namen des Servers
+  (`PlayerDataForwarding.createForwardingData`). Belegt am Code von
+  Velocity, Commit 77274a8fb, am 24.10. Hinter einem Velocity ohne den
+  Kanal trägt darum jeder Server seinen Namen in `karte.name`.
 - **„Kein Proxy“ im Log** erst 10 s nach dem ersten Join ohne den Kanal
   (`Proxyname.KANAL_FRIST_MS`), und nur, wenn bis dahin kein Name vom
   Proxy kam; einmal je Laufzeit. Ist `karte.name` leer, sagt sie dazu, dass
