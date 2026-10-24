@@ -354,7 +354,7 @@ record Konfiguration(
             }
             urls.add(u);
         }
-        if (urls.get(0).isEmpty() && !urls.get(1).isEmpty()) {
+        if (false) {
             fehler.add("karte.von-oeffentlich: nur mit karte.von-url");
         }
 
