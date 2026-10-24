@@ -604,7 +604,7 @@ final class Laeufe {
                     // Ein fortgesetzter Lauf behält Kacheln von vor seinem Beginn, Nachverdichten liest die Welt nicht;
                     // beide zählen nicht.
                     if ((ausgang.equals(GEZEICHNET) || ausgang.equals(NICHTS)) && !a.befehl().contains("--resume")) {
-                        erfolgreich.put(a.baum(), start);
+                        erfolgreich.put(a.baum(), Instant.now());
                     }
                 }
                 // Gleich nach dem Baum, nicht nach allen: sein Manifest kann neu sein, auch nach einem
