@@ -371,7 +371,7 @@ final class Laeufe {
         if (baum.download() && (!Files.exists(ordner.resolve("manifest")) || mitOffenemManifest(ordner))) {
             return false;
         }
-        var grenze = FileTime.from(seit.minus(TOLERANZ));
+        var grenze = FileTime.from(seit);
         return !neuIn(konf.welt().resolve("region"), grenze) && !neuIn(wurzel().resolve("datapacks"), grenze);
     }
 
