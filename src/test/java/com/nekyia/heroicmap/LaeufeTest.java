@@ -885,8 +885,8 @@ class LaeufeTest {
         Path region = Files.createDirectories(nether.resolve("region"));
         var beginn = fertig(l, KARTE);
         alt(beginn, region);
-        Files.createDirectories(tmp.resolve("world/region"));
-        Files.writeString(tmp.resolve("world/region/r.0.0.mca"), "x");
+        Files.createDirectories(tmp.resolve("world/dimensions/minecraft/overworld/region"));
+        Files.writeString(tmp.resolve("world/dimensions/minecraft/overworld/region/r.0.0.mca"), "x");
         assertEquals(List.of(), l.plane(Art.UPDATE, null, true), "eine Region der Oberwelt zählt im Nether nicht");
         Files.writeString(region.resolve("r.0.0.mca"), "x");
         assertEquals(1, l.plane(Art.UPDATE, null, true).size());
@@ -894,5 +894,24 @@ class LaeufeTest {
         alt(beginn, region.resolve("r.0.0.mca"), region);
         Files.createDirectories(tmp.resolve("world/datapacks/neu"));
         assertEquals(1, l.plane(Art.UPDATE, null, true).size(), "ein neues Datapack an der Wurzel");
+    }
+
+    @Test
+    void takt_sieht_die_oberwelt_ab_26_1_unter_dimensions() throws Exception {
+        // Ab 26.1 liegt auch die Oberwelt unter dimensions/, ein region/ an der Wurzel gibt es nicht.
+        Path region = Files.createDirectories(tmp.resolve("world/dimensions/minecraft/overworld/region"));
+        var l = laeufe(KARTE);
+        var beginn = fertig(l, KARTE);
+        alt(beginn, region);
+        assertEquals(List.of(), l.plane(Art.UPDATE, null, true));
+        Files.writeString(region.resolve("r.0.0.mca"), "x");
+        assertEquals(1, l.plane(Art.UPDATE, null, true).size(), "eine neue Region der Oberwelt ab 26.1");
+    }
+
+    @Test
+    void takt_ohne_ordner_mit_regionen_ruht_nie() throws Exception {
+        var l = laeufe(KARTE);
+        fertig(l, KARTE);
+        assertEquals(1, l.plane(Art.UPDATE, null, true).size(), "sonst sähe der Takt nie eine Änderung");
     }
 }

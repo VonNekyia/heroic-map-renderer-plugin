@@ -77,10 +77,14 @@ entschieden in [0003](entscheidungen/0003-live-render-ueber-autosave-und-zeitpla
     `--resume`. Gemerkt wird dessen **Beginn**, nur im Speicher. Der
     Renderer liest die Stempel der Regionen am Anfang des Laufs; was der
     Server danach schreibt, kennt sein Stand nicht.
-  - Keine Datei unter `region/` der Welt aus `world` und keine unter
+  - Keine Datei in den Regionen der Welt aus `world` und keine unter
     `datapacks/` an der Wurzel der Welt hat eine Zeit ab diesem Beginn
     weniger 2 s. 2 s, weil FAT die Zeit nur so genau speichert.
     `level.dat` zählt nicht, Paper schreibt sie bei jedem Autosave.
+  - **Die Regionen:** Ist `world` die Wurzel, zählt die Oberwelt in beiden
+    Ablagen, `region/` vor 26.1 und `dimensions/minecraft/overworld/region/`
+    ab 26.1. Ist `world` eine Dimension, `dimensions/<ns>/<name>`, zählt ihr
+    `region/`. Gibt es keinen dieser Ordner, ruht der Baum nie.
   - Neben `stand.bin` liegt nichts, was ein abgebrochener Lauf liegen
     lässt: `gebiet-offen.bin`, `stand-neu.bin`, `stand-neu-liegen.bin`. Mit
     `download: true` gibt es dazu ein `manifest` und keine Marke

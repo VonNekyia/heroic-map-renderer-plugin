@@ -372,12 +372,25 @@ final class Laeufe {
             return false;
         }
         var grenze = FileTime.from(seit.minus(TOLERANZ));
-        return !neuIn(konf.welt().resolve("region"), grenze) && !neuIn(wurzel().resolve("datapacks"), grenze);
+        List<Path> regionen = regionen().stream().filter(Files::isDirectory).toList();
+        // Ohne Ordner mit Regionen sähe der Takt nie eine Änderung; dann lieber jedes Mal zeichnen.
+        return !regionen.isEmpty() && regionen.stream().noneMatch(r -> neuIn(r, grenze)) && !neuIn(wurzel().resolve("datapacks"), grenze);
     }
 
-    /** Die Wurzel der Welt, über dimensions/<ns>/<name>, wenn konf.welt eine Dimension ist. */
+    /** Die Wurzel der Welt: über dimensions/<ns>/<name>, wenn konf.welt eine Dimension ist, sonst konf.welt. */
     private Path wurzel() {
-        return konf.dimension().equals("minecraft:overworld") ? konf.welt() : konf.welt().getParent().getParent().getParent();
+        Path w = konf.welt();
+        int n = w.getNameCount();
+        return n >= 3 && w.getName(n - 3).toString().equals("dimensions") ? w.getParent().getParent().getParent() : w;
+    }
+
+    /**
+     * Die Ordner mit den Regionen der Dimension des Baums. An der Wurzel die Oberwelt in beiden Ablagen: vor 26.1
+     * region/, ab 26.1 dimensions/minecraft/overworld/region/. Siehe docs/laeufe.md, „Zeitplan“.
+     */
+    private List<Path> regionen() {
+        Path w = konf.welt();
+        return w.equals(wurzel()) ? List.of(w.resolve("region"), w.resolve("dimensions/minecraft/overworld/region")) : List.of(w.resolve("region"));
     }
 
     /**
