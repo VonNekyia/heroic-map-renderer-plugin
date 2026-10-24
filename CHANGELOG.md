@@ -7,6 +7,10 @@ Links und die Hinweise aus `NOTICE` setzt
 [`.github/notizen.sh`](.github/notizen.sh) dazu. Siehe
 [Entwicklung](docs/entwicklung.md), „Release“.
 
+## 0.19.0
+
+- **Web map: banners sooner.** `layers.json` now marks each layer with banner designs with `"designs": true`, so the web map fetches the banner sprites together with the layer instead of after it. Older web maps and mods ignore the field.
+
 ## 0.17.3
 
 - **Renderer 0.16.0** inside. No full render needed.

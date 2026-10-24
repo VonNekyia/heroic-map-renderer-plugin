@@ -114,14 +114,20 @@ class EbenenSchreiberTest {
     }
 
     @Test
-    void entwuerfe_in_der_datei_nicht_in_der_liste() throws IOException {
+    void entwuerfe_in_der_datei_und_in_der_liste_nur_als_marke() throws IOException {
         var e = ebene("beispiel:staedte", ", \"designs\": {\"nordreich\": {\"base\": \"white\"}}", Map.of());
+        var leer = ebene("beispiel:leer", ", \"designs\": {}", Map.of());
+        var ohne = ebene("beispiel:ohne", "", Map.of());
         Path wurzel = tmp.resolve("tiles");
-        new EbenenSchreiber(wurzel, OBERWELT).schreibe(List.of(e), Set.of());
+        new EbenenSchreiber(wurzel, OBERWELT).schreibe(List.of(e, leer, ohne), Set.of());
         var datei = Ebenen.lies(Files.readString(wurzel.resolve("layers/beispiel/staedte.json")));
         assertEquals("{\"nordreich\":{\"base\":\"white\"}}", datei.get("designs").toString(), "für Webkarte und --banners");
-        var eintrag = Ebenen.lies(Files.readString(wurzel.resolve("layers.json"))).getAsJsonArray("layers").get(0).getAsJsonObject();
-        assertFalse(eintrag.has("designs"));
+        var m = new LinkedHashMap<String, JsonObject>();
+        Ebenen.lies(Files.readString(wurzel.resolve("layers.json"))).getAsJsonArray("layers")
+                .forEach(x -> m.put(x.getAsJsonObject().get("id").getAsString(), x.getAsJsonObject()));
+        assertEquals("true", m.get("beispiel:staedte").get("designs").toString(), "nur die Marke, nicht die Entwürfe");
+        assertFalse(m.get("beispiel:leer").has("designs"), "leere designs wie keine");
+        assertFalse(m.get("beispiel:ohne").has("designs"));
     }
 
     @Test
