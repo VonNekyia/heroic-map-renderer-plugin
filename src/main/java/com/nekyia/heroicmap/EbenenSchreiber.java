@@ -178,7 +178,7 @@ final class EbenenSchreiber {
     static JsonObject eintrag(Ebene e) {
         var o = kopf(e);
         o.addProperty("version", e.version());
-        if (e.json().get("maxBlocksPerPixel") instanceof JsonPrimitive m && m.isNumber() && m.getAsDouble() > 0) {
+        if (e.json().get("maxBlocksPerPixel") instanceof JsonPrimitive m && m.isNumber() && m.getAsDouble() >= 0) {
             o.add("maxBlocksPerPixel", m);
         }
         return o;
