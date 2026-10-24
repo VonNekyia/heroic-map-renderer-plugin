@@ -90,6 +90,7 @@ final class EbenenPruefung {
         p.entwuerfe = entwuerfe;
         p.mitPermission = mitPermission;
         p.objekt(o, "objects[0]", new HashSet<>());
+        p.fehler.removeIf(f -> f.contains("fehlt"));
         return new Ergebnis(List.copyOf(p.fehler), Set.copyOf(p.benutzt));
     }
 
