@@ -726,6 +726,18 @@ class LaeufeTest {
     }
 
     @Test
+    void relief_als_schalter_und_ein_wechsel_nennt_den_vollen_lauf() {
+        var baum = new Konfiguration.Baum("top-north", "s", 4, false, false, true, false, "shadows");
+        var plan = new Laeufe(konf(JAVA, true, List.of(baum)), logger, tmp).plane(Art.VOLL);
+        assertEquals("top-north-s", plan.getFirst().baum());
+        assertEquals(List.of("--camera", "top-north", "--direction", "s", "--scale", "4", "--relief", "shadows", "--gpu", "auto",
+                "--threads", "1", "--low-priority", "--progress", "json"), ende(plan, 15));
+        assertEquals("Relief geändert: erst /heroicmap render top-north-s", Laeufe.kurz("Error: kacheln/top-north-s/map.json gehört "
+                + "zu einem Baum ohne Relief, dieser Lauf zeichnet mit Relief slope. Das Relief wechselt nur ein voller Lauf ohne "
+                + "--update und --size, er zeichnet den Baum ganz neu.", "top-north-s"));
+    }
+
+    @Test
     void render_mit_dem_ordner_nur_ueber_diesen_baum() {
         var l = laeufe(KARTE, OBEN);
         assertEquals(List.of("2x1-se", "top-north-s"), l.plane(Art.VOLL).stream().map(Auftrag::baum).toList());
