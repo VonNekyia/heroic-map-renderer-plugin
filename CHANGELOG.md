@@ -7,6 +7,12 @@ Links und die Hinweise aus `NOTICE` setzt
 [`.github/notizen.sh`](.github/notizen.sh) dazu. Siehe
 [Entwicklung](docs/entwicklung.md), „Release“.
 
+## 0.17.3
+
+- **Renderer 0.16.0** inside. No full render needed.
+- **Banners from the front:** the banner sprites of every tree now face the viewer like the top-down set, also on iso maps, so cloth and name stand straight. The plugin's `--banners` call at server start redraws them by itself.
+- **Web map:** pins with a head (`Pin.withHead`) now show the face; pins, heads and banners keep their size on every zoom level, and far out only their names shrink smoothly and fade; with one top-down and one iso tree, a 2D/3D button replaces the list of trees, and the views with 1 and 2 px per block are gone from the web map.
+
 ## 0.17.2
 
 - **The server's own name for the mod:** the answer to the mod's `show` now also carries `backend`, the name of this server, from the proxy or `karte.name`, never `karte.von`. With `karte.von: main`, build now also asks the proxy for its own name. Older mods ignore the field; a coming mod version uses it to keep what each server shows apart, also when two servers share one map. Without any name, the log line "Kein Proxy meldet …" now says so.
