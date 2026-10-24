@@ -333,7 +333,6 @@ final class EbenenApi implements HeroicMapApi, Listener {
             if (!entwuerfe.containsKey(name)) {
                 return;
             }
-            nenntNicht(objekte.values(), name, "das Objekt ");
             for (var mein : eigene.values()) {
                 nenntNicht(mein.objekte.values(), name, "das eigene Objekt ");
             }
