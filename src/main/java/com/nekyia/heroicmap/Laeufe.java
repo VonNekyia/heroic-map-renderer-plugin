@@ -390,7 +390,7 @@ final class Laeufe {
      */
     private List<Path> regionen() {
         Path w = konf.welt();
-        return w.equals(wurzel()) ? List.of(w.resolve("region"), w.resolve("dimensions/minecraft/overworld/region")) : List.of(w.resolve("region"));
+        return List.of(w.resolve("region"));
     }
 
     /**
