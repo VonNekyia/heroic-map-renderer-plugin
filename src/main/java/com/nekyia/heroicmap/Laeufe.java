@@ -4,11 +4,13 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.UncheckedIOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.attribute.FileTime;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalTime;
@@ -27,6 +29,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.regex.Pattern;
+import java.util.stream.Stream;
 
 /**
  * Die Läufe des Renderers: einer zur Zeit, darin je Baum ein Kindprozess, nacheinander.
@@ -44,6 +47,10 @@ final class Laeufe {
     private record Letzter(String name, Instant ende, Duration dauer, String ausgang) {}
 
     private static final byte[] MAGIE = "HMRSTAND".getBytes(StandardCharsets.US_ASCII);
+    /** Was ein abgebrochener Lauf neben stand.bin liegen lässt; liegt eins, ruht ein Baum nicht. */
+    static final List<String> OFFEN = List.of("gebiet-offen.bin", "stand-neu.bin", "stand-neu-liegen.bin");
+    /** So viel vor dem Beginn des letzten Laufs zählt eine Datei noch als neu: FAT speichert die Zeit auf 2 s. */
+    static final Duration TOLERANZ = Duration.ofSeconds(2);
     private static final String ABGEBROCHEN = "abgebrochen";
     private static final String NICHTS = "nichts zu zeichnen";
     private static final String GEZEICHNET = "Kacheln gezeichnet";
@@ -67,6 +74,8 @@ final class Laeufe {
     private Process prozess;
     private String laeuft;
     private LocalTime seit;
+    /** Wann der Takt zuletzt jeden Baum ruhen liess; null, sobald wieder einer lief. */
+    private LocalTime leerlauf;
     private boolean abgebrochen;
     private final Map<String, Letzter> letzte = new LinkedHashMap<>();
     private final Map<String, Instant> erfolgreich = new LinkedHashMap<>();
@@ -126,12 +135,30 @@ final class Laeufe {
         }, auftraege);
     }
 
+    /** Das Update des Zeitplans: ohne die Bäume, die ruhen. Siehe docs/laeufe.md, „Zeitplan“. */
+    synchronized String starteImTakt() {
+        if (faden != null) {
+            return "Es läuft schon: " + laeuft;
+        }
+        markiere();
+        List<Auftrag> auftraege = plane(Art.UPDATE, null, true);
+        if (auftraege.isEmpty()) {
+            // Fehlt nur ein voller Lauf, steht das schon im Log; übersprungen heisst: einer ruhte.
+            if (konf.baeume().stream().anyMatch(b -> ruht(b, konf.kacheln().resolve(b.ordner())))) {
+                leerlauf = LocalTime.now().truncatedTo(ChronoUnit.SECONDS);
+            }
+            return "Kein Baum zu rendern.";
+        }
+        return starte("Update", auftraege);
+    }
+
     /** Arbeitet die Aufträge nacheinander in einem eigenen Faden ab. */
     synchronized String starte(String name, List<Auftrag> auftraege) {
         if (faden != null) {
             return "Es läuft schon: " + laeuft;
         }
         abgebrochen = false;
+        leerlauf = null;
         laeuft = name;
         seit = LocalTime.now().truncatedTo(ChronoUnit.SECONDS);
         faden = Thread.ofPlatform().name("HeroicMap-Lauf").daemon().start(() -> arbeite(name, auftraege));
@@ -150,6 +177,11 @@ final class Laeufe {
 
     /** Wie oben; mit {@code nur} nur für den Baum in diesem Ordner. */
     List<Auftrag> plane(Art art, String nur) {
+        return plane(art, nur, false);
+    }
+
+    /** Wie oben; mit {@code imTakt} ohne die Bäume, die ruhen. */
+    List<Auftrag> plane(Art art, String nur, boolean imTakt) {
         List<Auftrag> auftraege = new ArrayList<>();
         for (Konfiguration.Baum baum : konf.baeume()) {
             if (nur != null && !baum.ordner().equals(nur)) {
@@ -177,6 +209,9 @@ final class Laeufe {
                 resume = false;
             } else {
                 hinweis(baum.ordner() + ": noch kein voller Lauf, erst /heroicmap render");
+                continue;
+            }
+            if (imTakt && ruht(baum, ordner)) {
                 continue;
             }
             // Ein Update lässt map.json ohne ground, wie sie ist. Siehe docs/laeufe.md, „Boden ohne Laub“.
@@ -320,6 +355,70 @@ final class Laeufe {
     }
 
     /**
+     * Ruht der Baum im Takt: Er hatte seit dem Start einen fertigen Lauf, seit dessen Beginn schrieb niemand in
+     * region/ oder datapacks/ der Welt, und im Ordner des Baums liegt nichts Offenes. Der Beginn, nicht das Ende:
+     * Der Renderer liest die Stempel der Regionen am Anfang des Laufs, was danach kam, kennt sein Stand nicht.
+     * Siehe docs/laeufe.md, „Zeitplan“.
+     */
+    boolean ruht(Konfiguration.Baum baum, Path ordner) {
+        Instant seit;
+        synchronized (this) {
+            seit = erfolgreich.get(baum.ordner());
+        }
+        if (seit == null || OFFEN.stream().anyMatch(n -> Files.exists(ordner.resolve(n)))) {
+            return false;
+        }
+        if (baum.download() && (!Files.exists(ordner.resolve("manifest")) || mitOffenemManifest(ordner))) {
+            return false;
+        }
+        var grenze = FileTime.from(seit.minus(TOLERANZ));
+        List<Path> regionen = regionen().stream().filter(Files::isDirectory).toList();
+        // Ohne Ordner mit Regionen sähe der Takt nie eine Änderung; dann lieber jedes Mal zeichnen.
+        return !regionen.isEmpty() && regionen.stream().noneMatch(r -> neuIn(r, grenze)) && !neuIn(wurzel().resolve("datapacks"), grenze);
+    }
+
+    /** Die Wurzel der Welt: über dimensions/<ns>/<name>, wenn konf.welt eine Dimension ist, sonst konf.welt. */
+    private Path wurzel() {
+        Path w = konf.welt();
+        int n = w.getNameCount();
+        return n >= 3 && w.getName(n - 3).toString().equals("dimensions") ? w.getParent().getParent().getParent() : w;
+    }
+
+    /**
+     * Die Ordner mit den Regionen der Dimension des Baums. An der Wurzel die Oberwelt in beiden Ablagen: vor 26.1
+     * region/, ab 26.1 dimensions/minecraft/overworld/region/. Siehe docs/laeufe.md, „Zeitplan“.
+     */
+    private List<Path> regionen() {
+        Path w = konf.welt();
+        return w.equals(wurzel()) ? List.of(w.resolve("region"), w.resolve("dimensions/minecraft/overworld/region")) : List.of(w.resolve("region"));
+    }
+
+    /**
+     * Hat unter {@code ordner} etwas eine Zeit ab {@code grenze}? Files.find nimmt die Zeit aus dem Lesen des Ordners,
+     * ohne eigenen Aufruf je Datei. Es prüft auch den Ordner selbst; dessen Zeit ändert sich nur mit einer neuen oder
+     * gelöschten Datei, das ist vorsichtiger. Nicht lesbar zählt als ja: lieber einmal zu viel zeichnen.
+     */
+    private static boolean neuIn(Path ordner, FileTime grenze) {
+        if (!Files.isDirectory(ordner)) {
+            return false;
+        }
+        try (Stream<Path> neu = Files.find(ordner, Integer.MAX_VALUE, (p, a) -> a.lastModifiedTime().compareTo(grenze) >= 0)) {
+            return neu.findAny().isPresent();
+        } catch (IOException | UncheckedIOException e) {
+            return true;
+        }
+    }
+
+    /** Liegt eine Marke manifest-offen-… eines Laufs, der das Manifest nicht fertig schrieb? */
+    private static boolean mitOffenemManifest(Path ordner) {
+        try (Stream<Path> alle = Files.list(ordner)) {
+            return alle.anyMatch(p -> p.getFileName().toString().startsWith("manifest-offen-"));
+        } catch (IOException e) {
+            return true;
+        }
+    }
+
+    /**
      * Die Art des abgebrochenen Laufs aus dem Kopf von stand-neu.bin, Fassung 1 oder 2, sonst null.
      * Siehe docs/laeufe.md, „Fortsetzen“.
      */
@@ -350,6 +449,9 @@ final class Laeufe {
         var text = new StringBuilder();
         if (faden == null) {
             text.append(letzte.isEmpty() ? "Kein Lauf seit dem Start." : "Kein Lauf.");
+            if (leerlauf != null) {
+                text.append(" Update übersprungen um ").append(leerlauf).append(": keine Region neu.");
+            }
         } else {
             String pid = prozess != null ? ", PID " + prozess.pid() : "";
             text.append("Läuft seit ").append(seit).append(": ").append(laeuft).append(pid).append(". ")

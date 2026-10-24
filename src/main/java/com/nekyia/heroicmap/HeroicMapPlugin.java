@@ -206,7 +206,7 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
             }
         }
         if (konf.updateMinuten() > 0) {
-            getServer().getAsyncScheduler().runAtFixedRate(this, t -> laeufe.starte(Laeufe.Art.UPDATE),
+            getServer().getAsyncScheduler().runAtFixedRate(this, t -> laeufe.starteImTakt(),
                     konf.updateMinuten(), konf.updateMinuten(), TimeUnit.MINUTES);
         }
         // Das Geheimnis für Download und Anmeldung; siehe docs/download.md und docs/anmeldung.md.

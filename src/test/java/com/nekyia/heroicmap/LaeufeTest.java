@@ -13,6 +13,9 @@ import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.attribute.FileTime;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -791,5 +794,129 @@ class LaeufeTest {
         assertEquals(Art.VOLL, Laeufe.angefangen(baum()));
         standNeu(2, 1);
         assertEquals(Art.UPDATE, Laeufe.angefangen(baum()));
+    }
+
+    // Leerlauf im Takt
+
+    /** Setzt die Zeit der Dateien auf vor den Beginn weniger die Toleranz: zählt nicht als neu. */
+    private static void alt(Instant beginn, Path... dateien) throws IOException {
+        for (Path p : dateien) {
+            Files.setLastModifiedTime(p, FileTime.from(beginn.minus(Laeufe.TOLERANZ).minusSeconds(1)));
+        }
+    }
+
+    /** Ein fertiger Lauf ohne Änderung über den Baum, wie ein Update im Takt; sein Beginn. */
+    private Instant fertig(Laeufe l, Konfiguration.Baum baum) throws Exception {
+        return fertig(l, baum, "nichts");
+    }
+
+    private Instant fertig(Laeufe l, Konfiguration.Baum baum, String art) throws Exception {
+        Files.createDirectories(tmp.resolve("tiles").resolve(baum.ordner()));
+        Files.writeString(tmp.resolve("tiles").resolve(baum.ordner()).resolve("stand.bin"), "");
+        l.starte("Update", List.of(new Auftrag(baum.ordner(), falscher(art), true)));
+        assertTrue(l.warte(30_000));
+        return l.erfolgreichSeit(baum.ordner()).orElseThrow();
+    }
+
+    @Test
+    void takt_laesst_einen_ruhenden_baum_aus() throws Exception {
+        Path region = Files.createDirectories(tmp.resolve("world/region"));
+        Path mca = Files.writeString(region.resolve("r.0.0.mca"), "x");
+        var l = laeufe(KARTE);
+        Files.createDirectories(baum());
+        Files.writeString(baum().resolve("stand.bin"), "");
+        assertEquals(1, l.plane(Art.UPDATE, null, true).size(), "ohne fertigen Lauf seit dem Start läuft der Takt");
+
+        // Der Lauf dauert über 3 s: Was während des Laufs kam, liegt dann mehr als die Toleranz vor seinem Ende.
+        var vorher = Instant.now();
+        var beginn = fertig(l, KARTE, "nichts-spaet");
+        assertTrue(Duration.between(vorher, Instant.now()).compareTo(Laeufe.TOLERANZ.plusSeconds(1)) > 0);
+        alt(beginn, mca, region);
+        assertEquals(List.of(), l.plane(Art.UPDATE, null, true));
+        assertEquals("Kein Baum zu rendern.", l.starteImTakt());
+        assertTrue(l.status().contains("Update übersprungen um "), l::status);
+        assertEquals(1, l.plane(Art.UPDATE, null, false).size(), "update von Hand läuft immer");
+
+        // Der Beginn zählt, nicht das Ende, und 1 s davor liegt noch in der Toleranz.
+        Files.setLastModifiedTime(mca, FileTime.from(beginn.minusSeconds(1)));
+        assertEquals(1, l.plane(Art.UPDATE, null, true).size(), "geschrieben kurz vor dem Beginn");
+        alt(beginn, mca);
+        // Nach der eigenen Uhr, nicht nach dem gemerkten Beginn: 0,5 s nach dem Start liegt mitten im Lauf von 3 s.
+        Files.setLastModifiedTime(mca, FileTime.from(vorher.plusMillis(500)));
+        assertEquals(1, l.plane(Art.UPDATE, null, true).size(), "geschrieben während des Laufs");
+        alt(beginn, mca);
+
+        for (String n : List.of("gebiet-offen.bin", "stand-neu.bin", "stand-neu-liegen.bin")) {
+            Path f = Files.writeString(baum().resolve(n), "");
+            assertEquals(1, l.plane(Art.UPDATE, null, true).size(), n);
+            Files.delete(f);
+        }
+        assertEquals(List.of(), l.plane(Art.UPDATE, null, true));
+
+        Path pack = Files.createDirectories(tmp.resolve("world/datapacks/neu"));
+        assertEquals(1, l.plane(Art.UPDATE, null, true).size(), "ein neues Datapack");
+        alt(beginn, pack, pack.getParent());
+        assertEquals(List.of(), l.plane(Art.UPDATE, null, true));
+
+        assertEquals(1, laeufe(KARTE).plane(Art.UPDATE, null, true).size(), "nach einem Neustart läuft der erste Takt");
+    }
+
+    @Test
+    void takt_mit_download_braucht_ein_fertiges_manifest() throws Exception {
+        var oben = new Konfiguration.Baum("top-north", "s", 4, false, true, true);
+        Path region = Files.createDirectories(tmp.resolve("world/region"));
+        var l = laeufe(KARTE, oben);
+        var beginn = fertig(l, KARTE);
+        fertig(l, oben);
+        alt(beginn, region);
+        Path ordner = tmp.resolve("tiles").resolve(oben.ordner());
+        assertEquals(List.of(oben.ordner()), baeume(l.plane(Art.UPDATE, null, true)), "ohne Manifest läuft nur der Baum zum Download");
+        Files.writeString(ordner.resolve("manifest"), "");
+        assertEquals(List.of(), baeume(l.plane(Art.UPDATE, null, true)));
+        Files.writeString(ordner.resolve("manifest-offen-123-456"), "");
+        assertEquals(List.of(oben.ordner()), baeume(l.plane(Art.UPDATE, null, true)), "mit einer offenen Marke");
+    }
+
+    private static List<String> baeume(List<Auftrag> plan) {
+        return plan.stream().map(Auftrag::baum).distinct().toList();
+    }
+
+    @Test
+    void takt_sieht_nur_die_regionen_der_eigenen_dimension() throws Exception {
+        var k = konf(JAVA, false, List.of(KARTE));
+        Path nether = tmp.resolve("world/dimensions/minecraft/the_nether");
+        var l = new Laeufe(new Konfiguration(k.renderer(), nether, k.kacheln(), k.assets(), k.daten(), false, 1, 1, 30, List.of(KARTE),
+                DOWNLOAD, k.webserver(), k.clientJar(), false, Konfiguration.Karte.OHNE, false), logger, tmp);
+        Path region = Files.createDirectories(nether.resolve("region"));
+        var beginn = fertig(l, KARTE);
+        alt(beginn, region);
+        Files.createDirectories(tmp.resolve("world/dimensions/minecraft/overworld/region"));
+        Files.writeString(tmp.resolve("world/dimensions/minecraft/overworld/region/r.0.0.mca"), "x");
+        assertEquals(List.of(), l.plane(Art.UPDATE, null, true), "eine Region der Oberwelt zählt im Nether nicht");
+        Files.writeString(region.resolve("r.0.0.mca"), "x");
+        assertEquals(1, l.plane(Art.UPDATE, null, true).size());
+        // Die Datapacks liegen an der Wurzel der Welt, über dimensions/.
+        alt(beginn, region.resolve("r.0.0.mca"), region);
+        Files.createDirectories(tmp.resolve("world/datapacks/neu"));
+        assertEquals(1, l.plane(Art.UPDATE, null, true).size(), "ein neues Datapack an der Wurzel");
+    }
+
+    @Test
+    void takt_sieht_die_oberwelt_ab_26_1_unter_dimensions() throws Exception {
+        // Ab 26.1 liegt auch die Oberwelt unter dimensions/, ein region/ an der Wurzel gibt es nicht.
+        Path region = Files.createDirectories(tmp.resolve("world/dimensions/minecraft/overworld/region"));
+        var l = laeufe(KARTE);
+        var beginn = fertig(l, KARTE);
+        alt(beginn, region);
+        assertEquals(List.of(), l.plane(Art.UPDATE, null, true));
+        Files.writeString(region.resolve("r.0.0.mca"), "x");
+        assertEquals(1, l.plane(Art.UPDATE, null, true).size(), "eine neue Region der Oberwelt ab 26.1");
+    }
+
+    @Test
+    void takt_ohne_ordner_mit_regionen_ruht_nie() throws Exception {
+        var l = laeufe(KARTE);
+        fertig(l, KARTE);
+        assertEquals(1, l.plane(Art.UPDATE, null, true).size(), "sonst sähe der Takt nie eine Änderung");
     }
 }
