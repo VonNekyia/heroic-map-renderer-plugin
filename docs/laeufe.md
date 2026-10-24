@@ -237,9 +237,11 @@ Ein Lauf legt vor seiner ersten Kachel `stand-neu.bin` in den Ordner des
 Baums; am Ende fällt die Datei weg, siehe
 [Updates, „Der Stand“](https://github.com/VonNekyia/heroic-map-renderer/blob/master/docs/benutzung/updates.md#der-stand).
 Liegt sie, ist ein Lauf abgebrochen. Ihr Kopf sagt, welche Art: 8 Byte
-`HMRSTAND`, die Fassung 1 als u32 in Little Endian, dann ein Byte, 0 für
-einen vollen Lauf, 1 für ein Update. Eine andere Fassung oder ein kaputter
-Kopf zählt als nicht abgebrochen.
+`HMRSTAND`, die Fassung als u32 in Little Endian, dann ein Byte, 0 für
+einen vollen Lauf, 1 für ein Update. Das Plugin nimmt die Fassungen 1 und
+2; 2 schreibt der Renderer ab 0.18.0, mit dem Stand je Region in `stand/`
+und `stand-neu/` neben dem Kopf. Eine andere Fassung oder ein kaputter Kopf
+zählt als nicht abgebrochen.
 
 | Im Ordner des Baums | `render` | Update |
 |---|---|---|

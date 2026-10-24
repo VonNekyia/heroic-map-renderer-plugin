@@ -9,6 +9,7 @@ Links und die Hinweise aus `NOTICE` setzt
 
 ## 0.19.0
 
+- **Renderer 0.18.0** inside. No full render needed. Updates write only the regions that changed and draw a changed chunk only from where it blocks the light, if nothing changed below; in a test, 42 % fewer tiles per update. The plugin resumes an aborted run with the new state as before. After the first finished run the state is in a new format; going back to an older plugin then needs a full render.
 - **Web map: banners sooner.** `layers.json` now marks each layer with banner designs with `"designs": true`, so the web map fetches the banner sprites together with the layer instead of after it. Older web maps and mods ignore the field.
 
 ## 0.18.0
