@@ -84,6 +84,17 @@ class EbenenPruefungTest {
     }
 
     @Test
+    void zoomgrenze_im_kopf_von_0_bis_1024() {
+        assertEquals(List.of(), fehler(j -> j.addProperty("maxBlocksPerPixel", 8)));
+        assertEquals(List.of(), fehler(j -> j.addProperty("maxBlocksPerPixel", 0.5)));
+        assertEquals(List.of(), fehler(j -> j.addProperty("maxBlocksPerPixel", 1024)), "genau die Grenze");
+        assertEquals(List.of(), fehler(j -> j.addProperty("maxBlocksPerPixel", 0)), "0 heisst keine Grenze");
+        enthaelt(fehler(j -> j.addProperty("maxBlocksPerPixel", 1025)), "maxBlocksPerPixel: eine Zahl von 0 bis 1024");
+        enthaelt(fehler(j -> j.addProperty("maxBlocksPerPixel", -1)), "maxBlocksPerPixel: eine Zahl von 0 bis 1024");
+        enthaelt(fehler(j -> j.addProperty("maxBlocksPerPixel", "8")), "maxBlocksPerPixel: eine Zahl von 0 bis 1024");
+    }
+
+    @Test
     void rand_ab_breite_0_und_ohne_farbe() {
         assertEquals(List.of(), fehler(j -> objekt(j, 2).getAsJsonObject("stroke").addProperty("width", 0)), "0 heisst ohne Rand");
         enthaelt(fehler(j -> objekt(j, 2).getAsJsonObject("stroke").addProperty("width", -0.5)),

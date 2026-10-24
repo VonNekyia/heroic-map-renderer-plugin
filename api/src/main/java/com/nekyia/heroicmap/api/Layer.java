@@ -32,6 +32,15 @@ public interface Layer {
     void order(int order);
 
     /**
+     * Up to how many blocks per screen pixel the layer is shown; farther out, views neither show nor load it, such
+     * as regions only until the map is far out. The unit does not depend on the map: on the web map, blocks per CSS
+     * pixel, from above and in iso alike. Default: 0, no limit; 0 removes a limit. Also for action layers.
+     *
+     * @param blocks 0, or a number above 0 and at most 1024
+     */
+    void maxBlocksPerPixel(double blocks);
+
+    /**
      * Whether the layer goes on the public web map. Default: true, or false with a permission. A layer with a
      * permission never goes on the web map.
      */

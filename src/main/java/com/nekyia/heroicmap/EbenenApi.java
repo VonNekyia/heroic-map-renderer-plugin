@@ -195,6 +195,8 @@ final class EbenenApi implements HeroicMapApi, Listener {
         private JsonObject name = new JsonObject();
         private Boolean visible;
         private Integer order;
+        /** Die Zoomgrenze, null ohne. */
+        private Double maxBlocksPerPixel;
         private Boolean web;
         private String permission;
         /** Die Entwürfe der Banner am Kopf, Name → Entwurf als JSON. */
@@ -263,6 +265,17 @@ final class EbenenApi implements HeroicMapApi, Listener {
         public synchronized void order(int o) {
             lebt();
             order = o;
+            geaendert();
+        }
+
+        @Override
+        public synchronized void maxBlocksPerPixel(double b) {
+            lebt();
+            // NaN, Unendlich und Negatives fallen hier durch, denn jeder Vergleich mit NaN ist falsch.
+            if (!(b >= 0 && b <= EbenenPruefung.BLOECKE_JE_PIXEL)) {
+                throw new IllegalArgumentException("Ebene " + id + ": maxBlocksPerPixel " + b + " ist keine Zahl von 0 bis 1024");
+            }
+            maxBlocksPerPixel = b == 0 ? null : b;
             geaendert();
         }
 
@@ -661,6 +674,7 @@ final class EbenenApi implements HeroicMapApi, Listener {
             o.add("name", name.deepCopy());
             o.addProperty("visible", visible);
             o.addProperty("order", order);
+            o.addProperty("maxBlocksPerPixel", maxBlocksPerPixel);
             o.addProperty("web", web);
             o.addProperty("permission", p);
             o.entrySet().removeIf(e -> e.getValue().isJsonNull());

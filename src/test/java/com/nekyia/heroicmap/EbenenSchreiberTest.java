@@ -131,6 +131,21 @@ class EbenenSchreiberTest {
     }
 
     @Test
+    void zoomgrenze_aus_der_datei_nur_in_der_liste_und_ohne_0() throws IOException {
+        var mit = ebene("beispiel:regionen", ", \"maxBlocksPerPixel\": 8", Map.of());
+        var null_ = ebene("beispiel:kreise", ", \"maxBlocksPerPixel\": 0", Map.of());
+        Path wurzel = tmp.resolve("tiles");
+        new EbenenSchreiber(wurzel, OBERWELT).schreibe(List.of(mit, null_), Set.of());
+        var m = new LinkedHashMap<String, JsonObject>();
+        Ebenen.lies(Files.readString(wurzel.resolve("layers.json"))).getAsJsonArray("layers")
+                .forEach(x -> m.put(x.getAsJsonObject().get("id").getAsString(), x.getAsJsonObject()));
+        assertEquals(8, m.get("beispiel:regionen").get("maxBlocksPerPixel").getAsDouble());
+        assertFalse(m.get("beispiel:kreise").has("maxBlocksPerPixel"), "0 heisst keine Grenze");
+        assertFalse(Ebenen.lies(Files.readString(wurzel.resolve("layers/beispiel/regionen.json"))).has("maxBlocksPerPixel"),
+                "nicht in der Datei der Ebene");
+    }
+
+    @Test
     void schreiben_raeumt_auf_und_laesst_gleiches_stehen() throws IOException {
         var staedte = staedte();
         Path wurzel = tmp.resolve("tiles");
