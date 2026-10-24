@@ -7,6 +7,10 @@ Links und die Hinweise aus `NOTICE` setzt
 [`.github/notizen.sh`](.github/notizen.sh) dazu. Siehe
 [Entwicklung](docs/entwicklung.md), „Release“.
 
+## 0.20.1
+
+- **The answer to `show` names every world of the server:** `welten` maps each world key, such as `minecraft:overworld`, to `{"uid": "…"}`, the world's UID, at most 64 worlds. A coming mod uses it to tell a reset world from the old one behind the same key and seed. Older mods ignore the field.
+
 ## 0.20.0
 
 - **A zoom limit per layer:** `Layer.maxBlocksPerPixel(blocks)` in the API, or `maxBlocksPerPixel` in the head of a layer file, shows a layer only while one screen pixel shows at most that many blocks, such as regions only until the map is far out; farther out, views do not even load it. A number from 0 to 1024; 0, the default, means no limit. Also for action layers. The field goes into `layers.json` and the list for the mod only when set; web maps and mods that do not know it yet show the layer as before.
