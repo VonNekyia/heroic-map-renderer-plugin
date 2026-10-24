@@ -73,8 +73,8 @@ auf dem Kanal `BungeeCord`, nach dem Namen des Servers, auf dem er ist.
   `velocity.toml` ist `true`. Ein Plugin auf dem Proxy kann den Kanal auch
   selbst anmelden und `GetServer` beantworten. Fehlt der Kanal, fragt das
   Plugin nicht, und es gilt `karte.name`.
-- **Andere Wege zum Namen gibt es nicht.** Ein eigenes Plugin für Velocity
-  gibt es nicht. Modern Forwarding bringt dem Server Version, Adresse, UUID,
+- **Andere Wege zum Namen gibt es nicht.** HeroicMap hat kein Plugin für
+  Velocity. Modern Forwarding bringt dem Server Version, Adresse, UUID,
   Namen und Eigenschaften des Spielers, nicht den Namen des Servers
   (`PlayerDataForwarding.createForwardingData`). Belegt am Code von
   Velocity, Commit 77274a8fb, am 24.10. Hinter einem Velocity ohne den
