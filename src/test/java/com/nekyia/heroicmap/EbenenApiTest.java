@@ -309,31 +309,46 @@ class EbenenApiTest {
         for (int i = 0; i < 199; i++) {
             l.design("d" + i, entwurf(i));
         }
-        var punkte = new ArrayList<Point>();
-        for (int i = 0; i < 10_000; i++) {
-            punkte.add(new Point(i + 0.123456789, -i - 0.987654321));
-        }
-        // Erst Linien, dann kleine Kreise bis an die Grenze.
-        int n = 0;
-        try {
-            while (true) {
-                l.put(Line.through("l" + n++, punkte));
-            }
-        } catch (IllegalArgumentException x) {
-            assertTrue(x.getMessage().contains("die Ebene würde grösser als 4 MiB"), x.getMessage());
-        }
-        var e = assertThrows(IllegalArgumentException.class, () -> {
-            for (int i = 0; ; i++) {
-                l.put(Circle.around("k" + i, 1, 1, 5));
-            }
-        });
-        assertTrue(e.getMessage().contains("die Ebene würde grösser als 4 MiB"), e.getMessage());
-        e = assertThrows(IllegalArgumentException.class, () -> l.design("noch-einer", entwurf(0)));
+        bisAnDieGrenze(l);
+        var e = assertThrows(IllegalArgumentException.class, () -> l.design("noch-einer", entwurf(0)));
         assertTrue(e.getMessage().contains("Entwurf noch-einer: die Ebene würde grösser als 4 MiB"), e.getMessage());
         l.design("d0", entwurf(1));
         int bytes = ebene(a, "beispiel:gross").json().toString().getBytes(StandardCharsets.UTF_8).length;
         assertTrue(bytes <= EbenenPruefung.EBENE_BYTES, bytes + " Byte");
         assertEquals(List.of(), log, "der Schnappschuss besteht die Prüfung, mit den Entwürfen");
+    }
+
+    @Test
+    void namen_der_koepfe_zaehlen_zu_den_4_mib() {
+        var a = api(0);
+        Layer l = a.layer("Npcs", "npcs");
+        for (int i = 0; i < 1000; i++) {
+            l.put(Pin.at("n" + i, i, 0).withHead(Integer.toHexString(i % EbenenPruefung.KOEPFE + 1)));
+        }
+        bisAnDieGrenze(l);
+        int bytes = ebene(a, "npcs:npcs").json().toString().getBytes(StandardCharsets.UTF_8).length;
+        assertTrue(bytes + 1000 * 74 <= EbenenPruefung.EBENE_BYTES,
+                bytes + " Byte ohne die Namen der Köpfe; liegen die Köpfe, hängt der Schnappschuss je Nadel ,\"head\":\"…\" an");
+    }
+
+    /** Füllt die Ebene mit Linien, dann mit kleinen Kreisen, bis put an den 4 MiB scheitert. */
+    private static void bisAnDieGrenze(Layer l) {
+        var punkte = new ArrayList<Point>();
+        for (int i = 0; i < 10_000; i++) {
+            punkte.add(new Point(i + 0.123456789, -i - 0.987654321));
+        }
+        var e = assertThrows(IllegalArgumentException.class, () -> {
+            for (int i = 0; ; i++) {
+                l.put(Line.through("l" + i, punkte));
+            }
+        });
+        assertTrue(e.getMessage().contains("die Ebene würde grösser als 4 MiB"), e.getMessage());
+        e = assertThrows(IllegalArgumentException.class, () -> {
+            for (int i = 0; ; i++) {
+                l.put(Circle.around("k" + i, 1, 1, 5));
+            }
+        });
+        assertTrue(e.getMessage().contains("die Ebene würde grösser als 4 MiB"), e.getMessage());
     }
 
     /**

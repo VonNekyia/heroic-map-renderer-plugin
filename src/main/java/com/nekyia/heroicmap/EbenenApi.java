@@ -40,6 +40,8 @@ import org.bukkit.plugin.Plugin;
  */
 final class EbenenApi implements HeroicMapApi, Listener {
 
+    /** Was der Schnappschuss an eine Nadel mit Kopf hängt: ,"head":"<64 Zeichen>". */
+    private static final int KOPF_BYTES = 74;
     private final Map<String, ApiEbene> ebenen = new ConcurrentHashMap<>();
     /**
      * Die Bilder je modname; alle Ebenen eines Besitzers teilen sie, wie im Ordner images/. Nur {@link #layer}
@@ -321,7 +323,7 @@ final class EbenenApi implements HeroicMapApi, Listener {
                 throw new IllegalArgumentException("Ebene " + id + ": designs: mehr als 200 Entwürfe");
             }
             long neu = entwurfBytes + groesse(name, j) - (alt == null ? 0 : groesse(name, alt));
-            grenzen("Entwurf " + name, objekte.size(), nadeln, bytes + neu, groessteEigene());
+            grenzen("Entwurf " + name, objekte.size(), nadeln, bytes + ausserObjekten(neu, texturen.size()), groessteEigene());
             entwuerfe.put(name, j);
             entwurfBytes = neu;
             geaendert();
@@ -430,7 +432,8 @@ final class EbenenApi implements HeroicMapApi, Listener {
                     throw new IllegalArgumentException("Objekt " + m.id() + ": ein Spieler hat schon ein eigenes mit dieser id");
                 }
                 // Mit den eigenen Objekten des grössten Spielers zusammen, siehe grenzen.
-                grenzen("Objekt " + m.id(), objekte.size() + (alt == null ? 1 : 0), neueNadeln, neueBytes + entwurfBytes, groessteEigene());
+                grenzen("Objekt " + m.id(), objekte.size() + (alt == null ? 1 : 0), neueNadeln,
+                        neueBytes + ausserObjekten(entwurfBytes, neueTexturen.size()), groessteEigene());
                 objekte.put(m.id(), j);
                 if (p.bilder().isEmpty()) {
                     bilderJeObjekt.remove(m.id());
@@ -471,6 +474,14 @@ final class EbenenApi implements HeroicMapApi, Listener {
             if (byteZahl + mehr[2] > EbenenPruefung.EBENE_BYTES - (64 << 10)) {
                 throw new IllegalArgumentException(wer + ": die Ebene würde grösser als 4 MiB");
             }
+        }
+
+        /**
+         * Was die Ebene ausser ihren Objekten belegt: die Entwürfe und je Nadel mit Kopf seinen Namen, den der
+         * Schnappschuss anhängt, sobald der Kopf liegt.
+         */
+        private static long ausserObjekten(long entwurf, int koepfe) {
+            return entwurf + (long) KOPF_BYTES * koepfe;
         }
 
         /** Je Feld das Grösste über alle Spieler: Zahl, Nadeln und Bytes der eigenen Objekte. */
@@ -550,7 +561,7 @@ final class EbenenApi implements HeroicMapApi, Listener {
                     if (s[2] > 1 << 20) {
                         throw new IllegalArgumentException("Objekt " + m.id() + ": die eigenen Objekte würden grösser als 1 MiB");
                     }
-                    grenzen("Objekt " + m.id(), objekte.size(), nadeln, bytes + entwurfBytes, s);
+                    grenzen("Objekt " + m.id(), objekte.size(), nadeln, bytes + ausserObjekten(entwurfBytes, texturen.size()), s);
                     mein.objekte.put(m.id(), j);
                     mein.nadeln = s[1];
                     mein.bytes = s[2];
