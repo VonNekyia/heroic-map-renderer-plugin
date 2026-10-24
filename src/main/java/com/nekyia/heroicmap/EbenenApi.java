@@ -481,7 +481,7 @@ final class EbenenApi implements HeroicMapApi, Listener {
          * Schnappschuss anhängt, sobald der Kopf liegt.
          */
         private static long ausserObjekten(long entwurf, int koepfe) {
-            return entwurf + (long) KOPF_BYTES * koepfe;
+            return entwurf;
         }
 
         /** Je Feld das Grösste über alle Spieler: Zahl, Nadeln und Bytes der eigenen Objekte. */
