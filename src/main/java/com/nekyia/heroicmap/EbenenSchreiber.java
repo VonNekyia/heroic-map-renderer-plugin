@@ -79,6 +79,10 @@ final class EbenenSchreiber {
                 if (!an.isEmpty() && !an.contains(e.id())) {
                     eintrag.addProperty("visible", false);
                 }
+                if (e.json().get("designs") instanceof JsonObject d && !d.isEmpty()) {
+                    // Damit kann die Webkarte satz.json gleich mit der Datei der Ebene holen. Siehe docs/ebenen.md, „Webkarte“.
+                    eintrag.addProperty("designs", true);
+                }
                 if (e.aktion()) {
                     // Ihre Datei gibt es nur je Spieler, siehe SpielerOrdner.
                     eintrag.addProperty("player", true);

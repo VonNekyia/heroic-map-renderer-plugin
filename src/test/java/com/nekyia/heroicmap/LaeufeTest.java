@@ -778,13 +778,18 @@ class LaeufeTest {
     @Test
     void fremder_stand_zaehlt_nicht_als_abgebrochen() throws Exception {
         assertNull(Laeufe.angefangen(baum()));
-        standNeu(2, 0);
+        standNeu(3, 0);
         assertNull(Laeufe.angefangen(baum()));
         standNeu(1, 7);
         assertNull(Laeufe.angefangen(baum()));
         Files.write(baum().resolve("stand-neu.bin"), "HMRSTAND".getBytes(StandardCharsets.US_ASCII));
         assertNull(Laeufe.angefangen(baum()));
         standNeu(1, 1);
+        assertEquals(Art.UPDATE, Laeufe.angefangen(baum()));
+        // Fassung 2 ab Renderer 0.18.0, Stand je Region; der Kopf bleibt gleich.
+        standNeu(2, 0);
+        assertEquals(Art.VOLL, Laeufe.angefangen(baum()));
+        standNeu(2, 1);
         assertEquals(Art.UPDATE, Laeufe.angefangen(baum()));
     }
 }
