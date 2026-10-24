@@ -7,6 +7,10 @@ Links und die Hinweise aus `NOTICE` setzt
 [`.github/notizen.sh`](.github/notizen.sh) dazu. Siehe
 [Entwicklung](docs/entwicklung.md), „Release“.
 
+## 0.20.0
+
+- **A zoom limit per layer:** `Layer.maxBlocksPerPixel(blocks)` in the API, or `maxBlocksPerPixel` in the head of a layer file, shows a layer only while one screen pixel shows at most that many blocks, such as regions only until the map is far out; farther out, views do not even load it. A number from 0 to 1024; 0, the default, means no limit. Also for action layers. The field goes into `layers.json` and the list for the mod only when set; web maps and mods that do not know it yet show the layer as before.
+
 ## 0.19.0
 
 - **Renderer 0.18.0** inside. No full render needed. Updates write only the regions that changed and draw a changed chunk only from where it blocks the light, if nothing changed below; in a test, 42 % fewer tiles per update. The plugin resumes an aborted run with the new state as before. After the first finished run the state is in a new format; going back to an older plugin then needs a full render.

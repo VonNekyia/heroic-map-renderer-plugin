@@ -171,10 +171,16 @@ final class EbenenSchreiber {
         return o;
     }
 
-    /** Der Eintrag einer Ebene in layers.json, ebenso in der Liste an den Mod. */
+    /**
+     * Der Eintrag einer Ebene in layers.json, ebenso in der Liste an den Mod; die Zoomgrenze nur hier, nicht in der
+     * Datei der Ebene, denn eine Ansicht soll die Datei jenseits der Grenze gar nicht laden. Siehe docs/ebenen.md, „Zoomgrenze“.
+     */
     static JsonObject eintrag(Ebene e) {
         var o = kopf(e);
         o.addProperty("version", e.version());
+        if (e.json().get("maxBlocksPerPixel") instanceof JsonPrimitive m && m.isNumber() && m.getAsDouble() > 0) {
+            o.add("maxBlocksPerPixel", m);
+        }
         return o;
     }
 

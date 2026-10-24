@@ -157,6 +157,33 @@ class EbenenApiTest {
     }
 
     @Test
+    void zoomgrenze_nur_in_der_liste_auch_fuer_aktionsebenen() {
+        var a = api(0);
+        Layer routen = a.layer("Proficisci", "routen");
+        routen.put(Pin.at("hafen", 0, 0));
+        routen.forPlayer(new UUID(0, 1)).put(Pin.at("eigen", 1, 1));
+        assertTrue(ebene(a, "proficisci:routen").aktion());
+        assertFalse(EbenenSchreiber.eintrag(ebene(a, "proficisci:routen")).has("maxBlocksPerPixel"), "ohne Grenze kein Feld");
+
+        routen.maxBlocksPerPixel(8);
+        assertEquals(8, EbenenSchreiber.eintrag(ebene(a, "proficisci:routen")).get("maxBlocksPerPixel").getAsDouble(),
+                "in layers.json und der Liste an den Mod, auch für eine Aktionsebene");
+        assertFalse(EbenenSchreiber.fuerWebkarte(ebene(a, "proficisci:routen"), List.of(), OBERWELT).has("maxBlocksPerPixel"),
+                "nicht in der Datei der Ebene: Sie soll jenseits der Grenze gar nicht laden");
+        routen.maxBlocksPerPixel(0.25);
+        assertEquals(0.25, EbenenSchreiber.eintrag(ebene(a, "proficisci:routen")).get("maxBlocksPerPixel").getAsDouble());
+        routen.maxBlocksPerPixel(1024);
+        routen.maxBlocksPerPixel(0);
+        assertFalse(EbenenSchreiber.eintrag(ebene(a, "proficisci:routen")).has("maxBlocksPerPixel"), "0 nimmt die Grenze weg");
+
+        for (double falsch : new double[] {-1, Double.NaN, Double.POSITIVE_INFINITY, 1024.5}) {
+            var e = assertThrows(IllegalArgumentException.class, () -> routen.maxBlocksPerPixel(falsch), String.valueOf(falsch));
+            assertTrue(e.getMessage().contains("keine Zahl von 0 bis 1024"), e.getMessage());
+        }
+        assertFalse(EbenenSchreiber.eintrag(ebene(a, "proficisci:routen")).has("maxBlocksPerPixel"), "ein Fehler ändert nichts");
+    }
+
+    @Test
     void kennung_aus_dem_namen_des_plugins() {
         var a = api(0);
         assertEquals("beispiel_plugin:staedte", a.layer("Beispiel Plugin", "staedte").id());

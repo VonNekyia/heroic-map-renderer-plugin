@@ -154,6 +154,7 @@ final class Staedte {
 | `HeroicMapApi.layer(plugin, name)` | die Ebene `<modname>:<name>`, beim ersten Aufruf angelegt |
 | `Layer.name(de, en)`, `visible`, `web`, `permission` | der Kopf, wie in der Datei |
 | `Layer.order(gewicht)` | das Gewicht der Ebene: die höhere liegt oben und steht in der Liste vorn; Vorgabe 0; siehe [Ebenen](ebenen.md), „Gewicht“ |
+| `Layer.maxBlocksPerPixel(bloecke)` | ab 0.20.0 die Zoomgrenze: Die Ebene ist nur zu sehen, solange ein Pixel höchstens so viele Blöcke zeigt; 0 bis 1024, Vorgabe 0 ohne Grenze; NaN, Unendlich, Negatives und mehr als 1024 werfen; siehe [Ebenen](ebenen.md), „Zoomgrenze“ |
 | `Layer.image(pfad, bytes)`, `removeImage(pfad)` | ein Bild des Besitzers, siehe „Bilder“ |
 | `Layer.design(name, entwurf)`, `removeDesign(name)` | ein Entwurf der Banner am Kopf der Ebene, siehe „Entwürfe“ |
 | `Layer.forPlayer(uuid)` | die eigenen Objekte eines Spielers; das erste macht die Ebene zur Aktionsebene, siehe „Aktionsebenen und Knöpfe“ |

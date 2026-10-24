@@ -94,6 +94,8 @@ Bausteine der Tafel und ihre Tiefe, die Bilder. Dazu eigene Regeln:
   Bilder eines Banners höchstens 32 × 64, Bilder der Tafel höchstens
   512 × 512, jedes höchstens 256 KiB, höchstens 200 je Ebene.
 - **Nadeln und Banner** zählen zusammen gegen die 1000 einer Ebene.
+- **`maxBlocksPerPixel`** im Kopf: eine Zahl von 0 bis 1024
+  (`EbenenPruefung.BLOECKE_JE_PIXEL`), siehe „Zoomgrenze“.
 - **Köpfe:** `head` an einer Nadel nur als Name eines Kopfs, genau 64
   Zeichen `0-9 a-f`, höchstens 256 verschiedene je Ebene; auch mit
   `permission`, denn ein Kopf liegt nicht unter `layers/`. Siehe
@@ -149,6 +151,25 @@ Feld gibt es nicht.
   sich, gespeichert dort. Das Plugin schickt nur die Vorgabe und weiss
   davon nichts.
 
+## Zoomgrenze
+
+Ab 0.20.0 zeigt eine Ansicht eine Ebene nur, solange ein Pixel des
+Bildschirms höchstens `maxBlocksPerPixel` Blöcke zeigt, etwa Regionen nur,
+bis die Karte weit draussen ist. Weiter draussen lädt sie die Datei der
+Ebene nicht einmal. Der Vertrag steht im Renderer unter
+[Ebenen, „Zoomgrenze“](https://github.com/VonNekyia/heroic-map-renderer/blob/master/docs/benutzung/ebenen.md#zoomgrenze).
+
+- **Quelle:** `maxBlocksPerPixel` im Kopf einer Datei oder
+  `Layer.maxBlocksPerPixel` der [API](api.md). Eine Zahl von 0 bis 1024;
+  `0` und kein Feld heissen keine Grenze, das ist die Vorgabe. Sonst meldet
+  die Prüfung einen Fehler oder die API wirft.
+- **Nur in der Liste:** `EbenenSchreiber.eintrag` schreibt das Feld in
+  `layers.json` und in die Liste `ebenen` an den Mod, nur wenn eine Grenze
+  gesetzt ist. In der Datei der Ebene steht es nicht, denn eine Ansicht
+  soll sie jenseits der Grenze gar nicht laden.
+- **Auch für Aktionsebenen,** denn sie stehen mit demselben Eintrag in der
+  Liste.
+
 ## Webkarte
 
 `EbenenSchreiber.schreibe` bringt die Wurzel von `tiles` auf den Stand der
@@ -156,7 +177,7 @@ Ebenen, neben `trees.json`:
 
 | Datei | Inhalt |
 |---|---|
-| `layers.json` | je Ebene mit `web` `id`, `name`, `visible`, `order`, `version`; bei einer Aktionsebene dazu `"player": true`; mit Entwürfen, also `designs` nicht leer, dazu `"designs": true`. Damit kann eine Webkarte `satz.json` der Banner gleich mit der Datei der Ebene holen; die von Renderer 0.18.0 liest das Feld noch nicht, siehe im Renderer [Ebenen, „Liste der Ebenen“](https://github.com/VonNekyia/heroic-map-renderer/blob/master/docs/benutzung/ebenen.md#liste-der-ebenen). Mit `webserver.ebenen-an` steht jede Ebene, die die Liste nicht nennt, mit `visible: false`, siehe [Konfiguration](konfiguration.md) |
+| `layers.json` | je Ebene mit `web` `id`, `name`, `visible`, `order`, `version`; bei einer Aktionsebene dazu `"player": true`; mit Entwürfen, also `designs` nicht leer, dazu `"designs": true`; mit einer Zoomgrenze dazu `maxBlocksPerPixel`, siehe „Zoomgrenze“. Damit kann eine Webkarte `satz.json` der Banner gleich mit der Datei der Ebene holen; die von Renderer 0.18.0 liest das Feld noch nicht, siehe im Renderer [Ebenen, „Liste der Ebenen“](https://github.com/VonNekyia/heroic-map-renderer/blob/master/docs/benutzung/ebenen.md#liste-der-ebenen). Mit `webserver.ebenen-an` steht jede Ebene, die die Liste nicht nennt, mit `visible: false`, siehe [Konfiguration](konfiguration.md) |
 | `layers/<modname>/<ebene>.json` | Kopf samt `designs` und Objekte der Ebene, ohne `web` und `permission`; nie eine Aktionsebene |
 | `layers/<modname>/images/…` | die Bilder, die eine Ebene nennt |
 | `layers/<modname>/banner/…` | die Sprites der Banner; sie schreibt der Renderer, siehe [Läufe](laeufe.md), „Banner“ |

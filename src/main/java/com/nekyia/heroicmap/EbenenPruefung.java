@@ -32,6 +32,8 @@ final class EbenenPruefung {
     private static final int BILDER = 200;
     /** Verschiedene Köpfe je Ebene. Siehe docs/ebenen.md, „Prüfen“. */
     static final int KOEPFE = 256;
+    /** Höchstens so viele Blöcke je Pixel als Zoomgrenze einer Ebene; 0 heisst keine. Siehe docs/ebenen.md, „Zoomgrenze“. */
+    static final double BLOECKE_JE_PIXEL = 1024;
     private static final Pattern KOPF = Pattern.compile("[0-9a-f]{64}");
     private static final int ENTWUERFE = 200;
     private static final int LAGEN = 16;
@@ -79,13 +81,17 @@ final class EbenenPruefung {
     }
 
     private void ebene(String id, JsonObject e) {
-        erlaubt(e, "", "id", "name", "visible", "order", "web", "permission", "designs", "objects");
+        erlaubt(e, "", "id", "name", "visible", "order", "maxBlocksPerPixel", "web", "permission", "designs", "objects");
         if (!(e.get("id") instanceof JsonPrimitive i && i.isString() && i.getAsString().equals(id))) {
             fehler.add("id: muss " + id + " heissen, wie Ordner und Datei");
         }
         name(e);
         wahr(e, "visible", "");
         ganz(e, "order", "", Integer.MIN_VALUE, Integer.MAX_VALUE, false);
+        double grenze = endlich(e.get("maxBlocksPerPixel"));
+        if (e.has("maxBlocksPerPixel") && !(grenze >= 0 && grenze <= BLOECKE_JE_PIXEL)) {
+            fehler.add("maxBlocksPerPixel: eine Zahl von 0 bis 1024");
+        }
         String permission = text(e, "permission", "", 128, false);
         mitPermission = permission != null;
         if (mitPermission && permission.isBlank()) {
