@@ -7,6 +7,10 @@ Links und die Hinweise aus `NOTICE` setzt
 [`.github/notizen.sh`](.github/notizen.sh) dazu. Siehe
 [Entwicklung](docs/entwicklung.md), „Release“.
 
+## 0.18.0
+
+- **Relief on the map from above:** a tree with `camera: "top-north"` from `s` takes `relief: slope` or `relief: shadows`; `none`, the default, draws none. Not with `cinematic` or `flat`; the plugin refuses that at start. The folder stays the same, and with `download: true` the mod gets the tiles with relief. A changed value needs one full render of that tree, `/heroicmap render <folder>`; until then each update stops, and the status says "Relief geändert".
+
 ## 0.17.2
 
 - **The server's own name for the mod:** the answer to the mod's `show` now also carries `backend`, the name of this server, from the proxy or `karte.name`, never `karte.von`. With `karte.von: main`, build now also asks the proxy for its own name. Older mods ignore the field; a coming mod version uses it to keep what each server shows apart, also when two servers share one map. Without any name, the log line "Kein Proxy meldet …" now says so.

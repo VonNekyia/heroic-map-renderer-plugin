@@ -218,6 +218,7 @@ Jeder Eintrag unter `trees` ist ein Kachelbaum, siehe
 | `scale` | die des Renderers | `--scale` |
 | `cinematic` | `false` | `--cinematic` |
 | `flat` | `false` | `--flat` |
+| `relief` | `none` | `--relief` |
 | `download` | `false` | – |
 | `web` | `true` | – |
 
@@ -240,6 +241,17 @@ Jeder Eintrag unter `trees` ist ein Kachelbaum, siehe
   `scale`, `cinematic` oder `download` meldet das Plugin einen Fehler, denn
   der Renderer nimmt `--flat` mit keinem davon, und zum Download gibt es
   nur scale 4. Die CPU zeichnet, auch mit `renderer.gpu: true`.
+- **`relief`** zeichnet ein Relief in die Karte von oben, `slope` oder
+  `shadows`, siehe im Renderer
+  [Relief](https://github.com/VonNekyia/heroic-map-renderer/blob/master/docs/renderer/relief.md); `none`, die
+  Vorgabe, zeichnet keins. Nur mit `camera: "top-north"` aus `s`, ohne
+  `cinematic` und ohne `flat`, sonst meldet das Plugin einen Fehler. Der
+  Ordner bleibt derselbe; mit `download: true` bekommt der Mod die Kacheln
+  mit Relief. `none` statt `off`, denn YAML 1.1 liest `off` als `false`.
+  Ein anderer Wert braucht einen vollen Lauf über den Baum, bis dahin
+  bricht jedes Update ab, siehe [Läufe](laeufe.md), „Der Kindprozess“. Was
+  das Relief an Zeit und Platz kostet, steht im Renderer unter
+  [Relief von oben](https://github.com/VonNekyia/heroic-map-renderer/blob/master/docs/messungen/2026-10-24-relief-von-oben.md).
 - **`download: true`** bietet den Baum dem Mod zum Download an, nur mit
   `camera: "top-north"`, `scale: 4` und ohne `cinematic`, siehe
   [Download](download.md).
@@ -298,6 +310,8 @@ schaltet sich ab:
 - eine Grenze unter `download` kleiner als 0, oder `abgleich-ab` keine
   Uhrzeit wie `"00:00"`;
 - `web: false` an einem Baum ohne `download: true`;
+- `relief` nicht `none`, `slope` oder `shadows`, oder an einem Baum, der
+  nicht `top-north` aus `s` ohne Cinematic und ohne `flat` ist;
 - `karte.name` oder `karte.von` kein Name aus a–z, 0–9, `_` und `-` mit
   höchstens 64 Zeichen; `karte.von-url` oder `karte.von-oeffentlich` ohne
   `http://` oder `https://` und Host, oder ohne `karte.von`; `karte.von` mit einem Baum

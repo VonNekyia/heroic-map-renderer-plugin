@@ -482,6 +482,49 @@ class KonfigurationTest {
     }
 
     @Test
+    void relief_nur_von_oben_genordet() throws Exception {
+        Files.createFile(server.resolve("r"));
+        var k = Konfiguration.aus(yaml("""
+                renderer:
+                  binary: r
+                trees:
+                  - camera: top-north
+                    relief: slope
+                  - camera: top-north
+                    scale: 4
+                    download: true
+                    relief: shadows
+                  - camera: "2:1"
+                    relief: none
+                """), server, server);
+        assertEquals(List.of(new Baum("top-north", "s", null, false, false, true, false, "slope"),
+                new Baum("top-north", "s", 4, false, true, true, false, "shadows"),
+                new Baum("2:1", "se", null, false, false, true)), k.baeume());
+        assertEquals("top-north-s", k.baeume().getFirst().ordner(), "derselbe Ordner wie ohne Relief");
+
+        // off liest YAML 1.1 als false.
+        var e = assertThrows(IllegalArgumentException.class, () -> Konfiguration.aus(yaml("""
+                renderer:
+                  binary: r
+                trees:
+                  - camera: top-north
+                    relief: off
+                  - camera: "2:1"
+                    relief: slope
+                  - camera: top-north
+                    direction: n
+                    relief: slope
+                  - camera: top-north
+                    cinematic: true
+                    relief: shadows
+                  - flat: true
+                    relief: slope
+                """), server, server));
+        String nur = "trees: relief nur mit camera \"top-north\", direction s, ohne cinematic und flat";
+        assertEquals(String.join("; ", "trees: relief false ist nicht none, slope oder shadows", nur, nur, nur, nur), e.getMessage());
+    }
+
+    @Test
     void alle_fehler_auf_einmal() throws Exception {
         var c = yaml("""
                 renderer:

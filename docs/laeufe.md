@@ -152,6 +152,13 @@ entschieden in [0003](entscheidungen/0003-live-render-ueber-autosave-und-zeitpla
   „neue Assets: erst /heroicmap render <ordner>“. Erkannt am Wortlaut
   „stammt von anderen Assets oder Daten“ aus demselben `stand_fuer_update`;
   siehe [Konfiguration](konfiguration.md), „Nexo“.
+- **Relief geändert:** Hat ein Baum ein anderes `relief` als bei seinem
+  letzten vollen Lauf, auch zurück auf `none`, bricht ein Update ebenso ab.
+  Dann steht im Status „Relief geändert: erst /heroicmap render <ordner>“.
+  Der volle Lauf zeichnet den Baum mit dem neuen Wert ganz neu, auch
+  fortgesetzt mit `--resume`. Erkannt am Wortlaut „Das Relief wechselt nur
+  ein voller Lauf“, siehe im Renderer
+  [Updates, „Relief wechseln“](https://github.com/VonNekyia/heroic-map-renderer/blob/master/docs/benutzung/updates.md#relief-wechseln).
 - **Faden:** ein eigener Faden `HeroicMap-Lauf`, nicht einer aus dem Pool
   des Schedulers, denn ein voller Lauf dauert Stunden.
 - **Hangar:** Der Scanner stuft `Runtime.exec` als `HIGHEST` ein,
