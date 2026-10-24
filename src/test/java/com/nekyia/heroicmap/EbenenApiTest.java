@@ -289,10 +289,24 @@ class EbenenApiTest {
     }
 
     @Test
+    void hoechstens_200_entwuerfe_je_ebene() {
+        var a = api(0);
+        Layer l = a.layer("Beispiel", "staedte");
+        entwerfe(l, 0);
+        var e = assertThrows(IllegalArgumentException.class, () -> l.design("d200", entwurf(0)));
+        assertTrue(e.getMessage().contains("designs: mehr als 200 Entwürfe"), e.getMessage());
+        l.design("d0", entwurf(1));
+        l.removeDesign("d0");
+        l.design("d200", entwurf(0));
+        assertEquals(200, ebene(a, "beispiel:staedte").json().getAsJsonObject("designs").size());
+    }
+
+    @Test
     void entwuerfe_zaehlen_zu_den_4_mib() {
         var a = api(0);
         Layer l = a.layer("Beispiel", "gross");
-        for (int i = 0; i < 200; i++) {
+        // 199, damit der nächste an der Grösse scheitert, nicht an der Zahl.
+        for (int i = 0; i < 199; i++) {
             l.design("d" + i, entwurf(i));
         }
         var punkte = new ArrayList<Point>();
