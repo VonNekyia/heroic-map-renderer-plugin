@@ -24,7 +24,7 @@ final class Welten {
         var o = new JsonObject();
         welten.entrySet().stream().sorted(Map.Entry.comparingByKey()).limit(HOECHSTENS).forEach(e -> {
             var w = new JsonObject();
-            w.addProperty("uid", e.getValue().toString());
+            w.addProperty("uid", e.getValue().toString().toUpperCase());
             o.add(e.getKey(), w);
         });
         antwort.add("welten", o);
