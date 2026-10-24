@@ -245,7 +245,7 @@ record Konfiguration(
         }
         // Mit karte.von-url zeigt dieser Server die Ebenen eines anderen und rendert nichts selbst. Siehe
         // docs/mehrere-server.md, „Karte von“.
-        if (baeume.isEmpty() && fehler.isEmpty() && c.getString("karte.von-url", "").isBlank()) {
+        if (baeume.isEmpty() && fehler.isEmpty()) {
             fehler.add("trees: kein Baum");
         }
 
