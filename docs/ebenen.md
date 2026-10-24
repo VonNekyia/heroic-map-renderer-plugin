@@ -156,7 +156,7 @@ Ebenen, neben `trees.json`:
 
 | Datei | Inhalt |
 |---|---|
-| `layers.json` | je Ebene mit `web` `id`, `name`, `visible`, `order`, `version`; bei einer Aktionsebene dazu `"player": true`. Mit `webserver.ebenen-an` steht jede Ebene, die die Liste nicht nennt, mit `visible: false`, siehe [Konfiguration](konfiguration.md) |
+| `layers.json` | je Ebene mit `web` `id`, `name`, `visible`, `order`, `version`; bei einer Aktionsebene dazu `"player": true`; mit Entwürfen, also `designs` nicht leer, dazu `"designs": true`. Damit kann eine Webkarte `satz.json` der Banner gleich mit der Datei der Ebene holen; die von Renderer 0.18.0 liest das Feld noch nicht, siehe im Renderer [Ebenen, „Liste der Ebenen“](https://github.com/VonNekyia/heroic-map-renderer/blob/master/docs/benutzung/ebenen.md#liste-der-ebenen). Mit `webserver.ebenen-an` steht jede Ebene, die die Liste nicht nennt, mit `visible: false`, siehe [Konfiguration](konfiguration.md) |
 | `layers/<modname>/<ebene>.json` | Kopf samt `designs` und Objekte der Ebene, ohne `web` und `permission`; nie eine Aktionsebene |
 | `layers/<modname>/images/…` | die Bilder, die eine Ebene nennt |
 | `layers/<modname>/banner/…` | die Sprites der Banner; sie schreibt der Renderer, siehe [Läufe](laeufe.md), „Banner“ |
