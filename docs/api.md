@@ -178,7 +178,8 @@ Optionale Felder sind null; `with…` gibt eine Kopie mit einem Feld mehr.
   Datei, nur für das eine Objekt oder den einen Entwurf, und wirft
   `IllegalArgumentException`, wenn etwas nicht passt; dann ändert sich
   nichts. Dazu die Grenzen der Ebene: 10 000 Objekte, 1000 Nadeln und
-  Banner zusammen, 4 MiB samt Entwürfen. Ein `Stroke` mit nur `dash`
+  Banner zusammen, 4 MiB samt Entwürfen und je Nadel mit Kopf 74 Byte
+  für den Namen, den der Schnappschuss anhängt. Ein `Stroke` mit nur `dash`
   oder nur `gap` wirft schon beim Anlegen.
 - **Kosten je Aufruf:** `put` und `design` kosten nur so viel wie ihr
   Objekt oder Entwurf, nicht wie die übrigen der Ebene. `removeDesign`

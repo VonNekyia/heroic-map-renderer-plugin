@@ -10,7 +10,7 @@ Links und die Hinweise aus `NOTICE` setzt
 ## 0.20.2
 
 - **Layers from other plugins cost less on the server thread:** `put` checks only its own object and `design` only its own design, no longer every design and every object of the layer. Setting 197 designs and 300 banners takes about 11 ms instead of 470 ms once warm, and about 0.2 s instead of 1.05 s right after a start.
-- **Banner designs count toward the 4 MiB of a layer** when they are set. Before, a layer near the limit could grow past it with many designs; the map then kept its last valid state and the log said so.
+- **Banner designs and head names count toward the 4 MiB of a layer** when they are set: each design with its size, each pin with a head with the 74 bytes its name takes once the head is fetched. Before, a layer near the limit could grow past it with many designs or heads; the map then kept its last valid state and the log said so.
 
 ## 0.20.1
 
