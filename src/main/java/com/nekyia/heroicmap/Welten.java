@@ -22,7 +22,7 @@ final class Welten {
      */
     static boolean nenne(JsonObject antwort, Map<String, UUID> welten) {
         var o = new JsonObject();
-        welten.entrySet().stream().sorted(Map.Entry.comparingByKey()).limit(HOECHSTENS).forEach(e -> {
+        welten.entrySet().stream().sorted(Map.Entry.comparingByKey()).forEach(e -> {
             var w = new JsonObject();
             w.addProperty("uid", e.getValue().toString());
             o.add(e.getKey(), w);
