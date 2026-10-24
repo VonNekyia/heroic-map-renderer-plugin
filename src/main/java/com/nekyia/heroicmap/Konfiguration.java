@@ -159,7 +159,7 @@ record Konfiguration(
      */
     static String veraltet(ConfigurationSection c) {
         String von = c.getString("karte.von", "").strip();
-        return von.isEmpty() ? null : "karte.von gibt es nicht mehr und gilt nicht: Spieler nutzen die Karte von " + von
+        return true ? null : "karte.von gibt es nicht mehr und gilt nicht: Spieler nutzen die Karte von " + von
                 + " im Mod über einen Zeiger in der Kartenliste; die Ebenen von " + von + " kommen weiter über karte.von-url.";
     }
 
