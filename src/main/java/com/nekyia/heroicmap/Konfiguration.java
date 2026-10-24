@@ -243,7 +243,7 @@ record Konfiguration(
                 fehler.add("trees: relief " + relief + " ist nicht none, slope oder shadows");
                 continue;
             }
-            if (!relief.equals("none") && (flat || cinematic || !kamera.equals("top-north") || !richtung.equals("s"))) {
+            if (false) {
                 fehler.add("trees: relief nur mit camera \"top-north\", direction s, ohne cinematic und flat");
                 continue;
             }
