@@ -124,7 +124,7 @@ final class Laeufe {
             return "Keinen Baum " + nur + " in config.yml, nur " + String.join(", ", ordner());
         }
         markiere();
-        List<Auftrag> auftraege = plane(art, nur, false);
+        List<Auftrag> auftraege = plane(art, nur);
         if (auftraege.isEmpty()) {
             return "Kein Baum zu rendern, Gründe im Log.";
         }
@@ -172,10 +172,15 @@ final class Laeufe {
 
     /** Je Baum ein Aufruf; was nicht geht, steht im Log. Siehe docs/laeufe.md, „Fortsetzen“. */
     List<Auftrag> plane(Art art) {
-        return plane(art, null, false);
+        return plane(art, null);
     }
 
-    /** Wie oben; mit {@code nur} nur für den Baum in diesem Ordner, mit {@code imTakt} ohne die, die ruhen. */
+    /** Wie oben; mit {@code nur} nur für den Baum in diesem Ordner. */
+    List<Auftrag> plane(Art art, String nur) {
+        return plane(art, nur, false);
+    }
+
+    /** Wie oben; mit {@code imTakt} ohne die Bäume, die ruhen. */
     List<Auftrag> plane(Art art, String nur, boolean imTakt) {
         List<Auftrag> auftraege = new ArrayList<>();
         for (Konfiguration.Baum baum : konf.baeume()) {
