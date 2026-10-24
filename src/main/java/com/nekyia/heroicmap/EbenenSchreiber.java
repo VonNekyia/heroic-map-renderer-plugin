@@ -191,6 +191,9 @@ final class EbenenSchreiber {
         o.add("name", j.get("name"));
         o.addProperty("visible", !j.has("visible") || j.get("visible").getAsBoolean());
         o.addProperty("order", j.has("order") ? j.get("order").getAsInt() : 0);
+        if (j.has("maxBlocksPerPixel")) {
+            o.add("maxBlocksPerPixel", j.get("maxBlocksPerPixel"));
+        }
         return o;
     }
 
