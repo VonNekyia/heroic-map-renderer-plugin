@@ -7,6 +7,10 @@ Links und die Hinweise aus `NOTICE` setzt
 [`.github/notizen.sh`](.github/notizen.sh) dazu. Siehe
 [Entwicklung](docs/entwicklung.md), „Release“.
 
+## 0.17.2
+
+- **The server's own name for the mod:** the answer to the mod's `show` now also carries `backend`, the name of this server, from the proxy or `karte.name`, never `karte.von`. With `karte.von: main`, build now also asks the proxy for its own name. Older mods ignore the field; a coming mod version uses it to keep what each server shows apart, also when two servers share one map. Without any name, the log line "Kein Proxy meldet …" now says so.
+
 ## 0.17.1
 
 - **`webserver.ebenen-an`:** a list of layer ids, such as `["beispiel:staedte"]`, that are on when the web map opens; every other layer, also those of other plugins, starts off. What a viewer picks on the web map still wins. Empty, the default: each layer as its `visible` says. The mod is not affected.

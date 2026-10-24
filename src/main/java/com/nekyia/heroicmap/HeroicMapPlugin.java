@@ -261,7 +261,8 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
     }
 
     /**
-     * Im Hauptthread: die Antwort auf show mit karte, dem Namen der Karte für den Ordner im Mod. Wartet der Name noch
+     * Im Hauptthread: die Antwort auf show mit karte, dem Namen der Karte für den Ordner im Mod, und backend, dem
+     * Namen dieses Servers. Wartet der Name noch
      * auf den Proxy, höchstens {@link Proxyname#FRIST_MS}, kommt sie danach; sonst schickt der Mod show erst nach einer
      * Änderung der Wahl. Siehe docs/mehrere-server.md, „Format“.
      */
@@ -270,10 +271,7 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
             getServer().getGlobalRegionScheduler().runDelayed(this, t -> sendeShow(p, antwort), 2);
             return;
         }
-        String karte = Proxyname.karte(kartenKonf, proxyname.name());
-        if (karte != null) {
-            antwort.addProperty("karte", karte);
-        }
+        Proxyname.nenne(antwort, kartenKonf, proxyname.name());
         if (p.isOnline()) {
             p.sendPluginMessage(this, Download.KANAL, antwort.toString().getBytes(StandardCharsets.UTF_8));
         }
@@ -311,7 +309,8 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
      * sonst nichts. Siehe docs/mehrere-server.md, „Name vom Proxy“.
      */
     private void frageProxy(Player p) {
-        if (!proxyname.hinterProxy() || !kartenKonf.von().isEmpty() || proxyname.name() != null) {
+        // Auch mit karte.von: Den eigenen Namen braucht backend an show.
+        if (!proxyname.hinterProxy() || proxyname.name() != null) {
             return;
         }
         if (!p.getListeningPluginChannels().contains(Proxyname.KANAL)) {
@@ -319,7 +318,7 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
             if (proxyname.ohneKanal(System.currentTimeMillis())) {
                 getServer().getGlobalRegionScheduler().runDelayed(this, t -> {
                     if (proxyname.ohneProxy(System.currentTimeMillis())) {
-                        getLogger().info("Kein Proxy meldet den Kanal BungeeCord; der Name dieses Servers kommt aus karte.name.");
+                        getLogger().info(Proxyname.ohneProxyZeile(kartenKonf));
                     }
                 }, Proxyname.KANAL_FRIST_MS / 50 + 1);
             }

@@ -277,7 +277,8 @@ Plugin das seiner Plattform aus, siehe [Konfiguration](konfiguration.md),
   IPv4-gemappt wie IPv4, sortiert, ohne geteilte IP und ohne `ip-aus`, das
   über einen Neustart gilt.
 - **`ProxynameTest`:** „kein Proxy“ erst nach der Frist und nur ohne
-  Antwort, einmal; nur sicher hinter einem Proxy, mit der Weiterleitung
+  Antwort, einmal, ohne `karte.name` mit der Folge im Mod; `backend` vom
+  Proxy oder aus `karte.name`, nie `karte.von`, an `show` neben `karte`; nur sicher hinter einem Proxy, mit der Weiterleitung
   von Velocity oder im BungeeCord-Modus, sonst keine Frage; die Frage
   `GetServer`, wie der Proxy sie liest; eine
   Antwort nur auf die eigene Frage, über denselben Spieler, mit einem Namen,

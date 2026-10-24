@@ -1,5 +1,6 @@
 package com.nekyia.heroicmap;
 
+import com.google.gson.JsonObject;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
@@ -155,9 +156,34 @@ final class Proxyname {
      * docs/mehrere-server.md, „Format“.
      */
     static String karte(Konfiguration.Karte k, String vomProxy) {
-        if (!k.von().isEmpty()) {
-            return k.von();
-        }
+        return !k.von().isEmpty() ? k.von() : backend(k, vomProxy);
+    }
+
+    /**
+     * Der Name dieses Servers selbst: {@code vomProxy}, sonst karte.name; null ohne. Anders als {@link #karte} nie
+     * karte.von. Siehe docs/mehrere-server.md, „Format“.
+     */
+    static String backend(Konfiguration.Karte k, String vomProxy) {
         return vomProxy != null ? vomProxy : k.name().isEmpty() ? null : k.name();
+    }
+
+    /** Setzt karte und backend an die Antwort auf show, soweit es sie gibt. */
+    static void nenne(JsonObject antwort, Konfiguration.Karte k, String vomProxy) {
+        String karte = karte(k, vomProxy);
+        if (karte != null) {
+            antwort.addProperty("karte", karte);
+        }
+        String backend = backend(k, vomProxy);
+        if (backend != null) {
+            antwort.addProperty("backend", backend);
+        }
+    }
+
+    /** Die Zeile im Log, wenn kein Proxy den Kanal meldet; ohne karte.name mit der Folge im Mod. */
+    static String ohneProxyZeile(Konfiguration.Karte k) {
+        return k.name().isEmpty()
+                ? "Kein Proxy meldet den Kanal BungeeCord, und karte.name ist leer: Ohne Namen hält der Mod diesen Server "
+                        + "nicht von anderen mit derselben Welt hinter derselben Adresse auseinander."
+                : "Kein Proxy meldet den Kanal BungeeCord; der Name dieses Servers kommt aus karte.name.";
     }
 }
