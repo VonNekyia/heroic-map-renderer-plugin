@@ -430,7 +430,7 @@ final class EbenenApi implements HeroicMapApi, Listener {
                     throw new IllegalArgumentException("Objekt " + m.id() + ": ein Spieler hat schon ein eigenes mit dieser id");
                 }
                 // Mit den eigenen Objekten des grössten Spielers zusammen, siehe grenzen.
-                grenzen("Objekt " + m.id(), objekte.size() + (alt == null ? 1 : 0), neueNadeln, neueBytes + entwurfBytes, groessteEigene());
+                grenzen("Objekt " + m.id(), objekte.size() + (alt == null ? 1 : 0), neueNadeln, neueBytes, groessteEigene());
                 objekte.put(m.id(), j);
                 if (p.bilder().isEmpty()) {
                     bilderJeObjekt.remove(m.id());
