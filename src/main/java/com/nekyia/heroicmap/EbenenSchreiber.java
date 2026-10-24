@@ -80,7 +80,7 @@ final class EbenenSchreiber {
                     eintrag.addProperty("visible", false);
                 }
                 if (e.json().get("designs") instanceof JsonObject d && !d.isEmpty()) {
-                    // Die Webkarte holt satz.json dann gleich mit der Datei der Ebene. Siehe docs/ebenen.md, „Webkarte“.
+                    // Damit kann die Webkarte satz.json gleich mit der Datei der Ebene holen. Siehe docs/ebenen.md, „Webkarte“.
                     eintrag.addProperty("designs", true);
                 }
                 if (e.aktion()) {
