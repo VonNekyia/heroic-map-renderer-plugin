@@ -374,7 +374,7 @@ final class Laeufe {
         var grenze = FileTime.from(seit.minus(TOLERANZ));
         List<Path> regionen = regionen().stream().filter(Files::isDirectory).toList();
         // Ohne Ordner mit Regionen sähe der Takt nie eine Änderung; dann lieber jedes Mal zeichnen.
-        return !regionen.isEmpty() && regionen.stream().noneMatch(r -> neuIn(r, grenze)) && !neuIn(wurzel().resolve("datapacks"), grenze);
+        return regionen.stream().noneMatch(r -> neuIn(r, grenze)) && !neuIn(wurzel().resolve("datapacks"), grenze);
     }
 
     /** Die Wurzel der Welt: über dimensions/<ns>/<name>, wenn konf.welt eine Dimension ist, sonst konf.welt. */
