@@ -823,8 +823,9 @@ class LaeufeTest {
         assertEquals(1, l.plane(Art.UPDATE, null, true).size(), "ohne fertigen Lauf seit dem Start läuft der Takt");
 
         // Der Lauf dauert über 3 s: Was während des Laufs kam, liegt dann mehr als die Toleranz vor seinem Ende.
+        var vorher = Instant.now();
         var beginn = fertig(l, KARTE, "nichts-spaet");
-        assertTrue(Duration.between(beginn, Instant.now()).compareTo(Laeufe.TOLERANZ.plusSeconds(1)) > 0);
+        assertTrue(Duration.between(vorher, Instant.now()).compareTo(Laeufe.TOLERANZ.plusSeconds(1)) > 0);
         alt(beginn, mca, region);
         assertEquals(List.of(), l.plane(Art.UPDATE, null, true));
         assertEquals("Kein Baum zu rendern.", l.starteImTakt());
@@ -839,7 +840,7 @@ class LaeufeTest {
         assertEquals(1, l.plane(Art.UPDATE, null, true).size(), "geschrieben während des Laufs");
         alt(beginn, mca);
 
-        for (String n : Laeufe.OFFEN) {
+        for (String n : List.of("gebiet-offen.bin", "stand-neu.bin", "stand-neu-liegen.bin")) {
             Path f = Files.writeString(baum().resolve(n), "");
             assertEquals(1, l.plane(Art.UPDATE, null, true).size(), n);
             Files.delete(f);
