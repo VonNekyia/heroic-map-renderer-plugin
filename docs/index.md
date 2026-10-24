@@ -14,7 +14,7 @@ Wie der Renderer arbeitet und was seine Schalter tun, steht in der
 
 - [Alpha einrichten](alpha.md): auf einen Server, aus einem Release oder selbst gebaut: welches Jar oder welche Version auf Hangar, Jar mit Karte und Renderer, Konfiguration mit Webkarte und Baum zum Download, Webserver, Assets oder Zustimmung, Schätzung, erster Lauf.
 - [Konfiguration](konfiguration.md): `config.yml`, jeder Schlüssel mit seinem Schalter, das Binär aus dem Jar, das Pack von Nexo, die Bäume und ihr Ordner, neue Schlüssel nach einem Update, Fehler beim Start.
-- [Läufe](laeufe.md): Befehle, Zeitplan der Updates, der Kindprozess, Abbruch und Stoppen, Fortsetzen, kompakt packen und Nachverdichten, verwaiste Prozesse.
+- [Läufe](laeufe.md): Befehle, Zeitplan der Updates und Leerlauf, der Kindprozess, Abbruch und Stoppen, Fortsetzen, kompakt packen und Nachverdichten, verwaiste Prozesse.
 - [Webserver](webserver.md): der Server des Renderers als zweiter Kindprozess, die Karte aus dem Jar, Ende mit stdin, Neustart, Status, HTTPS.
 - [Anmeldung](anmeldung.md): wie die Webkarte einen Spieler erkennt, mit `/karte anmelden` oder über seine IP, `/karte abmelden` und `/karte ip`, `ips`, Zuschauer über `Web:`, die Dateien je Spieler samt `sicht.json` mit den Mitspielern, Klicks als Zeile `Aktion:`.
 - [Download](download.md): der Kanal `heroicmap:karte` zum Mod, Angebot, Anfrage, Manifest, Grenzen, Token, täglicher Abgleich, `abdeckt_bis`, Stand je Spieler, die Nachricht `spieler`.

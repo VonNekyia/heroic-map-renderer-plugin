@@ -9,6 +9,7 @@ Links und die Hinweise aus `NOTICE` setzt
 
 ## 0.19.0
 
+- **Quiet updates skipped:** the update every `update-minutes` no longer starts the renderer for a tree when nothing changed: no region file and no datapack written since its last finished run, and nothing left open by an aborted one. The first update after a restart, `/heroicmap update` and `/heroicmap render` always run. A tool that writes region files and keeps their old time goes unnoticed until then.
 - **`karte.von` is gone.** A server no longer decides in its config that the mod shows another server's map; players decide in the mod instead, with a link in the map list (mod 0.2.69 and newer). Whoever saw main's map on build that way gets the link once by itself. If `karte.von` is still in `config.yml`, the log says so at start; it is not an error. Remove it after updating the mod on the players' side.
 - **`karte.von-url` and `karte.von-oeffentlich` stay** for the public layers and images of another server, now on their own: `trees: []` is allowed with `karte.von-url`, and `karte.von-oeffentlich` needs `karte.von-url`. A tree with `download: true` is no longer an error there.
 - **The answer to `show`** now carries the server's own name in both `karte` and `backend`.

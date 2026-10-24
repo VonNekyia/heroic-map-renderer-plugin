@@ -1,6 +1,6 @@
 ---
 title: Läufe
-description: Wie das Plugin den Renderer als Kindprozess startet, mit Befehlen, dem Zeitplan der Updates, einem Lauf zur Zeit und einem Thread. Dazu die Ausgabe im Log, Abbruch und Stoppen des Servers, das Fortsetzen nach einem Abbruch, kompakt packen und Nachverdichten mit /heroicmap compact, der Boden ohne Laub mit einem --heights je Baum, die Sprites der Banner mit --banners und verwaiste Prozesse.
+description: Wie das Plugin den Renderer als Kindprozess startet, mit Befehlen, dem Zeitplan der Updates und dem Leerlauf, in dem der Takt ruhende Bäume auslässt, einem Lauf zur Zeit und einem Thread. Dazu die Ausgabe im Log, Abbruch und Stoppen des Servers, das Fortsetzen nach einem Abbruch, kompakt packen und Nachverdichten mit /heroicmap compact, der Boden ohne Laub mit einem --heights je Baum, die Sprites der Banner mit --banners und verwaiste Prozesse.
 code:
   - src/main/java/com/nekyia/heroicmap/Laeufe.java
   - src/main/java/com/nekyia/heroicmap/Banner.java
@@ -69,6 +69,38 @@ entschieden in [0003](entscheidungen/0003-live-render-ueber-autosave-und-zeitpla
   - Zeichnet es etwas oder scheitert es, steht seine ganze Ausgabe im Log,
     am Ende des Updates.
   - Volle Läufe schreiben ihre Ausgabe wie bisher sofort.
+- **Leerlauf:** Der Takt lässt einen Baum aus, der ruht
+  (`Laeufe.starteImTakt`, `Laeufe.ruht`). Ruhen alle, startet er keinen
+  Renderer, und der Status sagt „Update übersprungen um hh:mm:ss: keine
+  Region neu“. Ein Baum ruht, wenn alles zugleich gilt:
+  - Seit dem Start des Plugins hatte er einen fertigen Lauf ohne
+    `--resume`. Gemerkt wird dessen **Beginn**, nur im Speicher. Der
+    Renderer liest die Stempel der Regionen am Anfang des Laufs; was der
+    Server danach schreibt, kennt sein Stand nicht.
+  - Keine Datei unter `region/` der Welt aus `world` und keine unter
+    `datapacks/` an der Wurzel der Welt hat eine Zeit ab diesem Beginn
+    weniger 2 s. 2 s, weil FAT die Zeit nur so genau speichert.
+    `level.dat` zählt nicht, Paper schreibt sie bei jedem Autosave.
+  - Neben `stand.bin` liegt nichts, was ein abgebrochener Lauf liegen
+    lässt: `gebiet-offen.bin`, `stand-neu.bin`, `stand-neu-liegen.bin`. Mit
+    `download: true` gibt es dazu ein `manifest` und keine Marke
+    `manifest-offen-…`.
+
+  Nach einem Neustart läuft der erste Takt also immer, und damit auch, was
+  der Renderer einmal ohne Änderung der Welt tut, etwa den Stand in einer
+  neuen Fassung schreiben. `/heroicmap update` und `/heroicmap render`
+  laufen immer.
+- **Was der Takt nicht bemerkt:**
+  - Ein Werkzeug, das Regionsdateien schreibt und ihre alte Zeit
+    zurücksetzt, etwa beim Zurücklegen einer Sicherung mit `cp -p` oder
+    `rsync -t`. Das zeichnet erst der erste Takt nach einem Neustart oder
+    `/heroicmap update`. Was der Renderer selbst nicht bemerkt, steht in
+    [Updates, „Was ein Update nicht bemerkt“](https://github.com/VonNekyia/heroic-map-renderer/blob/master/docs/benutzung/updates.md#was-ein-update-nicht-bemerkt).
+  - Andere Assets oder ein neues Pack von Nexo ohne Änderung an der Welt:
+    „neue Assets: erst /heroicmap render“ kommt erst mit dem nächsten
+    Update, das läuft.
+  - Eine Welt auf einem Netzlaufwerk, dessen Uhr mehr als 2 s von der des
+    Servers abweicht.
 - **Ohne vollen Lauf:** Ein Update braucht `stand.bin` aus einem vollen
   Lauf. Fehlt er, lässt das Plugin den Baum aus und schreibt einmal je Start
   ins Log: „noch kein voller Lauf, erst /heroicmap render“.
