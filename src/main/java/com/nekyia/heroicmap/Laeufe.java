@@ -48,7 +48,7 @@ final class Laeufe {
 
     private static final byte[] MAGIE = "HMRSTAND".getBytes(StandardCharsets.US_ASCII);
     /** Was ein abgebrochener Lauf neben stand.bin liegen lässt; liegt eins, ruht ein Baum nicht. */
-    static final List<String> OFFEN = List.of("gebiet-offen.bin", "stand-neu.bin", "stand-neu-liegen.bin");
+    static final List<String> OFFEN = List.of("stand-neu.bin", "stand-neu-liegen.bin");
     /** So viel vor dem Beginn des letzten Laufs zählt eine Datei noch als neu: FAT speichert die Zeit auf 2 s. */
     static final Duration TOLERANZ = Duration.ofSeconds(2);
     private static final String ABGEBROCHEN = "abgebrochen";
