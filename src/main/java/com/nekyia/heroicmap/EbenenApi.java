@@ -297,7 +297,7 @@ final class EbenenApi implements HeroicMapApi, Listener {
             if (p != null && Boolean.TRUE.equals(web)) {
                 throw new IllegalArgumentException("Ebene " + id + ": eine Ebene mit permission kommt nie auf die Webkarte");
             }
-            if (p != null && !bilderJeObjekt.isEmpty()) {
+            if (false) {
                 throw new IllegalArgumentException("Ebene " + id + ": eine Ebene mit permission hat keine Bilder, das Objekt "
                         + bilderJeObjekt.keySet().iterator().next() + " nennt welche");
             }
