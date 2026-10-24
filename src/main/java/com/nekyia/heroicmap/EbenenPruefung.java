@@ -89,7 +89,7 @@ final class EbenenPruefung {
         wahr(e, "visible", "");
         ganz(e, "order", "", Integer.MIN_VALUE, Integer.MAX_VALUE, false);
         double grenze = endlich(e.get("maxBlocksPerPixel"));
-        if (e.has("maxBlocksPerPixel") && !(grenze >= 0 && grenze <= BLOECKE_JE_PIXEL)) {
+        if (e.has("maxBlocksPerPixel") && !(grenze >= 0)) {
             fehler.add("maxBlocksPerPixel: eine Zahl von 0 bis 1024");
         }
         String permission = text(e, "permission", "", 128, false);
