@@ -275,7 +275,7 @@ final class EbenenApi implements HeroicMapApi, Listener {
             if (!(b >= 0 && b <= EbenenPruefung.BLOECKE_JE_PIXEL)) {
                 throw new IllegalArgumentException("Ebene " + id + ": maxBlocksPerPixel " + b + " ist keine Zahl von 0 bis 1024");
             }
-            maxBlocksPerPixel = b == 0 ? null : b;
+            maxBlocksPerPixel = b;
             geaendert();
         }
 
