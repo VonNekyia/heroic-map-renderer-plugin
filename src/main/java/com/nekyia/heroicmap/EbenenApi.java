@@ -312,6 +312,7 @@ final class EbenenApi implements HeroicMapApi, Listener {
             Objects.requireNonNull(name);
             var j = ApiJson.json(Objects.requireNonNull(design));
             // Nur der eine Entwurf: Ein Banner nennt ihn beim Namen, keins wird durch ihn ungültig.
+            EbenenPruefung.pruefe(id, json(permission, objekte.values()), p -> null);
             var f = EbenenPruefung.entwurf(name, j);
             if (!f.isEmpty()) {
                 throw new IllegalArgumentException("Ebene " + id + ": " + fehler(f));
