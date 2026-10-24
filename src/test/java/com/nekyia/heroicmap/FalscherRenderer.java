@@ -8,7 +8,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 
-/** Steht in den Tests für den Renderer: gibt Zeilen wie er aus, den Fortschritt als JSON; `exit N` endet mit Code N, `nichts` meldet ein Update ohne Änderung, `kurz` läuft 1,5 s, `sleep` eine Minute, `server` meldet eine Adresse und läuft, bis stdin schliesst, `still` ebenso ohne Adresse, `zustimmung` bricht wie der Renderer ohne Assets und Zustimmung ab, `anderer-build` wie ein Update auf einem Stand eines anderen Builds, `andere-assets` auf einem mit anderen Assets, `banners` wie --banners, siehe {@link #banners}. */
+/** Steht in den Tests für den Renderer: gibt Zeilen wie er aus, den Fortschritt als JSON; `exit N` endet mit Code N, `nichts` meldet ein Update ohne Änderung, `nichts-spaet` ebenso nach 3 s, `kurz` läuft 1,5 s, `sleep` eine Minute, `server` meldet eine Adresse und läuft, bis stdin schliesst, `still` ebenso ohne Adresse, `zustimmung` bricht wie der Renderer ohne Assets und Zustimmung ab, `anderer-build` wie ein Update auf einem Stand eines anderen Builds, `andere-assets` auf einem mit anderen Assets, `banners` wie --banners, siehe {@link #banners}. */
 public final class FalscherRenderer {
 
     /**
@@ -67,6 +67,10 @@ public final class FalscherRenderer {
         switch (args[0]) {
             case "exit" -> System.exit(Integer.parseInt(args[1]));
             case "nichts" -> out.println("Update:     nichts zu zeichnen");
+            case "nichts-spaet" -> {
+                Thread.sleep(3_000);
+                out.println("Update:     nichts zu zeichnen");
+            }
             case "sleep" -> Thread.sleep(60_000);
             case "kurz" -> Thread.sleep(1_500);
             case "server" -> {

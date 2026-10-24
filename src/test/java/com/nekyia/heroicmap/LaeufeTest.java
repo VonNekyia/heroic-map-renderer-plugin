@@ -14,6 +14,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.attribute.FileTime;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -801,9 +802,13 @@ class LaeufeTest {
 
     /** Ein fertiger Lauf ohne Änderung über den Baum, wie ein Update im Takt; sein Beginn. */
     private Instant fertig(Laeufe l, Konfiguration.Baum baum) throws Exception {
+        return fertig(l, baum, "nichts");
+    }
+
+    private Instant fertig(Laeufe l, Konfiguration.Baum baum, String art) throws Exception {
         Files.createDirectories(tmp.resolve("tiles").resolve(baum.ordner()));
         Files.writeString(tmp.resolve("tiles").resolve(baum.ordner()).resolve("stand.bin"), "");
-        l.starte("Update", List.of(new Auftrag(baum.ordner(), falscher("nichts"), true)));
+        l.starte("Update", List.of(new Auftrag(baum.ordner(), falscher(art), true)));
         assertTrue(l.warte(30_000));
         return l.erfolgreichSeit(baum.ordner()).orElseThrow();
     }
@@ -817,7 +822,9 @@ class LaeufeTest {
         Files.writeString(baum().resolve("stand.bin"), "");
         assertEquals(1, l.plane(Art.UPDATE, null, true).size(), "ohne fertigen Lauf seit dem Start läuft der Takt");
 
-        var beginn = fertig(l, KARTE);
+        // Der Lauf dauert über 3 s: Was während des Laufs kam, liegt dann mehr als die Toleranz vor seinem Ende.
+        var beginn = fertig(l, KARTE, "nichts-spaet");
+        assertTrue(Duration.between(beginn, Instant.now()).compareTo(Laeufe.TOLERANZ.plusSeconds(1)) > 0);
         alt(beginn, mca, region);
         assertEquals(List.of(), l.plane(Art.UPDATE, null, true));
         assertEquals("Kein Baum zu rendern.", l.starteImTakt());
