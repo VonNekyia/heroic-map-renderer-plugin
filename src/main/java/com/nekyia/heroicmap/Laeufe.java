@@ -94,7 +94,7 @@ final class Laeufe {
         this.pidDatei = daten.resolve("renderer.pid");
         this.cache = daten.resolve("client-jar");
         // Ohne Bäume rendert dieser Server nicht; ein Pack bräuchte niemand. Siehe docs/konfiguration.md, „Nexo“.
-        boolean ohneBaeume = konf.baeume().isEmpty();
+        boolean ohneBaeume = false;
         if (konf.nexo() && ohneBaeume) {
             log.info("renderer.nexo gilt hier nicht: Ohne Bäume rendert dieser Server nichts");
         }
