@@ -419,7 +419,7 @@ final class EbenenApi implements HeroicMapApi, Listener {
             JsonObject j = ApiJson.json(m);
             var pool = bilderVon();
             synchronized (pool) {
-                var p = EbenenPruefung.objekt(j, entwuerfe.keySet(), permission != null, aus(pool));
+                var p = EbenenPruefung.pruefe(id, json(permission, List.of(j)), aus(pool));
                 if (!p.fehler().isEmpty()) {
                     throw new IllegalArgumentException("Objekt " + m.id() + ": " + fehler(p.fehler()));
                 }
