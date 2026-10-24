@@ -175,6 +175,7 @@ class EbenenApiTest {
         routen.maxBlocksPerPixel(1024);
         routen.maxBlocksPerPixel(0);
         assertFalse(EbenenSchreiber.eintrag(ebene(a, "proficisci:routen")).has("maxBlocksPerPixel"), "0 nimmt die Grenze weg");
+        assertFalse(ebene(a, "proficisci:routen").json().has("maxBlocksPerPixel"), "auch aus dem Kopf");
 
         for (double falsch : new double[] {-1, Double.NaN, Double.POSITIVE_INFINITY, 1024.5}) {
             var e = assertThrows(IllegalArgumentException.class, () -> routen.maxBlocksPerPixel(falsch), String.valueOf(falsch));
