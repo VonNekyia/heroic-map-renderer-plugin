@@ -380,19 +380,16 @@ final class Laeufe {
         return konf.dimension().equals("minecraft:overworld") ? konf.welt() : konf.welt().getParent().getParent().getParent();
     }
 
-    /** Hat unter {@code ordner} etwas eine Zeit ab {@code grenze}? Nicht lesbar zählt als ja: lieber einmal zu viel zeichnen. */
+    /**
+     * Hat unter {@code ordner} etwas eine Zeit ab {@code grenze}? Files.find nimmt die Zeit aus dem Lesen des Ordners,
+     * ohne eigenen Aufruf je Datei. Nicht lesbar zählt als ja: lieber einmal zu viel zeichnen.
+     */
     private static boolean neuIn(Path ordner, FileTime grenze) {
         if (!Files.isDirectory(ordner)) {
             return false;
         }
-        try (Stream<Path> alle = Files.walk(ordner)) {
-            return alle.anyMatch(p -> {
-                try {
-                    return Files.getLastModifiedTime(p).compareTo(grenze) >= 0;
-                } catch (IOException e) {
-                    return true;
-                }
-            });
+        try (Stream<Path> neu = Files.find(ordner, Integer.MAX_VALUE, (p, a) -> a.lastModifiedTime().compareTo(grenze) >= 0)) {
+            return neu.findAny().isPresent();
         } catch (IOException | UncheckedIOException e) {
             return true;
         }
