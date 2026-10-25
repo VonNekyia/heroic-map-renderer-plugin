@@ -58,7 +58,6 @@ record Satz(int minZoom, int maxZoom, long stand, String sha256, long[] bytes, i
             var mb = manifest(b, min, max);
             schicht = new Teil(sha256(ma.roh()), ma.bytes());
             rest = new Teil(sha256(mb.roh()), mb.bytes());
-            nebenher += ma.roh().length + mb.roh().length;
         }
         return new Satz(min, max, Files.getLastModifiedTime(map).toInstant().getEpochSecond(), sha256(m.roh()), m.bytes(),
                 m.kacheln(), nebenher, schicht, rest);
