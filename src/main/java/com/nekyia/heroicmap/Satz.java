@@ -53,7 +53,7 @@ record Satz(int minZoom, int maxZoom, long stand, String sha256, long[] bytes, i
         Teil rest = null;
         Path a = baum.resolve("relief/manifest");
         Path b = baum.resolve("relief/rest/manifest");
-        if (relief && Files.isRegularFile(a) && Files.isRegularFile(b)) {
+        if (relief && Files.isRegularFile(a)) {
             var ma = manifest(a, min, max);
             var mb = manifest(b, min, max);
             schicht = new Teil(sha256(ma.roh()), ma.bytes());
