@@ -348,13 +348,16 @@ final class Download {
     }
 
     /**
-     * Voll: Deckel das 1,5-Fache des Satzes; Abgleich: die Hälfte für Kacheln, dazu map.json, manifest und
-     * {@link #RESERVE}, denn der Server bucht alles auf das Token. Siehe docs/download.md, „Token“.
+     * Voll: Deckel das 1,5-Fache des Satzes samt Relief; Abgleich: die Hälfte des Baums, Schicht und Rest ganz, dazu
+     * map.json, die Manifeste und je Manifest {@link #RESERVE}, denn der Server bucht alles auf das Token. Siehe
+     * docs/download.md, „Token“.
      */
     private Ausgestellt stelleAus(UUID spieler, long s, String baum, Satz satz, int massstab, boolean voll) {
         int stufe = satz.stufe(massstab);
         long bytes = satz.bytesBis(stufe);
-        long deckel = voll ? bytes + bytes / 2 : bytes / 2 + satz.nebenher() + RESERVE;
+        long relief = satz.reliefBis(stufe);
+        long deckel = voll ? (bytes + relief) + (bytes + relief) / 2
+                : bytes / 2 + relief + satz.nebenher() + RESERVE * satz.manifeste();
         long ablauf = s + GUELTIG.toSeconds();
         byte[] z = new byte[Token.ZUFALL];
         zufall.nextBytes(z);
@@ -376,11 +379,24 @@ final class Download {
         f.addProperty("token", t.token());
         f.addProperty("ablauf", t.ablauf());
         f.addProperty("manifest_sha256", satz.sha256());
-        // Beim Abgleich, was der Mod an Kacheln laden darf: der Deckel ohne das, was der Server ausserdem bucht. So
-        // kappt der Mod vor dem Deckel, auch mit einem älteren Token oder einem neueren Manifest.
+        // Beim Abgleich, was der Mod an Kacheln des Baums laden darf: der Deckel ohne das, was der Server ausserdem
+        // bucht. So kappt der Mod vor dem Deckel, auch mit einem älteren Token oder einem neueren Manifest.
         f.addProperty("bytes", art.equals("voll") ? satz.bytesBis(stufe)
-                : Math.max(0, t.deckel() - satz.nebenher() - RESERVE));
+                : Math.max(0, t.deckel() - satz.nebenher() - RESERVE * satz.manifeste() - satz.reliefBis(stufe)));
+        if (satz.relief() != null) {
+            var r = teil(satz, satz.relief(), stufe);
+            r.add("rest", teil(satz, satz.rest(), stufe));
+            f.add("relief", r);
+        }
         return f;
+    }
+
+    /** Ein Teil des Reliefs in der Freigabe, mit denselben Namen wie beim Baum; bei beiden Arten ganz bis zur Stufe. */
+    private static JsonObject teil(Satz satz, Satz.Teil t, int stufe) {
+        var o = new JsonObject();
+        o.addProperty("manifest_sha256", t.sha256());
+        o.addProperty("bytes", satz.bytesBis(t, stufe));
+        return o;
     }
 
     private Optional<Long> abdecktBis(String baum) {

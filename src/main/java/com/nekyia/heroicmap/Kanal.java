@@ -1,11 +1,15 @@
 package com.nekyia.heroicmap;
 
 import com.google.gson.JsonObject;
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
+import java.nio.file.Path;
 import java.nio.file.attribute.FileTime;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -31,7 +35,7 @@ final class Kanal implements Listener, PluginMessageListener {
     private final Download download;
     private final NamespacedKey schluessel;
     private final Map<String, Satz> saetze = new ConcurrentHashMap<>();
-    private final Map<String, FileTime> gelesen = new ConcurrentHashMap<>();
+    private final Map<String, List<FileTime>> gelesen = new ConcurrentHashMap<>();
     private final Set<UUID> gewarnt = ConcurrentHashMap.newKeySet();
 
     Kanal(JavaPlugin plugin, Konfiguration konf, Download download) {
@@ -66,12 +70,12 @@ final class Kanal implements Listener, PluginMessageListener {
         for (var b : download.angeboteneBaeume()) {
             var ordner = konf.kacheln().resolve(b.ordner());
             try {
-                var zeit = Files.getLastModifiedTime(ordner.resolve("manifest"));
+                var zeit = zeiten(ordner, b.relief() != null);
                 if (zeit.equals(gelesen.get(b.ordner()))) {
                     continue;
                 }
                 gelesen.put(b.ordner(), zeit);
-                saetze.put(b.ordner(), Satz.lies(ordner));
+                saetze.put(b.ordner(), Satz.lies(ordner, b.relief() != null));
                 anders = true;
             } catch (NoSuchFileException e) {
                 gelesen.remove(b.ordner());
@@ -85,6 +89,24 @@ final class Kanal implements Listener, PluginMessageListener {
         if (anders && plugin.isEnabled()) {
             plugin.getServer().getGlobalRegionScheduler().execute(plugin, this::angebotAnAlle);
         }
+    }
+
+    /**
+     * Die Zeiten der Manifeste: des Baums, mit Relief auch von Schicht und Rest. Ein Update ohne Änderung schreibt ein
+     * fehlendes der Schicht, ohne das des Baums anzufassen. Fehlt eins der Schicht, steht dort die Zeit 0.
+     */
+    private static List<FileTime> zeiten(Path ordner, boolean relief) throws IOException {
+        var z = new ArrayList<>(List.of(Files.getLastModifiedTime(ordner.resolve("manifest"))));
+        if (relief) {
+            for (String m : List.of("relief/manifest", "relief/rest/manifest")) {
+                try {
+                    z.add(Files.getLastModifiedTime(ordner.resolve(m)));
+                } catch (NoSuchFileException e) {
+                    z.add(FileTime.fromMillis(0));
+                }
+            }
+        }
+        return z;
     }
 
     /** Nach neuen Sätzen: allen mit Mod das Angebot, und der tägliche Abgleich, wo er fällig ist. */

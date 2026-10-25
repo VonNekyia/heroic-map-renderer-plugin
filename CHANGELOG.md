@@ -7,6 +7,11 @@ Links und die Hinweise aus `NOTICE` setzt
 [`.github/notizen.sh`](.github/notizen.sh) dazu. Siehe
 [Entwicklung](docs/entwicklung.md), „Release“.
 
+## 0.21.0
+
+- **Renderer 0.19.0** inside. **Every tree needs one full render:** the renderer draws differently than 0.18.0. Until then each update stops, and `/heroicmap status` says "neuer Renderer: erst /heroicmap render <tree>". New in it: plants seen from above lean 45° instead of lying flat, a relief layer next to the tiles of a tree with `relief`, and less memory in the first render. The web map now fetches the banner sprites together with a layer that has designs.
+- **The relief layer in the download:** for a tree with `relief` and `download: true`, the mod can now also load the relief layer and its rest, so a player can see the map without relief or with `shadows` instead of the `slope` drawn into the tiles. The `freigabe` names both with their checksum and size in a new object `relief`; the token covers them. A daily abgleich lets both through in full, so after switching, the relief comes with the next abgleich. `bytes` still counts the tree alone, and without relief the `freigabe` is byte for byte as before; older mods load as they did.
+
 ## 0.20.2
 
 - **Layers from other plugins cost less on the server thread:** `put` checks only its own object and `design` only its own design, no longer every design and every object of the layer. Setting 197 designs and 300 banners takes about 11 ms instead of 470 ms once warm, and about 0.2 s instead of 1.05 s right after a start.
