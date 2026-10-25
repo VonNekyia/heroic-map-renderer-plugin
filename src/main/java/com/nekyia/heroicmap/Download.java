@@ -357,7 +357,7 @@ final class Download {
         long bytes = satz.bytesBis(stufe);
         long relief = satz.reliefBis(stufe);
         long deckel = voll ? (bytes + relief) + (bytes + relief) / 2
-                : bytes / 2 + relief + satz.nebenher() + RESERVE * satz.manifeste();
+                : bytes / 2 + relief + satz.nebenher() + RESERVE;
         long ablauf = s + GUELTIG.toSeconds();
         byte[] z = new byte[Token.ZUFALL];
         zufall.nextBytes(z);
