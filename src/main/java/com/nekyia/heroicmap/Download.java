@@ -385,7 +385,7 @@ final class Download {
                 : Math.max(0, t.deckel() - satz.nebenher() - RESERVE * satz.manifeste() - satz.reliefBis(stufe)));
         if (satz.relief() != null) {
             var r = teil(satz, satz.relief(), stufe);
-            r.add("rest", teil(satz, satz.rest(), stufe));
+            r.add("rest", teil(satz, satz.relief(), stufe));
             f.add("relief", r);
         }
         return f;
