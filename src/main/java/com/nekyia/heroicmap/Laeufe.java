@@ -369,7 +369,7 @@ final class Laeufe {
             return false;
         }
         // Mit Relief auch Schicht und Rest: Ein Update ohne Änderung schreibt deren fehlendes Manifest ohne Marke des Baums.
-        var manifeste = baum.relief() == null ? List.of(ordner) : List.of(ordner, ordner.resolve("relief"), ordner.resolve("relief/rest"));
+        var manifeste = List.of(ordner);
         if (baum.download() && manifeste.stream().anyMatch(m -> !Files.exists(m.resolve("manifest")) || mitOffenemManifest(m))) {
             return false;
         }
