@@ -382,7 +382,7 @@ final class Download {
         // Beim Abgleich, was der Mod an Kacheln des Baums laden darf: der Deckel ohne das, was der Server ausserdem
         // bucht. So kappt der Mod vor dem Deckel, auch mit einem älteren Token oder einem neueren Manifest.
         f.addProperty("bytes", art.equals("voll") ? satz.bytesBis(stufe)
-                : Math.max(0, t.deckel() - satz.nebenher() - RESERVE * satz.manifeste() - satz.reliefBis(stufe)));
+                : Math.max(0, t.deckel() - satz.nebenher() - RESERVE * satz.manifeste()));
         if (satz.relief() != null) {
             var r = teil(satz, satz.relief(), stufe);
             r.add("rest", teil(satz, satz.rest(), stufe));
