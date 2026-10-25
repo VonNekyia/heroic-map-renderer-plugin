@@ -356,7 +356,7 @@ final class Download {
         int stufe = satz.stufe(massstab);
         long bytes = satz.bytesBis(stufe);
         long relief = satz.reliefBis(stufe);
-        long deckel = voll ? (bytes + relief) + (bytes + relief) / 2
+        long deckel = voll ? bytes + bytes / 2
                 : bytes / 2 + relief + satz.nebenher() + RESERVE * satz.manifeste();
         long ablauf = s + GUELTIG.toSeconds();
         byte[] z = new byte[Token.ZUFALL];
