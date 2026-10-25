@@ -41,7 +41,7 @@ Bukkit, und in `Kanal`, der den Kanal und den Stand im Spieler bedient.
 |---|---|---|---|
 | Server → Mod | `angebot` | `server` (optional, der Name des Servers), `baeume`: je Baum `id`, `name`, `dimension`, `stand` (Epoch s), `abdeckt_bis` (Epoch s, falls bekannt), `massstaebe`: je `"1"`, `"2"`, `"4"` `bytes` und `kacheln` | sobald der Mod den Kanal anmeldet, und nach jedem Lauf, der Kacheln gezeichnet hat |
 | Mod → Server | `anfrage` | `baum`, `massstab` (1, 2 oder 4), `art`: `voll` oder `abgleich`, `neu` (optional, `true`: ein voller Download ohne Stand zum Fortsetzen) | der Spieler wählt |
-| Server → Mod | `freigabe` | `baum`, `massstab`, `art`, `abdeckt_bis` (falls bekannt), `url` oder `port`, `token`, `ablauf` (Epoch s), `manifest_sha256`, `bytes` | auf eine `anfrage`, oder von selbst beim täglichen Abgleich |
+| Server → Mod | `freigabe` | `baum`, `massstab`, `art`, `abdeckt_bis` (falls bekannt), `url` oder `port`, `token`, `ablauf` (Epoch s), `manifest_sha256`, `bytes`; nur bei einem Baum mit Relief dazu `relief`, siehe „Relief“ | auf eine `anfrage`, oder von selbst beim täglichen Abgleich |
 | Server → Mod | `abgelehnt` | `baum`, `art`, `grund` (Text für den Spieler), `wieder` (Epoch s, falls bekannt) | siehe „Anfrage“ |
 | Server → Mod | `spieler` | `spieler`: je Spieler, den der Empfänger sieht, `uuid`, `name`, `dimension`, `x`, `z` | etwa jede Sekunde, solange jemand zu sehen ist; endet die Sicht, einmal mit leerer Liste, siehe [Mitspieler](mitspieler.md), „Wer wen sieht“ |
 | Mod → Server | `show` | `show`: `hidden` oder `simplevoicechat` | sobald der Kanal geht, und nach jeder Änderung der Wahl |
@@ -116,8 +116,9 @@ Bukkit, und in `Kanal`, der den Kanal und den Stand im Spieler bedient.
   `http://<IP der Verbindung>:<port>/download/<baum>`, IPv6 in `[…]`.
 - **`bytes`** in `freigabe`: bei `voll` die Summe des Satzes, bei `abgleich`
   was der Mod an Kacheln laden darf: der Deckel des Tokens ohne `map.json`,
-  `manifest` und die Reserve, siehe „Token“. Bis zu dieser Zahl lädt der
-  Mod Kacheln und kappt dann.
+  die Manifeste, die Reserve und Schicht und Rest des Reliefs, siehe
+  „Token“. Bis zu dieser Zahl lädt der Mod Kacheln und kappt dann. Es gilt
+  immer nur dem Baum, auch mit Relief, siehe „Relief“.
 - **Der Mod** schickt `anfrage` nur, wenn `ClientPlayNetworking.canSend`
   wahr ist. Paper meldet dem Client beim Beitritt die Kanäle, die das Plugin
   angemeldet hat. Belegt an #154.
@@ -149,11 +150,17 @@ Das Plugin liest daraus nur, was es braucht (`Satz.lies`):
   `manifest_sha256`;
 - **je Stufe** die Summe der Grössen und die Zahl der Kacheln;
 - **dazu aus `map.json`** `minZoom` und `maxZoom`, und als `stand` die
-  Änderungszeit von `map.json`.
+  Änderungszeit von `map.json`;
+- **mit Relief** dasselbe aus `relief/manifest` und `relief/rest/manifest`,
+  nur wenn der Baum `relief` hat und beide da sind, siehe „Relief“. Sonst
+  bietet der Baum kein Relief an. Eine Zeile ausserhalb von `minZoom` bis
+  `maxZoom` macht auch dort das Manifest unlesbar.
 
 Gelesen wird beim Start und gleich nach jedem Baum, dessen Prozess fertig
 wurde, auch ohne Änderung, nicht erst nach allen Bäumen des Laufs. Ein
-unverändertes Manifest kostet dabei nur einen Blick auf seine Zeit. Das läuft
+unverändertes Manifest kostet dabei nur einen Blick auf seine Zeit, mit
+Relief auf die Zeiten aller drei: Ein Update ohne Änderung schreibt ein
+fehlendes Manifest der Schicht, ohne das des Baums anzufassen. Das läuft
 ausserhalb des Hauptthreads und nacheinander, damit ein älterer Satz nie
 einen neueren überschreibt. Hat sich ein Manifest geändert, schickt das
 Plugin danach allen Spielern mit Mod ein neues Angebot. Ein unlesbares Manifest steht einmal im Log, sein
@@ -217,6 +224,56 @@ neue Verbindung öffnet, dauerte eine grosse Karte Kachel für Kachel rund
 - **Ein älterer Renderer** antwortet mit 404; dann lädt der Mod Kachel für
   Kachel wie bisher.
 
+## Relief
+
+Ab Renderer 0.19.0 schreibt ein Baum mit `relief` neben seinen Kacheln eine
+Schicht des Reliefs und einen Rest, je mit eigenem Manifest und eigenem
+Strom. Aus beiden rechnet der Mod die Karte ohne Relief, mit `slope` und mit
+`shadows`. Was Schicht und Rest enthalten, steht im Renderer unter
+[Server, „Die Schicht des Reliefs“](https://github.com/VonNekyia/heroic-map-renderer/blob/master/docs/benutzung/server.md#die-schicht-des-reliefs).
+Abgestimmt mit dem Mod und entschieden vom Reviewer am 25.10.
+
+- **`relief` in der `freigabe`,** nur bei einem Baum mit Relief, je Teil
+  mit denselben Namen wie der Baum:
+
+  ```json
+  "relief": {"manifest_sha256": "…", "bytes": 670000, "rest": {"manifest_sha256": "…", "bytes": 460000}}
+  ```
+
+  - `manifest_sha256` über die Datei wie auf der Platte, wie beim Baum.
+  - `bytes` ist bei beiden Arten die ganze Grösse des Teils bis zur Stufe
+    des Tokens. Ein Abgleich lässt Schicht und Rest also ganz zu.
+  - Ohne Relief fehlt `relief`, und die `freigabe` ist bytegleich wie
+    zuvor. Ein älterer Mod übergeht das Feld.
+- **`bytes` der `freigabe`** bleibt der Baum allein. Der Mod lässt einen
+  Abgleich nur still durch, wenn `bytes` höchstens 55 % des gespeicherten
+  Baums ist; mit dem Relief darin bekäme jeder Spieler bei jedem Abgleich
+  eine Rückfrage.
+- **Pfade** baut der Mod aus der Basis der `freigabe`, `url` oder `port`
+  wie beim Baum, also `…/download/<baum>`:
+  - die Ströme `<basis>/relief.zip` und `<basis>/relief/rest.zip`, wie
+    `<baum>.zip`, nur ohne `map.json`, mit `?nach=`;
+  - die Manifeste `<basis>/relief/manifest` und `<basis>/relief/rest/manifest`;
+  - die Kacheln `<basis>/relief/<z>/<x>/<y>.webp` und
+    `<basis>/relief/rest/<z>/<x>/<y>.webp`.
+
+  Eigene Felder mit einer Adresse gibt es nicht. Alles geht über dasselbe
+  Token, ein Strom nach dem anderen.
+- **Stufen:** Schicht und Rest haben dieselben wie der Baum. Die Schicht
+  hat zu jeder Kachel eine, der Rest nur, wo das Relief Pixel abschneidet.
+  Der Server prüft die Stufe des Tokens dort genauso.
+- **Der Mod** lädt Schicht und Rest nur, wenn der Spieler „ohne“ oder
+  „shadows“ wählt. `slope` steckt schon in den Kacheln; sonst zahlte jeder
+  Spieler rund 11 % mehr Bandbreite und Platz, gemessen an der Testwelt.
+  - Nach dem Wechsel sagt er sichtbar, dass das Relief mit dem nächsten
+    Abgleich kommt.
+  - Er bietet „jetzt abgleichen“ an. Das ist eine `anfrage` mit `art:
+    "abgleich"`. Ist die Grenze verbraucht, kommt `abgelehnt` mit `wieder`.
+  - Ein voller Download bringt es sofort, mit dem Baum.
+- **Verworfen:** eine eigene Art nur für das Relief, mit eigener Grenze, und
+  ein voller Download nach jedem Wechsel. Der lädt den Baum mit, an der
+  Testwelt rund das 9-Fache.
+
 ## Grenzen
 
 | Grenze | Vorgabe | Fenster | Schlüssel in `config.yml` |
@@ -255,11 +312,14 @@ des Renderers. `TokenTest` prüft gegen dessen Testvektoren. Die Kopie in
 
 - **Ablauf:** 24 h nach dem Ausstellen.
 - **Stufe:** die zum Massstab.
-- **Deckel:** bei `voll` das 1,5-Fache der Bytes des Satzes, bei `abgleich`
-  50 % für Kacheln, dazu die Bytes von `map.json` und `manifest` und 1 MiB
-  Reserve für Kacheln, die neuer und grösser als im Manifest sind. Der
-  Server bucht alles, was er unter `/download/` ausliefert, auf das Token,
-  auch `map.json` und `manifest`. Bis 0.16.0 waren es bei `abgleich` 10 %.
+- **Deckel:** bei `voll` das 1,5-Fache der Bytes des Satzes, mit Relief
+  samt Schicht und Rest. Bei `abgleich` 50 % der Kacheln des Baums,
+  Schicht und Rest ganz, dazu die Bytes von `map.json` und den Manifesten
+  und je Manifest 1 MiB Reserve für Kacheln, die neuer und grösser als im
+  Manifest sind. Der Server bucht alles, was er unter `/download/`
+  ausliefert, auf das Token, auch `map.json`, die Manifeste und beide
+  Ströme des Reliefs. Ohne Relief ist der Deckel wie bis 0.20.2. Bis 0.16.0
+  waren es bei `abgleich` 10 %.
   Bis 0.3.2 war der Deckel eines Abgleichs
   genau die Grenze des Mods; brauchte ein Abgleich mehr als 10 %, etwa
   wenn der Mod für Baum und Massstab keinen Stand hat, kam vor dem Kappen

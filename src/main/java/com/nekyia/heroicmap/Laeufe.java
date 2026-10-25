@@ -368,7 +368,9 @@ final class Laeufe {
         if (seit == null || OFFEN.stream().anyMatch(n -> Files.exists(ordner.resolve(n)))) {
             return false;
         }
-        if (baum.download() && (!Files.exists(ordner.resolve("manifest")) || mitOffenemManifest(ordner))) {
+        // Mit Relief auch Schicht und Rest: Ein Update ohne Änderung schreibt deren fehlendes Manifest ohne Marke des Baums.
+        var manifeste = baum.relief() == null ? List.of(ordner) : List.of(ordner, ordner.resolve("relief"), ordner.resolve("relief/rest"));
+        if (baum.download() && manifeste.stream().anyMatch(m -> !Files.exists(m.resolve("manifest")) || mitOffenemManifest(m))) {
             return false;
         }
         var grenze = FileTime.from(seit.minus(TOLERANZ));

@@ -287,6 +287,68 @@ class DownloadTest {
         assertEquals(b.get("token").getAsString(), bNeu.get("token").getAsString(), "neu gilt nur für voll");
     }
 
+    /** Der Baum aus {@link SatzTest#beispiel} mit Schicht und Rest aus {@link SatzTest#mitRelief}. */
+    private void mitRelief() throws Exception {
+        SatzTest.mitRelief(tmp.resolve("top-north-s"));
+        satz = Satz.lies(tmp.resolve("top-north-s"), true);
+    }
+
+    @Test
+    void voller_download_mit_relief_traegt_schicht_und_rest() throws Exception {
+        mitRelief();
+        var f = download().anfrage(anfrage("top-north-s", 4, "voll"), SPIELER, new Download.Spielerstand(), JETZT);
+        assertEquals(11_600, f.get("bytes").getAsLong(), "bytes bleibt der Baum");
+        var r = f.getAsJsonObject("relief");
+        assertEquals(satz.relief().sha256(), r.get("manifest_sha256").getAsString());
+        assertEquals(1_127, r.get("bytes").getAsLong());
+        assertEquals(satz.rest().sha256(), r.getAsJsonObject("rest").get("manifest_sha256").getAsString());
+        assertEquals(350, r.getAsJsonObject("rest").get("bytes").getAsLong());
+        assertEquals(19_615, inhalt(f.get("token").getAsString()).getLong(25), "das 1,5-Fache von 11 600 + 1 127 + 350");
+
+        var zwei = download().anfrage(anfrage("top-north-s", 2, "voll"), UUID.randomUUID(), new Download.Spielerstand(), JETZT);
+        assertEquals(1_600, zwei.get("bytes").getAsLong());
+        assertEquals(127, zwei.getAsJsonObject("relief").get("bytes").getAsLong(), "bis zur Stufe des Tokens");
+        assertEquals(50, zwei.getAsJsonObject("relief").getAsJsonObject("rest").get("bytes").getAsLong());
+        assertEquals(2_665, inhalt(zwei.get("token").getAsString()).getLong(25), "das 1,5-Fache von 1 600 + 127 + 50");
+    }
+
+    /**
+     * Der Abgleich lässt Schicht und Rest ganz zu. Ein älterer Mod kennt relief nicht und lädt nur den Baum: Er bleibt
+     * unter dem Deckel, also kein 429. Entschieden vom Reviewer am 25.10.
+     */
+    @Test
+    void abgleich_mit_relief_laesst_schicht_und_rest_ganz_zu() throws Exception {
+        mitRelief();
+        var d = download(LocalTime.of(6, 0));
+        var stand = new Download.Spielerstand();
+        d.anfrage(anfrage("top-north-s", 4, "voll"), SPIELER, stand, Instant.parse("2026-10-05T07:00:00Z"));
+        var f = d.beimJoin(SPIELER, stand, Instant.parse("2026-10-06T06:00:00Z")).get(0);
+        assertEquals("abgleich", f.get("art").getAsString());
+        assertEquals(5_800, f.get("bytes").getAsLong(), "die Hälfte des Baums, wie ohne Relief");
+        assertEquals(1_127, f.getAsJsonObject("relief").get("bytes").getAsLong(), "die Schicht ganz");
+        assertEquals(350, f.getAsJsonObject("relief").getAsJsonObject("rest").get("bytes").getAsLong(), "der Rest ganz");
+        long deckel = inhalt(f.get("token").getAsString()).getLong(25);
+        assertEquals(5_800 + 1_127 + 350 + satz.nebenher() + 3 * (1 << 20), deckel);
+
+        Path baum = tmp.resolve("top-north-s");
+        long aelter = Files.size(baum.resolve("map.json")) + Files.size(baum.resolve("manifest")) + 5_800;
+        assertTrue(aelter + (1 << 20) <= deckel, "ein älterer Mod: " + aelter + " Byte, Deckel " + deckel);
+        long neuer = satz.nebenher() + 5_800 + 1_127 + 350;
+        assertTrue(neuer + 3 * (1 << 20) <= deckel, "ein neuer mit allen Teilen: " + neuer + " Byte, Deckel " + deckel);
+    }
+
+    /** Ohne Relief bleibt die freigabe Zeichen für Zeichen, wie sie war; nur das Token ist zufällig. */
+    @Test
+    void ohne_relief_ist_die_freigabe_wie_bisher() {
+        var f = download().anfrage(anfrage("top-north-s", 4, "voll"), SPIELER, new Download.Spielerstand(), JETZT);
+        assertEquals(17_400, inhalt(f.get("token").getAsString()).getLong(25), "das 1,5-Fache von 11 600");
+        f.addProperty("token", "T");
+        assertEquals("{\"v\":1,\"typ\":\"freigabe\",\"jetzt\":" + JETZT.getEpochSecond()
+                + ",\"baum\":\"top-north-s\",\"massstab\":4,\"art\":\"voll\",\"url\":\"http://karte.test:8100/top-north-s\","
+                + "\"token\":\"T\",\"ablauf\":" + JETZT.plus(Download.GUELTIG).getEpochSecond() + ",\"manifest_sha256\":\""
+                + satz.sha256() + "\",\"bytes\":11600}", f.toString());
+    }
+
     @Test
     void ohne_url_nennt_die_freigabe_den_port() {
         webserver = Optional.of(new Download.Ziel(null, 8080));

@@ -877,6 +877,31 @@ class LaeufeTest {
         assertEquals(List.of(oben.ordner()), baeume(l.plane(Art.UPDATE, null, true)), "mit einer offenen Marke");
     }
 
+    /** Mit Relief zählen auch die Manifeste von Schicht und Rest und ihre Marken. */
+    @Test
+    void takt_mit_relief_braucht_auch_die_manifeste_der_schicht() throws Exception {
+        var oben = new Konfiguration.Baum("top-north", "s", 4, false, true, true, false, "slope");
+        Path region = Files.createDirectories(tmp.resolve("world/region"));
+        var l = laeufe(KARTE, oben);
+        var beginn = fertig(l, KARTE);
+        fertig(l, oben);
+        alt(beginn, region);
+        Path ordner = tmp.resolve("tiles").resolve(oben.ordner());
+        Files.writeString(ordner.resolve("manifest"), "");
+        assertEquals(List.of(oben.ordner()), baeume(l.plane(Art.UPDATE, null, true)), "ohne Manifest der Schicht");
+        Files.createDirectories(ordner.resolve("relief/rest"));
+        Files.writeString(ordner.resolve("relief/manifest"), "");
+        assertEquals(List.of(oben.ordner()), baeume(l.plane(Art.UPDATE, null, true)), "ohne Manifest des Rests");
+        Files.writeString(ordner.resolve("relief/rest/manifest"), "");
+        assertEquals(List.of(), baeume(l.plane(Art.UPDATE, null, true)));
+        for (String teil : List.of("relief", "relief/rest")) {
+            Path marke = Files.writeString(ordner.resolve(teil).resolve("manifest-offen-123-456"), "");
+            assertEquals(List.of(oben.ordner()), baeume(l.plane(Art.UPDATE, null, true)), "mit einer offenen Marke in " + teil);
+            Files.delete(marke);
+        }
+        assertEquals(List.of(), baeume(l.plane(Art.UPDATE, null, true)));
+    }
+
     private static List<String> baeume(List<Auftrag> plan) {
         return plan.stream().map(Auftrag::baum).distinct().toList();
     }

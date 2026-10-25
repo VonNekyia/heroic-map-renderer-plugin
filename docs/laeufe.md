@@ -88,7 +88,10 @@ entschieden in [0003](entscheidungen/0003-live-render-ueber-autosave-und-zeitpla
   - Neben `stand.bin` liegt nichts, was ein abgebrochener Lauf liegen
     lässt: `gebiet-offen.bin`, `stand-neu.bin`, `stand-neu-liegen.bin`. Mit
     `download: true` gibt es dazu ein `manifest` und keine Marke
-    `manifest-offen-…`.
+    `manifest-offen-…`. Mit `relief` gilt das auch in `relief/` und
+    `relief/rest/`: Ein Update ohne Änderung schreibt ein fehlendes Manifest
+    der Schicht ohne Marke des Baums, siehe [Download](download.md),
+    „Relief“.
 
   Nach einem Neustart läuft der erste Takt also immer, und damit auch, was
   der Renderer einmal ohne Änderung der Welt tut, etwa den Stand in einer
