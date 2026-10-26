@@ -141,7 +141,7 @@ final class Laeufe {
      */
     static long ersterTakt(int jetzt, int minuten) {
         long ziel = jetzt + minuten * 1200L;
-        return ziel - jetzt + Math.floorMod(600 - ziel, 1200);
+        return ziel - jetzt + Math.floorMod(0 - ziel, 1200);
     }
 
     /** Das Update des Zeitplans: ohne die Bäume, die ruhen. Siehe docs/laeufe.md, „Zeitplan“. */
