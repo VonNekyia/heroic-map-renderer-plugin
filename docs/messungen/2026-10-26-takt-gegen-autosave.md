@@ -12,12 +12,13 @@ code:
 
 Mit Autosave 60 s und einem Update alle 2 min, der Empfehlung, kostet der
 Renderer 70 s CPU je Stunde. Die Webkarte zeigt eine Änderung im Median
-nach 102,6 s, bei p95 nach 402,5 s. Ein Update jede Minute ist im Median
-nach 81,1 s frisch, bei p95 nach 101,4 s, und kostet 104,7 s CPU je
-Stunde. Der lange
-Schwanz mit 2 min kommt daher, dass jedes Update mit dem Autosave
-zusammenfiel. Was Paper während eines Laufs schreibt, zeichnet erst das
-nächste Update. Das soll #212 beheben. Bis dahin bleibt die Empfehlung.
+nach 102,6 s, eine bleibende nach höchstens rund 3 min, gemessen höchstens
+142,8 s. Ein Update jede Minute zeigt sie im Median nach 81,1 s,
+höchstens nach 101,7 s, und kostet 104,7 s CPU je Stunde. In beiden fiel
+jedes Update mit dem Autosave zusammen. Was Paper während eines Laufs
+schreibt, zeichnet erst das nächste Update. Mit 2 min fehlen so Zustände,
+die kürzer als rund 3 min halten; die Frische aller Schritte hat darum bei
+p95 402,5 s. Dem geht #212 nach. Bis dahin bleibt die Empfehlung.
 
 ## Aufbau
 
@@ -48,6 +49,9 @@ nächste Update. Das soll #212 beheben. Bis dahin bleibt die Empfehlung.
   Kachel seiner Spalte, das Maximum über diese Kacheln. Hat eine Kachel
   dieselben Pixel, schreibt der Renderer sie nicht neu; ihre Zeit bleibt
   dann stehen.
+- **Ohne neue Kachel:** Bekommt eine Kachel eines Schritts bis zum Ende
+  der Messung keine neue Zeit, zählt der Schritt nur dort. In Median und
+  p95 geht er nicht ein.
 - **Varianten:**
 
   | Variante | `chunks.auto-save-interval` | `update-minutes` |
@@ -84,7 +88,9 @@ Am 26.10. unter der Sperrdatei, 14:26 bis 19:14.
 
 - **C und D:** sauber, die Last je Minute lag bei 0 bis 10 %.
 - **A:** Die Last lag meist unter 10 %. In 4 Minuten lag sie bei 11 bis
-  20 %, in der letzten Minute einmal bei 80 %.
+  20 %, um 15:39:56 einmal bei 80 %. Das traf kein Update: Das letzte im
+  Fenster lief von 15:39:13 bis 15:39:16, das nächste erst nach dem
+  Fenster.
 - **B:**
   - Von 16:16 bis 16:20, rund 5 min, lief ein Minecraft-Client. Die Last
     lag dabei bei 8 bis 23 %.
@@ -128,9 +134,18 @@ Messfenster:
 Über das ganze Log samt Anlauf sind es A 35 von 35, B 68 von 69, C 0 von 14
 und D 14 von 14.
 
-- **Warum:** Der Takt beginnt mit dem Plugin, das Autosave mit dem Server,
-  also fast zur selben Zeit. Ist `update-minutes` ein Vielfaches des
-  Autosaves, startet jedes Update, während Paper speichert.
+- **Wann Paper speichert,** belegt per `javap` am Jar von Paper 26.2
+  Build 129, `ChunkHolderManager.autoSave` und `ensureInAutosave`:
+  - Jeder Chunk hat seine eigene Zeit. Paper speichert ihn ein Intervall
+    nach dem Tick, in dem er voll geladen war, und danach je Intervall
+    wieder.
+  - Je Tick sind es höchstens `max-auto-save-chunks-per-tick` Chunks, die
+    etwas zu speichern hatten.
+- **Warum sie zusammenfallen:** Die 64 Chunks der Messung luden mit dem
+  Start des Servers und speichern darum zusammen. Der Takt beginnt mit dem
+  Plugin, also fast zur selben Zeit. Ist `update-minutes` ein Vielfaches
+  des Autosaves, startet so jedes Update, während Paper diese Chunks
+  speichert.
 - **Was dann geschieht:** Chunks, die der Server während eines Laufs
   schreibt, stehen im Stand als unbekannt. Das nächste Update zählt sie als
   geändert und zeichnet sie, siehe
@@ -152,7 +167,9 @@ und D 14 von 14.
 
 ### Der Schwanz von A
 
-Die Frische in A folgt einem festen Muster:
+Die Frische in A folgt einem festen Muster. Geprüft an jedem Schritt:
+Alle 55 über 180 s sind Zustände, die das Datapack vor der ersten neuen
+Kachel zurückkippte.
 
 | Frische | Schritte |
 |---|---:|
@@ -174,8 +191,23 @@ Die Frische in A folgt einem festen Muster:
     und wird nicht geschrieben.
   - Erst um 14:47:15 kommt eine neue Kachel, nach dem nächsten Kippen: 402 s
     nach dem Schritt.
-- In A erscheint so ein Zustand, der kürzer als rund 3 min hält, unter
-  Umständen gar nicht. Hier fehlte einer, der 160 s hielt. Die Frische zählt dann bis zum nächsten Zustand.
+- **Die 27 Schritte mit 402 s** erschienen so nie auf der Karte. Ihr
+  Zustand hielt 160 s.
+- **Die 28 Schritte mit 242 s** folgen je auf einen davon in derselben
+  Spalte. Sie kippen die Spalte in den Zustand zurück, den die Kachel noch
+  zeigt. Die Kachel bleibt gleich, und die Frische zählt bis zum nächsten
+  Kippen.
+- **Die übrigen 117 Schritte** zeigte die Karte im Median nach 82,8 s,
+  höchstens nach 142,8 s.
+- **Eine bleibende Änderung** schreibt Paper höchstens ein Intervall
+  später. Fällt das Schreiben in einen Lauf, zeichnet sie erst das Update
+  danach, sonst das nächste. Sie steht also nach höchstens Autosave plus
+  Takt auf der Karte, in A rund 3 min, dazu die Dauer eines Laufs.
+- **Der Median** gilt auch für bleibende Änderungen. Als solche kämen die
+  55 Schritte nach dem Log der Updates nach 122 und 162 s auf die Karte,
+  also wie mit 242 und 402 s über dem Median von 102,6 s.
+- In A fehlt also ein Zustand, der kürzer als rund 3 min hält, unter
+  Umständen ganz.
 - In B zeichnet das nächste Update eine Spalte nach 60 s, bevor sie
   zurückkippt. Darum hat B keinen Schwanz.
 
@@ -192,18 +224,19 @@ Die Frische in A folgt einem festen Muster:
 
 ### Ungemessen
 
-- Alle 64 Chunks luden mit dem Start des Servers. Ob Paper Chunks, die
-  Spieler zu verschiedenen Zeiten laden, zu verschiedenen Zeiten speichert
-  und wie viele dann ein Update treffen, misst diese Reihe nicht.
+- Alle 64 Chunks luden mit dem Start des Servers. Chunks, die Spieler zu
+  verschiedenen Zeiten laden, speichert Paper zu verschiedenen Zeiten,
+  siehe oben. Wie viele davon ein Update dann trifft, misst diese Reihe
+  nicht.
 - Ungemessen sind auch die grosse Welt, viele Spieler und Linux.
 
 ## Schluss
 
 - **Die Empfehlung bleibt:** Autosave 60 s und ein Update alle 2 min.
   - Das kostet 70 s CPU je Stunde, rund 2 % eines Kerns.
-  - Die Karte zeigt eine Änderung im Median nach 102,6 s.
-- **Ein Update jede Minute** ist frischer, p95 101,4 s statt 402,5 s. Es
-  kostet 1,5-mal so viel CPU, 104,7 s je Stunde.
-- **Der Zusammenstoss** von Takt und Autosave kostet in A den Schwanz bis
-  402,5 s und in D doppelte CPU je Update. #212 soll ihn beheben und misst A
-  danach noch einmal.
+  - Die Karte zeigt eine Änderung im Median nach 102,6 s, eine bleibende
+    nach höchstens rund 3 min.
+- **Ein Update jede Minute** ist frischer, höchstens 101,7 s statt
+  142,8 s. Es kostet 1,5-mal so viel CPU, 104,7 s je Stunde.
+- **Der Zusammenstoss** von Takt und Autosave lässt in A kurze Zustände
+  fehlen und kostet in D doppelte CPU je Update. #212 geht ihm nach.

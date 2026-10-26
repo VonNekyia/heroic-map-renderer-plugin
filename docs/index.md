@@ -35,7 +35,7 @@ Wie der Renderer arbeitet und was seine Schalter tun, steht in der
 
 - [Live-Render, Weg A](messungen/2026-10-05-live-render-weg-a.md): Autosave 60 s gegen 5 min an 4096 geänderten Chunks, `save-all` je Chunk, Update mit einem Kern mit und ohne Änderungen.
 - [Ebenen der API füllen](messungen/2026-10-24-ebenen-api-fuellen.md): das erste Füllen von Städten, Regionen und Kreisen über die API, 0.20.1 gegen die Prüfung nur des einen Objekts, klein und gross, kalt und warm.
-- [Takt gegen Autosave](messungen/2026-10-26-takt-gegen-autosave.md): Autosave 60 s oder 5 min gegen ein Update alle 1, 2 oder 5 min, CPU je Stunde und Frische der Webkarte mit 0.21.1; Takt und Autosave fallen zusammen, daher der Schwanz bis 402,5 s mit 2 min, siehe #212.
+- [Takt gegen Autosave](messungen/2026-10-26-takt-gegen-autosave.md): Autosave 60 s oder 5 min gegen ein Update alle 1, 2 oder 5 min, CPU je Stunde und Frische der Webkarte mit 0.21.1; Takt und Autosave fallen zusammen; mit 2 min eine bleibende Änderung nach höchstens rund 3 min, kurze Zustände fehlen, siehe #212.
 
 ## Entscheidungen
 
