@@ -7,6 +7,10 @@ Links und die Hinweise aus `NOTICE` setzt
 [`.github/notizen.sh`](.github/notizen.sh) dazu. Siehe
 [Entwicklung](docs/entwicklung.md), „Release“.
 
+## 0.21.1
+
+- **On Windows, updates stopped while the server kept a region open.** The check whether a tree rests read the time of each region file from the folder listing, and Windows does not refresh it while a file stays open, as Paper keeps regions. The plugin now asks each file for its time. Linux servers were not affected.
+
 ## 0.21.0
 
 - **Renderer 0.19.0** inside. **Every tree needs one full render:** the renderer draws differently than 0.18.0. Until then each update stops, and `/heroicmap status` says `neuer Renderer: erst /heroicmap render <tree>`. New in it: plants seen from above lean 45° instead of lying flat, a relief layer next to the tiles of a tree with `relief`, and less memory in the first render. The web map now fetches the banner sprites together with a layer that has designs.

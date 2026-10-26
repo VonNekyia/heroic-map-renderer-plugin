@@ -396,18 +396,27 @@ final class Laeufe {
     }
 
     /**
-     * Hat unter {@code ordner} etwas eine Zeit ab {@code grenze}? Files.find nimmt die Zeit aus dem Lesen des Ordners,
-     * ohne eigenen Aufruf je Datei. Es prüft auch den Ordner selbst; dessen Zeit ändert sich nur mit einer neuen oder
-     * gelöschten Datei, das ist vorsichtiger. Nicht lesbar zählt als ja: lieber einmal zu viel zeichnen.
+     * Hat unter {@code ordner} etwas eine Zeit ab {@code grenze}? Die Zeit kommt je Datei von ihr selbst, nicht aus der
+     * Liste des Ordners: Unter Windows bleibt dort die Zeit einer offenen Datei stehen, und Paper hält Regionen offen.
+     * Siehe docs/laeufe.md, „Zeitplan“. Geprüft wird auch der Ordner selbst; dessen Zeit ändert sich nur mit einer
+     * neuen oder gelöschten Datei, das ist vorsichtiger. Nicht lesbar zählt als ja: lieber einmal zu viel zeichnen.
      */
-    private static boolean neuIn(Path ordner, FileTime grenze) {
+    static boolean neuIn(Path ordner, FileTime grenze) {
         if (!Files.isDirectory(ordner)) {
             return false;
         }
-        try (Stream<Path> neu = Files.find(ordner, Integer.MAX_VALUE, (p, a) -> a.lastModifiedTime().compareTo(grenze) >= 0)) {
-            return neu.findAny().isPresent();
+        try (Stream<Path> alle = Files.walk(ordner)) {
+            return alle.anyMatch(p -> zeit(p).compareTo(grenze) >= 0);
         } catch (IOException | UncheckedIOException e) {
             return true;
+        }
+    }
+
+    private static FileTime zeit(Path p) {
+        try {
+            return Files.getLastModifiedTime(p);
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
         }
     }
 

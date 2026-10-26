@@ -81,6 +81,13 @@ entschieden in [0003](entscheidungen/0003-live-render-ueber-autosave-und-zeitpla
     `datapacks/` an der Wurzel der Welt hat eine Zeit ab diesem Beginn
     weniger 2 s. 2 s, weil FAT die Zeit nur so genau speichert.
     `level.dat` zählt nicht, Paper schreibt sie bei jedem Autosave.
+  - **Die Zeit je Datei** fragt das Plugin bei der Datei selbst ab, nicht
+    aus der Liste des Ordners. Unter Windows bleibt dort die Zeit einer
+    offenen Datei stehen, bis sie geschlossen wird, und Paper hält
+    Regionen offen. Bis 0.21.0 setzten Updates deshalb unter Windows aus,
+    solange eine Region offen blieb. Unter Linux war es nie so. Gefunden
+    am 26.10. bei der Messung zu #171, `LaeufeTest`,
+    `takt_sieht_eine_offen_gehaltene_region`.
   - **Die Regionen:** Ist `world` die Wurzel, zählt die Oberwelt in beiden
     Ablagen, `region/` vor 26.1 und `dimensions/minecraft/overworld/region/`
     ab 26.1. Ist `world` eine Dimension, `dimensions/<ns>/<name>`, zählt ihr
