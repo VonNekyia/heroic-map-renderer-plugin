@@ -909,6 +909,25 @@ class LaeufeTest {
     }
 
     /**
+     * Der erste Takt kommt frühestens nach update-minutes und dann auf Tick ≡ 600 mod 1200, eine halbe Minute neben den
+     * Saves der Chunks vom Start. Siehe docs/laeufe.md, „Zeitplan“.
+     */
+    @Test
+    void erster_takt_liegt_zwischen_den_saves() {
+        assertEquals(3000, Laeufe.ersterTakt(0, 2));
+        assertEquals(2900, Laeufe.ersterTakt(100, 2));
+        assertEquals(1800, Laeufe.ersterTakt(0, 1));
+        assertEquals(6001, Laeufe.ersterTakt(1799, 5));
+        for (int jetzt : new int[] {0, 1, 599, 600, 601, 1199, 1200, 123_457}) {
+            for (int minuten = 1; minuten <= 10; minuten++) {
+                long ticks = Laeufe.ersterTakt(jetzt, minuten);
+                assertEquals(600, (jetzt + ticks) % 1200, jetzt + ", " + minuten);
+                assertTrue(ticks >= minuten * 1200L && ticks < minuten * 1200L + 1200, jetzt + ", " + minuten);
+            }
+        }
+    }
+
+    /**
      * Eine Region, die offen bleibt und ohne force beschrieben wird, wie bei Paper: Unter Windows zeigt die Liste des
      * Ordners dann noch die Zeit von vor dem Öffnen. Der Takt sieht die neue trotzdem. Siehe docs/laeufe.md, „Zeitplan“.
      */

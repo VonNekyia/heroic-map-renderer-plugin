@@ -135,6 +135,15 @@ final class Laeufe {
         }, auftraege);
     }
 
+    /**
+     * Ticks bis zum ersten Takt: frühestens nach {@code minuten}, dann auf dem nächsten Tick ≡ 600 mod 1200, also eine
+     * halbe Minute neben den Saves der Chunks, die mit dem Server luden. Siehe docs/laeufe.md, „Zeitplan“.
+     */
+    static long ersterTakt(int jetzt, int minuten) {
+        long ziel = jetzt + minuten * 1200L;
+        return ziel - jetzt + Math.floorMod(600 - ziel, 1200);
+    }
+
     /** Das Update des Zeitplans: ohne die Bäume, die ruhen. Siehe docs/laeufe.md, „Zeitplan“. */
     synchronized String starteImTakt() {
         if (faden != null) {

@@ -37,18 +37,43 @@ Bestätigung kommen mit heroic-map-renderer#149.
 
 ## Zeitplan
 
-Alle `update-minutes` startet ein Update über den `AsyncScheduler`,
-Vorgabe alle 2 min, das erste nach einem Abstand, nicht beim Start des
-Servers. Läuft schon ein Lauf, fällt der Takt aus. Mit dem Autosave von
-Paper auf 60 s zeigt die Webkarte eine Änderung im Median nach 102,6 s,
-eine bleibende nach höchstens Autosave plus Takt, rund 3 min, entschieden
-in [0003](entscheidungen/0003-live-render-ueber-autosave-und-zeitplan.md),
+Alle `update-minutes` startet ein Update, Vorgabe alle 2 min. Läuft schon
+ein Lauf, fällt der Takt aus. Mit dem Autosave von Paper auf 60 s zeigt
+die Webkarte eine Änderung im Median nach 102,6 s, eine bleibende nach
+höchstens Autosave plus Takt, rund 3 min, entschieden in
+[0003](entscheidungen/0003-live-render-ueber-autosave-und-zeitplan.md),
 gemessen in [Takt gegen Autosave](messungen/2026-10-26-takt-gegen-autosave.md).
-Ist `update-minutes` ein Vielfaches des Autosaves, wie bei der Empfehlung,
-startet jedes Update, während Paper die Chunks speichert, die mit dem
-Server luden. Was Paper während eines Laufs schreibt, zeichnet erst das
-nächste Update; Zustände, die nur kurz halten, fehlen dann unter Umständen
-auf der Karte, siehe #212.
+
+- **In Ticks:** Der Takt läuft asynchron über den Scheduler von Bukkit,
+  alle `update-minutes` · 1200 Ticks. Der erste kommt frühestens nach
+  `update-minutes`, dann auf einem Tick ≡ 600 mod 1200
+  (`Laeufe.ersterTakt`).
+- **Warum versetzt:**
+  - Paper 26.2 speichert jeden Chunk ein Intervall nach dem Tick, in dem
+    er voll geladen war, und danach je Intervall wieder
+    (`ChunkHolderManager.autoSave`).
+  - Chunks, die mit dem Server laden, etwa der Spawn oder per `forceload`,
+    speichern so bei Tick k · Intervall.
+  - Ist das Intervall eine ganze Zahl Minuten, etwa 1200 oder 6000, liegt
+    jedes Update eine halbe Minute neben diesen Saves.
+  - Bis 0.21.1 startete der Takt bei einem Vielfachen des Autosaves genau
+    dann, wenn Paper diese Chunks speicherte. Was Paper während eines
+    Laufs schreibt, zeichnet erst das nächste Update; kurze Zustände
+    fehlten so auf der Karte, siehe die Messung.
+- **Warum Bukkit:** Ohne Spieler pausiert der Server nach
+  `pause-when-empty-seconds`. Das Autosave und der Scheduler von Bukkit
+  zählen dann weiter, der `GlobalRegionScheduler` nicht. Der Takt läuft so
+  auch in der Pause und bleibt neben den Saves. Unter Lag werden beide
+  gleich langsamer.
+- **Grenzen:**
+  - Eine Welt, die erst nach dem Start lädt, etwa über ein Plugin für
+    Welten, zählt ab ihrem Laden. Ihre Chunks vom Start können wieder mit
+    dem Takt zusammenfallen.
+  - `/tick freeze` hält den Zähler des Autosaves an, den Takt nicht.
+    Danach liegen beide beliebig zueinander.
+  - Chunks, die Spieler laden, speichern zu verteilten Zeiten. Davon trifft
+    ein Update rund Laufzeit ÷ Intervall, gerechnet, nicht gemessen.
+  - Ein Lauf über 30 s reicht bis an die nächsten Saves.
 
 - **Autosave von Paper auf 60 s:** Der Renderer liest nur, was auf der
   Platte steht. Empfohlen in `config/paper-world-defaults.yml`:

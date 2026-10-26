@@ -208,8 +208,10 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
             }
         }
         if (konf.updateMinuten() > 0) {
-            getServer().getAsyncScheduler().runAtFixedRate(this, t -> laeufe.starteImTakt(),
-                    konf.updateMinuten(), konf.updateMinuten(), TimeUnit.MINUTES);
+            // In Ticks des Bukkit-Schedulers: Er zählt auch in der Pause ohne Spieler, wie das Autosave. Siehe
+            // docs/laeufe.md, „Zeitplan“.
+            getServer().getScheduler().runTaskTimerAsynchronously(this, laeufe::starteImTakt,
+                    Laeufe.ersterTakt(getServer().getCurrentTick(), konf.updateMinuten()), konf.updateMinuten() * 1200L);
         }
         // Das Geheimnis für Download und Anmeldung; siehe docs/download.md und docs/anmeldung.md.
         boolean download = konf.baeume().stream().anyMatch(Konfiguration.Baum::download);
