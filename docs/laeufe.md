@@ -40,8 +40,12 @@ Bestätigung kommen mit heroic-map-renderer#149.
 Alle `update-minutes` startet ein Update über den `AsyncScheduler`,
 Vorgabe alle 2 min, das erste nach einem Abstand, nicht beim Start des
 Servers. Läuft schon ein Lauf, fällt der Takt aus. Mit dem Autosave von
-Paper auf 60 s zeigt die Webkarte eine Änderung nach rund 1 bis 3 min,
-entschieden in [0003](entscheidungen/0003-live-render-ueber-autosave-und-zeitplan.md).
+Paper auf 60 s zeigt die Webkarte eine Änderung im Median nach 102,6 s,
+entschieden in [0003](entscheidungen/0003-live-render-ueber-autosave-und-zeitplan.md),
+gemessen in [Takt gegen Autosave](messungen/2026-10-26-takt-gegen-autosave.md).
+Bis #212 fällt der Takt mit dem Autosave zusammen. Was Paper während eines
+Laufs schreibt, zeichnet erst das nächste Update; bei p95 dauert es so
+402,5 s.
 
 - **Autosave von Paper auf 60 s:** Der Renderer liest nur, was auf der
   Platte steht. Empfohlen in `config/paper-world-defaults.yml`:
