@@ -7,6 +7,10 @@ Links und die Hinweise aus `NOTICE` setzt
 [`.github/notizen.sh`](.github/notizen.sh) dazu. Siehe
 [Entwicklung](docs/entwicklung.md), „Release“.
 
+## 0.21.2
+
+- **Updates no longer start while Paper saves.** With `update-minutes` a multiple of the chunk autosave interval, as recommended, every update started just when Paper saved the chunks loaded with the server. The next update drew those chunks again, and short-lived changes could be missing from the map. Updates now follow server ticks and start half a minute beside those saves. They keep running while the server pauses with nobody online, and slow down with the server under lag.
+
 ## 0.21.1
 
 - **On Windows, updates stopped while the server kept a region open.** The check whether a tree rests read the time of each region file from the folder listing, and Windows does not refresh it while a file stays open, as Paper keeps regions. The plugin now asks each file for its time. Linux servers were not affected.
