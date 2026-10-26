@@ -405,8 +405,8 @@ final class Laeufe {
         if (!Files.isDirectory(ordner)) {
             return false;
         }
-        try (Stream<Path> alle = Files.walk(ordner)) {
-            return alle.anyMatch(p -> zeit(p).compareTo(grenze) >= 0);
+        try (Stream<Path> neu = Files.find(ordner, Integer.MAX_VALUE, (p, a) -> a.lastModifiedTime().compareTo(grenze) >= 0)) {
+            return neu.findAny().isPresent() || zeit(ordner) == null;
         } catch (IOException | UncheckedIOException e) {
             return true;
         }
