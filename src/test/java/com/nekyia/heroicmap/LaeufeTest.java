@@ -10,9 +10,11 @@ import com.nekyia.heroicmap.Laeufe.Auftrag;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.nio.channels.FileChannel;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.nio.file.attribute.FileTime;
 import java.time.Duration;
 import java.time.Instant;
@@ -904,6 +906,25 @@ class LaeufeTest {
 
     private static List<String> baeume(List<Auftrag> plan) {
         return plan.stream().map(Auftrag::baum).distinct().toList();
+    }
+
+    /**
+     * Eine Region, die offen bleibt und ohne force beschrieben wird, wie bei Paper: Unter Windows zeigt die Liste des
+     * Ordners dann noch die Zeit von vor dem Öffnen. Der Takt sieht die neue trotzdem. Siehe docs/laeufe.md, „Zeitplan“.
+     */
+    @Test
+    void takt_sieht_eine_offen_gehaltene_region() throws Exception {
+        Path region = Files.createDirectories(tmp.resolve("offen/region"));
+        Path mca = Files.write(region.resolve("r.0.0.mca"), new byte[8192]);
+        var vorher = FileTime.from(Instant.now().minus(Duration.ofHours(1)));
+        Files.setLastModifiedTime(mca, vorher);
+        Files.setLastModifiedTime(region, vorher);
+        var grenze = FileTime.from(Instant.now().minusSeconds(2));
+        assertFalse(Laeufe.neuIn(region, grenze), "vorher ist nichts neu");
+        try (var c = FileChannel.open(mca, StandardOpenOption.READ, StandardOpenOption.WRITE)) {
+            c.write(ByteBuffer.wrap(new byte[] {1, 2, 3}), 100);
+            assertTrue(Laeufe.neuIn(region, grenze), "geschrieben, die Datei noch offen");
+        }
     }
 
     @Test
