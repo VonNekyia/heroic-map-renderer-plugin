@@ -44,7 +44,8 @@ Paper auf 60 s zeigt die Webkarte eine Änderung im Median nach 102,6 s,
 eine bleibende nach höchstens Autosave plus Takt, rund 3 min, entschieden
 in [0003](entscheidungen/0003-live-render-ueber-autosave-und-zeitplan.md),
 gemessen in [Takt gegen Autosave](messungen/2026-10-26-takt-gegen-autosave.md).
-Ist `update-minutes` ein Vielfaches des Autosaves, startet jedes Update,
+Ist `update-minutes` ein Vielfaches des Autosaves, wie bei der Empfehlung,
+startet jedes Update,
 während Paper die Chunks speichert, die mit dem Server luden. Was Paper
 während eines Laufs schreibt, zeichnet erst das nächste Update; Zustände,
 die nur kurz halten, fehlen dann unter Umständen auf der Karte, siehe
