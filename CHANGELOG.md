@@ -7,8 +7,12 @@ Links und die Hinweise aus `NOTICE` setzt
 [`.github/notizen.sh`](.github/notizen.sh) dazu. Siehe
 [Entwicklung](docs/entwicklung.md), „Release“.
 
-## 0.21.2
+## 0.22.0
 
+- **Renderer 0.20.0** inside. **Only trees with `relief` need one full render:** the relief is drawn differently than with 0.19.0. Until then each update of such a tree stops, and `/heroicmap status` says `neuer Renderer: erst /heroicmap render <tree>`. All other trees need no full render and keep updating. Redrawing a top-down tree of a large world takes 20 to 25 min, computed, not measured.
+- **What the new relief costs in the download:** players who already have the map load almost all of a tree with `relief` again, spread over about two days by the daily abgleich.
+- **New in the renderer:** Grass, flowers and dead bushes no longer cast a cross of light and dark in the relief. What the game counts as height, such as cacti, bamboo, pressure plates and lanterns, keeps it. Seen from above, plants from packs lose the empty space above and below their block before they lean; a tree with such a pack shows this only on redrawn tiles.
+- **The web map and the mouse wheel:** The map reacts to the wheel at once, and one wheel event gives at most one zoom level. A zoom jump of two or more levels no longer hangs the map. An info panel under the pointer no longer stops the wheel unless its content can still scroll.
 - **Updates no longer start while Paper saves.** With `update-minutes` a multiple of the chunk autosave interval, as recommended, every update started just when Paper saved the chunks loaded with the server. The next update drew those chunks again, and short-lived changes could be missing from the map. Updates now follow server ticks and start half a minute beside those saves. They keep running while the server pauses with nobody online, and slow down with the server under lag. On the test world, the web map showed a change after 72 s instead of 103 s in the median, and no state lasting 160 s went missing.
 
 ## 0.21.1
