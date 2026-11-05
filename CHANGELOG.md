@@ -9,7 +9,7 @@ Links und die Hinweise aus `NOTICE` setzt
 
 ## 0.21.2
 
-- **Updates no longer start while Paper saves.** With `update-minutes` a multiple of the chunk autosave interval, as recommended, every update started just when Paper saved the chunks loaded with the server. The next update drew those chunks again, and short-lived changes could be missing from the map. Updates now follow server ticks and start half a minute beside those saves. They keep running while the server pauses with nobody online, and slow down with the server under lag. On the test world, the web map showed a change after 72 s instead of 103 s in the median, and no short-lived change went missing.
+- **Updates no longer start while Paper saves.** With `update-minutes` a multiple of the chunk autosave interval, as recommended, every update started just when Paper saved the chunks loaded with the server. The next update drew those chunks again, and short-lived changes could be missing from the map. Updates now follow server ticks and start half a minute beside those saves. They keep running while the server pauses with nobody online, and slow down with the server under lag. On the test world, the web map showed a change after 72 s instead of 103 s in the median, and no state lasting 160 s went missing.
 
 ## 0.21.1
 

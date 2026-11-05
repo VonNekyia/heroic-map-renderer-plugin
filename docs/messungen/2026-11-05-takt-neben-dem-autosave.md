@@ -12,9 +12,10 @@ code:
 
 Liegt der Takt eine halbe Minute neben den Saves, schreibt Paper bei keinem
 der 30 Updates mehr während des Laufs, vorher bei allen. Die Webkarte zeigt
-eine Änderung im Median nach 71,9 s statt 102,6 s und höchstens nach 131,7 s.
-Kein Zustand fehlt mehr. Die CPU liegt bei 59,9 s je Stunde statt 70,0 s.
-Das erfüllt alle Punkte von #212.
+eine Änderung im Median nach 71,9 s statt 102,6 s, gemessen höchstens nach
+131,7 s, gerechnet höchstens nach rund 152 s. Von den Spalten, die alle
+160 s kippen, fehlt kein Zustand mehr. Die CPU liegt bei 59,9 s je Stunde
+statt 70,0 s. Das erfüllt alle Punkte von #212.
 
 ## Aufbau
 
@@ -84,11 +85,11 @@ der CSV der Hülle, im Messfenster:
 | 240 bis 300 s | 28 | 0 |
 | über 300 s | 27 | 0 |
 
-- **Kein Zustand fehlt:** Eine Spalte kippt alle 160 s. In A30 kam jeder
+- **Kein Zustand der Spalten fehlt:** Eine Spalte kippt alle 160 s. In A30 kam jeder
   ausgewertete Schritt spätestens nach 131,7 s auf die Karte, also vor dem
   Zurückkippen. In A fehlten 27, siehe dort „Der Schwanz von A“. Darum
   schreibt A30 je Update 6 Kacheln statt 4.
-- **Warum höchstens 150 s:** Paper speichert alle 60 s, das Update kommt
+- **Warum gerechnet rund 152 s:** Paper speichert alle 60 s, das Update kommt
   alle 120 s. Von einem Save bis zum nächsten Update sind es so 30 s oder
   90 s. Eine Änderung wartet also höchstens 60 s auf den Save und höchstens
   90 s auf das Update, dazu die Dauer des Laufs, rund 2 s.
@@ -109,6 +110,8 @@ Update überlappen sich nicht. Die Reihen sind aber je ein Lauf und liegen
   verschiedenen Zeiten laden, speichert Paper zu verschiedenen Zeiten, siehe
   [Läufe](../laeufe.md), „Zeitplan“. Für sie gilt die Rechnung oben nicht,
   sondern höchstens Autosave plus Takt.
+- Zustände, die kürzer als 160 s halten, misst diese Reihe nicht, siehe
+  [Läufe](../laeufe.md), „Zeitplan“.
 - Die Varianten B, C und D sind mit dem Versatz nicht neu gemessen.
 - Ungemessen sind auch die grosse Welt, viele Spieler und Linux.
 

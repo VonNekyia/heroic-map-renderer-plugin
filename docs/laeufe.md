@@ -40,8 +40,9 @@ Bestätigung kommen mit heroic-map-renderer#149.
 Alle `update-minutes` startet ein Update, Vorgabe alle 2 min. Läuft schon
 ein Lauf, fällt der Takt aus. Mit dem Autosave von Paper auf 60 s zeigt
 die Webkarte eine Änderung an Chunks, die mit dem Server laden, im Median
-nach 71,9 s und höchstens nach 131,7 s. Allgemein steht eine bleibende
-Änderung nach höchstens Autosave plus Takt auf der Karte, rund 3 min.
+nach 71,9 s, gemessen höchstens nach 131,7 s, gerechnet höchstens nach rund
+152 s. Allgemein steht eine bleibende Änderung nach höchstens Autosave plus
+Takt auf der Karte, rund 3 min.
 Entschieden in
 [0003](entscheidungen/0003-live-render-ueber-autosave-und-zeitplan.md),
 gemessen in [Takt neben dem Autosave](messungen/2026-11-05-takt-neben-dem-autosave.md).
@@ -63,6 +64,9 @@ gemessen in [Takt neben dem Autosave](messungen/2026-11-05-takt-neben-dem-autosa
     Laufs schreibt, zeichnet erst das nächste Update; kurze Zustände
     fehlten so auf der Karte, siehe
     [Takt gegen Autosave](messungen/2026-10-26-takt-gegen-autosave.md).
+  - Auch mit dem Versatz sieht ein Update nur, was beim letzten Save davor
+    auf der Platte stand. Ein Zustand, der kürzer als das grössere von Takt
+    und Autosave hält, kann darum weiter fehlen, gerechnet, nicht gemessen.
 - **Warum Bukkit:** Ohne Spieler pausiert der Server nach
   `pause-when-empty-seconds`. Das Autosave und der Scheduler von Bukkit
   zählen dann weiter, der `GlobalRegionScheduler` nicht. Der Takt läuft so
