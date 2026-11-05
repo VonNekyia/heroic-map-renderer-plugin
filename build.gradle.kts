@@ -79,10 +79,10 @@ tasks.processResources {
 // Der Renderer im Jar, für Windows und Linux auf x86_64 in einem Jar. Die SHA-256 der Archive stehen hier fest, denn
 // SHA256SUMS kommt von derselben Stelle wie die Archive. Siehe docs/entscheidungen/0004-renderer-im-jar.md und
 // docs/entscheidungen/0011-ein-jar-mit-xz.md.
-val renderer = "0.19.0"
+val renderer = "0.20.0"
 val rendererArchive = mapOf(
-    "windows-x64" to "54120746878ed0772c8ade60e4519d90da778fb5c3d2756188f4024369d4da7f",
-    "linux-x64" to "43a31df38e726b47b77a9db43eda4b20fba30fd8ef826cf5a4f450d3d43fdbd4",
+    "windows-x64" to "284dfe5b070f4ca386dacd78711453a825683d8a77a2098a17be2853dedde58c",
+    "linux-x64" to "a653245d9d28c1400eac59545fdc03d62434e88c799bd0623252302638c7bcab",
 )
 val rendererHinweise = listOf("LICENSE", "NOTICE", "THIRD-PARTY-NOTICES", "COPYRIGHT-library.html")
 

@@ -229,7 +229,8 @@ gemessen in [Takt neben dem Autosave](messungen/2026-11-05-takt-neben-dem-autosa
   des Renderers. Dann steht im Status beim Baum statt des Texts „neuer
   Renderer: erst /heroicmap render <ordner>“, bei mehreren Bäumen bei
   jedem seiner. Der volle Lauf über diesen Baum zeichnet ihn neu, danach
-  gehen Updates wieder; die übrigen Bäume bleiben, wie sie sind. Erkannt am Wortlaut „stammt von einem anderen Build des
+  gehen Updates wieder; die übrigen Bäume bleiben, wie sie sind. Ändert ein
+  Release nur das Relief, etwa 0.20.0, trifft das nur Bäume mit `relief`. Erkannt am Wortlaut „stammt von einem anderen Build des
   Renderers“ aus `stand_fuer_update` in `cli.rs` des Renderers, seit 0.6.0
   mit „, der anders zeichnet“ dahinter; der ganze Text steht weiter im Log.
 - **Neue Assets:** Ebenso bricht ein Update ab, wenn sich `renderer.assets`,
