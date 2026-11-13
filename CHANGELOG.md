@@ -7,6 +7,12 @@ Links und die Hinweise aus `NOTICE` setzt
 [`.github/notizen.sh`](.github/notizen.sh) dazu. Siehe
 [Entwicklung](docs/entwicklung.md), „Release“.
 
+## 0.22.1
+
+- **Renderer 0.20.1** inside. **No full render and no change to the config:** only the web map changes. Tiles are drawn as with 0.20.0, updates keep running, and the mod needs no new version.
+- **Regions and other shapes stay calm while zooming the web map:** they no longer jump in size or flicker when you zoom fast, and their outlines and lines keep their width instead of growing with each step and snapping back.
+- **The mouse wheel zooms by how fast you turn it:** fast turning zooms farther, slow turning less. The web map uses the built-in wheel zoom of its map library again.
+
 ## 0.22.0
 
 - **Renderer 0.20.0** inside. **Only trees with `relief` need one full render:** the relief is drawn differently than with 0.19.0. Until then each update of such a tree stops, and `/heroicmap status` says `neuer Renderer: erst /heroicmap render <tree>`. All other trees need no full render and keep updating. Redrawing a top-down tree of a large world takes 20 to 25 min, computed, not measured.
