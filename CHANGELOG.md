@@ -7,6 +7,13 @@ Links und die Hinweise aus `NOTICE` setzt
 [`.github/notizen.sh`](.github/notizen.sh) dazu. Siehe
 [Entwicklung](docs/entwicklung.md), „Release“.
 
+## 0.22.2
+
+- **Renderer 0.20.2** inside. **No full render and no change to the config:** tiles are drawn as with 0.20.1, updates keep running, and the mod needs no new version.
+- **No seam at the edge of the world on the web map:** the coarse layer under the tiles now shows only fully opaque pixels, so nothing shines through where the world ends.
+- **Pins look right in browsers that guard against fingerprinting:** such browsers answer with noise when a page reads its canvas back, and pins came out in wrong colours or noisy. The web map no longer reads the canvas back.
+- **A run that continues after an abort no longer leaves holes on the map.** After a stop or `/heroicmap cancel` in the middle of a run, the next one first removed every tile it was about to redraw, and the map had gaps until each tile was back. It now removes only the tiles the aborted run had just written. Older tiles stay until they are redrawn, and tiles that stay the same keep their bytes, so browsers and the mod do not load them again. A tile the aborted run had already blanked is cleaned up.
+
 ## 0.22.1
 
 - **Renderer 0.20.1** inside. **No full render and no change to the config:** only the web map changes. Tiles are drawn as with 0.20.0, updates keep running, and the mod needs no new version.
