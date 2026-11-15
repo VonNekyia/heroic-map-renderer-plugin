@@ -32,7 +32,7 @@ import java.util.stream.Collectors;
  */
 final class EbenenSchreiber {
 
-    private static final String OBERWELT = "minecraft:overworld";
+    static final String OBERWELT = "minecraft:overworld";
 
     private final Path wurzel;
     private final String dimension;

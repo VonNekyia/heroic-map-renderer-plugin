@@ -1,6 +1,6 @@
 ---
 title: API für andere Plugins
-description: Wie ein anderes Plugin über den Service HeroicMapApi eigene Ebenen anlegt und füllt, wie es die API über JitPack einbindet und ohne HeroicMap sicher lädt, was beim Aufruf geprüft wird, wem Ebenen und Bilder gehören, wie lange sie leben, wie sie sich zu Ebenen aus Dateien verhalten und wie die API versioniert wird.
+description: Wie ein anderes Plugin über den Service HeroicMapApi eigene Ebenen anlegt und füllt, wie es die API über JitPack einbindet und ohne HeroicMap sicher lädt, was beim Aufruf geprüft wird, wem Ebenen und Bilder gehören, wie lange sie leben, wie sie sich zu Ebenen aus Dateien verhalten, wie eine Region eine Stufe der Qualität bekommt und wie die API versioniert wird.
 code:
   - api/build.gradle.kts
   - api/src/main/java/com/nekyia/heroicmap/api/HeroicMapApi.java
@@ -13,6 +13,7 @@ code:
   - src/main/java/com/nekyia/heroicmap/Knoepfe.java
   - src/test/java/com/nekyia/heroicmap/KnoepfeTest.java
   - api/src/main/java/com/nekyia/heroicmap/api/Panel.java
+  - api/src/main/java/com/nekyia/heroicmap/api/Quality.java
   - src/main/java/com/nekyia/heroicmap/EbenenApi.java
   - src/main/java/com/nekyia/heroicmap/ApiJson.java
   - src/main/java/com/nekyia/heroicmap/Ebenen.java
@@ -160,12 +161,15 @@ final class Staedte {
 | `Layer.forPlayer(uuid)` | die eigenen Objekte eines Spielers; das erste macht die Ebene zur Aktionsebene, siehe „Aktionsebenen und Knöpfe“ |
 | `HeroicMapApi.button(plugin, name, de, en)` | ein Knopf unter der Tafel von Objekten, an oder aus je Spieler, siehe „Aktionsebenen und Knöpfe“ |
 | `Layer.put(objekt)` | setzt ein Objekt oder ersetzt das mit gleicher `id` |
+| `Region.withQuality(stufe)` | ab 0.23.0 die Stufe der Qualität für die Kacheln unter der Region, siehe „Qualität je Region“ |
 | `Layer.remove(id)`, `clear()`, `delete()` | entfernt ein Objekt, alle oder die Ebene |
 
 Die Objekte sind Records in `MapObject` und `Panel`, je Feld wie im Format
 des Renderers,
 [Ebenen](https://github.com/VonNekyia/heroic-map-renderer/blob/master/docs/benutzung/ebenen.md).
 Optionale Felder sind null; `with…` gibt eine Kopie mit einem Feld mehr.
+Die eine Ausnahme ist `quality` der Region: Es steht nicht im Format, siehe
+„Qualität je Region“.
 
 ## Regeln
 
@@ -265,6 +269,52 @@ npcs.put(MapObject.Pin.at("npc-12", 120.5, -340.5)
   Köpfe; `put` wirft, wie bei Bildern.
 - **Mit `karte.von-oeffentlich`** holt dieses Plugin keine Köpfe; jede
   Nadel bleibt eine Nadel.
+
+## Qualität je Region
+
+Ab 0.23.0 bittet eine Region darum, dass die Karte die Kacheln unter ihr
+mindestens in einer Stufe packt, etwa eine Stadt besser als die Wildnis.
+Entschieden in [0017](entscheidungen/0017-qualitaet-an-der-region.md); was
+das Plugin daraus macht, steht in [Qualität je Gebiet](qualitaet.md).
+
+```java
+regionen.put(MapObject.Region.of("stadt-1", vielecke)
+        .withName("Hafenstadt")
+        .withQuality(Quality.GOOD));
+```
+
+- **`Quality`:** `MINIMUM`, `SMALL`, `MEDIUM`, `GOOD`, `EXTREME`, von den
+  kleinsten Dateien zum besten Bild. Weitere Stufen können dazukommen; ein
+  erschöpfender `switch` darüber ist nicht stabil, siehe „Versionierung“.
+- **Setzen, ändern, zurücknehmen** mit `put`: Die Region mit anderer Stufe
+  ersetzt die alte, `withQuality(null)` oder `remove` nimmt die Stufe
+  zurück. Einen eigenen Abgleich braucht es nicht.
+- **Nur der Umriss zählt,** in der Dimension der Karte. Die Stufe gilt, ob
+  jemand die Ebene sieht oder nicht; `visible`, `web` und `permission`
+  ändern nichts.
+- **Kein Feld des Formats:** Webkarte und Mod erfahren die Stufe nicht, und
+  die Ebene behält ihre `version`.
+- **Wann es wirkt:** mit dem nächsten Lauf des Renderers. Eine höhere Stufe
+  kostet Platz auf der Platte des Servers.
+- **Zurücknehmen wirkt verzögert,** frühestens nach 1 min, siehe
+  [Qualität je Gebiet](qualitaet.md), „Gedächtnis“. Nach einem Neustart
+  gilt die Stufe weiter, bis das Plugin seine Ebene wieder gefüllt hat.
+- **Nur `Region`:** Ein Kreis trägt keine Stufe. Eigene Objekte eines
+  Spielers auch nicht; dort wirft `put`.
+- **Gegen ein älteres HeroicMap** fehlt die Klasse `Quality`. Wer auch mit
+  0.22 laufen will, legt alles, was `Quality` nennt, in eine eigene Klasse
+  und fängt beim ersten Aufruf `LinkageError`; dann setzt er seine Regionen
+  ohne Stufe:
+
+  ```java
+  Region region = MapObject.Region.of(id, vielecke);
+  try {
+      region = MitStufe.gut(region);   // eigene Klasse: return r.withQuality(Quality.GOOD);
+  } catch (LinkageError altesHeroicMap) {
+      // HeroicMap vor 0.23.0: ohne Stufe
+  }
+  regionen.put(region);
+  ```
 
 ## Entwürfe
 

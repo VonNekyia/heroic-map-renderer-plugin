@@ -13,8 +13,9 @@ public interface PlayerLayer {
 
     /**
      * Adds the object for this player, or replaces the one with the same id. Its id must not be the id of an
-     * object everyone sees. It names no image; a banner takes a design of the layer. At most 1000 objects and 1 MiB
-     * per player and layer, and together with the objects everyone sees the limits of a layer.
+     * object everyone sees. It names no image; a banner takes a design of the layer; a region carries no quality. At
+     * most 1000 objects and 1 MiB per player and layer, and together with the objects everyone sees the limits of a
+     * layer.
      */
     void put(MapObject object);
 

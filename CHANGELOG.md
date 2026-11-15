@@ -7,6 +7,10 @@ Links und die Hinweise aus `NOTICE` setzt
 [`.github/notizen.sh`](.github/notizen.sh) dazu. Siehe
 [Entwicklung](docs/entwicklung.md), „Release“.
 
+## 0.23.0
+
+- **API: a region can ask for better tiles.** `Region.withQuality(Quality.GOOD)` asks the map to pack the tiles under a region at least that well, for example a town better than the wilderness. Only the outline counts; the layer keeps its version, and neither the web map nor the mod load anything again. HeroicMap writes the areas to `plugins/HeroicMap/qualitaet/gebiete.json` and `/heroicmap status` lists them. The file is also the memory across restarts: an area that disappears is only dropped after a minute, so an update right after a restart does not redraw towns twice. **Not used by the renderer yet:** until a renderer with quality levels is inside, a quality changes nothing on the map. Plugins built against the API of 0.22 keep working.
+
 ## 0.22.2
 
 - **Renderer 0.20.2** inside. **No full render and no change to the config:** tiles are drawn as with 0.20.1, updates keep running, and the mod needs no new version.

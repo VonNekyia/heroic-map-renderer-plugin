@@ -28,6 +28,7 @@ import com.nekyia.heroicmap.api.MapObject.Size;
 import com.nekyia.heroicmap.api.MapObject.Stroke;
 import com.nekyia.heroicmap.api.MapObject.Symbol;
 import com.nekyia.heroicmap.api.Panel;
+import com.nekyia.heroicmap.api.Quality;
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.lang.reflect.Proxy;
@@ -117,6 +118,27 @@ class EbenenApiTest {
 
     private static List<String> ids(Ebene e) {
         return e.json().getAsJsonArray("objects").asList().stream().map(o -> o.getAsJsonObject().get("id").getAsString()).toList();
+    }
+
+    @Test
+    void die_stufe_der_qualitaet_steht_nicht_in_der_ebene_und_nie_bei_einem_spieler() {
+        var a = api(0);
+        Layer l = a.layer("Beispiel", "regionen");
+        var ring = List.of(Polygon.of(List.of(new Point(0, 0), new Point(40, 0), new Point(40, 40))));
+        l.put(Region.of("stadt", ring));
+        Ebene ohne = ebene(a, "beispiel:regionen");
+        l.put(Region.of("stadt", ring).withQuality(Quality.GOOD));
+        Ebene mit = ebene(a, "beispiel:regionen");
+        assertEquals(ohne.json(), mit.json(), "quality ist kein Feld des Formats");
+        assertEquals(ohne.version(), mit.version(), "eine Stufe lädt bei keinem Betrachter etwas neu");
+        assertEquals(Quality.GOOD, a.gebiete().get("beispiel:regionen").getFirst().stufe());
+        assertEquals(Quality.GOOD, Region.of("stadt", ring).withQuality(Quality.GOOD).withName("Hafenstadt").quality(),
+                "jedes with… behält die Stufe");
+        assertEquals(null, new Region("alt", ring, null, null, null, null, null).quality(), "der Konstruktor vor 0.23.0");
+        var eigene = l.forPlayer(UUID.randomUUID());
+        assertThrows(IllegalArgumentException.class, () -> eigene.put(Region.of("eigen", ring).withQuality(Quality.GOOD)));
+        eigene.put(Region.of("eigen", ring));
+        assertEquals(1, a.gebiete().get("beispiel:regionen").size());
     }
 
     @Test

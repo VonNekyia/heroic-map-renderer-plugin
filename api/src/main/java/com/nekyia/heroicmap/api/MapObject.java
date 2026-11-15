@@ -271,42 +271,62 @@ public sealed interface MapObject {
         }
     }
 
-    /** An area of one or more polygons with holes, with fill and border. */
+    /**
+     * An area of one or more polygons with holes, with fill and border. With a {@code quality}, the map also packs the
+     * tiles under the area at least that well; see {@link #withQuality}.
+     */
     record Region(String id, List<Polygon> polygons, String dimension, String name, String fill, Stroke stroke,
-            Panel panel) implements MapObject {
+            Panel panel, Quality quality) implements MapObject {
         public Region {
             Objects.requireNonNull(id);
             polygons = List.copyOf(polygons);
         }
 
+        /** As before 0.23.0: a region without a quality. */
+        public Region(String id, List<Polygon> polygons, String dimension, String name, String fill, Stroke stroke,
+                Panel panel) {
+            this(id, polygons, dimension, name, fill, stroke, panel, null);
+        }
+
         /** A region of these polygons, with the default fill and border. */
         public static Region of(String id, List<Polygon> polygons) {
-            return new Region(id, polygons, null, null, null, null, null);
+            return new Region(id, polygons, null, null, null, null, null, null);
         }
 
         /** A copy in this dimension. */
         public Region withDimension(String d) {
-            return new Region(id, polygons, d, name, fill, stroke, panel);
+            return new Region(id, polygons, d, name, fill, stroke, panel, quality);
         }
 
         /** A copy with this name. */
         public Region withName(String n) {
-            return new Region(id, polygons, dimension, n, fill, stroke, panel);
+            return new Region(id, polygons, dimension, n, fill, stroke, panel, quality);
         }
 
         /** A copy with this fill color. */
         public Region withFill(String f) {
-            return new Region(id, polygons, dimension, name, f, stroke, panel);
+            return new Region(id, polygons, dimension, name, f, stroke, panel, quality);
         }
 
         /** A copy with this border. */
         public Region withStroke(Stroke s) {
-            return new Region(id, polygons, dimension, name, fill, s, panel);
+            return new Region(id, polygons, dimension, name, fill, s, panel, quality);
         }
 
         /** A copy with this panel, shown when the pointer rests on the region. */
         public Region withPanel(Panel p) {
-            return new Region(id, polygons, dimension, name, fill, stroke, p);
+            return new Region(id, polygons, dimension, name, fill, stroke, p, quality);
+        }
+
+        /**
+         * A copy that asks the map to pack the tiles under this area at least this well; null takes the wish back.
+         * Only the polygons count, in the dimension of the map: it holds whether or not anyone sees the layer, and
+         * name, colors and panel change nothing. It is no field of the layer format: neither the web map nor the mod
+         * learn of it, and the layer keeps its version. It takes effect with the next run of the renderer. Objects
+         * of single players carry none.
+         */
+        public Region withQuality(Quality q) {
+            return new Region(id, polygons, dimension, name, fill, stroke, panel, q);
         }
     }
 

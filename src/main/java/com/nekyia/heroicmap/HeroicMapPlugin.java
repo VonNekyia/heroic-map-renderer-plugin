@@ -16,6 +16,7 @@ import java.time.ZoneId;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -26,6 +27,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.logging.Level;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
@@ -39,6 +41,7 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.event.server.ServerLoadEvent;
 import org.bukkit.plugin.ServicePriority;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.plugin.messaging.PluginMessageListener;
@@ -70,6 +73,10 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
     private boolean weltenGekuerzt;
 
     private Ebenen ebenen;
+    /** Die Gebiete mit eigener Qualität aus den Ebenen der API. Siehe docs/qualitaet.md. */
+    private Gebiete gebiete;
+    /** Die modname aller Plugins, gelesen, wenn der Server geladen hat; vorher null. */
+    private volatile Set<String> installiert;
     private EbenenFuerMod fuerMod;
     private Laeufe laeufe;
     private Banner banner;
@@ -140,6 +147,7 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
         ebenen = new Ebenen(ebenenOrdner, konf.dimension(), new EbenenSchreiber(konf.kacheln(), konf.dimension(),
                 Set.copyOf(konf.webserver().ebenenAn())), getLogger(),
                 von == null ? List::of : von::stand);
+        gebiete = new Gebiete(getDataFolder().toPath().resolve("qualitaet").resolve("gebiete.json"), getLogger());
         // Die Köpfe nur, wenn der Mod sie hier holt: Mit karte.von-oeffentlich holt er sie beim anderen Server. Die
         // der Ebenen holt es einen je Sekunde. Siehe docs/koepfe.md.
         if (konf.karte().vonOeffentlich().isEmpty()) {
@@ -177,6 +185,10 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
             if (s != null) {
                 schreibeSpieler("Dateien je Spieler", () -> s.schreibe(ebenen.stand(), ebenen.api().knoepfe(),
                         Instant.now().getEpochSecond()));
+            }
+            // Nicht beim Stoppen: Dann gehen die Ebenen anderer Plugins vor diesem, und die Frist der Gebiete liefe ab.
+            if (!getServer().isStopping()) {
+                gebiete.pruefe(ebenen.api().gebiete(), installiert, Instant.now());
             }
         }, 1, 1, TimeUnit.SECONDS);
         getServer().getGlobalRegionScheduler().runAtFixedRate(this, t -> sichtTakt(), 20, 20);
@@ -340,6 +352,16 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
         if (proxyname.frage(p.getUniqueId(), System.currentTimeMillis())) {
             p.sendPluginMessage(this, Proxyname.KANAL, Proxyname.frage());
         }
+    }
+
+    /**
+     * Im Hauptthread, wenn jedes Plugin geladen ist: Erst jetzt steht fest, welche es gibt. Siehe docs/qualitaet.md,
+     * „Gedächtnis“.
+     */
+    @EventHandler
+    public void beimLaden(ServerLoadEvent e) {
+        installiert = Arrays.stream(getServer().getPluginManager().getPlugins()).map(p -> EbenenApi.modname(p.getName()))
+                .collect(Collectors.toUnmodifiableSet());
     }
 
     /**
@@ -688,14 +710,14 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
             return true;
         }
         if (ohneRenderer != null && BEFEHLE.contains(args[0])) {
-            sender.sendMessage(ohneRenderer + (args[0].equals("status") ? "\n" + ebenen.status() : ""));
+            sender.sendMessage(ohneRenderer + (args[0].equals("status") ? "\n" + ebenenStatus() : ""));
             return true;
         }
         String antwort = switch (args[0]) {
             case "render" -> laeufe.starte(Laeufe.Art.VOLL, args.length == 2 ? args[1] : null);
             case "update" -> laeufe.starte(Laeufe.Art.UPDATE);
             case "compact" -> laeufe.starte(Laeufe.Art.VERDICHTEN);
-            case "status" -> laeufe.status() + (webserver != null ? "\n" + webserver.status() : "") + "\n" + ebenen.status();
+            case "status" -> laeufe.status() + (webserver != null ? "\n" + webserver.status() : "") + "\n" + ebenenStatus();
             case "cancel" -> laeufe.brichAb() ? "Der Lauf wird abgebrochen." : "Es läuft kein Lauf.";
             default -> null;
         };
@@ -704,6 +726,12 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
         }
         sender.sendMessage(antwort);
         return true;
+    }
+
+    /** Die Zeile der Ebenen, darunter die der Gebiete mit eigener Qualität, wenn es welche gibt. */
+    private String ebenenStatus() {
+        String g = gebiete.zeile();
+        return ebenen.status() + (g == null ? "" : "\n" + g);
     }
 
     /** /karte anmelden|abmelden: die Anmeldung auf der Webkarte. Siehe docs/anmeldung.md, „Befehl“. */
