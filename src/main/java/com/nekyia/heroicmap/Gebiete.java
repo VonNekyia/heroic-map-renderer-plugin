@@ -34,8 +34,8 @@ final class Gebiete {
     /** Eine Region mit Stufe in ihrer Ebene: ihre id und ihre Vielecke wie im Format der Ebene. */
     record Gebiet(String id, Quality stufe, JsonArray vielecke) {}
 
-    /** So lange muss ein Gebiet fehlen, bevor es wegfällt. */
-    static final Duration FRIST = Duration.ofMinutes(1);
+    /** So lange muss ein Gebiet fehlen, bevor es wegfällt. Siehe docs/qualitaet.md, „Gedächtnis“. */
+    static final Duration FRIST = Duration.ofMinutes(10);
     /** Grösser liest der Renderer die Datei nicht. */
     static final long HOECHSTENS = 64L << 20;
 

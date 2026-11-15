@@ -84,14 +84,20 @@ der Ebenen, `Gebiete.pruefe`.
 | Fall | Was in der Datei steht |
 |---|---|
 | Region mit Stufe, neu oder mit anderer Stufe oder anderem Umriss | sofort |
-| das Gebiet fehlt, seine Ebene gab es in dieser Sitzung | es bleibt; fehlt es bei einer Prüfung mindestens 1 min später noch, fällt es weg |
+| das Gebiet fehlt, seine Ebene gab es in dieser Sitzung | es bleibt; fehlt es bei einer Prüfung mindestens 10 min später noch, fällt es weg |
 | seine Ebene gab es in dieser Sitzung noch nicht, ihr Plugin ist installiert | es bleibt, der Status sagt „wartet auf die Ebene“ |
 | ihr Plugin ist nicht mehr installiert | es fällt weg, mit einer Zeile im Log |
 
+- **10 min,** weil zu spät wegfallen nichts kostet, zu früh aber ein
+  doppeltes Neuzeichnen und das Neuladen bei jedem Betrachter. Ein Plugin,
+  das seine Ebene anlegt und sie danach langsam füllt, etwa aus einer
+  Datenbank, hat so Zeit.
 - **Die Frist beginnt neu,** wenn das Gebiet wieder da war.
 - **Installiert** heisst: Das Plugin steht in der Liste des Servers, auch
   wenn es nicht startete. Die Liste liest das Plugin, wenn der Server
-  geladen hat (`ServerLoadEvent`); vorher fällt deshalb nichts weg.
+  geladen hat (`ServerLoadEvent`); vorher fällt deshalb nichts weg. Wird
+  HeroicMap erst nach dem Start geladen, kommt das Ereignis nicht: Dann
+  bleiben die Gebiete eines entfernten Plugins bis zum nächsten Neustart.
 - **Beim Stoppen** prüft das Plugin nicht. Paper schaltet die anderen
   Plugins vorher ab, und ein langes Stoppen liesse sonst die Frist ablaufen.
 - **Von Hand:** Wer die Gebiete eines Plugins loswerden will, das seine

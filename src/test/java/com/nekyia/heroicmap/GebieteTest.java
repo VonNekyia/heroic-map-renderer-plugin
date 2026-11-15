@@ -162,15 +162,15 @@ class GebieteTest {
     }
 
     @Test
-    void ein_gebiet_faellt_erst_nach_einer_minute_weg() throws IOException {
+    void ein_gebiet_faellt_erst_nach_zehn_minuten_weg() throws IOException {
         regionen().put(stadt("stadt-1", 100).withQuality(Quality.GOOD));
         pruefe(T0);
         regionen().remove("stadt-1");
         pruefe(T0.plusSeconds(10));
         assertEquals(mit(STADT), inhalt());
-        pruefe(T0.plusSeconds(69));
+        pruefe(T0.plusSeconds(609));
         assertEquals(mit(STADT), inhalt());
-        pruefe(T0.plusSeconds(70));
+        pruefe(T0.plusSeconds(610));
         assertEquals(mit(), inhalt());
         assertNull(gebiete.zeile());
     }
@@ -185,7 +185,7 @@ class GebieteTest {
         regionen().clear();
         pruefe(T0.plusSeconds(1));
         assertEquals(beide, inhalt());
-        pruefe(T0.plusSeconds(61));
+        pruefe(T0.plusSeconds(601));
         assertEquals(mit(), inhalt());
     }
 
@@ -198,12 +198,12 @@ class GebieteTest {
         regionen().put(stadt("stadt-1", 100).withQuality(Quality.GOOD));
         pruefe(T0.plusSeconds(30));
         regionen().remove("stadt-1");
-        // Über eine Minute nach dem ersten Fehlen, aber das erste Mal seit es wieder da war.
-        pruefe(T0.plusSeconds(100));
+        // Über zehn Minuten nach dem ersten Fehlen, aber das erste Mal seit es wieder da war.
+        pruefe(T0.plusSeconds(700));
         assertEquals(mit(STADT), inhalt());
-        pruefe(T0.plusSeconds(159));
+        pruefe(T0.plusSeconds(1299));
         assertEquals(mit(STADT), inhalt());
-        pruefe(T0.plusSeconds(160));
+        pruefe(T0.plusSeconds(1300));
         assertEquals(mit(), inhalt());
     }
 
@@ -213,8 +213,9 @@ class GebieteTest {
         pruefe(T0);
         regionen().delete();
         pruefe(T0.plusSeconds(1));
+        pruefe(T0.plusSeconds(600));
         assertEquals(mit(STADT), inhalt());
-        pruefe(T0.plusSeconds(61));
+        pruefe(T0.plusSeconds(601));
         assertEquals(mit(), inhalt());
     }
 
@@ -229,15 +230,16 @@ class GebieteTest {
         // Ein Zeichen von Hand: Bleibt es stehen, hat keine Prüfung danach die Datei neu geschrieben.
         Files.writeString(datei, "von Hand");
         var plugins = Set.of("meinplugin", "heroicmap");
-        gebiete.pruefe(api.gebiete(), plugins, T0.plusSeconds(200));
+        // Weit über die Frist hinaus: Ohne die Ebene läuft keine.
+        gebiete.pruefe(api.gebiete(), plugins, T0.plusSeconds(2000));
         assertEquals("Gebiete: 1 aus meinplugin:regionen (good), wartet auf die Ebene", gebiete.zeile());
         // Die Ebene ist da, aber noch leer: Die Frist beginnt erst jetzt, und vor ihrem Ende ist die Region wieder da.
         regionen();
-        gebiete.pruefe(api.gebiete(), plugins, T0.plusSeconds(300));
+        gebiete.pruefe(api.gebiete(), plugins, T0.plusSeconds(3000));
         assertEquals("Gebiete: 1 aus meinplugin:regionen (good)", gebiete.zeile());
         regionen().put(stadt("stadt-1", 100).withQuality(Quality.GOOD));
-        gebiete.pruefe(api.gebiete(), plugins, T0.plusSeconds(330));
-        gebiete.pruefe(api.gebiete(), plugins, T0.plusSeconds(1000));
+        gebiete.pruefe(api.gebiete(), plugins, T0.plusSeconds(3030));
+        gebiete.pruefe(api.gebiete(), plugins, T0.plusSeconds(9000));
         assertEquals("von Hand", inhalt());
     }
 
@@ -248,9 +250,9 @@ class GebieteTest {
         neustart();
         regionen();
         pruefe(T0.plusSeconds(100));
-        pruefe(T0.plusSeconds(159));
+        pruefe(T0.plusSeconds(699));
         assertEquals(mit(STADT), inhalt());
-        pruefe(T0.plusSeconds(160));
+        pruefe(T0.plusSeconds(700));
         assertEquals(mit(), inhalt());
     }
 

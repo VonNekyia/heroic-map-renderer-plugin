@@ -1,6 +1,6 @@
 ---
 title: "0017: Die Qualität an der Region"
-description: Warum ein anderes Plugin die Stufe der Qualität an der Region seiner Ebene setzt statt über einen eigenen Aufruf, warum sie kein Feld des Formats der Ebenen ist, warum die Datei der Gebiete das Gedächtnis ist und ein Gebiet erst nach einer Minute wegfällt.
+description: Warum ein anderes Plugin die Stufe der Qualität an der Region seiner Ebene setzt statt über einen eigenen Aufruf, warum sie kein Feld des Formats der Ebenen ist, warum die Datei der Gebiete das Gedächtnis ist und ein Gebiet erst nach zehn Minuten wegfällt.
 status: gilt
 date: 2026-11-15
 issues: []
@@ -35,8 +35,11 @@ angenommen vom Reviewer am 15.11.
 - **Unabhängig von der Sicht** der Ebene, und nur der Umriss zählt.
 - **Die Datei der Gebiete ist das Gedächtnis.** Neues und Geändertes gilt
   sofort. Ein Gebiet, das fehlt, fällt erst weg, wenn es bei einer Prüfung
-  mindestens 1 min später noch fehlt. Gab es seine Ebene in dieser Sitzung
+  mindestens 10 min später noch fehlt. Gab es seine Ebene in dieser Sitzung
   noch nicht, bleibt es, solange ihr Plugin installiert ist.
+- **10 min statt 1 min,** so vom Reviewer im Review verlangt: Zu spät
+  wegfallen kostet nichts, zu früh ein doppeltes Neuzeichnen, und ein
+  Plugin kann seine Ebene langsam füllen.
 - **Gebiete eines Plugins, das nicht mehr installiert ist,** fallen von
   selbst weg, mit einer Zeile im Log. Einen Befehl zum Löschen gibt es
   nicht.

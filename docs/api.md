@@ -296,7 +296,7 @@ regionen.put(MapObject.Region.of("stadt-1", vielecke)
   die Ebene behält ihre `version`.
 - **Wann es wirkt:** mit dem nächsten Lauf des Renderers. Eine höhere Stufe
   kostet Platz auf der Platte des Servers.
-- **Zurücknehmen wirkt verzögert,** frühestens nach 1 min, siehe
+- **Zurücknehmen wirkt verzögert,** frühestens nach 10 min, siehe
   [Qualität je Gebiet](qualitaet.md), „Gedächtnis“. Nach einem Neustart
   gilt die Stufe weiter, bis das Plugin seine Ebene wieder gefüllt hat.
 - **Nur `Region`:** Ein Kreis trägt keine Stufe. Eigene Objekte eines
