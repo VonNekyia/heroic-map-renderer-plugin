@@ -23,6 +23,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
@@ -107,6 +108,11 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
     private Konfiguration einstellungen;
     /** Ob das Geheimnis der Token zu lesen war; false nur nach einem Fehler beim Start. */
     private boolean geheimnisLesbar = true;
+    /** Was /heroicmap set seit dem Start in config.yml schrieb; es gilt erst nach einem Neustart. */
+    private final List<String> wartet = new CopyOnWriteArrayList<>();
+    /** Der Ordner des Servers und die Hauptwelt, wie beim Lesen der Einstellungen. */
+    private Path serverOrdner;
+    private Path hauptwelt;
     private static final Map<Ampeln.Farbe, NamedTextColor> FARBEN = Map.of(Ampeln.Farbe.GRUEN, NamedTextColor.GREEN,
             Ampeln.Farbe.ROT, NamedTextColor.RED, Ampeln.Farbe.GELB, NamedTextColor.YELLOW, Ampeln.Farbe.GRAU, NamedTextColor.GRAY);
 
@@ -118,6 +124,8 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
         Path server = Path.of("").toAbsolutePath();
         Path hauptwelt = getServer().getWorldContainer().toPath().toAbsolutePath().normalize()
                 .resolve(getServer().getWorlds().getFirst().getName());
+        serverOrdner = server;
+        this.hauptwelt = hauptwelt;
         Konfiguration konf;
         try {
             konf = Konfiguration.aus(getConfig(), server, hauptwelt);
@@ -707,6 +715,9 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
         if (command.getName().equals("karte")) {
             return karte(sender, args);
         }
+        if (args.length >= 1 && args[0].equals("set")) {
+            return setze(sender, args);
+        }
         // Nur render nimmt ein zweites Wort, den Ordner eines Baums. Siehe docs/laeufe.md, „Befehle“.
         if (args.length != 1 && !(args.length == 2 && args[0].equals("render"))) {
             return false;
@@ -752,12 +763,83 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
         boolean autosaveAus = getServer().getWorlds().stream()
                 .anyMatch(welt -> !welt.isAutoSave() && Ampeln.istWelt(welt.getWorldFolder().toPath(), k.welt()));
         var lage = new Ampeln.Lage(k, ohneRenderer, laeufe == null ? Map.of() : laeufe.ausgaenge(), w == null ? null : w.zustand(),
-                w != null && w.bereit(), geheimnisLesbar, simpleVoiceChat, autosaveAus, getServer().getPort());
+                w != null && w.bereit(), geheimnisLesbar, simpleVoiceChat, autosaveAus, getServer().getPort(), List.copyOf(wartet));
         getServer().getAsyncScheduler().runNow(this, t -> {
             var ampeln = Ampeln.pruefe(lage);
             getServer().getGlobalRegionScheduler().execute(this,
                     () -> ampeln.forEach(a -> sender.sendMessage(Component.text(a.zeile(), FARBEN.get(a.farbe())))));
         });
+    }
+
+    /**
+     * /heroicmap set web an|aus, set web port <zahl>, set mod an|aus: schreibt die eine Einstellung in config.yml.
+     * Sie gilt nach dem Neustart des Servers. Siehe docs/einstellen.md.
+     */
+    private boolean setze(CommandSender sender, String[] args) {
+        Setzer.Wunsch wunsch;
+        boolean an = args.length == 3 && args[2].equals("an");
+        if (args.length == 3 && (args[1].equals("web") || args[1].equals("mod")) && (an || args[2].equals("aus"))) {
+            wunsch = args[1].equals("web") ? new Setzer.Wunsch.Web(an) : new Setzer.Wunsch.Mod(an);
+        } else if (args.length == 4 && args[1].equals("web") && args[2].equals("port")) {
+            int port;
+            try {
+                port = Integer.parseInt(args[3]);
+            } catch (NumberFormatException e) {
+                sender.sendMessage("Nicht geändert: " + args[3] + " ist keine Zahl von 1024 bis 65535");
+                return true;
+            }
+            wunsch = new Setzer.Wunsch.Port(port);
+        } else {
+            sender.sendMessage("/heroicmap set web an|aus, /heroicmap set web port <zahl>, /heroicmap set mod an|aus");
+            return true;
+        }
+        String wer = sender instanceof Player p ? p.getName() : "Konsole";
+        String lauscht = einstellungen.webserver().adresse();
+        int spielPort = getServer().getPort();
+        getServer().getAsyncScheduler().runNow(this, t -> {
+            var zeilen = setze(wunsch, wer, lauscht, spielPort);
+            getServer().getGlobalRegionScheduler().execute(this, () -> zeilen.forEach(sender::sendMessage));
+        });
+        return true;
+    }
+
+    /** Ausserhalb des Hauptthreads: prüft einen neuen Port, schreibt und gibt die Zeilen der Antwort. */
+    private synchronized List<String> setze(Setzer.Wunsch wunsch, String wer, String lauscht, int spielPort) {
+        if (wunsch instanceof Setzer.Wunsch.Port(int port) && port >= 1024 && port <= 65535 && lauscht.contains(":")) {
+            // Der eigene Port ist nicht belegt, sondern schon gesetzt; den Rest sagt der Setzer.
+            String neu = lauscht.substring(0, lauscht.lastIndexOf(':') + 1) + port;
+            boolean spiel = port == spielPort;
+            if (spiel || !neu.equals(lauscht) && !Ampeln.portFrei(neu)) {
+                int frei = Ampeln.freierPort(lauscht, 8080, spielPort);
+                return List.of("Nicht geändert: Port " + port + (spiel ? " ist der Port des Spielservers." : " ist belegt: Ein anderes "
+                        + "Programm lauscht dort.") + (frei < 0 ? "" : " Frei wäre " + frei + "."));
+            }
+        }
+        try {
+            var e = Setzer.setze(getDataFolder().toPath().resolve("config.yml"), wunsch,
+                    c -> Konfiguration.aus(c, serverOrdner, hauptwelt));
+            if (e.aenderungen().isEmpty()) {
+                return List.of("Schon so eingestellt.");
+            }
+            var zeilen = new ArrayList<String>();
+            for (String a : e.aenderungen()) {
+                getLogger().info("Einstellung: " + wer + " setzt " + a);
+                wartet.add(a);
+                zeilen.add("Geändert: " + a);
+            }
+            zeilen.add("Gilt nach dem Neustart des Servers.");
+            return zeilen;
+        } catch (Setzer.Abgelehnt e) {
+            var zeilen = new ArrayList<String>(List.of("Nicht geändert: " + e.getMessage()));
+            if (!e.vonHand().isEmpty()) {
+                zeilen.add("Von Hand in config.yml:");
+                zeilen.addAll(e.vonHand());
+            }
+            return zeilen;
+        } catch (IOException e) {
+            getLogger().log(Level.WARNING, "config.yml nicht geschrieben", e);
+            return List.of("Nicht geändert: config.yml liess sich nicht schreiben, siehe Log.");
+        }
     }
 
     /** Die Zeile der Ebenen, darunter die der Gebiete mit eigener Qualität, wenn es welche gibt. */
@@ -904,7 +986,13 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
         if (args.length == 2 && args[0].equals("render") && laeufe != null) {
             return laeufe.ordner().stream().filter(o -> o.startsWith(args[1])).toList();
         }
-        return args.length == 1 ? Stream.concat(BEFEHLE.stream(), Stream.of("layers", "check"))
+        if (args.length >= 2 && args[0].equals("set")) {
+            var w = args.length == 2 ? Stream.of("web", "mod")
+                    : args.length == 3 && args[1].equals("web") ? Stream.of("an", "aus", "port")
+                    : args.length == 3 && args[1].equals("mod") ? Stream.of("an", "aus") : Stream.<String>empty();
+            return w.filter(b -> b.startsWith(args[args.length - 1])).toList();
+        }
+        return args.length == 1 ? Stream.concat(BEFEHLE.stream(), Stream.of("layers", "check", "set"))
                 .filter(b -> b.startsWith(args[0])).toList() : List.of();
     }
 }

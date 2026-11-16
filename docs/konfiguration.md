@@ -12,7 +12,8 @@ code:
 # Konfiguration
 
 Das Plugin liest `plugins/HeroicMap/config.yml` beim Start des Servers. Wer
-sie ändert, startet den Server neu. Fehlt ihr nach einem Update ein neuer
+sie ändert, startet den Server neu. Webkarte, Port und die Karte für den
+Mod stellt auch `/heroicmap set` ein, siehe [Einstellen](einstellen.md). Fehlt ihr nach einem Update ein neuer
 Schlüssel, ergänzt das Plugin ihn, siehe „Nach einem Update“. Relative Pfade gelten ab dem Ordner des
 Servers. Fast jeder Schlüssel wird ein Schalter des Renderers, siehe
 [Schalter des Renderers](https://github.com/VonNekyia/heroic-map-renderer/blob/master/docs/benutzung/schalter.md).

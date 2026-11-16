@@ -30,6 +30,7 @@ ist die Entscheidung des Maintainers in heroic-map-renderer#153.
 | `compact` | Nachverdichten über alle Bäume, `--compact-tree`, siehe „Kompakt“ |
 | `status` | was läuft, seit wann, mit PID und letzter Zeile; dazu je Baum Dauer und Ausgang des letzten Aufrufs, siehe „Status“ |
 | `check` | die Ampeln: je Punkt, an dem die Karte hängen kann, eine Zeile mit Farbe und Grund, auch ohne Renderer, siehe [Ampeln](ampeln.md) |
+| `set …` | schreibt Webkarte, Port oder die Karte für den Mod in `config.yml`, gilt nach dem Neustart, siehe [Einstellen](einstellen.md) |
 | `cancel` | bricht den Lauf ab |
 | `layers` | lädt die Ebenen neu, auch ohne Renderer, siehe [Ebenen](ebenen.md) |
 

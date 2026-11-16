@@ -195,6 +195,18 @@ class AmpelnTest {
         assertTrue(Ampeln.portFrei("127.0.0.1:" + port));
     }
 
+    @Test
+    void der_vorschlag_ist_der_erste_freie_port_und_nie_der_des_spielservers() throws IOException {
+        try (var s = new ServerSocket(0, 1, InetAddress.getLoopbackAddress())) {
+            int belegt = s.getLocalPort();
+            int frei = Ampeln.freierPort("127.0.0.1:1", belegt, 25565);
+            assertTrue(frei > belegt && frei < belegt + 20, belegt + " ist belegt, vorgeschlagen " + frei);
+            assertTrue(Ampeln.portFrei("127.0.0.1:" + frei));
+            // Der Port des Spielservers fällt aus, auch wenn er sich gerade binden liesse.
+            assertNotEquals(frei, Ampeln.freierPort("127.0.0.1:1", frei, frei));
+        }
+    }
+
     private Konfiguration konf(Konfiguration.Webserver w) {
         return new Konfiguration(null, tmp.resolve("world"), tmp.resolve("tiles"), List.of(), List.of(), false, 1, 1, 2,
                 List.of(KARTE), new Konfiguration.Download(10, 5, 1, LocalTime.MIDNIGHT, 10, ""), w,
@@ -207,19 +219,26 @@ class AmpelnTest {
         Files.writeString(tmp.resolve("world/level.dat"), "");
         baum("2x1-se", "map.json");
         var aus = Ampeln.pruefe(new Lage(konf(web(false, "", "")), null, Map.of("2x1-se", "nichts zu zeichnen"), null, false, true,
-                false, false, 25565));
+                false, false, 25565, List.of()));
         assertEquals(List.of("Renderer", "Texturen", "Welt", "Platz", "Karte 2x1-se", "Webkarte", "Mod", "Mitspieler", "Updates"),
                 aus.stream().map(Ampeln.Ampel::name).toList());
+        // Was der Setzer schrieb, steht als letzte Zeile da, gelb, bis zum Neustart.
+        var wartet = Ampeln.pruefe(new Lage(konf(web(false, "", "")), null, Map.of(), null, false, true, false, false, 25565,
+                List.of("webserver.enabled: false → true", "webserver.listen: \"0.0.0.0:8080\" → \"0.0.0.0:8081\"")));
+        assertEquals("! Neustart: geändert, gilt nach dem Neustart des Servers: webserver.enabled: false → true; "
+                + "webserver.listen: \"0.0.0.0:8080\" → \"0.0.0.0:8081\"", wartet.getLast().zeile());
+        assertEquals(10, wartet.size());
         assertEquals("✔ Karte 2x1-se: gezeichnet, zuletzt: nichts zu zeichnen", aus.get(4).zeile());
         try (var s = new ServerSocket(0, 1, InetAddress.getLoopbackAddress())) {
             var w = web(true, "127.0.0.1:" + s.getLocalPort(), "https://karte.example.org");
             String belegt = "✖ Webkarte: Port " + s.getLocalPort() + " ist belegt: Ein anderes Programm lauscht dort";
-            var endete = new Lage(konf(w), null, Map.of(), "endete mit Code 1, Neustart in 10,0 s", false, true, false, false, 25565);
+            var endete = new Lage(konf(w), null, Map.of(), "endete mit Code 1, Neustart in 10,0 s", false, true, false, false, 25565,
+                    List.of());
             assertEquals(belegt, Ampeln.pruefe(endete).get(5).zeile());
             // Startet der eigene Server gerade, bindet die Prüfung nichts: Sonst nähme sie ihm den Port.
-            var startet = new Lage(konf(w), null, Map.of(), "startet", false, true, false, false, 25565);
+            var startet = new Lage(konf(w), null, Map.of(), "startet", false, true, false, false, 25565, List.of());
             assertEquals("! Webkarte: startet gerade", Ampeln.pruefe(startet).get(5).zeile());
-            var laeuft = new Lage(konf(w), null, Map.of(), "x", true, true, false, false, 25565);
+            var laeuft = new Lage(konf(w), null, Map.of(), "x", true, true, false, false, 25565, List.of());
             assertEquals("✔ Webkarte: läuft auf Port " + s.getLocalPort() + ", für Spieler https://karte.example.org",
                     Ampeln.pruefe(laeuft).get(5).zeile());
         }

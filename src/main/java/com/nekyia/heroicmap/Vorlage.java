@@ -29,7 +29,7 @@ final class Vorlage {
     private static final Pattern SCHLUESSEL = Pattern.compile(" *([A-Za-z0-9_-]+):(\\s.*)?");
 
     /** Zeile und Einrückung eines Schlüssels im Text. */
-    private record Stelle(int zeile, int einzug) {}
+    record Stelle(int zeile, int einzug) {}
 
     /** Ergänzt die Datei und schreibt sie nur, wenn etwas dazukam; erst daneben, dann umbenannt. */
     static Ergebnis ergaenze(Path datei, String vorlage) throws IOException, InvalidConfigurationException {
@@ -123,7 +123,7 @@ final class Vorlage {
      * Jeder Schlüssel mit Pfad, Zeile und Einrückung. Schlüssel in Einträgen einer Liste bekommen einen Pfad,
      * den es in YAML nicht gibt; das schadet nicht, denn eingefügt wird nur in Abschnitte.
      */
-    private static Map<String, Stelle> stellen(List<String> zeilen) {
+    static Map<String, Stelle> stellen(List<String> zeilen) {
         var raus = new LinkedHashMap<String, Stelle>();
         var einzuege = new ArrayList<Integer>();
         var namen = new ArrayList<String>();
