@@ -59,6 +59,7 @@ Das Zeichen steht immer vorn, damit die Zeile auch ohne Farbe lesbar ist.
 | Mod | `an: <baum> steht zum Download bereit` | ○ `aus: Kein Baum hat download, Spieler mit dem Mod bekommen keine Karte`; ! `an, aber <baum> ist noch nicht gezeichnet: /heroicmap render <baum>`; ✖ `an, aber webserver.enabled ist false: Ohne den Webserver gibt es keinen Download`; ✖ `an, aber die Webkarte läuft nicht: Ohne sie gibt es keinen Download`; ✖ `an, aber das Geheimnis der Token ist nicht lesbar: token.geheimnis im Ordner des Plugins` |
 | Mitspieler | `Simple Voice Chat läuft: Im Mod sieht ein Spieler, wer ihn hört` | ○ `aus: Ohne Simple Voice Chat sieht im Mod niemand andere Spieler` |
 | Updates | `alle <n> min` | ○ `aus: Die Karte bleibt stehen, bis jemand /heroicmap update ruft` |
+| Neustart | fehlt, solange nichts wartet | ! `geändert, gilt nach dem Neustart des Servers: …` mit jeder Änderung von `/heroicmap set` seit dem Start |
 
 - **Welt:** `level.dat` liegt in der Wurzel der Welt; gezählt werden die
   Dateien `.mca` der Dimension des Baums, an der Wurzel in beiden Ablagen,
@@ -76,6 +77,9 @@ Das Zeichen steht immer vorn, damit die Zeile auch ohne Farbe lesbar ist.
 - **Mod:** „gezeichnet“ heisst hier `map.json` und `manifest` im Ordner
   jedes Baums mit `download: true`, siehe [Download](download.md).
 - **Mitspieler:** siehe [Mitspieler](mitspieler.md), „Simple Voice Chat“.
+- **Neustart:** die letzte Zeile, nur wenn `/heroicmap set` etwas schrieb,
+  siehe [Einstellen](einstellen.md), „Nach dem Neustart“. Die übrigen
+  Ampeln zeigen, was läuft, nicht was in der Datei steht.
 
 ## Der Port
 
@@ -92,6 +96,8 @@ selbst, um zu sehen, ob er belegt ist (`Ampeln.portFrei`):
   einer IP, bleibt es beim Zustand aus dem Status; nur `localhost` zählt als
   der eigene Rechner.
 - **Der Port des Spielservers** ist rot, ohne Probe.
+- **`/heroicmap set web port`** prüft einen neuen Port auf dieselbe Weise
+  und nennt einen freien, siehe [Einstellen](einstellen.md), „Der Port“.
 
 ## Was die Ampeln nicht sehen
 

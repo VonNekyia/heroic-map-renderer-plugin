@@ -279,6 +279,19 @@ Plugin das seiner Plattform aus, siehe [Konfiguration](konfiguration.md),
   in fester Reihenfolge; die Probe am Port nur, wenn der eigene Server
   geendet ist, nicht wenn er startet oder läuft; welche Welt von Paper
   zur Welt aus der Config gehört, an Wurzel, Dimension und anderer Welt.
+  Dazu die Ampel „Neustart“ als letzte Zeile und der Vorschlag eines
+  freien Ports, nie des Ports des Spielservers.
+- **`SetzerTest`:** an einer Config voller Kommentare, mit vier Leerzeichen
+  eingerücktem Abschnitt und Kommentaren hinter den Werten: Webserver und
+  Port ändern genau ihre Zeile, der Port in jeder Schreibweise des Werts,
+  1024 und 65535 gehen, 1023 und 65536 nicht; „Mod an“ legt einen Baum an
+  oder nimmt einen, der taugt, und schaltet den Webserver ein, „aus“ gibt
+  die alte Datei Zeichen für Zeichen zurück; ungewohnte Einrückung der
+  Liste; Zeilenenden mit Wagenrücklauf; der Webserver geht nicht aus,
+  solange der Mod ihn braucht; Fluss, Anker, Verweise und `<<` lehnt er ab
+  und nennt die Zeilen für die Hand; die Datei wird nur geschrieben, wenn
+  die Konfiguration gültig bleibt; die Vorlage aus dem Jar bleibt nach
+  jedem Wunsch gültig für `Konfiguration.aus`.
 - **`KnoepfeTest`:** Label und Grenzen der Knöpfe, Anhängen, Zustand je
   Spieler und Objekt, vier je Objekt in der Reihenfolge des Anhängens,
   Anhang und Zustand zusammen, Löschen.

@@ -10,6 +10,7 @@ Links und die Hinweise aus `NOTICE` setzt
 ## 0.24.0
 
 - **`/heroicmap check`: traffic lights for the setup.** One line for each thing the map depends on, green, red, yellow or grey, with the reason in a sentence and the next command where there is one: renderer, textures, world, free space, each view, the web map and its port, the mod download, other players, updates. If the web server ended, the plugin tries the port itself and says whether another program is using it; it only binds on the server's own address, for a moment, and never looks beyond the machine. Whether the port is open from outside it cannot see. Works from the console and without a renderer, changes nothing and starts no run.
+- **`/heroicmap set`: change three settings without opening the file.** `set web an|aus` turns the web map on or off, `set web port <number>` changes its port, and `set mod an|aus` sets up or removes the map for the mod: it marks a view the mod can load, or adds one, and turns the web server on. The command edits only the lines it needs in `config.yml` and keeps every comment. It checks a new port first and suggests a free one. Where the file is written in a way it cannot edit safely, it changes nothing and prints the lines to enter by hand. **Changes take effect after a server restart;** until then `/heroicmap check` lists them.
 
 ## 0.23.0
 

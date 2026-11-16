@@ -44,11 +44,11 @@ final class Ampeln {
     /**
      * Was das Plugin gerade weiss: die Einstellungen, {@code ohneRenderer} mit dem Grund oder null, je Baum der Ausgang
      * seines letzten Laufs seit dem Start, der Zustand des Webservers oder null ohne ihn, ob er lauscht, ob das
-     * Geheimnis der Token zu lesen war, ob Simple Voice Chat läuft, ob der Autosave der Welt aus ist, und der Port
-     * des Spielservers.
+     * Geheimnis der Token zu lesen war, ob Simple Voice Chat läuft, ob der Autosave der Welt aus ist, der Port des
+     * Spielservers, und was seit dem Start in config.yml geändert wurde und erst nach einem Neustart gilt.
      */
     record Lage(Konfiguration konf, String ohneRenderer, Map<String, String> letzte, String webserver, boolean bereit,
-            boolean geheimnis, boolean simpleVoiceChat, boolean autosaveAus, int spielPort) {}
+            boolean geheimnis, boolean simpleVoiceChat, boolean autosaveAus, int spielPort, List<String> wartet) {}
 
     /** Alle Ampeln in fester Reihenfolge. Liest die Platte und bindet höchstens einmal probeweise einen Port. */
     static List<Ampel> pruefe(Lage l) {
@@ -68,6 +68,9 @@ final class Ampeln {
         aus.add(mod(k.baeume(), k.kacheln(), w.an(), l.bereit(), l.geheimnis()));
         aus.add(mitspieler(l.simpleVoiceChat()));
         aus.add(updates(k.updateMinuten()));
+        if (!l.wartet().isEmpty()) {
+            aus.add(neustart(l.wartet()));
+        }
         return List.copyOf(aus);
     }
 
@@ -249,6 +252,25 @@ final class Ampeln {
     static Ampel updates(int minuten) {
         return minuten > 0 ? new Ampel("Updates", Farbe.GRUEN, "alle " + minuten + " min")
                 : new Ampel("Updates", Farbe.GRAU, "aus: Die Karte bleibt stehen, bis jemand /heroicmap update ruft");
+    }
+
+    /** Was der Setzer seit dem Start schrieb; es gilt erst nach einem Neustart. Siehe docs/einstellen.md. */
+    static Ampel neustart(List<String> wartet) {
+        return new Ampel("Neustart", Farbe.GELB, "geändert, gilt nach dem Neustart des Servers: " + String.join("; ", wartet));
+    }
+
+    /**
+     * Der erste Port ab {@code ab}, der sich auf dem Host von {@code adresse} binden lässt und nicht der des
+     * Spielservers ist; -1, wenn unter den nächsten 20 keiner frei ist.
+     */
+    static int freierPort(String adresse, int ab, int spielPort) {
+        String host = adresse.substring(0, adresse.lastIndexOf(':') + 1);
+        for (int p = ab; p < ab + 20 && p <= 65535; p++) {
+            if (p != spielPort && portFrei(host + p)) {
+                return p;
+            }
+        }
+        return -1;
     }
 
     /**
