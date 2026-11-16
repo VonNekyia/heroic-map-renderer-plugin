@@ -9,6 +9,7 @@ import com.nekyia.heroicmap.api.Layer;
 import com.nekyia.heroicmap.api.MapButton;
 import com.nekyia.heroicmap.api.PlayerLayer;
 import com.nekyia.heroicmap.api.MapObject;
+import com.nekyia.heroicmap.api.Quality;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Arrays;
@@ -176,6 +177,16 @@ final class EbenenApi implements HeroicMapApi, Listener {
                 .sorted(Comparator.comparing(Ebene::id)).toList();
     }
 
+    /**
+     * Je Ebene der API, die es gerade gibt, ihre Regionen mit Stufe; dieselbe Liste, solange sich an der Ebene keine
+     * ändert. Siehe docs/qualitaet.md.
+     */
+    Map<String, List<Gebiete.Gebiet>> gebiete() {
+        var je = new TreeMap<String, List<Gebiete.Gebiet>>();
+        ebenen.values().forEach(e -> je.put(e.id, e.gebiete()));
+        return je;
+    }
+
     /** Die Bilder eines Besitzers, wie die Prüfung nach ihnen fragt. */
     private static Function<String, EbenenPruefung.Bild> aus(Map<String, byte[]> pool) {
         return p -> pool.containsKey(p) ? new EbenenPruefung.Bild(pool.get(p), null) : null;
@@ -217,6 +228,11 @@ final class EbenenApi implements HeroicMapApi, Listener {
         private final Map<String, Set<String>> bilderJeObjekt = new HashMap<>();
         /** Je id einer Nadel mit Kopf ihre Textur; den Namen des Kopfs setzt erst der Schnappschuss. */
         private final Map<String, String> texturen = new HashMap<>();
+        /** Je id einer Region ihre Stufe der Qualität; sie steht nicht im JSON der Ebene. Siehe docs/qualitaet.md. */
+        private final Map<String, Quality> stufen = new HashMap<>();
+        /** Die Regionen mit Stufe, wie {@link #gebiete} sie zuletzt gab, und ob sie neu zu bauen sind. */
+        private List<Gebiete.Gebiet> gebiete = List.of();
+        private boolean gebieteAlt;
         private int nadeln;
         private long bytes;
         private volatile boolean geloescht;
@@ -445,7 +461,26 @@ final class EbenenApi implements HeroicMapApi, Listener {
                 texturen.clear();
                 texturen.putAll(neueTexturen);
             }
+            // Auch bei gleicher Stufe: Die Vielecke können andere sein.
+            boolean hatte = stufen.remove(m.id()) != null;
+            if (m instanceof MapObject.Region r && r.quality() != null) {
+                stufen.put(m.id(), r.quality());
+            }
+            gebieteAlt |= hatte || stufen.containsKey(m.id());
             geaendert();
+        }
+
+        /** Die Regionen mit Stufe in der Dimension der Wurzel; neu gebaut nur, wenn sich eine geändert hat. */
+        private synchronized List<Gebiete.Gebiet> gebiete() {
+            if (gebieteAlt) {
+                gebieteAlt = false;
+                gebiete = stufen.entrySet().stream().filter(e -> {
+                    var d = objekte.get(e.getKey()).get("dimension");
+                    return (d == null ? EbenenSchreiber.OBERWELT : d.getAsString()).equals(dimension);
+                }).map(e -> new Gebiete.Gebiet(e.getKey(), e.getValue(), objekte.get(e.getKey()).getAsJsonArray("polygons")))
+                        .toList();
+            }
+            return gebiete;
         }
 
         /** Die Textur einer Nadel mit Kopf, oder null; wirft, wenn sie kein Hash einer Textur ist. */
@@ -537,6 +572,9 @@ final class EbenenApi implements HeroicMapApi, Listener {
                     if (textur(m) != null) {
                         throw new IllegalArgumentException("Objekt " + m.id() + ": eigene Objekte eines Spielers zeigen keine Köpfe");
                     }
+                    if (m instanceof MapObject.Region r && r.quality() != null) {
+                        throw new IllegalArgumentException("Objekt " + m.id() + ": eigene Objekte eines Spielers tragen keine Qualität");
+                    }
                     var pool = bilderVon();
                     synchronized (pool) {
                         var p = EbenenPruefung.objekt(j, entwuerfe.keySet(), permission != null, aus(pool));
@@ -625,6 +663,7 @@ final class EbenenApi implements HeroicMapApi, Listener {
                 bilderJeObjekt.remove(objektId);
                 texturen.remove(objektId);
             }
+            gebieteAlt |= stufen.remove(objektId) != null;
             if (alt != null) {
                 nadeln -= nadel(alt);
                 bytes -= groesse(alt);
@@ -640,6 +679,8 @@ final class EbenenApi implements HeroicMapApi, Listener {
                 bilderJeObjekt.clear();
                 texturen.clear();
             }
+            gebieteAlt |= !stufen.isEmpty();
+            stufen.clear();
             nadeln = 0;
             bytes = 0;
             geaendert();

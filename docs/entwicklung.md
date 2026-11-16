@@ -261,7 +261,17 @@ Plugin das seiner Plattform aus, siehe [Konfiguration](konfiguration.md),
   geteiltem Bild, Bilder je Besitzer,
   `permission`, Löschen und ein Plugin, das geht, Vorrang vor der Datei;
   `withHead` nur als Hash, 256 verschiedene mit Ersetzen und Entfernen,
-  nie bei einem Spieler, ohne Köpfe kein `head`.
+  nie bei einem Spieler, ohne Köpfe kein `head`; `withQuality` ändert weder
+  JSON noch `version` der Ebene, der Konstruktor von vor 0.23.0 bleibt, nie
+  bei einem Spieler.
+- **`GebieteTest`:** die Datei der Gebiete Zeichen für Zeichen, mit
+  Löchern und sortiert; keine Datei ohne Stufe; nur der Umriss schreibt
+  neu; andere Dimension; dieselben Listen ohne Änderung; Wegfallen nach
+  600 s und nicht nach 599 s, auch ohne Stufe, nach `clear` und mit der
+  Ebene; die Frist beginnt neu; nach einem Neustart bleibt die Datei, bis
+  die Ebene da ist, und fällt, wenn sie leer bleibt; ohne das Plugin
+  sofort weg; zu gross bleibt die alte; eine kaputte Datei wird ersetzt;
+  die Zeile im Status.
 - **`KnoepfeTest`:** Label und Grenzen der Knöpfe, Anhängen, Zustand je
   Spieler und Objekt, vier je Objekt in der Reihenfolge des Anhängens,
   Anhang und Zustand zusammen, Löschen.
