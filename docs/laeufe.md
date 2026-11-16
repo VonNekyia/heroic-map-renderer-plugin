@@ -287,6 +287,11 @@ Läuft seit 01:12:03: Voller Lauf, Baum 2x1-se, PID 4711. Basis: 200/17820 Kache
   fehlt, zeigt der Status roh. Unbekannte Felder übergeht er.
 - **Noch keine Meldung:** Dann zeigt der Status die letzte Zeile Text
   des laufenden Prozesses, etwa beim Nachverdichten, siehe „Kompakt“.
+- **Zweimal Vorlauf:** Ein Update mit `cinematic`, das im Rechteck um alle
+  Strahlen zeichnen muss, liest die Welt noch einmal. Der Status zeigt dann
+  nach `Vorlauf fertig` wieder `Vorlauf: …`. Wann das geschieht, steht im
+  Renderer unter
+  [Updates, „Der Weg des Schattens“](https://github.com/VonNekyia/heroic-map-renderer/blob/master/docs/benutzung/updates.md#der-weg-des-schattens).
 
 - **Wann:** wie lange der Aufruf her ist.
 - **Dauer:** vom Start des Prozesses bis zu seinem Ende, unter einer Minute
@@ -388,16 +393,26 @@ und in seiner Entscheidung 0093.
   für die grosse Welt hochgerechnet rund 12 CPU-Stunden, geteilt durch die
   Threads. So lange fallen die Updates aus, siehe „Zeitplan“. Mit
   `full-run-threads: 0` sind es alle Kerne, bei niedrigster Priorität; mit
-  einem Thread stünde die Karte einen halben Tag.
+  einem Thread stünde die Karte einen halben Tag. In einem Baum mit
+  `relief` packt der Aufruf seit Renderer 0.21.0 danach auch `relief/` und
+  `relief/rest/` und dauert um deren Kacheln länger.
 - **Abbrechen und fortsetzen:** `cancel` bricht ab wie jeden Lauf. Ein neuer
   `compact` setzt fort: Der Renderer erkennt an seinen Hashes, was schon
   kompakt ist, und kodiert nur den Rest; ein Aufruf auf einem fertigen Baum
   kostet rund 1 ms je Kachel. `map.json` trägt `"compact": true` schon vor
   der ersten Kachel, also packt jedes Update danach kompakt.
+- **Nach einem abgebrochenen Lauf:** Liegt im Baum `stand-neu.bin` oder
+  `gebiet-offen.bin`, packt der Aufruf wie sonst und endet als
+  „verdichtet“, legt aber keine Hashes ab. Das Log nennt es vorher mit
+  einer Zeile `Hashes:     keine neuen, solange … liegt`. Ein zweiter
+  `compact` kodierte dann dieselben Kacheln noch einmal; erst das nächste
+  Update baut die Eltern und legt die Hashes ab.
 - **Fortschritt:** `--compact-tree` meldet keinen Fortschritt als JSON. Nach
   jeder Stufe schreibt er eine Zeile wie `Zoom 10:     2304 neu, 0 schon
   kompakt, 0 übergangen, 0 nicht lesbar`; die letzte steht im Status. Die
-  Basis kommt zuerst und ist die grösste Stufe.
+  Basis kommt zuerst und ist die grösste Stufe. Mit `relief` steht vor den
+  Stufen von `relief/` und `relief/rest/` je eine Zeile `Schicht:` mit dem
+  Pfad; die Zeile `Verdichtet:` am Ende zählt alle drei Ordner zusammen.
 - **Ausgang:** „verdichtet“. Danach liest das Plugin das Manifest neu, wie
   nach jedem Lauf. Für `abdeckt_bis` zählt das Nachverdichten nicht, denn es
   liest die Welt nicht, siehe [Download](download.md), „Was die Kacheln
