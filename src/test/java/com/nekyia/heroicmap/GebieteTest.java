@@ -102,6 +102,17 @@ class GebieteTest {
         regionen().put(stadt("stadt-1", 100).withQuality(Quality.MAXIMAL));
         pruefe(T0.plusSeconds(1));
         assertEquals(mit(STADT.replace("good", "maximal")), inhalt());
+        regionen().put(stadt("stadt-1", 100).withQuality(Quality.MAXIMAL_COMPACT));
+        pruefe(T0.plusSeconds(2));
+        assertEquals(mit(STADT.replace("good", "maximal_compact")), inhalt());
+        assertEquals("Gebiete: 1 aus meinplugin:regionen (maximal_compact)", gebiete.zeile());
+    }
+
+    @Test
+    void die_stufen_heissen_in_der_datei_wie_der_renderer_sie_liest() {
+        // Die Namen und ihre Ordnung sind mit dem Renderer vereinbart: von den kleinsten Dateien zum besten Bild.
+        assertEquals(List.of("minimal", "small", "good", "maximal_compact", "maximal"),
+                java.util.Arrays.stream(Quality.values()).map(q -> q.name().toLowerCase(java.util.Locale.ROOT)).toList());
     }
 
     @Test

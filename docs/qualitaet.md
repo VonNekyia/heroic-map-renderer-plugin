@@ -27,10 +27,14 @@ Karte nichts.
 
 ## Stufen
 
-`Quality` der API: `MINIMAL`, `SMALL`, `GOOD`, `MAXIMAL`, von den kleinsten
-Dateien zum besten Bild. Die vier Stufen und ihre Namen hat der Maintainer
-am 16.11. entschieden, siehe im Renderer #421. Was hinter jeder Stufe
-packt, legt der Renderer fest. Wie ein Plugin eine Stufe setzt, steht in
+`Quality` der API: `MINIMAL`, `SMALL`, `GOOD`, `MAXIMAL_COMPACT`,
+`MAXIMAL`, von den kleinsten Dateien zum besten Bild; in der Datei klein
+geschrieben, also `maximal_compact`. Die Stufen und ihre Namen hat der
+Maintainer am 16.11. entschieden, siehe im Renderer #421: erst vier, am
+selben Tag `MAXIMAL_COMPACT` dazu, ab 0.24.0. `MAXIMAL_COMPACT` und
+`MAXIMAL` behalten jeden Pixel; kompakt heisst kleinere Dateien und
+längeres Packen. Was hinter jeder Stufe packt, legt der Renderer fest. Wie
+ein Plugin eine Stufe setzt, steht in
 [API für andere Plugins](api.md), „Qualität je Region“.
 
 ## Was zählt
