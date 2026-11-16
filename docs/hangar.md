@@ -144,6 +144,7 @@ The documentation is in German.
 | `/heroicmap update` | render what changed in every view, now |
 | `/heroicmap compact` | pack the existing views smaller |
 | `/heroicmap status` | what runs, since when, and how the last run of each view ended |
+| `/heroicmap check` | a traffic light for each thing the map depends on, with the reason |
 | `/heroicmap cancel` | stop the current run |
 | `/heroicmap layers` | reload the layer files |
 | `/karte anmelden` | a link to log in on the web map, for action layers and buttons |

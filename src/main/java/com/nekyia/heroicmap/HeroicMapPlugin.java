@@ -31,6 +31,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
+import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
 import org.bstats.bukkit.Metrics;
 import org.bukkit.command.Command;
@@ -102,6 +103,12 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
     private final Map<UUID, Long> letzteAnmeldung = new HashMap<>();
     /** Warum das Plugin ohne Renderer bleibt; null mit Renderer. Jeder Befehl nennt es. */
     private String ohneRenderer;
+    /** Die Einstellungen, wie sie beim Start gelesen wurden; für die Ampeln. */
+    private Konfiguration einstellungen;
+    /** Ob das Geheimnis der Token zu lesen war; false nur nach einem Fehler beim Start. */
+    private boolean geheimnisLesbar = true;
+    private static final Map<Ampeln.Farbe, NamedTextColor> FARBEN = Map.of(Ampeln.Farbe.GRUEN, NamedTextColor.GREEN,
+            Ampeln.Farbe.ROT, NamedTextColor.RED, Ampeln.Farbe.GELB, NamedTextColor.YELLOW, Ampeln.Farbe.GRAU, NamedTextColor.GRAY);
 
     @Override
     public void onEnable() {
@@ -138,6 +145,7 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
             getServer().getMessenger().registerIncomingPluginChannel(this, Proxyname.KANAL, this);
         }
         kartenKonf = konf.karte();
+        einstellungen = konf;
         getServer().getPluginManager().registerEvents(this, this);
         // Ebenen brauchen keinen Renderer; geladen wird ausserhalb des Hauptthreads. Siehe docs/ebenen.md.
         Path ebenenOrdner = getDataFolder().toPath().resolve("ebenen");
@@ -201,6 +209,7 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
             getLogger().log(Level.SEVERE, ohneRenderer, e);
             return;
         }
+        einstellungen = konf;
         laeufe = new Laeufe(konf, getLogger(), getDataFolder().toPath());
         laeufe.raeumeAuf();
         laeufe.markiere();
@@ -214,7 +223,7 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
             ebenen.nachEntwuerfen(banner::bestelle);
         }
         for (var w : getServer().getWorlds()) {
-            if (!w.isAutoSave() && w.getWorldFolder().toPath().toAbsolutePath().normalize().equals(konf.welt().normalize())) {
+            if (!w.isAutoSave() && Ampeln.istWelt(w.getWorldFolder().toPath(), konf.welt())) {
                 getLogger().warning("Der Autosave der Welt " + w.getName() + " ist aus. Änderungen kommen erst beim "
                         + "Entladen oder Stoppen auf die Platte und erst dann auf die Karte.");
             }
@@ -236,6 +245,7 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
             } catch (IOException e) {
                 getLogger().log(Level.SEVERE, "Geheimnis für die Token nicht gelesen, kein Download und keine Anmeldung", e);
                 geheimnisDatei = null;
+                geheimnisLesbar = false;
             }
         }
         if (download && g != null) {
@@ -709,6 +719,10 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
             });
             return true;
         }
+        if (args[0].equals("check")) {
+            pruefe(sender);
+            return true;
+        }
         if (ohneRenderer != null && BEFEHLE.contains(args[0])) {
             sender.sendMessage(ohneRenderer + (args[0].equals("status") ? "\n" + ebenenStatus() : ""));
             return true;
@@ -726,6 +740,24 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
         }
         sender.sendMessage(antwort);
         return true;
+    }
+
+    /**
+     * /heroicmap check: die Ampeln als Text, auch ohne Renderer. Was Paper weiss, liest der Hauptthread; Platte und
+     * Port prüft es ausserhalb. Siehe docs/ampeln.md.
+     */
+    private void pruefe(CommandSender sender) {
+        var k = einstellungen;
+        var w = webserver;
+        boolean autosaveAus = getServer().getWorlds().stream()
+                .anyMatch(welt -> !welt.isAutoSave() && Ampeln.istWelt(welt.getWorldFolder().toPath(), k.welt()));
+        var lage = new Ampeln.Lage(k, ohneRenderer, laeufe == null ? Map.of() : laeufe.ausgaenge(), w == null ? null : w.zustand(),
+                w != null && w.bereit(), geheimnisLesbar, simpleVoiceChat, autosaveAus, getServer().getPort());
+        getServer().getAsyncScheduler().runNow(this, t -> {
+            var ampeln = Ampeln.pruefe(lage);
+            getServer().getGlobalRegionScheduler().execute(this,
+                    () -> ampeln.forEach(a -> sender.sendMessage(Component.text(a.zeile(), FARBEN.get(a.farbe())))));
+        });
     }
 
     /** Die Zeile der Ebenen, darunter die der Gebiete mit eigener Qualität, wenn es welche gibt. */
@@ -872,7 +904,7 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
         if (args.length == 2 && args[0].equals("render") && laeufe != null) {
             return laeufe.ordner().stream().filter(o -> o.startsWith(args[1])).toList();
         }
-        return args.length == 1 ? Stream.concat(BEFEHLE.stream(), Stream.of("layers"))
+        return args.length == 1 ? Stream.concat(BEFEHLE.stream(), Stream.of("layers", "check"))
                 .filter(b -> b.startsWith(args[0])).toList() : List.of();
     }
 }
