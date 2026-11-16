@@ -271,7 +271,7 @@ Plugin das seiner Plattform aus, siehe [Konfiguration](konfiguration.md),
   Ebene; die Frist beginnt neu; nach einem Neustart bleibt die Datei, bis
   die Ebene da ist, und fällt, wenn sie leer bleibt; ohne das Plugin
   sofort weg; zu gross bleibt die alte; eine kaputte Datei wird ersetzt;
-  die Zeile im Status.
+  die Zeile im Status; die Namen der Stufen in der Datei und ihre Ordnung.
 - **`AmpelnTest`:** je Ampel jede Farbe mit dem Wortlaut ihrer Zeile;
   die Welt in beiden Ablagen und als Dimension; der Platz bei 5 GB und
   darunter und an einer Datei statt eines Ordners; ein Port, auf dem
