@@ -223,7 +223,7 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
             ebenen.nachEntwuerfen(banner::bestelle);
         }
         for (var w : getServer().getWorlds()) {
-            if (!w.isAutoSave() && w.getWorldFolder().toPath().toAbsolutePath().normalize().equals(konf.welt().normalize())) {
+            if (!w.isAutoSave() && Ampeln.istWelt(w.getWorldFolder().toPath(), konf.welt())) {
                 getLogger().warning("Der Autosave der Welt " + w.getName() + " ist aus. Änderungen kommen erst beim "
                         + "Entladen oder Stoppen auf die Platte und erst dann auf die Karte.");
             }
@@ -749,8 +749,8 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
     private void pruefe(CommandSender sender) {
         var k = einstellungen;
         var w = webserver;
-        boolean autosaveAus = getServer().getWorlds().stream().anyMatch(welt -> !welt.isAutoSave()
-                && welt.getWorldFolder().toPath().toAbsolutePath().normalize().equals(k.welt().normalize()));
+        boolean autosaveAus = getServer().getWorlds().stream()
+                .anyMatch(welt -> !welt.isAutoSave() && Ampeln.istWelt(welt.getWorldFolder().toPath(), k.welt()));
         var lage = new Ampeln.Lage(k, ohneRenderer, laeufe == null ? Map.of() : laeufe.ausgaenge(), w == null ? null : w.zustand(),
                 w != null && w.bereit(), geheimnisLesbar, simpleVoiceChat, autosaveAus, getServer().getPort());
         getServer().getAsyncScheduler().runNow(this, t -> {

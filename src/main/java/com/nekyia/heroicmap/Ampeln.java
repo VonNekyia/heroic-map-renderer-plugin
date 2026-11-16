@@ -129,6 +129,16 @@ final class Ampeln {
                 : new Ampel("Welt", Farbe.GRUEN, "gefunden, " + (regionen == 1 ? "1 Region" : regionen + " Regionen"));
     }
 
+    /**
+     * Ob {@code ordner}, der Ordner einer Welt von Paper, zur Welt aus der Config gehört: Er ist sie selbst oder ihre
+     * Wurzel, wenn die Config eine Dimension darunter nennt. Für den Autosave, den Paper je Welt führt.
+     */
+    static boolean istWelt(Path ordner, Path welt) {
+        Path o = ordner.toAbsolutePath().normalize();
+        Path w = welt.toAbsolutePath().normalize();
+        return o.equals(w) || o.equals(Laeufe.wurzel(w));
+    }
+
     /** Der freie Platz unter dem Ordner der Kacheln, oder dem nächsten Ordner darüber, den es gibt. */
     static Ampel platz(Path kacheln) {
         Path da = kacheln.toAbsolutePath();

@@ -86,6 +86,20 @@ class AmpelnTest {
     }
 
     @Test
+    void der_autosave_gilt_der_welt_aus_der_config_auch_wenn_sie_eine_dimension_nennt() {
+        Path wurzel = tmp.resolve("world");
+        Path nether = wurzel.resolve("dimensions/minecraft/the_nether");
+        assertTrue(Ampeln.istWelt(wurzel, wurzel), "die Weltwurzel");
+        assertTrue(Ampeln.istWelt(wurzel, nether), "die Config nennt eine Dimension darunter, Paper die Wurzel");
+        assertTrue(Ampeln.istWelt(nether, nether), "Paper nennt den Ordner der Dimension selbst");
+        assertTrue(Ampeln.istWelt(wurzel.resolve("../world/."), nether), "nicht normalisiert");
+        assertFalse(Ampeln.istWelt(tmp.resolve("andere"), wurzel), "eine andere Welt");
+        assertFalse(Ampeln.istWelt(tmp.resolve("andere"), nether), "eine andere Welt");
+        assertFalse(Ampeln.istWelt(nether, wurzel), "eine Dimension ist nicht die Wurzel");
+        assertFalse(Ampeln.istWelt(tmp, wurzel), "der Ordner darüber");
+    }
+
+    @Test
     void platz() throws IOException {
         assertEquals("✔ Platz: 5 GB frei für die Kacheln", Ampeln.platz(5_000_000_000L).zeile());
         assertEquals("! Platz: nur noch 4 GB frei für die Kacheln", Ampeln.platz(4_999_999_999L).zeile());

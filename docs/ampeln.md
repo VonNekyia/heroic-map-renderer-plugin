@@ -62,7 +62,10 @@ Das Zeichen steht immer vorn, damit die Zeile auch ohne Farbe lesbar ist.
 
 - **Welt:** `level.dat` liegt in der Wurzel der Welt; gezählt werden die
   Dateien `.mca` der Dimension des Baums, an der Wurzel in beiden Ablagen,
-  siehe [Läufe](laeufe.md), „Zeitplan“.
+  siehe [Läufe](laeufe.md), „Zeitplan“. Der Autosave gilt der Welt von
+  Paper, deren Ordner `world` aus der Config ist oder dessen Wurzel, wenn
+  `world` eine Dimension darunter nennt (`Ampeln.istWelt`); dieselbe
+  Prüfung nutzt die Warnung beim Start.
 - **Platz:** der freie Platz unter `tiles`, oder unter dem nächsten Ordner
   darüber, den es gibt. Wie viel ein Lauf braucht, weiss die Ampel nicht.
 - **Karte:** „gezeichnet“ heisst, im Ordner des Baums liegt `map.json`.

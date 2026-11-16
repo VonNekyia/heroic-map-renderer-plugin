@@ -277,7 +277,8 @@ Plugin das seiner Plattform aus, siehe [Konfiguration](konfiguration.md),
   darunter und an einer Datei statt eines Ordners; ein Port, auf dem
   jemand lauscht, ist belegt, ein Name wird nicht aufgelöst; alle Ampeln
   in fester Reihenfolge; die Probe am Port nur, wenn der eigene Server
-  geendet ist, nicht wenn er startet oder läuft.
+  geendet ist, nicht wenn er startet oder läuft; welche Welt von Paper
+  zur Welt aus der Config gehört, an Wurzel, Dimension und anderer Welt.
 - **`KnoepfeTest`:** Label und Grenzen der Knöpfe, Anhängen, Zustand je
   Spieler und Objekt, vier je Objekt in der Reihenfolge des Anhängens,
   Anhang und Zustand zusammen, Löschen.
