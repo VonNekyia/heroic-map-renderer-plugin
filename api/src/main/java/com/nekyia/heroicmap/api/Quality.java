@@ -6,9 +6,8 @@ package com.nekyia.heroicmap.api;
  * be added: a {@code switch} over all of them is not stable.
  */
 public enum Quality {
-    MINIMUM,
+    MINIMAL,
     SMALL,
-    MEDIUM,
     GOOD,
-    EXTREME
+    MAXIMAL
 }

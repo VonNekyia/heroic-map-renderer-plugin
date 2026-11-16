@@ -99,9 +99,9 @@ class GebieteTest {
         assertEquals(mit(STADT), inhalt());
         assertEquals("Gebiete: 1 aus meinplugin:regionen (good)", gebiete.zeile());
         // Eine andere Stufe gilt ebenso sofort.
-        regionen().put(stadt("stadt-1", 100).withQuality(Quality.EXTREME));
+        regionen().put(stadt("stadt-1", 100).withQuality(Quality.MAXIMAL));
         pruefe(T0.plusSeconds(1));
-        assertEquals(mit(STADT.replace("good", "extreme")), inhalt());
+        assertEquals(mit(STADT.replace("good", "maximal")), inhalt());
     }
 
     @Test
@@ -116,16 +116,16 @@ class GebieteTest {
     void loecher_stehen_in_der_datei_und_nach_id_sortiert() throws IOException {
         var ring = List.of(new Point(0, 0), new Point(40, 0), new Point(40, 40));
         var loch = List.of(new Point(10, 5), new Point(20, 5), new Point(20, 15));
-        regionen().put(Region.of("b", List.of(new Polygon(ring, List.of(loch)))).withQuality(Quality.MINIMUM));
+        regionen().put(Region.of("b", List.of(new Polygon(ring, List.of(loch)))).withQuality(Quality.MINIMAL));
         regionen().put(stadt("a", 100).withQuality(Quality.SMALL));
-        api.layer("MeinPlugin", "andere").put(stadt("z", 100).withQuality(Quality.MEDIUM));
+        api.layer("MeinPlugin", "andere").put(stadt("z", 100).withQuality(Quality.MAXIMAL));
         pruefe(T0);
         String a = STADT.replace("stadt-1", "a").replace("good", "small");
-        String b = "{\"id\":\"meinplugin:regionen/b\",\"quality\":\"minimum\",\"polygons\":[{\"outer\":[[0.0,0.0],[40.0,0.0],[40.0,40.0]],"
+        String b = "{\"id\":\"meinplugin:regionen/b\",\"quality\":\"minimal\",\"polygons\":[{\"outer\":[[0.0,0.0],[40.0,0.0],[40.0,40.0]],"
                 + "\"holes\":[[[10.0,5.0],[20.0,5.0],[20.0,15.0]]]}]}";
-        String z = STADT.replace("regionen/stadt-1", "andere/z").replace("good", "medium");
+        String z = STADT.replace("regionen/stadt-1", "andere/z").replace("good", "maximal");
         assertEquals(mit(z, a, b), inhalt());
-        assertEquals("Gebiete: 1 aus meinplugin:andere (medium); 2 aus meinplugin:regionen (minimum, small)", gebiete.zeile());
+        assertEquals("Gebiete: 1 aus meinplugin:andere (maximal); 2 aus meinplugin:regionen (minimal, small)", gebiete.zeile());
     }
 
     @Test
@@ -259,11 +259,11 @@ class GebieteTest {
     @Test
     void ohne_das_plugin_fallen_seine_gebiete_weg() throws IOException {
         regionen().put(stadt("stadt-1", 100).withQuality(Quality.GOOD));
-        api.layer("Anderes", "zonen").put(stadt("zone", 500).withQuality(Quality.EXTREME));
+        api.layer("Anderes", "zonen").put(stadt("zone", 500).withQuality(Quality.MAXIMAL));
         pruefe(T0);
         neustart();
         gebiete.pruefe(api.gebiete(), Set.of("anderes", "heroicmap"), T0.plusSeconds(100));
-        assertEquals(mit(STADT.replace("meinplugin:regionen/stadt-1", "anderes:zonen/zone").replace("good", "extreme")
+        assertEquals(mit(STADT.replace("meinplugin:regionen/stadt-1", "anderes:zonen/zone").replace("good", "maximal")
                 .replace("[100.0,", "[500.0,").replace("[160.0,", "[560.0,")), inhalt());
         assertTrue(log.contains("Qualität: meinplugin ist nicht mehr installiert, seine Gebiete fallen weg: 1"), log.toString());
     }

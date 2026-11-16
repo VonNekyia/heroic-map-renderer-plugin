@@ -9,7 +9,7 @@ Links und die Hinweise aus `NOTICE` setzt
 
 ## 0.23.0
 
-- **API: a region can ask for better tiles.** `Region.withQuality(Quality.GOOD)` asks the map to pack the tiles under a region at least that well, for example a town better than the wilderness. Only the outline counts; the layer keeps its version, and neither the web map nor the mod load anything again. HeroicMap writes the areas to `plugins/HeroicMap/qualitaet/gebiete.json` and `/heroicmap status` lists them. The file is also the memory across restarts: an area that disappears is only dropped after ten minutes, so an update right after a restart does not redraw towns twice. **Not used by the renderer yet:** until a renderer with quality levels is inside, a quality changes nothing on the map. Plugins built against the API of 0.22 keep working.
+- **API: a region can ask for better tiles.** `Region.withQuality(Quality.GOOD)` asks the map to pack the tiles under a region at least that well, for example a town better than the wilderness. There are four levels, from the smallest files to the best picture: `MINIMAL`, `SMALL`, `GOOD` and `MAXIMAL`. Only the outline counts; the layer keeps its version, and neither the web map nor the mod load anything again. HeroicMap writes the areas to `plugins/HeroicMap/qualitaet/gebiete.json` and `/heroicmap status` lists them. The file is also the memory across restarts: an area that disappears is only dropped after ten minutes, so an update right after a restart does not redraw towns twice. **Not used by the renderer yet:** until a renderer with quality levels is inside, a quality changes nothing on the map. Plugins built against the API of 0.22 keep working.
 
 ## 0.22.2
 

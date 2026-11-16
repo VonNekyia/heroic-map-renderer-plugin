@@ -29,6 +29,9 @@ angenommen vom Reviewer am 15.11.
   ohne Stufe wie jedes optionale Feld der API. Ein Plugin, das seine
   Regionen schon zeigt, setzt eine Zeile dazu und pflegt weiter nur `put`
   und `remove`.
+- **Vier Stufen:** `MINIMAL`, `SMALL`, `GOOD`, `MAXIMAL`, in der Datei
+  klein geschrieben. So vom Maintainer am 16.11. entschieden; der erste
+  Stand dieser PR hatte fünf. Was dahinter packt, legt der Renderer fest.
 - **Kein Feld des Formats der Ebenen.** Das Plugin schreibt die Stufe nicht
   nach `layers/` und nicht an den Mod, und die `version` der Ebene rechnet
   ohne sie. Eine andere Stufe lädt bei keinem Betrachter etwas neu.

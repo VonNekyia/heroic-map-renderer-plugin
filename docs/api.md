@@ -283,8 +283,8 @@ regionen.put(MapObject.Region.of("stadt-1", vielecke)
         .withQuality(Quality.GOOD));
 ```
 
-- **`Quality`:** `MINIMUM`, `SMALL`, `MEDIUM`, `GOOD`, `EXTREME`, von den
-  kleinsten Dateien zum besten Bild. Weitere Stufen können dazukommen; ein
+- **`Quality`:** `MINIMAL`, `SMALL`, `GOOD`, `MAXIMAL`, von den kleinsten
+  Dateien zum besten Bild. Weitere Stufen können dazukommen; ein
   erschöpfender `switch` darüber ist nicht stabil, siehe „Versionierung“.
 - **Setzen, ändern, zurücknehmen** mit `put`: Die Region mit anderer Stufe
   ersetzt die alte, `withQuality(null)` oder `remove` nimmt die Stufe

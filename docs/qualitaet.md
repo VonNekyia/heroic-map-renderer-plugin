@@ -27,9 +27,10 @@ Karte nichts.
 
 ## Stufen
 
-`Quality` der API: `MINIMUM`, `SMALL`, `MEDIUM`, `GOOD`, `EXTREME`, von den
-kleinsten Dateien zum besten Bild. Was hinter jeder Stufe packt, legt der
-Renderer fest. Wie ein Plugin eine Stufe setzt, steht in
+`Quality` der API: `MINIMAL`, `SMALL`, `GOOD`, `MAXIMAL`, von den kleinsten
+Dateien zum besten Bild. Die vier Stufen und ihre Namen hat der Maintainer
+am 16.11. entschieden, siehe im Renderer #421. Was hinter jeder Stufe
+packt, legt der Renderer fest. Wie ein Plugin eine Stufe setzt, steht in
 [API für andere Plugins](api.md), „Qualität je Region“.
 
 ## Was zählt
@@ -111,7 +112,7 @@ ihre Zahl und ihre Stufen:
 ```
 Gebiete: 212 aus meinplugin:regionen (good)
 Gebiete: 212 aus meinplugin:regionen (good), wartet auf die Ebene
-Gebiete: 3 aus anderes:zonen (extreme, good); 212 aus meinplugin:regionen (good)
+Gebiete: 3 aus anderes:zonen (good, maximal); 212 aus meinplugin:regionen (good)
 ```
 
 Ohne Gebiete fehlt die Zeile. Ist die Datei zu gross, hängt daran
