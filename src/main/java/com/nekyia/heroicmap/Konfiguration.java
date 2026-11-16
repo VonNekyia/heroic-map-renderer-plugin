@@ -400,6 +400,15 @@ record Konfiguration(
                 c.getBoolean("renderer.nexo"));
     }
 
+    /**
+     * Der Ordner, in den zwei Bäume zeichnen würden, oder null. Der Ordner nennt weder scale noch download; zwei Bäume
+     * mit derselben Kamera und Richtung träfen sich dort. Siehe docs/einstellen.md, „Der Setzer“.
+     */
+    String doppelterOrdner() {
+        var gesehen = new java.util.HashSet<String>();
+        return baeume.stream().map(Baum::ordner).filter(o -> !gesehen.add(o)).findFirst().orElse(null);
+    }
+
     /** Dieselbe Konfiguration mit diesem Binär. */
     Konfiguration mitRenderer(Path binaer) {
         return new Konfiguration(binaer, welt, kacheln, assets, daten, grafikkarte, threads, vollThreads, updateMinuten,

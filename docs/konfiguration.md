@@ -129,6 +129,10 @@ was er prüft, steht in der Doku des Renderers,
 [Assets](https://github.com/VonNekyia/heroic-map-renderer/blob/master/docs/benutzung/assets.md),
 „Von Mojang laden“; warum so, in seiner Entscheidung 0086.
 
+- **Wo:** in `config.yml`, oder im Dialog von `/heroicmap setup`, dort mit
+  dem vollen Text und eigener Wahl, siehe [Einrichten](einrichten.md),
+  „Texturen“. Der Dialog schreibt dieselbe Zeile und nennt im Log, wer
+  zugestimmt hat und wann.
 - **Die Zustimmung:** Das Jar gehört Mojang und darf nicht weitergegeben
   werden. Mit `true` bestätigt der Betreiber, dass er Minecraft: Java
   Edition besitzt, und nimmt die Minecraft-EULA an. `eula=true` des Servers

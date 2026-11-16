@@ -55,6 +55,8 @@ final class Laeufe {
     private static final String NICHTS = "nichts zu zeichnen";
     private static final String GEZEICHNET = "Kacheln gezeichnet";
     private static final String VERDICHTET = "verdichtet";
+    /** {@code GESCHAETZT}: --estimate, nichts gezeichnet. Siehe docs/einrichten.md, „Schätzen“. */
+    private static final String GESCHAETZT = "geschätzt";
     private static final String BODEN = "Boden geschrieben";
     /** Die Zeile, mit der der Renderer ein Update ohne Änderung meldet. */
     private static final Pattern NICHTS_ZEILE = Pattern.compile("Update:\\s+nichts zu zeichnen");
@@ -84,6 +86,9 @@ final class Laeufe {
     private final List<Runnable> nachLauf = new CopyOnWriteArrayList<>();
 
     private volatile String letzteZeile = "";
+    /** Die Zeile estimate des laufenden Aufrufs, und wer sie am Ende des Laufs bekommt; beides null ohne Schätzung. */
+    private volatile String schaetzung;
+    private java.util.function.BiConsumer<String, String> nachSchaetzung;
     private volatile String fortschritt = "";
     /** Die Zeile „Error: …“ des laufenden Prozesses ohne das Wort davor; null ohne. */
     private volatile String fehler;
@@ -159,6 +164,27 @@ final class Laeufe {
             return "Kein Baum zu rendern.";
         }
         return starte("Update", auftraege);
+    }
+
+    /**
+     * Schätzt einen vollen Lauf des Baums mit --estimate, eingereiht wie ein Lauf und darum nie neben einem. Gibt
+     * null, wenn die Schätzung läuft, sonst den Grund. {@code fertig} bekommt am Ende die Zeile estimate und den
+     * Ausgang; die Zeile ist null, wenn es keine gab. Siehe docs/einrichten.md, „Schätzen“.
+     */
+    String schaetze(Konfiguration.Baum baum, java.util.function.BiConsumer<String, String> fertig) {
+        var b = new ArrayList<>(befehl(baum, Art.VOLL, false));
+        b.add("--estimate");
+        return schaetze(baum.ordner(), b, fertig);
+    }
+
+    /** Wie oben mit dem fertigen Aufruf. */
+    synchronized String schaetze(String ordner, List<String> befehl, java.util.function.BiConsumer<String, String> fertig) {
+        if (faden != null) {
+            return "Es läuft schon: " + laeuft;
+        }
+        nachSchaetzung = fertig;
+        starte(SCHAETZUNG, List.of(new Auftrag(ordner, befehl, false)));
+        return null;
     }
 
     /** Arbeitet die Aufträge nacheinander in einem eigenen Faden ab. */
@@ -510,6 +536,11 @@ final class Laeufe {
         return text.toString();
     }
 
+    /** Der Name des Laufs, der nur schätzt. */
+    private static final String SCHAETZUNG = "Schätzung";
+    /** Was der Status für die Zeile estimate zeigt. */
+    static final String SCHAETZUNG_FERTIG = "Schätzung fertig";
+
     /** Eine Dauer für den Status: unter einer Minute mit einer Nachkommastelle, sonst in min oder h. */
     static String dauer(Duration d) {
         long s = d.toSeconds();
@@ -617,6 +648,7 @@ final class Laeufe {
 
     private void arbeite(String name, List<Auftrag> auftraege) {
         List<String> ergebnisse = new ArrayList<>();
+        String letzterAusgang = ABGEBROCHEN;
         try {
             // Erst hier, im Faden des Laufs: Auspacken dauert. Ohne Basis aus renderer.assets oder dem Client-Jar
             // zeichnete der Renderer nur das Pack, statt nach der Zustimmung zu fragen. Siehe docs/konfiguration.md, „Nexo“.
@@ -639,6 +671,11 @@ final class Laeufe {
                 if (verdichten && ausgang.equals(GEZEICHNET)) {
                     ausgang = VERDICHTET;
                 }
+                // Wie der Boden: kein Ausgang, der zählt oder die Hooks ruft.
+                if (name.equals(SCHAETZUNG) && ausgang.equals(GEZEICHNET)) {
+                    ausgang = GESCHAETZT;
+                }
+                letzterAusgang = ausgang;
                 // Kein Ausgang, der zählt oder die Hooks ruft: Keine Kachel ist neu.
                 if (a.befehl().contains("--heights") && ausgang.equals(GEZEICHNET)) {
                     ausgang = BODEN;
@@ -664,10 +701,16 @@ final class Laeufe {
             }
         } finally {
             String ende = name + " bis " + LocalTime.now().truncatedTo(ChronoUnit.SECONDS) + ": " + String.join(", ", ergebnisse);
+            java.util.function.BiConsumer<String, String> danach;
             synchronized (this) {
                 faden = null;
                 prozess = null;
                 laeuft = null;
+                danach = nachSchaetzung;
+                nachSchaetzung = null;
+            }
+            if (danach != null) {
+                danach.accept(schaetzung, letzterAusgang);
             }
             if (!ergebnisse.stream().allMatch(e -> e.endsWith(" " + NICHTS))) {
                 log.info(ende);
@@ -768,10 +811,14 @@ final class Laeufe {
         fortschritt = "";
         letzteZeile = "";
         fehler = null;
+        schaetzung = null;
         try (var r = p.inputReader(StandardCharsets.UTF_8)) {
             for (String z; (z = r.readLine()) != null; ) {
                 String f = z.startsWith("{") ? beschreibe(z) : null;
                 if (f != null) {
+                    if (f.equals(SCHAETZUNG_FERTIG)) {
+                        schaetzung = z;
+                    }
                     fortschritt = f;
                 } else {
                     if (z.startsWith("Error: ")) {
@@ -833,6 +880,7 @@ final class Laeufe {
                 case "level" -> "Stufe " + j.get("level").getAsInt() + ": " + kacheln(j);
                 case "pyramid" -> "Pyramide: Stufe " + j.get("level").getAsInt() + ", " + j.get("tiles").getAsLong() + " Kacheln";
                 case "done" -> "fertig nach " + dauer(Duration.ofMillis(Math.round(j.get("s").getAsDouble() * 1000)));
+                case "estimate" -> SCHAETZUNG_FERTIG;
                 default -> zeile;
             };
         } catch (RuntimeException e) {

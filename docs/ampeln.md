@@ -16,7 +16,8 @@ mit Farbe und einem Satz zum Grund. Der Befehl ist für Betreiber ohne
 technische Kenntnisse gedacht: Er sagt, was fehlt, und wo es einen gibt,
 den nächsten Befehl. Er ändert nichts und startet keinen Lauf. Die Ampeln
 sind der erste Teil der geführten Einrichtung, die der Maintainer am 16.11.
-bestellt hat; der Dialog im Spiel baut auf ihnen auf.
+bestellt hat; der Dialog `/heroicmap setup` zeigt sie als seine Übersicht,
+siehe [Einrichten](einrichten.md).
 
 ```
 ✔ Renderer: bereit
