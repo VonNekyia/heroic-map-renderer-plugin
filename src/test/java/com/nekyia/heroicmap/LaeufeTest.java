@@ -88,8 +88,9 @@ class LaeufeTest {
         l.nachLauf(() -> hook.set(true));
         var fertig = new java.util.concurrent.CompletableFuture<String[]>();
         assertEquals(null, l.schaetze("2x1-se", falscher("schaetzung"), (zeile, ausgang) -> fertig.complete(new String[] {zeile, ausgang})));
-        assertEquals("Es läuft schon: Schätzung", l.schaetze("x", falscher("schaetzung"), (zeile, ausgang) -> hook.set(true)),
-                "eingereiht wie ein Lauf, nie neben einem");
+        // Der Faden des Laufs nennt bald auch den Baum; beides heisst: eingereiht wie ein Lauf, nie neben einem.
+        String zweiter = l.schaetze("x", falscher("schaetzung"), (zeile, ausgang) -> hook.set(true));
+        assertTrue(String.valueOf(zweiter).startsWith("Es läuft schon: Schätzung"), zweiter);
         var e = fertig.get(30, java.util.concurrent.TimeUnit.SECONDS);
         assertTrue(e[0].startsWith("{\"phase\":\"estimate\",\"chunks\":2398"), e[0]);
         assertEquals("geschätzt", e[1]);
