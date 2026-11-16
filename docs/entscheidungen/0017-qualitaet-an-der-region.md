@@ -29,9 +29,12 @@ angenommen vom Reviewer am 15.11.
   ohne Stufe wie jedes optionale Feld der API. Ein Plugin, das seine
   Regionen schon zeigt, setzt eine Zeile dazu und pflegt weiter nur `put`
   und `remove`.
-- **Vier Stufen:** `MINIMAL`, `SMALL`, `GOOD`, `MAXIMAL`, in der Datei
-  klein geschrieben. So vom Maintainer am 16.11. entschieden; der erste
-  Stand dieser PR hatte fünf. Was dahinter packt, legt der Renderer fest.
+- **Fünf Stufen:** `MINIMAL`, `SMALL`, `GOOD`, `MAXIMAL_COMPACT`,
+  `MAXIMAL`, in der Datei klein geschrieben. Vom Maintainer am 16.11.
+  entschieden: erst vier, veröffentlicht mit 0.23.0, am selben Tag
+  `MAXIMAL_COMPACT` dazu, weil kompaktes Packen eine eigene Stufe wird;
+  ab 0.24.0. Das Enum darf wachsen, darum bleibt 0.23.0 verträglich. Was
+  dahinter packt, legt der Renderer fest.
 - **Kein Feld des Formats der Ebenen.** Das Plugin schreibt die Stufe nicht
   nach `layers/` und nicht an den Mod, und die `version` der Ebene rechnet
   ohne sie. Eine andere Stufe lädt bei keinem Betrachter etwas neu.
