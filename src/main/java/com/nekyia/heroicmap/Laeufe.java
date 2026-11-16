@@ -388,9 +388,12 @@ final class Laeufe {
         return !regionen.isEmpty() && regionen.stream().noneMatch(r -> neuIn(r, grenze)) && !neuIn(wurzel().resolve("datapacks"), grenze);
     }
 
-    /** Die Wurzel der Welt: über dimensions/<ns>/<name>, wenn konf.welt eine Dimension ist, sonst konf.welt. */
     private Path wurzel() {
-        Path w = konf.welt();
+        return wurzel(konf.welt());
+    }
+
+    /** Die Wurzel der Welt: über dimensions/<ns>/<name>, wenn {@code w} eine Dimension ist, sonst {@code w}. */
+    static Path wurzel(Path w) {
         int n = w.getNameCount();
         return n >= 3 && w.getName(n - 3).toString().equals("dimensions") ? w.getParent().getParent().getParent() : w;
     }
@@ -400,8 +403,19 @@ final class Laeufe {
      * region/, ab 26.1 dimensions/minecraft/overworld/region/. Siehe docs/laeufe.md, „Zeitplan“.
      */
     private List<Path> regionen() {
-        Path w = konf.welt();
-        return w.equals(wurzel()) ? List.of(w.resolve("region"), w.resolve("dimensions/minecraft/overworld/region")) : List.of(w.resolve("region"));
+        return regionen(konf.welt());
+    }
+
+    /** Wie {@link #regionen()} für die Welt {@code w}. */
+    static List<Path> regionen(Path w) {
+        return w.equals(wurzel(w)) ? List.of(w.resolve("region"), w.resolve("dimensions/minecraft/overworld/region")) : List.of(w.resolve("region"));
+    }
+
+    /** Je Baum der Ausgang seines letzten Laufs seit dem Start, für die Ampeln. Siehe docs/ampeln.md. */
+    synchronized Map<String, String> ausgaenge() {
+        var aus = new LinkedHashMap<String, String>();
+        letzte.forEach((baum, l) -> aus.put(baum, l.ausgang()));
+        return aus;
     }
 
     /**

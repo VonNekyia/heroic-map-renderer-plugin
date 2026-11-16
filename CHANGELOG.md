@@ -7,6 +7,10 @@ Links und die Hinweise aus `NOTICE` setzt
 [`.github/notizen.sh`](.github/notizen.sh) dazu. Siehe
 [Entwicklung](docs/entwicklung.md), „Release“.
 
+## 0.24.0
+
+- **`/heroicmap check`: traffic lights for the setup.** One line for each thing the map depends on, green, red, yellow or grey, with the reason in a sentence and the next command where there is one: renderer, textures, world, free space, each view, the web map and its port, the mod download, other players, updates. If the web server ended, the plugin tries the port itself and says whether another program is using it; it only binds on the server's own address, for a moment, and never looks beyond the machine. Whether the port is open from outside it cannot see. Works from the console and without a renderer, changes nothing and starts no run.
+
 ## 0.23.0
 
 - **Renderer 0.21.0** inside. **No full render and no change to the config:** tiles are drawn as with 0.20.2, and updates keep running. One thing to know for trees packed with `renderer.compact` or `/heroicmap compact`: the renderer packs compact tiles a little differently now, so the first update encodes every tile in the area it touches again. The picture stays the same, but a tile with other bytes gets a new ETag, and players with the mod load those tiles once more. Trees without compact packing do not change by a byte.

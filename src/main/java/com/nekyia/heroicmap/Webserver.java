@@ -161,6 +161,11 @@ final class Webserver {
         return "Webserver: " + zustand;
     }
 
+    /** Was {@link #status} nennt, ohne den Anfang der Zeile; für die Ampeln. */
+    String zustand() {
+        return zustand;
+    }
+
     /** Schliesst stdin; endet er nicht in 10 s, hart. */
     void stoppe() {
         Thread f;
