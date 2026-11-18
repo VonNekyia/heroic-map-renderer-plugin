@@ -8,21 +8,30 @@ import com.nekyia.heroicmap.Setzer.Wunsch;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.IntPredicate;
+import java.util.regex.Pattern;
 import org.bukkit.configuration.file.YamlConfiguration;
 
 /**
- * Die geführte Einrichtung von /heroicmap setup, ohne Paper: welche Schritte anstehen, was jede Seite zeigt und was
- * aus den Antworten wird. Den Dialog des Spiels baut daraus {@code EinrichtungDialog}. Siehe docs/einrichten.md.
+ * Die geführte Einrichtung von /heroicmap setup, ohne Paper: welcher Schritt hinter welcher Ampel steht, was jede
+ * Seite zeigt und was aus den Antworten wird. Den Dialog des Spiels baut daraus {@code EinrichtungDialog}. Siehe
+ * docs/einrichten.md.
  */
 final class Einrichtung {
 
     private Einrichtung() {}
 
-    /** Die Fragen, in dieser Reihenfolge; ein Schritt ohne Frage entfällt. */
+    /** Die Fragen, in dieser Reihenfolge. */
     enum Schritt { TEXTUREN, AUSSEHEN, WEBKARTE, MOD }
+
+    /**
+     * Durch welche Schritte der Admin gerade geht, einen einzelnen oder die Reihe, und welche bei dieser Datei
+     * überhaupt etwas zu fragen haben, siehe {@link #schritte}.
+     */
+    record Weg(List<Schritt> offen, List<Schritt> fragbar) {}
 
     /** Eine Zeile Text; {@code farbe} null für gewöhnlichen Text. */
     record Zeile(String text, Ampeln.Farbe farbe) {
@@ -51,13 +60,25 @@ final class Einrichtung {
         }
     }
 
-    /** Eine Seite des Dialogs: Titel, Zeilen, Eingaben und die Kennungen ihrer Knöpfe, siehe {@link #LABEL}. */
-    record Seite(String titel, List<Zeile> zeilen, List<Eingabe> eingaben, List<String> knoepfe) {}
+    /** Ein Knopf: seine Kennung, seine Beschriftung und die Farbe einer Ampel oder null. */
+    record Knopf(String id, String text, Ampeln.Farbe farbe) {}
 
-    /** Die Beschriftung je Knopf. */
-    static final java.util.Map<String, String> LABEL = java.util.Map.of("einrichten", "Einrichten", "pruefen", "Neu prüfen",
+    /** Eine Seite des Dialogs: Titel, Zeilen, Eingaben und Knöpfe. */
+    record Seite(String titel, List<Zeile> zeilen, List<Eingabe> eingaben, List<Knopf> knoepfe) {}
+
+    /** Die Beschriftung der festen Knöpfe. */
+    private static final Map<String, String> LABEL = Map.of("reihe", "Der Reihe nach", "pruefen", "Neu prüfen",
             "schliessen", "Schliessen", "weiter", "Weiter", "zurueck", "Zurück", "abbrechen", "Abbrechen", "speichern", "Speichern",
-            "schaetzen", "Schätzen");
+            "schaetzen", "Schätzen", "uebersicht", "Übersicht", "befehl", "Befehl in den Chat");
+
+    /** Die Kennung des Knopfs der Ampel an dieser Stelle der Übersicht. */
+    static String ampelKnopf(int stelle) {
+        return "ampel:" + stelle;
+    }
+
+    private static List<Knopf> fest(List<String> kennungen) {
+        return kennungen.stream().map(k -> new Knopf(k, java.util.Objects.requireNonNull(LABEL.get(k), k), null)).toList();
+    }
 
     /** Was der Admin gewählt hat; am Anfang der Stand von config.yml. */
     record Wahl(boolean texturen, String kamera, boolean cinematic, boolean web, int port, boolean mod) {
@@ -73,8 +94,8 @@ final class Einrichtung {
     }
 
     /**
-     * Die Schritte für diese Datei. Texturen nur, wenn sie fehlen. Aussehen nur, solange der erste Baum nie gezeichnet
-     * wurde und eine gewöhnliche Karte für den Browser ist. Ohne Bäume nur die Webkarte.
+     * Die Schritte, die bei dieser Datei etwas zu fragen haben. Texturen nur, wenn sie fehlen. Aussehen nur, solange
+     * der erste Baum nie gezeichnet wurde und eine gewöhnliche Karte für den Browser ist. Ohne Bäume nur die Webkarte.
      */
     static List<Schritt> schritte(Konfiguration k, boolean nieGezeichnet) {
         var s = new ArrayList<Schritt>();
@@ -94,72 +115,157 @@ final class Einrichtung {
         return List.copyOf(s);
     }
 
-    static Seite uebersicht(List<Ampeln.Ampel> ampeln) {
-        return new Seite("Heroic Map · Übersicht", ampeln.stream().map(a -> new Zeile(a.zeile(), a.farbe())).toList(), List.of(),
-                List.of("einrichten", "pruefen", "schliessen"));
+    /**
+     * Der Schritt hinter einer Ampel, oder null: Texturen, Webkarte, Mod, und hinter der Karte des ersten Baums das
+     * Aussehen. {@code laufend} sind die Einstellungen, aus denen die Ampeln stammen.
+     */
+    static Schritt schritt(Ampeln.Ampel a, Konfiguration laufend) {
+        return switch (a.name()) {
+            case "Texturen" -> Schritt.TEXTUREN;
+            case "Webkarte" -> Schritt.WEBKARTE;
+            case "Mod" -> Schritt.MOD;
+            default -> !laufend.baeume().isEmpty() && a.name().equals("Karte " + laufend.baeume().getFirst().ordner())
+                    ? Schritt.AUSSEHEN : null;
+        };
     }
 
-    private static String titel(List<Schritt> schritte, Schritt s, String name) {
-        return "Schritt " + (schritte.indexOf(s) + 1) + " von " + schritte.size() + " · " + name;
+    /** Die Schritte für „Der Reihe nach“: die etwas zu fragen haben und deren Ampel nicht grün ist. */
+    static List<Schritt> reihe(List<Ampeln.Ampel> ampeln, Konfiguration laufend, List<Schritt> fragbar) {
+        var nichtGruen = ampeln.stream().filter(a -> a.farbe() != Ampeln.Farbe.GRUEN).map(a -> schritt(a, laufend)).toList();
+        return fragbar.stream().filter(nichtGruen::contains).toList();
     }
 
-    private static List<String> knoepfe(List<Schritt> schritte, Schritt s, String... davor) {
+    /**
+     * Die Übersicht: jede Ampel als Zeile und als Knopf, der nur diesen Punkt öffnet. {@code reihe} sagt, ob etwas
+     * ansteht; {@code gespeichert} nennt, was gerade geschrieben wurde.
+     */
+    static Seite uebersicht(List<Ampeln.Ampel> ampeln, boolean reihe, List<String> gespeichert) {
+        var z = new ArrayList<Zeile>();
+        if (!gespeichert.isEmpty()) {
+            z.add(new Zeile("✔ Gespeichert, gilt nach dem Neustart des Servers:", Ampeln.Farbe.GRUEN));
+            gespeichert.forEach(a -> z.add(Zeile.text("  " + a)));
+        }
+        ampeln.forEach(a -> z.add(new Zeile(a.zeile(), a.farbe())));
+        z.add(Zeile.text("Ein Klick auf einen Punkt öffnet nur ihn." + (reihe ? " „Der Reihe nach“ geht durch alles, was sich "
+                + "hier einstellen lässt und nicht grün ist." : "")));
+        var k = new ArrayList<Knopf>();
+        for (int i = 0; i < ampeln.size(); i++) {
+            k.add(new Knopf(ampelKnopf(i), ampeln.get(i).kurz(), ampeln.get(i).farbe()));
+        }
+        k.addAll(fest(reihe ? List.of("reihe", "pruefen", "schliessen") : List.of("pruefen", "schliessen")));
+        return new Seite("Heroic Map · Übersicht", List.copyOf(z), List.of(), List.copyOf(k));
+    }
+
+    /** So viele Spalten bekommen die Knöpfe einer Seite: viele, wie in der Übersicht, stehen in zwei. */
+    static int spalten(int knoepfe) {
+        return knoepfe > 4 ? 2 : Math.min(3, knoepfe);
+    }
+
+    /** Wo ein Punkt ohne Frage in config.yml steht oder was er braucht, je Name der Ampel. */
+    private static final Map<String, String> HINWEIS = Map.of(
+            "Renderer", "Einstellen: renderer.binary in config.yml, nur für andere Plattformen oder ein eigenes Binär.",
+            "Welt", "Einstellen: world in config.yml; leer heisst die Hauptwelt des Servers.",
+            "Platz", "Einstellen: tiles in config.yml, der Ordner der Kacheln.",
+            "Mitspieler", "Dafür braucht der Server das Plugin Simple Voice Chat.",
+            "Updates", "Einstellen: update-minutes in config.yml; 0 schaltet sie aus.",
+            "Neustart", "Server neu starten; danach zeigt /heroicmap setup den neuen Stand.");
+
+    /**
+     * Die Seite eines Punkts, den der Dialog gerade nicht fragt: die Zeile der Ampel, wo er sich ändern lässt, und der
+     * Befehl aus ihrem Satz als Knopf. {@code schritt} ist der Schritt hinter der Ampel, der hier nichts zu fragen hat,
+     * oder null.
+     */
+    static Seite punkt(Ampeln.Ampel a, Schritt schritt) {
+        String hinweis = schritt == null ? HINWEIS.getOrDefault(a.name(), "Einstellen: trees in config.yml.") : switch (schritt) {
+            case TEXTUREN -> "Hier ist nichts zu fragen. Ändern: renderer.assets oder renderer.download-client-jar in config.yml.";
+            case AUSSEHEN -> "Blick und Cinematic fragt der Dialog nur vor dem ersten Zeichnen und nur bei einer gewöhnlichen Karte für "
+                    + "den Browser. Später ändern: camera und cinematic am ersten Baum in config.yml, dann die ganze Karte neu "
+                    + "zeichnen mit /heroicmap render.";
+            case WEBKARTE, MOD -> "Ohne Bäume in config.yml zeichnet dieser Server keine Karte; hier ist nichts zu fragen.";
+        };
+        var k = new ArrayList<String>();
+        if (befehl(a.satz()) != null) {
+            k.add("befehl");
+        }
+        k.addAll(List.of("uebersicht", "schliessen"));
+        return new Seite(a.name(), List.of(new Zeile(a.zeile(), a.farbe()), Zeile.text(hinweis),
+                Zeile.text("Was in config.yml geändert wird, gilt nach dem Neustart des Servers.")), List.of(), fest(k));
+    }
+
+    /** Ein Befehl des Plugins, dahinter höchstens der Ordner eines Baums; der hat immer einen Bindestrich. */
+    private static final Pattern BEFEHL = Pattern.compile("/heroicmap [a-z]+(?: [a-z0-9]+(?:-[a-z0-9]+)+)?");
+
+    /** Der erste Befehl in einem Satz, samt Ordner, oder null. */
+    static String befehl(String satz) {
+        var m = BEFEHL.matcher(satz);
+        return m.find() ? m.group() : null;
+    }
+
+    private static String titel(Weg weg, Schritt s, String name) {
+        return weg.offen().size() == 1 ? name : "Schritt " + (weg.offen().indexOf(s) + 1) + " von " + weg.offen().size() + " · " + name;
+    }
+
+    private static List<Knopf> knoepfe(Weg weg, Schritt s, String... davor) {
         var k = new ArrayList<>(List.of(davor));
         k.add("weiter");
-        if (schritte.indexOf(s) > 0) {
+        if (weg.offen().indexOf(s) > 0) {
             k.add("zurueck");
         }
-        k.add("abbrechen");
-        return List.copyOf(k);
+        k.add("uebersicht");
+        return fest(k);
     }
 
     /** Die Zustimmung zum Client-Jar mit ihrem vollen Text; vorgewählt ist immer „noch nicht“. */
-    static Seite texturen(List<Schritt> schritte) {
-        return new Seite(titel(schritte, Schritt.TEXTUREN, "Texturen"), List.of(
+    static Seite texturen(Weg weg) {
+        return new Seite(titel(weg, Schritt.TEXTUREN, "Texturen"), List.of(
                 Zeile.text("Die Karte braucht die Texturen von Minecraft. Der Renderer kann sie von den Servern von Mojang laden."),
                 Zeile.text("Das Client-Jar gehört Mojang und darf nicht weitergegeben werden. Mit „laden und zustimmen“ bestätigst du, "
                         + "dass du Minecraft: Java Edition besitzt, und nimmst die Minecraft-EULA an: https://www.minecraft.net/eula"),
                 Zeile.text("eula=true des Servers zählt dafür nicht. Wer eigene Assets nutzt, trägt ihren Ordner in config.yml unter "
                         + "renderer.assets ein und lässt hier „noch nicht“ stehen.")),
                 List.of(Eingabe.auswahl("texturen", "Texturen", "nein", "nein", "noch nicht", "ja", "laden und zustimmen")),
-                knoepfe(schritte, Schritt.TEXTUREN));
+                knoepfe(weg, Schritt.TEXTUREN));
     }
 
-    static Seite aussehen(List<Schritt> schritte, Wahl w) {
-        return new Seite(titel(schritte, Schritt.AUSSEHEN, "Aussehen"), List.of(
+    static Seite aussehen(Weg weg, Wahl w) {
+        return new Seite(titel(weg, Schritt.AUSSEHEN, "Aussehen"), List.of(
                 Zeile.text("So zeigt der Browser die Karte."),
                 Zeile.text("Cinematic an: Licht und Schatten wie im Spiel. Der erste Lauf dauert ein Vielfaches."),
                 Zeile.text("Später ändern heisst: die ganze Karte neu zeichnen.")),
                 List.of(Eingabe.auswahl("kamera", "Blick", w.kamera(), "2:1", "schräg 2:1", "4:3", "schräg 4:3", "top-north", "von oben"),
                         Eingabe.auswahl("cinematic", "Cinematic", w.cinematic() ? "an" : "aus", "aus", "aus", "an", "an")),
-                knoepfe(schritte, Schritt.AUSSEHEN));
+                knoepfe(weg, Schritt.AUSSEHEN));
     }
 
     /**
      * {@code fehler} ist der Grund, warum der gewählte Port nicht geht, oder null; {@code ausDatei} nennt Adresse,
      * HTTPS oder Proxy aus config.yml, die der Dialog nur zeigt, oder null.
      */
-    static Seite webkarte(List<Schritt> schritte, Wahl w, String fehler, String ausDatei) {
+    static Seite webkarte(Weg weg, Wahl w, String fehler, String ausDatei) {
         var z = new ArrayList<Zeile>();
         z.add(Zeile.text("Spieler öffnen die Karte im Browser."));
         if (fehler != null) {
             z.add(new Zeile("✖ " + fehler, Ampeln.Farbe.ROT));
         }
+        if (w.mod()) {
+            z.add(Zeile.text("Die Karte für den Mod ist an: Die Webkarte bleibt an, sie liefert den Download aus. Ausschalten geht "
+                    + "erst, wenn der Mod aus ist."));
+        }
         z.add(Zeile.text(ausDatei != null ? ausDatei + " So steht es in config.yml; ändern geht nur dort. Der Port hier ist der interne."
                 : "Adresse für Spieler: http://<adresse des servers>:" + w.port()));
         z.add(Zeile.text("Ob der Port von aussen offen ist (Firewall, Router), sieht das Plugin nicht. Probier die Adresse von einem "
                 + "Gerät ausserhalb."));
-        return new Seite(titel(schritte, Schritt.WEBKARTE, "Webkarte"), List.copyOf(z),
-                List.of(Eingabe.auswahl("web", "Webkarte", w.web() ? "an" : "aus", "an", "an", "aus", "aus"),
+        return new Seite(titel(weg, Schritt.WEBKARTE, "Webkarte"), List.copyOf(z),
+                List.of(Eingabe.auswahl("web", "Webkarte", w.web() || w.mod() ? "an" : "aus", "an", "an", "aus", "aus"),
                         Eingabe.text("port", "Port", Integer.toString(w.port()), 5)),
-                knoepfe(schritte, Schritt.WEBKARTE));
+                knoepfe(weg, Schritt.WEBKARTE));
     }
 
     /** {@code schaetzung} ist der Satz aus {@link #schaetzung} oder der Grund, warum es keine gibt; null vor der ersten. */
-    static Seite mod(List<Schritt> schritte, Wahl w, String schaetzung) {
+    static Seite mod(Weg weg, Wahl w, String schaetzung) {
         var z = new ArrayList<Zeile>();
         z.add(Zeile.text("Spieler mit dem Heroic-Map-Mod laden die Karte ins Spiel."));
-        z.add(Zeile.text(schritte.contains(Schritt.AUSSEHEN) && einFuerBeide(w)
+        z.add(Zeile.text(weg.fragbar().contains(Schritt.AUSSEHEN) && einFuerBeide(w)
                 ? "An heisst: Deine Karte von oben taugt auch für den Mod. Es bleibt bei einer Karte, mit scale 4; kein zweiter Lauf."
                 : "An heisst: eine eigene Karte von oben für den Mod (top-north, scale 4), die die Webkarte nicht zeigt; taugt "
                         + "schon eine Karte dafür, nimmt der Mod sie. Kosten: ein eigener voller Lauf und eigener Platz."));
@@ -168,9 +274,9 @@ final class Einrichtung {
         if (schaetzung != null) {
             z.add(Zeile.text("Schätzung für die Karte des Mods: " + schaetzung));
         }
-        return new Seite(titel(schritte, Schritt.MOD, "Mod"), List.copyOf(z),
+        return new Seite(titel(weg, Schritt.MOD, "Mod"), List.copyOf(z),
                 List.of(Eingabe.auswahl("mod", "Karte für den Mod", w.mod() ? "an" : "aus", "aus", "aus", "an", "an")),
-                knoepfe(schritte, Schritt.MOD, "schaetzen"));
+                knoepfe(weg, Schritt.MOD, "schaetzen"));
     }
 
     /** Die Wahl mit den Antworten eines Schritts; {@code antwort} gibt je Kennung einer Eingabe ihren Wert oder null. */
@@ -215,27 +321,29 @@ final class Einrichtung {
     }
 
     /**
-     * Die Wünsche an den Setzer, in der Reihenfolge, in der sie gelten sollen. Die Zustimmung nur, wenn gewählt; das
-     * Aussehen nur, wenn danach gefragt wurde. Mit „Mod an“ bleibt der Webserver an, was auch immer bei der Webkarte
-     * gewählt ist.
+     * Die Wünsche an den Setzer, nur für die Schritte, durch die der Admin ging, in der Reihenfolge, in der sie gelten
+     * sollen. Die Zustimmung nur, wenn gewählt. Zwei Dinge hängen am Mod, wie er gewählt ist oder in der Datei steht:
+     * Mit ihm bleibt der Webserver an, und eine Karte von oben, nach deren Aussehen sich noch fragen lässt, wird mit
+     * scale 4 die eine Karte für Browser und Mod. Siehe docs/einrichten.md, „Zusammenfassung und Speichern“.
      */
-    static List<Wunsch> wuensche(List<Schritt> schritte, Wahl w) {
+    static List<Wunsch> wuensche(Weg weg, Wahl w) {
+        var offen = weg.offen();
         var raus = new ArrayList<Wunsch>();
-        if (schritte.contains(Schritt.TEXTUREN) && w.texturen()) {
+        if (offen.contains(Schritt.TEXTUREN) && w.texturen()) {
             raus.add(new Wunsch.Texturen());
         }
-        boolean mod = schritte.contains(Schritt.MOD) && w.mod();
-        if (schritte.contains(Schritt.AUSSEHEN)) {
-            // Von oben und für den Mod: Die eine Karte bekommt scale 4, dann taugt sie für beide.
-            raus.add(new Wunsch.Aussehen(w.kamera(), w.cinematic(), mod && einFuerBeide(w) ? 4 : null));
+        boolean mod = offen.contains(Schritt.MOD);
+        boolean eine = weg.fragbar().contains(Schritt.AUSSEHEN) && w.mod() && einFuerBeide(w);
+        if (offen.contains(Schritt.AUSSEHEN) || mod && eine) {
+            raus.add(new Wunsch.Aussehen(w.kamera(), w.cinematic(), eine ? 4 : null));
         }
-        if (schritte.contains(Schritt.MOD)) {
+        if (mod) {
             raus.add(new Wunsch.Mod(w.mod()));
         }
-        if (!mod) {
-            raus.add(new Wunsch.Web(w.web()));
+        if (offen.contains(Schritt.WEBKARTE)) {
+            raus.add(new Wunsch.Web(w.web() || w.mod()));
+            raus.add(new Wunsch.Port(w.port()));
         }
-        raus.add(new Wunsch.Port(w.port()));
         return List.copyOf(raus);
     }
 
@@ -274,29 +382,26 @@ final class Einrichtung {
             speichern = true;
         }
         return new Seite("Zusammenfassung", List.copyOf(z), List.of(),
-                speichern ? List.of("speichern", "zurueck", "abbrechen") : List.of("zurueck", "schliessen"));
+                fest(speichern ? List.of("speichern", "zurueck", "uebersicht") : List.of("zurueck", "uebersicht")));
     }
 
-    /** Was als Nächstes zu tun ist, für die letzte Seite und für den Chat. */
+    /** Was nach dem Speichern zu tun ist, für den Chat. */
     static List<String> alsNaechstes() {
         return List.of("1. Server neu starten, dann gilt alles.", "2. /heroicmap render zeichnet die Karten.",
                 "3. /heroicmap setup zeigt, ob alles grün ist.");
     }
 
-    static Seite fertig(List<String> geaendert) {
-        var z = new ArrayList<Zeile>();
-        z.add(new Zeile("✔ Gespeichert:", Ampeln.Farbe.GRUEN));
-        geaendert.forEach(a -> z.add(Zeile.text("  " + a)));
-        z.add(Zeile.text("Als Nächstes:"));
-        alsNaechstes().forEach(a -> z.add(Zeile.text(a)));
-        return new Seite("Fertig", List.copyOf(z), List.of(), List.of("schliessen"));
+    /** Wenn sich config.yml nicht lesen lässt: der Grund, rot. */
+    static Seite nichtLesbar(String grund) {
+        return new Seite("Einrichten", List.of(new Zeile("✖ config.yml lässt sich so nicht einrichten: " + grund, Ampeln.Farbe.ROT)),
+                List.of(), fest(List.of("uebersicht", "schliessen")));
     }
 
     /** Solange die Schätzung läuft. */
     static Seite schaetzt() {
         return new Seite("Schätzung", List.of(Zeile.text("Der Renderer schätzt Dauer und Platz für die Karte des Mods. Das dauert "
                 + "einige Sekunden bis wenige Minuten; danach geht es beim Schritt Mod weiter."),
-                Zeile.text("„Abbrechen“ beendet die Schätzung.")), List.of(), List.of("abbrechen"));
+                Zeile.text("„Abbrechen“ beendet die Schätzung.")), List.of(), fest(List.of("abbrechen")));
     }
 
     /**

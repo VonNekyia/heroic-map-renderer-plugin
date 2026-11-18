@@ -30,6 +30,10 @@ Maintainer am selben Tag beantwortet.
 - **Kleiner Umfang:** Texturen, Aussehen, Webkarte mit Port, Mod; später
   die Qualität. Pfade, Adresse, HTTPS, Proxy und alles andere bleiben in
   der Datei.
+- **Jeder Punkt einzeln** (Maintainer, 18.11.): Die Übersicht hat je Ampel
+  einen Knopf. Er öffnet nur diesen Punkt, seinen Schritt oder eine kurze
+  Seite, was los ist und was zu tun ist. Der Weg der Reihe nach bleibt für
+  die erste Einrichtung und geht nur durch Punkte, die nicht grün sind.
 - **In drei Teilen gebaut,** jeder für sich nutzbar: die Ampeln mit
   `/heroicmap check`, der Setzer mit `/heroicmap set`, dann der Dialog
   darüber. Die Konsole hat so dieselben Ampeln und Einstellungen.
@@ -45,7 +49,9 @@ Maintainer am selben Tag beantwortet.
   Lauf, mit Abbrechen.
 - **Kein eigenes Recht:** `heroicmap.admin`. Wer stundenlange Läufe starten
   darf, darf auch einstellen.
-- **Der Dialog startet keinen Lauf.** Er nennt den Befehl zum Anklicken.
+- **Der Dialog startet keinen Lauf.** Er nennt den Befehl zum Anklicken:
+  als Zeile im Chat, die ihn in die Eingabe setzt. Enter drückt der
+  Betreiber selbst, denn ein voller Lauf dauert Stunden.
 
 ## Die Dialoge hängen an der Version des Spiels
 
@@ -85,6 +91,8 @@ dem ersten Release mit dem Dialog an.
 - **Sofort gelten, ohne Neustart:** Webserver, Läufe und Download müssten
   sich im laufenden Plugin neu aufbauen. Deutlich mehr Code und mehr, was
   schiefgehen kann, für einen Neustart am Ende der Einrichtung.
+- **Nur der Weg durch alle Schritte,** wie im ersten Entwurf: Wer einen
+  roten Punkt beheben wollte, musste an den übrigen Fragen vorbei.
 - **Ein allgemeiner Setzer für die ganze Config:** Pfade, Adressen und
   Zertifikate gehören nicht in ein Menü, und ein Tippfehler nähme die Karte
   vom Netz.

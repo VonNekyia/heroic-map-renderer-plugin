@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import com.nekyia.heroicmap.Einrichtung.Schritt;
 import com.nekyia.heroicmap.Einrichtung.Seite;
 import com.nekyia.heroicmap.Einrichtung.Wahl;
+import com.nekyia.heroicmap.Einrichtung.Weg;
 import com.nekyia.heroicmap.Setzer.Wunsch;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
@@ -18,12 +19,28 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 /**
- * Die geführte Einrichtung ohne Dialog: welche Schritte anstehen, was jede Seite zeigt, was aus den Antworten wird,
- * die Prüfung des Ports, die Wünsche an den Setzer, die Zusammenfassung und der Satz der Schätzung.
+ * Die geführte Einrichtung ohne Dialog: welcher Schritt hinter welcher Ampel steht und was der Reihe nach ansteht, was
+ * jede Seite zeigt, was aus den Antworten wird, die Prüfung des Ports, die Wünsche an den Setzer, die Zusammenfassung
+ * und der Satz der Schätzung.
  */
 class EinrichtungTest {
 
-    private static final List<Schritt> ALLE = List.of(Schritt.TEXTUREN, Schritt.AUSSEHEN, Schritt.WEBKARTE, Schritt.MOD);
+    private static final List<Schritt> SCHRITTE = List.of(Schritt.TEXTUREN, Schritt.AUSSEHEN, Schritt.WEBKARTE, Schritt.MOD);
+    /** Die Reihe durch alle vier Schritte. */
+    private static final Weg ALLE = new Weg(SCHRITTE, SCHRITTE);
+
+    /** Ein einzeln geöffneter Schritt an einer Datei, die nach allen vier fragen liesse. */
+    private static Weg nur(Schritt s) {
+        return new Weg(List.of(s), SCHRITTE);
+    }
+
+    private static List<String> knoepfe(Seite s) {
+        return s.knoepfe().stream().map(Einrichtung.Knopf::id).toList();
+    }
+
+    private static Ampeln.Ampel ampel(String name, Ampeln.Farbe farbe) {
+        return new Ampeln.Ampel(name, farbe, "x");
+    }
 
     @TempDir
     Path tmp;
@@ -45,9 +62,9 @@ class EinrichtungTest {
     }
 
     @Test
-    void welche_schritte_anstehen() throws Exception {
+    void welche_schritte_etwas_zu_fragen_haben() throws Exception {
         var neu = konf(vorlage());
-        assertEquals(ALLE, Einrichtung.schritte(neu, true), "ein neuer Server: alle vier");
+        assertEquals(SCHRITTE, Einrichtung.schritte(neu, true), "ein neuer Server: alle vier");
         assertEquals(List.of(Schritt.TEXTUREN, Schritt.WEBKARTE, Schritt.MOD), Einrichtung.schritte(neu, false),
                 "ist die Karte gezeichnet, fragt niemand mehr nach dem Aussehen");
         var zugestimmt = konf(vorlage().replace("download-client-jar: false", "download-client-jar: true"));
@@ -66,6 +83,38 @@ class EinrichtungTest {
     }
 
     @Test
+    void welcher_schritt_hinter_welcher_ampel_steht() throws Exception {
+        var k = konf(vorlage());
+        assertEquals(Schritt.TEXTUREN, Einrichtung.schritt(ampel("Texturen", Ampeln.Farbe.ROT), k));
+        assertEquals(Schritt.WEBKARTE, Einrichtung.schritt(ampel("Webkarte", Ampeln.Farbe.GRUEN), k));
+        assertEquals(Schritt.MOD, Einrichtung.schritt(ampel("Mod", Ampeln.Farbe.GRAU), k));
+        assertEquals(Schritt.AUSSEHEN, Einrichtung.schritt(ampel("Karte 2x1-se", Ampeln.Farbe.GELB), k), "die Karte des ersten Baums");
+        for (String ohne : List.of("Karte top-north-s", "Renderer", "Welt", "Platz", "Mitspieler", "Updates", "Neustart")) {
+            assertNull(Einrichtung.schritt(ampel(ohne, Ampeln.Farbe.ROT), k), ohne);
+        }
+        var ohneBaeume = konf(vorlage().replace("\r", "").replace("trees:\n  - camera: \"2:1\"", "trees: []")
+                .replace("von-url: \"\"", "von-url: \"http://127.0.0.1:8080\""));
+        assertNull(Einrichtung.schritt(ampel("Karte 2x1-se", Ampeln.Farbe.GELB), ohneBaeume));
+    }
+
+    @Test
+    void der_reihe_nach_nur_was_nicht_gruen_ist() throws Exception {
+        var k = konf(vorlage());
+        var neu = List.of(ampel("Renderer", Ampeln.Farbe.ROT), ampel("Texturen", Ampeln.Farbe.ROT), ampel("Karte 2x1-se", Ampeln.Farbe.GELB),
+                ampel("Webkarte", Ampeln.Farbe.GRUEN), ampel("Mod", Ampeln.Farbe.GRAU));
+        assertEquals(List.of(Schritt.TEXTUREN, Schritt.AUSSEHEN, Schritt.MOD), Einrichtung.reihe(neu, k, SCHRITTE),
+                "die grüne Webkarte fragt die Reihe nicht; grau ist nicht grün");
+        var portBelegt = List.of(ampel("Texturen", Ampeln.Farbe.GRUEN), ampel("Karte 2x1-se", Ampeln.Farbe.GRUEN),
+                ampel("Mod", Ampeln.Farbe.GRUEN), ampel("Webkarte", Ampeln.Farbe.ROT));
+        assertEquals(List.of(Schritt.WEBKARTE), Einrichtung.reihe(portBelegt, k, SCHRITTE));
+        // Rot, aber nichts zu fragen, etwa ein Ordner aus renderer.assets, den es nicht gibt: kein Schritt.
+        assertEquals(List.of(Schritt.MOD), Einrichtung.reihe(neu, k, List.of(Schritt.WEBKARTE, Schritt.MOD)));
+        var gruen = List.of(ampel("Renderer", Ampeln.Farbe.ROT), ampel("Texturen", Ampeln.Farbe.GRUEN), ampel("Karte 2x1-se", Ampeln.Farbe.GRUEN),
+                ampel("Webkarte", Ampeln.Farbe.GRUEN), ampel("Mod", Ampeln.Farbe.GRUEN));
+        assertEquals(List.of(), Einrichtung.reihe(gruen, k, SCHRITTE), "ein roter Punkt ohne Schritt lässt nichts anstehen");
+    }
+
+    @Test
     void die_wahl_beginnt_beim_stand_der_datei_und_nie_mit_der_zustimmung() throws Exception {
         assertEquals(new Wahl(false, "2:1", false, true, 8080, false), Wahl.aus(konf(vorlage())));
         var anders = konf(vorlage().replace("download-client-jar: false", "download-client-jar: true")
@@ -79,14 +128,14 @@ class EinrichtungTest {
         var w = new Wahl(false, "4:3", true, true, 8081, false);
         var texturen = Einrichtung.texturen(ALLE);
         assertEquals("Schritt 1 von 4 · Texturen", texturen.titel());
-        assertEquals(List.of("weiter", "abbrechen"), texturen.knoepfe(), "der erste Schritt hat kein Zurück");
+        assertEquals(List.of("weiter", "uebersicht"), knoepfe(texturen), "der erste Schritt hat kein Zurück");
         assertEquals("nein", texturen.eingaben().getFirst().wert(), "vorgewählt ist „noch nicht“");
         assertEquals(List.of("nein", "ja"), texturen.eingaben().getFirst().optionen().stream().map(o -> o[0]).toList());
         assertTrue(text(texturen).stream().anyMatch(z -> z.contains("https://www.minecraft.net/eula")
                 && z.contains("dass du Minecraft: Java Edition besitzt")), "der volle Text der Zustimmung");
         var aussehen = Einrichtung.aussehen(ALLE, w);
         assertEquals("Schritt 2 von 4 · Aussehen", aussehen.titel());
-        assertEquals(List.of("weiter", "zurueck", "abbrechen"), aussehen.knoepfe());
+        assertEquals(List.of("weiter", "zurueck", "uebersicht"), knoepfe(aussehen));
         assertEquals(List.of("4:3", "an"), aussehen.eingaben().stream().map(Einrichtung.Eingabe::wert).toList());
         var webkarte = Einrichtung.webkarte(ALLE, w, null, null);
         assertEquals("Schritt 3 von 4 · Webkarte", webkarte.titel());
@@ -102,27 +151,105 @@ class EinrichtungTest {
                 + "Der Port hier ist der interne."));
         var mod = Einrichtung.mod(ALLE, w, null);
         assertEquals("Schritt 4 von 4 · Mod", mod.titel());
-        assertEquals(List.of("schaetzen", "weiter", "zurueck", "abbrechen"), mod.knoepfe());
+        assertEquals(List.of("schaetzen", "weiter", "zurueck", "uebersicht"), knoepfe(mod));
         assertEquals("aus", mod.eingaben().getFirst().wert());
         assertTrue(text(mod).contains("Die Webkarte liefert den Download aus."));
         var ohneWeb = Einrichtung.mod(ALLE, new Wahl(false, "2:1", false, false, 8080, true), "rund 25 min bis 40 min, 3,0 GB bis 5,2 GB, der Platz reicht");
         assertTrue(text(ohneWeb).contains("Die Webkarte bleibt dafür an: Sie liefert den Download aus."));
         assertEquals("Schätzung für die Karte des Mods: rund 25 min bis 40 min, 3,0 GB bis 5,2 GB, der Platz reicht", text(ohneWeb).getLast());
-        // Jeder Knopf hat eine Beschriftung.
-        for (Seite s : List.of(texturen, aussehen, webkarte, mod, Einrichtung.uebersicht(List.of()), Einrichtung.schaetzt(),
-                Einrichtung.fertig(List.of()), Einrichtung.zusammenfassung(new Einrichtung.Vorschau(List.of("x"), null, List.of())))) {
-            s.knoepfe().forEach(k -> assertTrue(Einrichtung.LABEL.containsKey(k), k));
-        }
+        assertEquals(List.of("abbrechen"), knoepfe(Einrichtung.schaetzt()));
+        var nichtLesbar = Einrichtung.nichtLesbar("trees: kein Baum");
+        assertEquals(List.of(new Einrichtung.Zeile("✖ config.yml lässt sich so nicht einrichten: trees: kein Baum", Ampeln.Farbe.ROT)),
+                nichtLesbar.zeilen());
+        assertEquals(List.of("uebersicht", "schliessen"), knoepfe(nichtLesbar));
+        assertEquals(new Einrichtung.Knopf("weiter", "Weiter", null), texturen.knoepfe().getFirst(), "ein fester Knopf hat keine Farbe");
     }
 
     @Test
-    void die_uebersicht_zeigt_jede_ampel_mit_ihrer_farbe() {
-        var s = Einrichtung.uebersicht(List.of(new Ampeln.Ampel("Renderer", Ampeln.Farbe.GRUEN, "bereit"),
-                new Ampeln.Ampel("Mod", Ampeln.Farbe.GRAU, "aus")));
+    void ein_einzeln_geoeffneter_schritt() {
+        var w = new Wahl(false, "top-north", false, false, 8081, true);
+        var webkarte = Einrichtung.webkarte(nur(Schritt.WEBKARTE), w, null, null);
+        assertEquals("Webkarte", webkarte.titel(), "ohne „Schritt n von m“");
+        assertEquals(List.of("weiter", "uebersicht"), knoepfe(webkarte));
+        // Die Karte für den Mod steht in der Datei: Die Webkarte bleibt an, und die Seite sagt es.
+        assertEquals("an", webkarte.eingaben().getFirst().wert());
+        assertTrue(text(webkarte).contains("Die Karte für den Mod ist an: Die Webkarte bleibt an, sie liefert den Download aus. "
+                + "Ausschalten geht erst, wenn der Mod aus ist."));
+        var ohneMod = Einrichtung.webkarte(nur(Schritt.WEBKARTE), new Wahl(false, "2:1", false, false, 8081, false), null, null);
+        assertEquals("aus", ohneMod.eingaben().getFirst().wert());
+        assertTrue(text(ohneMod).stream().noneMatch(z -> z.contains("Die Karte für den Mod ist an")));
+        var mod = Einrichtung.mod(nur(Schritt.MOD), w, null);
+        assertEquals("Mod", mod.titel());
+        assertEquals(List.of("schaetzen", "weiter", "uebersicht"), knoepfe(mod));
+        // Nach dem Aussehen liesse sich noch fragen: Die Karte von oben wird die eine für beide.
+        assertTrue(text(mod).contains("An heisst: Deine Karte von oben taugt auch für den Mod. Es bleibt bei einer Karte, mit scale 4; "
+                + "kein zweiter Lauf."));
+        var gezeichnet = Einrichtung.mod(new Weg(List.of(Schritt.MOD), List.of(Schritt.WEBKARTE, Schritt.MOD)), w, null);
+        assertTrue(text(gezeichnet).stream().anyMatch(z -> z.startsWith("An heisst: eine eigene Karte von oben für den Mod")));
+        assertEquals("Texturen", Einrichtung.texturen(nur(Schritt.TEXTUREN)).titel());
+        assertEquals("Aussehen", Einrichtung.aussehen(nur(Schritt.AUSSEHEN), w).titel());
+    }
+
+    @Test
+    void die_uebersicht_zeigt_jede_ampel_als_zeile_und_als_knopf() {
+        var ampeln = List.of(new Ampeln.Ampel("Renderer", Ampeln.Farbe.GRUEN, "bereit"), new Ampeln.Ampel("Mod", Ampeln.Farbe.GRAU, "aus"));
+        var s = Einrichtung.uebersicht(ampeln, true, List.of());
         assertEquals("Heroic Map · Übersicht", s.titel());
-        assertEquals(List.of(new Einrichtung.Zeile("✔ Renderer: bereit", Ampeln.Farbe.GRUEN), new Einrichtung.Zeile("○ Mod: aus", Ampeln.Farbe.GRAU)),
-                s.zeilen());
-        assertEquals(List.of("einrichten", "pruefen", "schliessen"), s.knoepfe());
+        assertEquals(List.of(new Einrichtung.Zeile("✔ Renderer: bereit", Ampeln.Farbe.GRUEN), new Einrichtung.Zeile("○ Mod: aus", Ampeln.Farbe.GRAU),
+                Einrichtung.Zeile.text("Ein Klick auf einen Punkt öffnet nur ihn. „Der Reihe nach“ geht durch alles, was sich hier "
+                        + "einstellen lässt und nicht grün ist.")), s.zeilen());
+        assertEquals(List.of(new Einrichtung.Knopf("ampel:0", "✔ Renderer", Ampeln.Farbe.GRUEN), new Einrichtung.Knopf("ampel:1", "○ Mod", Ampeln.Farbe.GRAU),
+                new Einrichtung.Knopf("reihe", "Der Reihe nach", null), new Einrichtung.Knopf("pruefen", "Neu prüfen", null),
+                new Einrichtung.Knopf("schliessen", "Schliessen", null)), s.knoepfe());
+        assertEquals("ampel:1", Einrichtung.ampelKnopf(1));
+        // Steht nichts an, fehlt „Der Reihe nach“.
+        var ohne = Einrichtung.uebersicht(ampeln, false, List.of());
+        assertEquals(List.of("ampel:0", "ampel:1", "pruefen", "schliessen"), knoepfe(ohne));
+        assertEquals("Ein Klick auf einen Punkt öffnet nur ihn.", text(ohne).getLast());
+        // Nach dem Speichern steht oben, was geschrieben ist.
+        var gespeichert = Einrichtung.uebersicht(ampeln, false, List.of("webserver.enabled: false → true"));
+        assertEquals(List.of(new Einrichtung.Zeile("✔ Gespeichert, gilt nach dem Neustart des Servers:", Ampeln.Farbe.GRUEN),
+                Einrichtung.Zeile.text("  webserver.enabled: false → true"), new Einrichtung.Zeile("✔ Renderer: bereit", Ampeln.Farbe.GRUEN)),
+                gespeichert.zeilen().subList(0, 3));
+        assertEquals(List.of("1. Server neu starten, dann gilt alles.", "2. /heroicmap render zeichnet die Karten.",
+                "3. /heroicmap setup zeigt, ob alles grün ist."), Einrichtung.alsNaechstes());
+        // Viele Knöpfe stehen in zwei Spalten, wenige nebeneinander.
+        assertEquals(List.of(1, 3, 3, 2, 2), List.of(Einrichtung.spalten(1), Einrichtung.spalten(3), Einrichtung.spalten(4),
+                Einrichtung.spalten(5), Einrichtung.spalten(14)));
+    }
+
+    @Test
+    void ein_punkt_ohne_frage_zeigt_die_ampel_den_ort_und_den_befehl() {
+        var karte = Einrichtung.punkt(Ampeln.karte("top-north-s", tmp.resolve("fehlt"), null), null);
+        assertEquals("Karte top-north-s", karte.titel());
+        assertEquals(List.of(new Einrichtung.Zeile("! Karte top-north-s: noch nie gezeichnet: /heroicmap render top-north-s", Ampeln.Farbe.GELB),
+                Einrichtung.Zeile.text("Einstellen: trees in config.yml."),
+                Einrichtung.Zeile.text("Was in config.yml geändert wird, gilt nach dem Neustart des Servers.")), karte.zeilen());
+        assertEquals(List.of("befehl", "uebersicht", "schliessen"), knoepfe(karte));
+        var renderer = Einrichtung.punkt(new Ampeln.Ampel("Renderer", Ampeln.Farbe.GRUEN, "bereit"), null);
+        assertEquals("Einstellen: renderer.binary in config.yml, nur für andere Plattformen oder ein eigenes Binär.", text(renderer).get(1));
+        assertEquals(List.of("uebersicht", "schliessen"), knoepfe(renderer), "kein Befehl im Satz, kein Knopf dafür");
+        assertEquals("Einstellen: update-minutes in config.yml; 0 schaltet sie aus.", text(Einrichtung.punkt(Ampeln.updates(0), null)).get(1));
+        assertEquals(List.of("befehl", "uebersicht", "schliessen"), knoepfe(Einrichtung.punkt(Ampeln.updates(0), null)));
+        // Ein Schritt, der gerade nichts zu fragen hat, sagt das, statt zu fehlen.
+        var texturen = Einrichtung.punkt(new Ampeln.Ampel("Texturen", Ampeln.Farbe.GRUEN, "eigene Assets aus renderer.assets"), Schritt.TEXTUREN);
+        assertEquals("Hier ist nichts zu fragen. Ändern: renderer.assets oder renderer.download-client-jar in config.yml.", text(texturen).get(1));
+        var aussehen = Einrichtung.punkt(new Ampeln.Ampel("Karte 2x1-se", Ampeln.Farbe.GRUEN, "gezeichnet"), Schritt.AUSSEHEN);
+        assertTrue(text(aussehen).get(1).startsWith("Blick und Cinematic fragt der Dialog nur vor dem ersten Zeichnen"), text(aussehen).get(1));
+        assertEquals(List.of("uebersicht", "schliessen"), knoepfe(aussehen));
+        assertEquals("Ohne Bäume in config.yml zeichnet dieser Server keine Karte; hier ist nichts zu fragen.",
+                text(Einrichtung.punkt(new Ampeln.Ampel("Mod", Ampeln.Farbe.GRAU, "aus"), Schritt.MOD)).get(1));
+    }
+
+    @Test
+    void der_befehl_aus_einem_satz() {
+        assertEquals("/heroicmap render 2x1-se", Einrichtung.befehl(Ampeln.karte("2x1-se", tmp.resolve("fehlt"), null).satz()));
+        assertEquals("/heroicmap render top-north-s-flat",
+                Einrichtung.befehl("braucht einen vollen Lauf, neuer Renderer: /heroicmap render top-north-s-flat"));
+        assertEquals("/heroicmap update", Einrichtung.befehl(Ampeln.updates(0).satz()), "das Wort dahinter ist kein Ordner");
+        assertEquals("/heroicmap render", Einrichtung.befehl("2. /heroicmap render zeichnet die Karten."));
+        assertEquals("/heroicmap setup", Einrichtung.befehl("3. /heroicmap setup zeigt, ob alles grün ist."));
+        assertNull(Einrichtung.befehl("bereit"));
     }
 
     @Test
@@ -160,8 +287,8 @@ class EinrichtungTest {
     @Test
     void die_wuensche_an_den_setzer() {
         var w = new Wahl(true, "top-north", true, true, 8081, true);
-        assertEquals(List.of(new Wunsch.Texturen(), new Wunsch.Aussehen("top-north", true, null), new Wunsch.Mod(true), new Wunsch.Port(8081)),
-                Einrichtung.wuensche(ALLE, w), "mit dem Mod bleibt der Webserver an: kein Wunsch zur Webkarte");
+        assertEquals(List.of(new Wunsch.Texturen(), new Wunsch.Aussehen("top-north", true, null), new Wunsch.Mod(true), new Wunsch.Web(true),
+                new Wunsch.Port(8081)), Einrichtung.wuensche(ALLE, w));
         var ohneMod = new Wahl(false, "2:1", false, false, 8080, false);
         assertEquals(List.of(new Wunsch.Aussehen("2:1", false, null), new Wunsch.Mod(false), new Wunsch.Web(false), new Wunsch.Port(8080)),
                 Einrichtung.wuensche(ALLE, ohneMod), "ohne Zustimmung kein Wunsch dazu");
@@ -172,11 +299,33 @@ class EinrichtungTest {
                 Einrichtung.wuensche(ALLE, new Wahl(false, "top-north", false, true, 8080, false)).getFirst());
         assertEquals(new Wunsch.Aussehen("4:3", false, null),
                 Einrichtung.wuensche(ALLE, new Wahl(false, "4:3", false, true, 8080, true)).getFirst());
-        assertEquals(List.of(new Wunsch.Web(true), new Wunsch.Port(8081)),
-                Einrichtung.wuensche(List.of(Schritt.WEBKARTE), w), "was nicht gefragt wurde, wird nicht gesetzt");
-        assertEquals(List.of(new Wunsch.Mod(true), new Wunsch.Port(8081)),
-                Einrichtung.wuensche(List.of(Schritt.TEXTUREN, Schritt.WEBKARTE, Schritt.MOD), new Wahl(false, "4:3", true, false, 8081, true)),
-                "die Webkarte aus und der Mod an: Der Mod gewinnt");
+        var ohneAussehen = List.of(Schritt.TEXTUREN, Schritt.WEBKARTE, Schritt.MOD);
+        assertEquals(List.of(new Wunsch.Mod(true), new Wunsch.Web(true), new Wunsch.Port(8081)),
+                Einrichtung.wuensche(new Weg(ohneAussehen, ohneAussehen), new Wahl(false, "4:3", true, false, 8081, true)),
+                "die Webkarte aus und der Mod an: Der Mod gewinnt, der Webserver bleibt an");
+    }
+
+    @Test
+    void ein_einzelner_schritt_aendert_nur_seins() {
+        var w = new Wahl(true, "4:3", true, false, 8090, false);
+        assertEquals(List.of(new Wunsch.Texturen()), Einrichtung.wuensche(nur(Schritt.TEXTUREN), w), "kein Port, keine Webkarte");
+        assertEquals(List.of(), Einrichtung.wuensche(nur(Schritt.TEXTUREN), new Wahl(false, "4:3", true, false, 8090, false)),
+                "ohne Zustimmung nichts");
+        assertEquals(List.of(new Wunsch.Aussehen("4:3", true, null)), Einrichtung.wuensche(nur(Schritt.AUSSEHEN), w));
+        assertEquals(List.of(new Wunsch.Web(false), new Wunsch.Port(8090)), Einrichtung.wuensche(nur(Schritt.WEBKARTE), w));
+        assertEquals(List.of(new Wunsch.Mod(false)), Einrichtung.wuensche(nur(Schritt.MOD), w));
+        // Die Karte für den Mod steht in der Datei: Die Webkarte bleibt an, auch wenn „aus“ gewählt ist.
+        assertEquals(List.of(new Wunsch.Web(true), new Wunsch.Port(8090)),
+                Einrichtung.wuensche(nur(Schritt.WEBKARTE), new Wahl(false, "4:3", true, false, 8090, true)));
+        // Nur der Mod, und nach dem Aussehen der Karte von oben liesse sich noch fragen: eine Karte für beide, scale 4.
+        var vonOben = new Wahl(false, "top-north", false, true, 8080, true);
+        assertEquals(List.of(new Wunsch.Aussehen("top-north", false, 4), new Wunsch.Mod(true)), Einrichtung.wuensche(nur(Schritt.MOD), vonOben));
+        // Ist sie schon gezeichnet, bleibt sie, wie sie ist.
+        assertEquals(List.of(new Wunsch.Mod(true)),
+                Einrichtung.wuensche(new Weg(List.of(Schritt.MOD), List.of(Schritt.WEBKARTE, Schritt.MOD)), vonOben));
+        assertEquals(List.of(new Wunsch.Mod(true)), Einrichtung.wuensche(nur(Schritt.MOD), new Wahl(false, "top-north", true, true, 8080, true)),
+                "mit Cinematic taugt sie nicht für den Mod");
+        assertEquals(List.of(new Wunsch.Mod(false)), Einrichtung.wuensche(nur(Schritt.MOD), new Wahl(false, "top-north", false, true, 8080, false)));
     }
 
     @Test
@@ -194,14 +343,23 @@ class EinrichtungTest {
         assertEquals(List.of("trees: camera: 2:1 → 4:3 am ersten Baum", "trees: neuer Baum top-north mit scale 4, download: true und web: false"),
                 schraeg.aenderungen());
         var seite = Einrichtung.zusammenfassung(v);
-        assertEquals(List.of("speichern", "zurueck", "abbrechen"), seite.knoepfe());
+        assertEquals(List.of("speichern", "zurueck", "uebersicht"), knoepfe(seite));
         assertEquals("Das wird in config.yml geändert:", text(seite).getFirst());
         assertTrue(text(seite).contains("  renderer.download-client-jar: false → true"));
         assertEquals("Geschrieben wird erst mit „Speichern“. Es gilt nach dem Neustart des Servers.", text(seite).getLast());
         // Nichts zu ändern: kein Speichern.
-        var gleich = Einrichtung.vorschau(vorlage, Einrichtung.wuensche(List.of(Schritt.WEBKARTE, Schritt.MOD), Wahl.aus(konf(vorlage))), c -> {});
+        var gleich = Einrichtung.vorschau(vorlage, Einrichtung.wuensche(ALLE, Wahl.aus(konf(vorlage))), c -> {});
         assertEquals(new Einrichtung.Vorschau(List.of(), null, List.of()), gleich);
-        assertEquals(List.of("zurueck", "schliessen"), Einrichtung.zusammenfassung(gleich).knoepfe());
+        assertEquals(List.of("zurueck", "uebersicht"), knoepfe(Einrichtung.zusammenfassung(gleich)));
+        // Einzeln geöffnet steht nur die eine Änderung da.
+        assertEquals(List.of("renderer.download-client-jar: false → true"),
+                Einrichtung.vorschau(vorlage, Einrichtung.wuensche(nur(Schritt.TEXTUREN), w), c -> {}).aenderungen());
+        assertEquals(List.of("webserver.listen: \"0.0.0.0:8080\" → \"0.0.0.0:8081\""),
+                Einrichtung.vorschau(vorlage, Einrichtung.wuensche(nur(Schritt.WEBKARTE), new Wahl(false, "2:1", false, true, 8081, false)), c -> {})
+                        .aenderungen());
+        assertEquals(List.of("trees: neuer Baum top-north mit scale 4, download: true und web: false"),
+                Einrichtung.vorschau(vorlage, Einrichtung.wuensche(nur(Schritt.MOD), new Wahl(false, "2:1", false, true, 8080, true)), c -> {})
+                        .aenderungen());
         assertEquals(List.of("Nichts zu ändern: Alles steht schon so in config.yml."), text(Einrichtung.zusammenfassung(gleich)));
         // Abgelehnt: rot, mit den Zeilen für die Hand, kein Speichern.
         var nicht = Einrichtung.vorschau("trees: [{camera: \"2:1\"}]\nwebserver:\n  enabled: true\n  listen: \"0.0.0.0:8080\"\n",
@@ -211,7 +369,7 @@ class EinrichtungTest {
         assertEquals(new Einrichtung.Zeile("✖ Nicht geändert: trees steht nicht als einfache Liste da", Ampeln.Farbe.ROT), rot.zeilen().getFirst());
         assertEquals(List.of("Von Hand in config.yml:", "trees:", "  - camera: \"top-north\"", "    scale: 4", "    download: true", "    web: false"),
                 text(rot).subList(1, 7));
-        assertEquals(List.of("zurueck", "schliessen"), rot.knoepfe());
+        assertEquals(List.of("zurueck", "uebersicht"), knoepfe(rot));
     }
 
     @Test
@@ -220,28 +378,25 @@ class EinrichtungTest {
         // Eine gezeichnete Karte von oben mit anderem scale: Niemand fragt nach dem Aussehen, und „Mod an“ legte eine
         // zweite Karte in denselben Ordner. Die Prüfung des Plugins für den Setzer lehnt das ab.
         String vonOben = vorlage().replace("  - camera: \"2:1\"", "  - camera: \"top-north\"\n    scale: 8");
-        var v = Einrichtung.vorschau(vonOben, Einrichtung.wuensche(List.of(Schritt.WEBKARTE, Schritt.MOD), new Wahl(false, "top-north", false, true, 8080, true)),
-                c -> {
-                    String doppelt = Konfiguration.aus(c, tmp, tmp.resolve("world")).doppelterOrdner();
-                    if (doppelt != null) {
-                        throw new IllegalArgumentException("trees: Zwei Karten hätten denselben Ordner " + doppelt);
-                    }
-                });
+        java.util.function.Consumer<YamlConfiguration> pruefung = c -> {
+            String doppelt = Konfiguration.aus(c, tmp, tmp.resolve("world")).doppelterOrdner();
+            if (doppelt != null) {
+                throw new IllegalArgumentException("trees: Zwei Karten hätten denselben Ordner " + doppelt);
+            }
+        };
+        var w = new Wahl(false, "top-north", false, true, 8080, true);
+        var gezeichnet = List.of(Schritt.WEBKARTE, Schritt.MOD);
+        var v = Einrichtung.vorschau(vonOben, Einrichtung.wuensche(new Weg(gezeichnet, gezeichnet), w), pruefung);
         assertEquals("danach wäre config.yml ungültig: trees: Zwei Karten hätten denselben Ordner top-north-s", v.abgelehnt());
         assertEquals(List.of(), v.aenderungen());
+        // Dieselbe Karte, nie gezeichnet, und nur der Mod geöffnet: Sie wird mit scale 4 die eine für beide.
+        var eine = Einrichtung.vorschau(vonOben, Einrichtung.wuensche(nur(Schritt.MOD), w), pruefung);
+        assertNull(eine.abgelehnt());
+        assertEquals(List.of("trees: scale: 4 am ersten Baum", "trees: download: true am Baum top-north"), eine.aenderungen());
         // Verschiedene Ordner: Cinematic und eine andere Richtung zählen zum Namen, scale und download nicht.
         assertNull(konf(vorlage().replace("  - camera: \"2:1\"", "  - camera: \"top-north\"\n    cinematic: true\n  - camera: \"top-north\"\n"
                 + "    direction: n\n  - camera: \"top-north\"\n    scale: 4\n    download: true")).doppelterOrdner());
         assertEquals("2x1-se", konf(vorlage().replace("  - camera: \"2:1\"", "  - camera: \"2:1\"\n  - camera: \"4:2\"\n    scale: 8")).doppelterOrdner());
-    }
-
-    @Test
-    void fertig_nennt_was_als_naechstes_zu_tun_ist() {
-        var s = Einrichtung.fertig(List.of("webserver.enabled: false → true"));
-        assertEquals("Fertig", s.titel());
-        assertEquals(List.of("✔ Gespeichert:", "  webserver.enabled: false → true", "Als Nächstes:", "1. Server neu starten, dann gilt alles.",
-                "2. /heroicmap render zeichnet die Karten.", "3. /heroicmap setup zeigt, ob alles grün ist."), text(s));
-        assertEquals(List.of("schliessen"), s.knoepfe());
     }
 
     @Test

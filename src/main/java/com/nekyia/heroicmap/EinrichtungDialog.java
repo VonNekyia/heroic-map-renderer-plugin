@@ -3,6 +3,7 @@ package com.nekyia.heroicmap;
 import com.nekyia.heroicmap.Einrichtung.Schritt;
 import com.nekyia.heroicmap.Einrichtung.Seite;
 import com.nekyia.heroicmap.Einrichtung.Wahl;
+import com.nekyia.heroicmap.Einrichtung.Weg;
 import io.papermc.paper.dialog.Dialog;
 import io.papermc.paper.dialog.DialogResponseView;
 import io.papermc.paper.registry.data.dialog.ActionButton;
@@ -16,6 +17,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.time.Duration;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -32,9 +34,9 @@ import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
 
 /**
- * /heroicmap setup als Dialog des Spiels: zeigt die Seiten aus {@link Einrichtung} und führt von der Übersicht durch
- * die Schritte bis zum Speichern. Jede Seite baut ein Dialog von Paper; was eine Antwort bewirkt, läuft im
- * Hauptthread, Platte und Port ausserhalb. Siehe docs/einrichten.md.
+ * /heroicmap setup als Dialog des Spiels: zeigt die Seiten aus {@link Einrichtung}. Von der Übersicht öffnet jede
+ * Ampel nur ihren Punkt; „Der Reihe nach“ geht durch alles, was ansteht. Jede Seite baut ein Dialog von Paper; was eine
+ * Antwort bewirkt, läuft im Hauptthread, Platte und Port ausserhalb. Siehe docs/einrichten.md.
  */
 final class EinrichtungDialog {
 
@@ -45,21 +47,25 @@ final class EinrichtungDialog {
     private static final Map<Ampeln.Farbe, NamedTextColor> FARBEN = Map.of(Ampeln.Farbe.GRUEN, NamedTextColor.GREEN,
             Ampeln.Farbe.ROT, NamedTextColor.RED, Ampeln.Farbe.GELB, NamedTextColor.YELLOW, Ampeln.Farbe.GRAU, NamedTextColor.GRAY);
 
+    /**
+     * config.yml, wie sie beim Öffnen der Übersicht dasteht: die Einstellungen, welche Schritte etwas zu fragen haben,
+     * und Adresse, HTTPS oder Proxy, die der Schritt Webkarte nur zeigt, oder null.
+     */
+    private record Datei(Konfiguration konf, List<Schritt> fragbar, String ausDatei) {}
+
     /** Wo ein Spieler in der Einrichtung steht; nur im Hauptthread geändert. */
     private static final class Sitzung {
-        private final Konfiguration datei;
-        private final List<Schritt> schritte;
-        private final String ausDatei;
+        private final Datei datei;
+        private final Weg weg;
         private Wahl wahl;
         private int index;
         private String portFehler;
         private String schaetzung;
 
-        private Sitzung(Konfiguration datei, List<Schritt> schritte, String ausDatei) {
+        private Sitzung(Datei datei, List<Schritt> offen) {
             this.datei = datei;
-            this.schritte = schritte;
-            this.ausDatei = ausDatei;
-            this.wahl = Wahl.aus(datei);
+            this.weg = new Weg(offen, datei.fragbar());
+            this.wahl = Wahl.aus(datei.konf());
         }
     }
 
@@ -85,40 +91,71 @@ final class EinrichtungDialog {
 
     /** Im Hauptthread: die Übersicht mit den Ampeln. */
     void oeffne(Player p) {
+        oeffne(p, List.of());
+    }
+
+    /** Wie oben; {@code gespeichert} nennt, was gerade geschrieben wurde. Prüft die Ampeln und liest config.yml neu. */
+    private void oeffne(Player p, List<String> gespeichert) {
         sitzungen.remove(p.getUniqueId());
         var lage = plugin.lage();
         aussen(() -> {
             var ampeln = Ampeln.pruefe(lage);
-            innen(() -> zeige(p, Einrichtung.uebersicht(ampeln), Map.of("einrichten", a -> beginne(p), "pruefen", a -> oeffne(p))));
+            Datei gelesen = null;
+            String grund = null;
+            try {
+                gelesen = lies();
+            } catch (IOException | InvalidConfigurationException | IllegalArgumentException e) {
+                grund = String.valueOf(e.getMessage());
+            }
+            var datei = gelesen;
+            var nicht = grund;
+            var reihe = datei == null ? List.<Schritt>of() : Einrichtung.reihe(ampeln, lage.konf(), datei.fragbar());
+            innen(() -> {
+                var aktionen = new HashMap<String, Consumer<DialogResponseView>>();
+                for (int i = 0; i < ampeln.size(); i++) {
+                    var ampel = ampeln.get(i);
+                    aktionen.put(Einrichtung.ampelKnopf(i), a -> oeffnePunkt(p, ampel, Einrichtung.schritt(ampel, lage.konf()), datei, nicht));
+                }
+                aktionen.put("reihe", a -> beginne(p, datei, reihe));
+                aktionen.put("pruefen", a -> oeffne(p));
+                zeige(p, Einrichtung.uebersicht(ampeln, !reihe.isEmpty(), gespeichert), aktionen);
+            });
         });
     }
 
-    /** Liest config.yml, wie sie jetzt dasteht, und beginnt beim ersten Schritt. */
-    private void beginne(Player p) {
-        aussen(() -> {
-            Sitzung s;
-            try {
-                var c = new YamlConfiguration();
-                c.loadFromString(Files.readString(plugin.configDatei(), StandardCharsets.UTF_8));
-                var k = plugin.lies(c);
-                boolean nieGezeichnet = !k.baeume().isEmpty()
-                        && !Files.isRegularFile(k.kacheln().resolve(k.baeume().getFirst().ordner()).resolve("map.json"));
-                var w = k.webserver();
-                String ausDatei = !w.url().isEmpty() ? "Adresse für Spieler: " + w.url() + "."
-                        : w.oeffentlicherPort() > 0 ? "Spieler erreichen die Karte über Port " + w.oeffentlicherPort() + " eines Proxys."
-                        : w.zertifikat() != null ? "Die Karte spricht HTTPS." : null;
-                s = new Sitzung(k, Einrichtung.schritte(k, nieGezeichnet), ausDatei);
-            } catch (IOException | InvalidConfigurationException | IllegalArgumentException e) {
-                String grund = "config.yml lässt sich so nicht einrichten: " + e.getMessage();
-                innen(() -> zeige(p, new Seite("Einrichten", List.of(new Einrichtung.Zeile("✖ " + grund, Ampeln.Farbe.ROT)), List.of(),
-                        List.of("schliessen")), Map.of()));
-                return;
-            }
-            innen(() -> {
-                sitzungen.put(p.getUniqueId(), s);
-                zeigeSchritt(p);
-            });
-        });
+    /** Liest config.yml, wie sie jetzt dasteht. */
+    private Datei lies() throws IOException, InvalidConfigurationException {
+        var c = new YamlConfiguration();
+        c.loadFromString(Files.readString(plugin.configDatei(), StandardCharsets.UTF_8));
+        var k = plugin.lies(c);
+        boolean nieGezeichnet = !k.baeume().isEmpty()
+                && !Files.isRegularFile(k.kacheln().resolve(k.baeume().getFirst().ordner()).resolve("map.json"));
+        var w = k.webserver();
+        String ausDatei = !w.url().isEmpty() ? "Adresse für Spieler: " + w.url() + "."
+                : w.oeffentlicherPort() > 0 ? "Spieler erreichen die Karte über Port " + w.oeffentlicherPort() + " eines Proxys."
+                : w.zertifikat() != null ? "Die Karte spricht HTTPS." : null;
+        return new Datei(k, Einrichtung.schritte(k, nieGezeichnet), ausDatei);
+    }
+
+    /**
+     * Im Hauptthread: ein Punkt der Übersicht. Hat sein Schritt etwas zu fragen, nur dieser Schritt; sonst die Seite
+     * ohne Frage. {@code datei} ist null, wenn sich config.yml nicht lesen liess, dann nennt {@code grund} warum.
+     */
+    private void oeffnePunkt(Player p, Ampeln.Ampel ampel, Schritt schritt, Datei datei, String grund) {
+        if (schritt != null && datei == null) {
+            zeige(p, Einrichtung.nichtLesbar(grund), Map.of("uebersicht", a -> oeffne(p)));
+        } else if (schritt != null && datei.fragbar().contains(schritt)) {
+            beginne(p, datei, List.of(schritt));
+        } else {
+            String befehl = Einrichtung.befehl(ampel.satz());
+            zeige(p, Einrichtung.punkt(ampel, schritt), Map.of("uebersicht", a -> oeffne(p), "befehl", a -> p.sendMessage(mitBefehl(befehl))));
+        }
+    }
+
+    /** Im Hauptthread: geht durch {@code offen}, einen einzelnen Schritt oder die Reihe. */
+    private void beginne(Player p, Datei datei, List<Schritt> offen) {
+        sitzungen.put(p.getUniqueId(), new Sitzung(datei, offen));
+        zeigeSchritt(p);
     }
 
     /** Im Hauptthread: der Schritt, bei dem der Spieler steht. */
@@ -127,18 +164,18 @@ final class EinrichtungDialog {
         if (s == null) {
             return;
         }
-        Schritt schritt = s.schritte.get(s.index);
+        Schritt schritt = s.weg.offen().get(s.index);
         Seite seite = switch (schritt) {
-            case TEXTUREN -> Einrichtung.texturen(s.schritte);
-            case AUSSEHEN -> Einrichtung.aussehen(s.schritte, s.wahl);
-            case WEBKARTE -> Einrichtung.webkarte(s.schritte, s.wahl, s.portFehler, s.ausDatei);
-            case MOD -> Einrichtung.mod(s.schritte, s.wahl, s.schaetzung);
+            case TEXTUREN -> Einrichtung.texturen(s.weg);
+            case AUSSEHEN -> Einrichtung.aussehen(s.weg, s.wahl);
+            case WEBKARTE -> Einrichtung.webkarte(s.weg, s.wahl, s.portFehler, s.datei.ausDatei());
+            case MOD -> Einrichtung.mod(s.weg, s.wahl, s.schaetzung);
         };
         zeige(p, seite, Map.of("weiter", a -> weiter(p, s, schritt, a), "zurueck", a -> {
             s.wahl = Einrichtung.antwort(schritt, s.wahl, a::getText);
             s.index--;
             zeigeSchritt(p);
-        }, "abbrechen", a -> sitzungen.remove(p.getUniqueId()), "schaetzen", a -> schaetze(p, s, a)));
+        }, "uebersicht", a -> oeffne(p), "schaetzen", a -> schaetze(p, s, a)));
     }
 
     private void weiter(Player p, Sitzung s, Schritt schritt, DialogResponseView a) {
@@ -149,7 +186,7 @@ final class EinrichtungDialog {
         }
         // Der Port: probeweise binden, nur auf dem Host aus webserver.listen. Siehe docs/einrichten.md, „Webkarte“.
         String eingabe = a.getText("port");
-        String lauscht = s.datei.webserver().adresse();
+        String lauscht = s.datei.konf().webserver().adresse();
         String host = lauscht.contains(":") ? lauscht.substring(0, lauscht.lastIndexOf(':') + 1) : "0.0.0.0:";
         int eigener = plugin.eigenerPort();
         int spielPort = plugin.getServer().getPort();
@@ -169,7 +206,7 @@ final class EinrichtungDialog {
     }
 
     private void naechster(Player p, Sitzung s) {
-        if (s.index + 1 < s.schritte.size()) {
+        if (s.index + 1 < s.weg.offen().size()) {
             s.index++;
             zeigeSchritt(p);
         } else {
@@ -179,7 +216,7 @@ final class EinrichtungDialog {
 
     /** Probiert die Wünsche an config.yml aus, ohne zu schreiben, und zeigt, was sich ändern würde. */
     private void zeigeZusammenfassung(Player p, Sitzung s) {
-        var wuensche = Einrichtung.wuensche(s.schritte, s.wahl);
+        var wuensche = Einrichtung.wuensche(s.weg, s.wahl);
         aussen(() -> {
             Einrichtung.Vorschau v;
             try {
@@ -190,21 +227,20 @@ final class EinrichtungDialog {
             }
             var vorschau = v;
             innen(() -> zeige(p, Einrichtung.zusammenfassung(vorschau), Map.of("speichern", a -> speichere(p, s),
-                    "zurueck", a -> zeigeSchritt(p), "abbrechen", a -> sitzungen.remove(p.getUniqueId()),
-                    "schliessen", a -> sitzungen.remove(p.getUniqueId()))));
+                    "zurueck", a -> zeigeSchritt(p), "uebersicht", a -> oeffne(p))));
         });
     }
 
+    /** Schreibt und zeigt wieder die Übersicht, mit dem, was gespeichert ist, und neu geprüften Ampeln. */
     private void speichere(Player p, Sitzung s) {
-        var wuensche = Einrichtung.wuensche(s.schritte, s.wahl);
+        var wuensche = Einrichtung.wuensche(s.weg, s.wahl);
         String wer = p.getName();
         aussen(() -> {
             Einrichtung.Vorschau abgelehnt;
             try {
                 var geaendert = plugin.schreibe(wuensche, wer);
                 innen(() -> {
-                    sitzungen.remove(p.getUniqueId());
-                    zeige(p, Einrichtung.fertig(geaendert), Map.of());
+                    oeffne(p, geaendert);
                     Einrichtung.alsNaechstes().forEach(z -> p.sendMessage(mitBefehl(z)));
                 });
                 return;
@@ -215,19 +251,17 @@ final class EinrichtungDialog {
                 abgelehnt = new Einrichtung.Vorschau(List.of(), "config.yml liess sich nicht schreiben, siehe Log", List.of());
             }
             var v = abgelehnt;
-            innen(() -> zeige(p, Einrichtung.zusammenfassung(v), Map.of("zurueck", a -> zeigeSchritt(p),
-                    "schliessen", a -> sitzungen.remove(p.getUniqueId()))));
+            innen(() -> zeige(p, Einrichtung.zusammenfassung(v), Map.of("zurueck", a -> zeigeSchritt(p), "uebersicht", a -> oeffne(p))));
         });
     }
 
     /** Eine Zeile für den Chat; ein Befehl darin lässt sich anklicken und steht dann in der Eingabe. */
     private static Component mitBefehl(String zeile) {
-        int i = zeile.indexOf("/heroicmap ");
-        if (i < 0) {
+        String befehl = Einrichtung.befehl(zeile);
+        if (befehl == null) {
             return Component.text(zeile);
         }
-        int ende = zeile.indexOf(' ', i + "/heroicmap ".length());
-        String befehl = zeile.substring(i, ende < 0 ? zeile.length() : ende);
+        int i = zeile.indexOf(befehl);
         return Component.text(zeile.substring(0, i)).append(Component.text(befehl).decorate(TextDecoration.UNDERLINED)
                 .clickEvent(ClickEvent.suggestCommand(befehl))).append(Component.text(zeile.substring(i + befehl.length())));
     }
@@ -239,7 +273,7 @@ final class EinrichtungDialog {
     private void schaetze(Player p, Sitzung s, DialogResponseView a) {
         s.wahl = Einrichtung.antwort(Schritt.MOD, s.wahl, a::getText);
         var laeufe = plugin.laeufe();
-        var baum = s.datei.baeume().stream().filter(b -> b.kamera().equals("top-north") && Integer.valueOf(4).equals(b.scale())
+        var baum = s.datei.konf().baeume().stream().filter(b -> b.kamera().equals("top-north") && Integer.valueOf(4).equals(b.scale())
                 && !b.cinematic() && !b.flat()).findFirst().orElse(new Konfiguration.Baum("top-north", "s", 4, false, true, false));
         String nicht = laeufe == null ? "kein Renderer" : laeufe.schaetze(baum, (zeile, ausgang) -> innen(() -> {
             s.schaetzung = zeile != null ? Einrichtung.schaetzung(zeile) : "nicht möglich: " + ausgang;
@@ -268,16 +302,21 @@ final class EinrichtungDialog {
                 : DialogInput.singleOption(e.id(), Component.text(e.label()), e.optionen().stream()
                         .map(o -> SingleOptionDialogInput.OptionEntry.create(o[0], Component.text(o[1]), o[0].equals(e.wert()))).toList())
                         .width(BREITE).build()).toList();
-        var knoepfe = seite.knoepfe().stream().map(k -> ActionButton.builder(Component.text(Einrichtung.LABEL.get(k)))
-                .action(DialogAction.customClick((antwort, wer) -> {
-                    // Die Antwort gilt nur dem Spieler, dem die Seite gezeigt wurde, und nur mit dem Recht.
-                    if (wer instanceof Player q && q.getUniqueId().equals(spieler) && q.hasPermission(HeroicMapPlugin.ADMIN)) {
-                        innen(() -> aktionen.getOrDefault(k, x -> {}).accept(antwort));
-                    }
-                }, EINMAL)).build()).toList();
+        int spalten = Einrichtung.spalten(seite.knoepfe().size());
+        var knoepfe = seite.knoepfe().stream().map(k -> {
+            var knopf = ActionButton.builder(k.farbe() == null ? Component.text(k.text()) : Component.text(k.text(), FARBEN.get(k.farbe())))
+                    .action(DialogAction.customClick((antwort, wer) -> {
+                        // Die Antwort gilt nur dem Spieler, dem die Seite gezeigt wurde, und nur mit dem Recht.
+                        if (wer instanceof Player q && q.getUniqueId().equals(spieler) && q.hasPermission(HeroicMapPlugin.ADMIN)) {
+                            innen(() -> aktionen.getOrDefault(k.id(), x -> {}).accept(antwort));
+                        }
+                    }, EINMAL));
+            // In der Übersicht füllen zwei Knöpfe zusammen die Breite des Texts, damit der Name einer Karte hineinpasst.
+            return (seite.knoepfe().size() > 4 ? knopf.width(BREITE / 2 - 4) : knopf).build();
+        }).toList();
         p.showDialog(Dialog.create(b -> b.empty()
                 .base(DialogBase.builder(Component.text(seite.titel())).canCloseWithEscape(true)
                         .afterAction(DialogBase.DialogAfterAction.CLOSE).body(text).inputs(eingaben).build())
-                .type(DialogType.multiAction(knoepfe).columns(Math.min(3, knoepfe.size())).build())));
+                .type(DialogType.multiAction(knoepfe).columns(spalten).build())));
     }
 }
