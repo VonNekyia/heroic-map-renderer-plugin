@@ -107,6 +107,19 @@ final class Webserver {
         return b;
     }
 
+    /**
+     * Legt den Ordner der Kacheln an, wenn er fehlt; false, wenn das nicht geht. Der Server des Renderers verlangt
+     * ihn, und auf einem frischen Server entstünde er erst mit dem ersten Lauf. Siehe docs/webserver.md, „Aufruf“.
+     */
+    static boolean bereite(Path kacheln) {
+        try {
+            Files.createDirectories(kacheln);
+            return true;
+        } catch (IOException e) {
+            return false;
+        }
+    }
+
     /** Eine Warnung, wenn Spieler den Webserver nicht erreichen: ohne url und Proxy nur auf dem eigenen Rechner. */
     static Optional<String> warnung(Konfiguration.Webserver w) {
         String host = w.adresse().substring(0, w.adresse().lastIndexOf(':'));

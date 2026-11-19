@@ -132,6 +132,18 @@ class WebserverTest {
     }
 
     @Test
+    void der_ordner_der_kacheln_entsteht_vor_dem_start() throws Exception {
+        // Ein frischer Server: Den Ordner gibt es erst mit dem ersten Lauf, der Server des Renderers verlangt ihn aber.
+        Path kacheln = tmp.resolve("plugins").resolve("HeroicMap").resolve("tiles");
+        assertTrue(Webserver.bereite(kacheln));
+        assertTrue(Files.isDirectory(kacheln));
+        Files.writeString(kacheln.resolve("trees.json"), "[]");
+        assertTrue(Webserver.bereite(kacheln), "ein bestehender Ordner bleibt, wie er ist");
+        assertEquals("[]", Files.readString(kacheln.resolve("trees.json")));
+        assertFalse(Webserver.bereite(kacheln.resolve("trees.json").resolve("tiles")), "unter einer Datei lässt sich nichts anlegen");
+    }
+
+    @Test
     void warnung_ohne_url_nur_auf_dem_eigenen_rechner() {
         for (String lokal : List.of("127.0.0.1:8080", "[::1]:8080", "localhost:8080")) {
             var w = new Konfiguration.Webserver(true, lokal, "", null, null, "", "", "", 0);

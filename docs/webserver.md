@@ -30,6 +30,13 @@ Der Code steht in `Webserver` in
 
 - **`<binär>`** ist `renderer.binary` oder das Binär aus dem Jar, siehe
   [Konfiguration](konfiguration.md), „Das Binär“.
+- **`<tiles>`** legt das Plugin vor dem Start an, wenn der Ordner fehlt
+  (`Webserver.bereite`). Der Server des Renderers verlangt ihn und endete
+  sonst mit Code 1, „… ist kein Verzeichnis“. Auf einem frischen Server
+  entstand er erst mit dem ersten Lauf oder der ersten Ebene; bis dahin
+  war die Ampel „Webkarte“ rot. Jetzt läuft der Webserver gleich, und die
+  Ampeln der Karten sagen, dass noch nichts gezeichnet ist. Lässt sich der
+  Ordner nicht anlegen, steht eine Warnung im Log.
 - **Vier Threads** für Verbindungen und Dateien, unabhängig von
   `renderer.threads` und `renderer.full-run-threads`. Der Server liest
   kleine Dateien und braucht kaum CPU, 0,2 bis 0,4 ms je Kachel. Mit einem
