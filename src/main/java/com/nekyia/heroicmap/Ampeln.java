@@ -59,7 +59,7 @@ final class Ampeln {
         aus.add(welt(k.welt(), l.autosaveAus()));
         aus.add(platz(k.kacheln()));
         for (var baum : k.baeume()) {
-            aus.add(karte(baum.ordner(), k.kacheln().resolve(baum.ordner()), l.letzte().get(baum.ordner())));
+            aus.add(karte(baum, k.kacheln().resolve(baum.ordner()), l.letzte().get(baum.ordner())));
         }
         var w = k.webserver();
         // Nur wenn der eigene Server nicht läuft und nicht gerade startet: Sonst nähme die Probe ihm den Port.
@@ -162,6 +162,24 @@ final class Ampeln {
         long gb = frei / 1_000_000_000L;
         return frei < WENIG_PLATZ ? new Ampel("Platz", Farbe.GELB, "nur noch " + gb + " GB frei für die Kacheln")
                 : new Ampel("Platz", Farbe.GRUEN, gb + " GB frei für die Kacheln");
+    }
+
+    /**
+     * Wie unten, dazu die Stufe: gelb, wenn ein gezeichneter Baum anders packt, als config.yml will, oder wenn ein Baum
+     * zum Download auf minimal steht. Siehe docs/ampeln.md, „Die Ampeln“.
+     */
+    static Ampel karte(Konfiguration.Baum baum, Path ordner, String ausgang) {
+        Ampel a = karte(baum.ordner(), ordner, ausgang);
+        if (a.farbe() != Farbe.GRUEN) {
+            return a;
+        }
+        String stufe = Laeufe.stufe(ordner);
+        String anders = Laeufe.abweichung(baum, stufe);
+        if (anders != null) {
+            return new Ampel(a.name(), Farbe.GELB, "packt " + stufe + ", " + anders);
+        }
+        return baum.download() && "minimal".equals(stufe) ? new Ampel(a.name(), Farbe.GELB,
+                "packt minimal: Mit dem Relief „Flach“ im Mod können Farbflächen sichtbar werden") : a;
     }
 
     /** Ein Baum: {@code ordner} sein Name, {@code baum} sein Ordner, {@code ausgang} der seines letzten Laufs oder null. */

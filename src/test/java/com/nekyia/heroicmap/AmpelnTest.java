@@ -134,6 +134,33 @@ class AmpelnTest {
         }
     }
 
+    private static Konfiguration.Baum baumMit(boolean download, String stufe) {
+        return new Konfiguration.Baum("top-north", "s", 4, false, download, true, false, null, stufe);
+    }
+
+    @Test
+    void karte_mit_stufe() throws IOException {
+        Path ordner = baum("top-north-s", "map.json");
+        Files.writeString(ordner.resolve("map.json"), "{\"quality\":\"good\"}");
+        assertEquals("✔ Karte top-north-s: gezeichnet", Ampeln.karte(baumMit(false, null), ordner, null).zeile(), "ohne Stufe in der Config");
+        assertEquals("✔ Karte top-north-s: gezeichnet", Ampeln.karte(baumMit(true, "good"), ordner, null).zeile(), "Baum und Config stimmen");
+        assertEquals("! Karte top-north-s: packt good, config will small: /heroicmap render top-north-s stellt um und zeichnet jede Kachel neu",
+                Ampeln.karte(baumMit(false, "small"), ordner, null).zeile());
+        assertEquals("! Karte top-north-s: packt good, config will small: /heroicmap render top-north-s stellt um und zeichnet jede Kachel neu; "
+                + "danach lädt jeder Spieler mit dem Mod die Karte einmal ganz neu", Ampeln.karte(baumMit(true, "small"), ordner, null).zeile());
+        // Ein Fehler des letzten Laufs geht vor.
+        assertEquals("✖ Karte top-north-s: letzter Lauf: Fehler, Code 1: Region r.0.0.mca nicht gelesen",
+                Ampeln.karte(baumMit(false, "small"), ordner, "Fehler, Code 1: Region r.0.0.mca nicht gelesen").zeile());
+        // Ein Baum zum Download auf minimal: gelb, keine Sperre.
+        Files.writeString(ordner.resolve("map.json"), "{\"quality\":\"minimal\"}");
+        assertEquals("! Karte top-north-s: packt minimal: Mit dem Relief „Flach“ im Mod können Farbflächen sichtbar werden",
+                Ampeln.karte(baumMit(true, "minimal"), ordner, null).zeile());
+        assertEquals("✔ Karte top-north-s: gezeichnet", Ampeln.karte(baumMit(false, "minimal"), ordner, null).zeile(), "ohne Download kein Hinweis");
+        // Nie gezeichnet: Die Stufe aus der Config gilt mit dem ersten Lauf, nichts weicht ab.
+        assertEquals("! Karte top-north-s: noch nie gezeichnet: /heroicmap render top-north-s",
+                Ampeln.karte(baumMit(true, "small"), tmp.resolve("fehlt"), null).zeile());
+    }
+
     @Test
     void webkarte() {
         var w = web(true, "0.0.0.0:8080", "");

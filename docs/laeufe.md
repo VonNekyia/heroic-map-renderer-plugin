@@ -27,7 +27,7 @@ ist die Entscheidung des Maintainers in heroic-map-renderer#153.
 |---|---|
 | `render [ordner]` | voller Lauf über alle Bäume, mit dem Ordner eines Baums nur über ihn, etwa `render top-north-s-flat`; Tab ergänzt die Ordner aus `config.yml`; setzt einen abgebrochenen fort |
 | `update` | Update über alle Bäume, `--update` |
-| `compact` | Nachverdichten über alle Bäume, `--compact-tree`, siehe „Kompakt“ |
+| `compact` | Nachverdichten über alle Bäume mit `maximal` nach `maximal_compact`, `--compact-tree`, siehe „Kompakt“ |
 | `status` | was läuft, seit wann, mit PID und letzter Zeile; dazu je Baum Dauer und Ausgang des letzten Aufrufs, siehe „Status“ |
 | `check` | die Ampeln: je Punkt, an dem die Karte hängen kann, eine Zeile mit Farbe und Grund, auch ohne Renderer, siehe [Ampeln](ampeln.md) |
 | `set …` | schreibt Webkarte, Port oder die Karte für den Mod in `config.yml`, gilt nach dem Neustart, siehe [Einstellen](einstellen.md) |
@@ -260,12 +260,12 @@ wie voller Lauf:
 
 ```
 Kein Lauf.
-Packung: 2x1-se schnell; top-north-s kompakt
+Packung: 2x1-se good; top-north-s maximal_compact
 2x1-se, zuletzt Update vor 42,0 s: 0,7 s, nichts zu zeichnen
 ```
 
-Die Zeile `Packung` nennt je Baum mit lesbarer `map.json`, wie er packt,
-siehe „Kompakt“.
+Die Zeile `Packung` nennt je Baum mit lesbarer `map.json` seine Stufe,
+siehe „Stufe“.
 
 Während eines Laufs steht in der ersten Zeile die letzte Meldung des
 Fortschritts, etwa:
@@ -351,26 +351,62 @@ zählt als nicht abgebrochen.
 - **Ein abgebrochenes Update** setzt das nächste Update fort. Ein voller Lauf
   setzt es nicht fort, er zeichnet ohnehin alles.
 
+## Stufe
+
+Ein Baum packt mit einer von fünf Stufen und merkt sie sich in `map.json`.
+Was der Betreiber einstellt, steht in [Konfiguration](konfiguration.md),
+„Stufe“; warum nur volle Läufe sie nennen, in
+[0019](entscheidungen/0019-stufe-nur-an-vollen-laeufen.md).
+
+| Lauf | Schalter |
+|---|---|
+| voller Lauf, Stufe in `config.yml` | `--quality <stufe>`, auch fortgesetzt und bei der Schätzung |
+| voller Lauf, keine Stufe, `renderer.compact: true` | `--compact`, wie vor den Stufen |
+| voller Lauf, keine Stufe | keiner |
+| Update, Takt, `/heroicmap compact` | nie `--quality` |
+
+- **Nie beide Schalter:** Der Renderer lehnt `--compact` neben `--quality`
+  ab. Steht für einen Baum eine Stufe da, gewinnt sie.
+- **Die Stufe eines Baums** liest das Plugin aus `map.json`
+  (`Laeufe.stufe`), wie der Renderer: `quality`, sonst mit
+  `"compact": true` `maximal_compact`, sonst `maximal`. Ohne lesbare
+  `map.json` ist es ein neuer Baum.
+- **Baum und Config weichen ab** (`Laeufe.abweichung`): Updates laufen
+  weiter und packen wie der Baum; sie tragen den Schalter nie und brechen
+  darum nie an der Stufe ab. Der Status sagt in der Zeile `Packung`, was zu
+  tun ist:
+
+  ```
+  Packung: 2x1-se maximal, config will good: /heroicmap render 2x1-se stellt um und zeichnet jede Kachel neu
+  ```
+
+  Bei einem Baum zum Download steht in derselben Zeile dahinter: „; danach
+  lädt jeder Spieler mit dem Mod die Karte einmal ganz neu“. Die Ampel der
+  Karte ist so lange gelb, siehe [Ampeln](ampeln.md), „Die Ampeln“.
+- **Der volle Lauf beendet es.** Der Renderer zeichnet jede Kachel neu,
+  auch statt fortzusetzen, und schreibt die Stufe vor der ersten Kachel
+  nach `map.json`; bricht dieser Lauf ab, setzt der nächste darum normal
+  fort. Das Plugin startet ihn nicht von selbst.
+- **Den Abbruch des Renderers** mit „dieser Lauf will“ wertet das Plugin
+  nicht aus: Keiner seiner Aufrufe kann daran abbrechen.
+
 ## Kompakt
 
-Der Renderer packt eine Kachel schnell oder kompakt; kompakt sind es rund
-die Hälfte der Bytes für ein Mehrfaches der Zeit beim Kodieren. Die Packung
-gehört zum Baum: `"compact": true` in seiner `map.json`, siehe im Renderer
-[map.json, „Packen“](https://github.com/VonNekyia/heroic-map-renderer/blob/master/docs/benutzung/map-json.md#packen).
+`maximal_compact` hiess vor den Stufen „kompakt“: jeder Pixel, rund die
+Hälfte der Bytes von `maximal` für ein Mehrfaches der Zeit beim Kodieren,
+siehe im Renderer
+[map.json, „Die Stufe“](https://github.com/VonNekyia/heroic-map-renderer/blob/master/docs/benutzung/map-json.md#die-stufe).
 Für Plugin und CLI gelten dieselben Optionen, entschieden vom Maintainer am
 08.10. (#31).
 
-- **`renderer.compact: true`** gibt jedem vollen Lauf `--compact`, auch
-  einem fortgesetzten. Ein neuer Baum packt dann kompakt und merkt es sich;
-  Updates, `--resume` und `--pyramid` packen danach von selbst wie er.
-  Updates bekommen den Schalter nicht.
-- **Ein bestehender schneller Baum** bleibt mit `--compact` schnell. Der
-  Renderer sagt es im Log mit der Zeile `Packen: … packt schnell, --compact
-  gilt nur für einen neuen Baum`; der Status nennt den Baum `schnell`, mit
-  dem Hinweis auf `/heroicmap compact`.
-- **Status:** Die Zeile `Packung` liest jede `map.json` neu (`Laeufe.packung`):
-  `kompakt` mit `"compact": true`, sonst `schnell`. Ein Baum ohne lesbare
-  `map.json` fehlt darin.
+- **`renderer.compact: true`,** veraltet, gibt jedem vollen Lauf eines
+  Baums ohne Stufe `--compact`, auch einem fortgesetzten. Ein neuer Baum
+  packt dann `maximal_compact` und merkt es sich; Updates, `--resume` und
+  `--pyramid` packen danach von selbst wie er. Updates bekommen den
+  Schalter nicht.
+- **Ein bestehender Baum** behält mit `--compact` seine Stufe. Der Status
+  nennt einen Baum mit `maximal` dann mit dem Hinweis auf
+  `/heroicmap compact`.
 
 ### Nachverdichten
 
