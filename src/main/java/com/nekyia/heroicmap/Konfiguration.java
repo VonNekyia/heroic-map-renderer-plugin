@@ -63,13 +63,34 @@ record Konfiguration(
 
     private static final Pattern SCHRAEG = Pattern.compile("(\\d+):(\\d+)");
 
+    /** Die Stufen des Renderers, von der kleinsten Datei zur genauesten. Siehe docs/konfiguration.md, „Stufe“. */
+    static final List<String> STUFEN = List.of("minimal", "small", "good", "maximal_compact", "maximal");
+
+    /** Eine Stufe aus der Config; null für leer oder fehlend. Alles andere ist ein Fehler. */
+    private static String stufe(Object wert, String schluessel, List<String> fehler) {
+        if (wert == null || "".equals(wert)) {
+            return null;
+        }
+        if (wert instanceof String s && STUFEN.contains(s)) {
+            return s;
+        }
+        fehler.add(schluessel + ": " + wert + " ist keine Stufe, nur " + String.join(", ", STUFEN));
+        return null;
+    }
+
     /**
      * Ein Kachelbaum, mit Kamera und Richtung, wie der Renderer sie schreibt; mit {@code download} für
      * den Mod angeboten, ohne {@code web} nicht auf der Webkarte; mit {@code flat} die einfarbige Ansicht;
-     * {@code relief} ist slope oder shadows, null ohne Relief.
+     * {@code relief} ist slope oder shadows, null ohne Relief; {@code stufe} ist eine aus {@link #STUFEN}, die eigene
+     * oder die aus renderer.quality, null ohne beide: Dann packt der Baum, wie er ist.
      */
     record Baum(String kamera, String richtung, Integer scale, boolean cinematic, boolean download, boolean web,
-            boolean flat, String relief) {
+            boolean flat, String relief, String stufe) {
+
+        Baum(String kamera, String richtung, Integer scale, boolean cinematic, boolean download, boolean web, boolean flat,
+                String relief) {
+            this(kamera, richtung, scale, cinematic, download, web, flat, relief, null);
+        }
 
         Baum(String kamera, String richtung, Integer scale, boolean cinematic, boolean download, boolean web) {
             this(kamera, richtung, scale, cinematic, download, web, false);
@@ -169,6 +190,15 @@ record Konfiguration(
     }
 
     /**
+     * Die Zeile fürs Log, wenn renderer.compact noch true ist; null sonst. Der Schlüssel gilt weiter. Siehe
+     * docs/konfiguration.md, „Stufe“.
+     */
+    static String kompaktVeraltet(ConfigurationSection c) {
+        return c.getBoolean("renderer.compact")
+                ? "renderer.compact ist veraltet und gilt weiter: Der neue Schlüssel ist renderer.quality: maximal_compact." : null;
+    }
+
+    /**
      * Liest die Einstellungen; relative Pfade gelten ab {@code server}, ohne Welt gilt
      * {@code hauptwelt}. Wirft mit allen Fehlern auf einmal.
      */
@@ -215,6 +245,9 @@ record Konfiguration(
             fehler.add("update-minutes: " + minuten + " ist kleiner als 0");
         }
 
+        // Leer: Jeder Baum packt, wie er ist, ein neuer packt good. Siehe docs/konfiguration.md, „Stufe“.
+        String stufe = stufe(c.get("renderer.quality"), "renderer.quality", fehler);
+
         List<Baum> baeume = new ArrayList<>();
         for (Map<?, ?> m : c.getMapList("trees")) {
             // --flat setzt top-north bei scale 1 selbst. Siehe docs/konfiguration.md, „Bäume“.
@@ -257,8 +290,9 @@ record Konfiguration(
                 fehler.add("trees: relief nur mit camera \"top-north\", direction s, ohne cinematic und flat");
                 continue;
             }
+            String eigene = stufe(m.get("quality"), "trees: quality", fehler);
             baeume.add(new Baum(kamera, richtung, (Integer) scale, cinematic, download, web, flat,
-                    relief.equals("none") ? null : (String) relief));
+                    relief.equals("none") ? null : (String) relief, eigene != null ? eigene : stufe));
         }
         // Mit karte.von-url zeigt dieser Server die Ebenen eines anderen und rendert nichts selbst. Siehe
         // docs/mehrere-server.md, „Karte von“.

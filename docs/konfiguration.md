@@ -35,7 +35,8 @@ Die Statistik über bStats hat hier keinen Schlüssel; sie schaltet
 | `renderer.full-run-threads` | `0` | `--threads` bei vollen Läufen und beim Nachverdichten | so viele Threads bekommt ein voller Lauf, auch fortgesetzt, und `/heroicmap compact`; `0`: alle Kerne, die die JVM sieht |
 | `renderer.download-client-jar` | `false` | `--download-client-jar` | die Zustimmung, das Client-Jar von Mojang zu laden, siehe „Client-Jar“ |
 | `renderer.client-version` | leer: die zur Welt | `--client-version` | die Version des Client-Jars, etwa `"26.2"` |
-| `renderer.compact` | `false` | `--compact` bei vollen Läufen | kompakt packen, rund die Hälfte der Bytes für ein Mehrfaches der Zeit beim Kodieren; gilt nur für einen neuen Baum, einen bestehenden packt `/heroicmap compact` nach, siehe [Läufe](laeufe.md), „Kompakt“ |
+| `renderer.quality` | leer: jeder Baum packt, wie er ist | `--quality` bei vollen Läufen | die Stufe für alle Bäume, `minimal`, `small`, `good`, `maximal_compact` oder `maximal`, siehe „Stufe“ |
+| `renderer.compact` | `false` | `--compact` bei vollen Läufen | veraltet, gilt weiter: für einen neuen Baum ohne Stufe `maximal_compact`; einen bestehenden packt `/heroicmap compact` nach, siehe [Läufe](laeufe.md), „Kompakt“ |
 | `world` | leer: die Hauptwelt | `--world` | die Weltwurzel mit `level.dat` |
 | `tiles` | `plugins/HeroicMap/tiles` | `--tiles` | die Wurzel der Kachelbäume |
 | `karte.name` | leer | – | der Name dieses Servers für den Ordner im Mod, etwa `main`; nur, wenn der Proxy keinen meldet, siehe [Mehrere Server](mehrere-server.md), „Name vom Proxy“ |
@@ -91,7 +92,7 @@ in `Binaer` in [`Binaer.java`](../src/main/java/com/nekyia/heroicmap/Binaer.java
 | `Linux` | `amd64` oder `x86_64` | `renderer/linux-x64/heroic-map-renderer.xz` |
 
 - **Auspacken:** mit xz nach `plugins/HeroicMap/bin/<version>/`, etwa
-  `bin/0.21.0/heroic-map-renderer`, nur wenn die Datei dort fehlt oder ihre
+  `bin/0.22.0/heroic-map-renderer`, nur wenn die Datei dort fehlt oder ihre
   SHA-256 nicht die aus dem Build ist. Sonst bleibt sie, wie sie ist; die
   Prüfung liest sie einmal je Start. Die SHA-256 gilt dem ausgepackten
   Binär.
@@ -224,6 +225,7 @@ Jeder Eintrag unter `trees` ist ein Kachelbaum, siehe
 | `cinematic` | `false` | `--cinematic` |
 | `flat` | `false` | `--flat` |
 | `relief` | `none` | `--relief` |
+| `quality` | die aus `renderer.quality` | `--quality` bei vollen Läufen |
 | `download` | `false` | – |
 | `web` | `true` | – |
 
@@ -266,6 +268,53 @@ Jeder Eintrag unter `trees` ist ein Kachelbaum, siehe
   [Webserver](webserver.md), „Nur zum Download“.
 - **Ein bestehender Baum** behält seinen scale. Einen anderen lehnt der
   Renderer beim Lauf ab und sagt es im Log.
+
+## Stufe
+
+`quality` sagt, wie genau ein Baum packt. Was hinter jeder Stufe steckt,
+steht im Renderer,
+[map.json, „Die Stufe“](https://github.com/VonNekyia/heroic-map-renderer/blob/master/docs/benutzung/map-json.md#die-stufe);
+entschieden in [0019](entscheidungen/0019-stufe-nur-an-vollen-laeufen.md).
+
+| Stufe | Was sie packt |
+|---|---|
+| `minimal`, `small`, `good` | legt Farben zusammen, die je Kanal höchstens 8, 4 oder 2 auseinanderliegen, und packt kompakt; spart Platz |
+| `maximal_compact` | jeden Pixel, kompakt |
+| `maximal` | jeden Pixel, schnell gepackt |
+
+- **Wo:** `renderer.quality` für alle Bäume, `quality` an einem Eintrag
+  unter `trees` nur für ihn; die eigene geht vor.
+- **Leer,** die Vorgabe: Jeder Baum packt, wie er ist. Ein neuer packt
+  `good`, die Vorgabe des Renderers. Ein Baum von vor Renderer 0.22.0
+  bleibt verlustfrei, bis der Betreiber eine Stufe einträgt und voll
+  rendert.
+- **Gilt mit dem nächsten vollen Lauf:** `/heroicmap render <ordner>`
+  zeichnet einen Baum, der anders packt, ganz neu. Updates packen weiter,
+  wie der Baum packt, die Karte bleibt aktuell. Bis dahin sagen
+  `/heroicmap status` und die Ampel der Karte, dass Baum und Config
+  abweichen, siehe [Läufe](laeufe.md), „Stufe“.
+- **Ein Baum zum Download,** dessen Stufe wechselt: Jeder Spieler mit dem
+  Mod lädt die Karte danach einmal ganz neu, bei jedem Wechsel. Der Status
+  sagt es in derselben Zeile wie den Befehl.
+- **`minimal` an einem Baum zum Download** ist erlaubt; seine Ampel ist
+  dann gelb: Mit dem Relief „Flach“ im Mod können Farbflächen sichtbar
+  werden.
+- **Ein anderer Wert** ist ein Fehler beim Start.
+- **`renderer.compact`** ist veraltet und gilt weiter, mit einer Zeile im
+  Log: `quality: maximal_compact` ist der neue Schlüssel. Steht für einen
+  Baum eine Stufe da, gilt sie, und `renderer.compact` zählt für ihn nicht.
+
+### Kein Zurück auf ein älteres Plugin
+
+Ein Baum mit `good`, `small` oder `minimal` verträgt kein Plugin vor
+0.24.0: Dessen Renderer kennt die Stufe nicht, packt bei seinem ersten
+Update verlustfrei und streicht sie aus `map.json`. Zurück im neuen Plugin
+gilt der Baum als `maximal`. Steht `quality` in der Config, sagt der Status
+das; `/heroicmap render <ordner>` stellt die Stufe wieder her und zeichnet
+dabei jede Kachel neu. Steht keine Stufe in der Config, merkt das Plugin
+nichts, und der Baum packt verlustfrei weiter, nur grösser. Das trifft
+auch, wer nichts eingestellt hat: Mit Renderer 0.22.0 packt jeder neue Baum
+`good`.
 
 ## Nach einem Update
 

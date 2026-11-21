@@ -2,6 +2,7 @@ package com.nekyia.heroicmap;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import com.google.gson.JsonPrimitive;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
@@ -224,7 +225,13 @@ final class Laeufe {
             }
             Path ordner = konf.kacheln().resolve(baum.ordner());
             if (art == Art.VERDICHTEN) {
-                if (Files.exists(ordner.resolve("map.json"))) {
+                // Ohne map.json null; eine Liste aus List.of nimmt kein null.
+                String stufe = stufe(ordner);
+                int rang = stufe == null ? -1 : Konfiguration.STUFEN.indexOf(stufe);
+                if (rang >= 0 && rang < Konfiguration.STUFEN.indexOf("maximal_compact")) {
+                    // --compact-tree lehnt einen Baum unter maximal_compact ab: Er packt schon kompakt.
+                    hinweis(baum.ordner() + ": packt mit " + stufe + " schon kompakt, /heroicmap compact lässt ihn aus");
+                } else if (Files.exists(ordner.resolve("map.json"))) {
                     auftraege.add(new Auftrag(baum.ordner(), verdichten(baum, ordner), false));
                 } else {
                     hinweis(baum.ordner() + ": noch kein Baum zum Nachverdichten, erst /heroicmap render");
@@ -307,8 +314,11 @@ final class Laeufe {
         if (baum.download()) {
             b.add("--manifest");
         }
-        // Ein Baum merkt sich die Packung; Updates und --resume packen dann wie er. Siehe docs/laeufe.md, „Kompakt“.
-        if (art == Art.VOLL && konf.kompakt()) {
+        // Nur volle Läufe nennen die Stufe: Der Baum merkt sie sich, Updates packen wie er und brechen so nie an ihr
+        // ab. Nie beide Schalter, der Renderer lehnt sie zusammen ab. Siehe docs/laeufe.md, „Stufe“.
+        if (art == Art.VOLL && baum.stufe() != null) {
+            b.addAll(List.of("--quality", baum.stufe()));
+        } else if (art == Art.VOLL && konf.kompakt()) {
             b.add("--compact");
         }
         if (art == Art.UPDATE) {
@@ -379,14 +389,33 @@ final class Laeufe {
         }
     }
 
-    /** Wie ein Baum packt, aus seiner map.json: kompakt oder schnell; null ohne lesbare map.json. */
-    static String packung(Path ordner) {
+    /**
+     * Die Stufe eines Baums aus seiner map.json, gelesen wie der Renderer: {@code quality}, sonst mit
+     * {@code "compact": true} maximal_compact, sonst maximal; null ohne lesbare map.json. Siehe docs/laeufe.md, „Stufe“.
+     */
+    static String stufe(Path ordner) {
         try {
             var j = JsonParser.parseString(Files.readString(ordner.resolve("map.json"))).getAsJsonObject();
-            return j.has("compact") && j.get("compact").getAsBoolean() ? "kompakt" : "schnell";
+            if (j.get("quality") instanceof JsonPrimitive q && q.isString()) {
+                return q.getAsString();
+            }
+            return j.has("compact") && j.get("compact").getAsBoolean() ? "maximal_compact" : "maximal";
         } catch (IOException | RuntimeException e) {
             return null;
         }
+    }
+
+    /**
+     * Was zu tun ist, wenn ein Baum mit {@code stufe} packt und config.yml eine andere will, oder null: Nur ein voller
+     * Lauf stellt um. Bei einem Baum zum Download steht in derselben Zeile, dass danach jeder Spieler mit dem Mod neu
+     * lädt. Siehe docs/laeufe.md, „Stufe“.
+     */
+    static String abweichung(Konfiguration.Baum baum, String stufe) {
+        if (stufe == null || baum.stufe() == null || stufe.equals(baum.stufe())) {
+            return null;
+        }
+        return "config will " + baum.stufe() + ": /heroicmap render " + baum.ordner() + " stellt um und zeichnet jede Kachel neu"
+                + (baum.download() ? "; danach lädt jeder Spieler mit dem Mod die Karte einmal ganz neu" : "");
     }
 
     /**
@@ -519,11 +548,13 @@ final class Laeufe {
         }
         var packung = new ArrayList<String>();
         for (var baum : konf.baeume()) {
-            String p = packung(konf.kacheln().resolve(baum.ordner()));
+            String p = stufe(konf.kacheln().resolve(baum.ordner()));
             if (p != null) {
+                String anders = abweichung(baum, p);
                 // Der Renderer packt einen bestehenden schnellen Baum mit --compact weiter schnell.
-                packung.add(baum.ordner() + " " + p + (p.equals("schnell") && konf.kompakt()
-                        ? ", renderer.compact gilt nur für einen neuen Baum, /heroicmap compact packt ihn nach" : ""));
+                packung.add(baum.ordner() + " " + p + (anders != null ? ", " + anders
+                        : p.equals("maximal") && baum.stufe() == null && konf.kompakt()
+                                ? ", renderer.compact gilt nur für einen neuen Baum, /heroicmap compact packt ihn nach" : ""));
             }
         }
         if (!packung.isEmpty()) {

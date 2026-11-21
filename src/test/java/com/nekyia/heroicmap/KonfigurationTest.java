@@ -120,6 +120,52 @@ class KonfigurationTest {
                   - camera: "2:1"
                 """), server, server);
         assertTrue(k.kompakt());
+        assertNull(k.baeume().getFirst().stufe(), "der alte Schlüssel setzt keine Stufe");
+        assertEquals("renderer.compact ist veraltet und gilt weiter: Der neue Schlüssel ist renderer.quality: maximal_compact.",
+                Konfiguration.kompaktVeraltet(yaml("renderer:\n  compact: true\n")));
+        assertNull(Konfiguration.kompaktVeraltet(yaml("renderer:\n  compact: false\n")));
+        assertNull(Konfiguration.kompaktVeraltet(vorgabe()), "die Vorlage nennt ihn mit false");
+    }
+
+    @Test
+    void die_stufe_fuer_alle_und_je_baum() throws Exception {
+        Files.createFile(server.resolve("r"));
+        var k = Konfiguration.aus(yaml("""
+                renderer:
+                  binary: r
+                  quality: small
+                trees:
+                  - camera: "2:1"
+                  - camera: "4:3"
+                    quality: maximal_compact
+                  - flat: true
+                    quality: minimal
+                """), server, server);
+        assertEquals(List.of("small", "maximal_compact", "minimal"), k.baeume().stream().map(Baum::stufe).toList(),
+                "die eigene Stufe eines Baums geht vor");
+        // Leer oder ohne den Schlüssel: keine Stufe, der Baum packt, wie er ist.
+        for (String leer : List.of("  quality: \"\"\n", "")) {
+            var ohne = Konfiguration.aus(yaml("renderer:\n  binary: r\n" + leer + "trees:\n  - camera: \"2:1\"\n"), server, server);
+            assertNull(ohne.baeume().getFirst().stufe(), leer);
+        }
+        assertNull(Konfiguration.aus(vorgabe(), server, server).baeume().getFirst().stufe(), "die Vorlage ist leer");
+        assertEquals(List.of("minimal", "small", "good", "maximal_compact", "maximal"), Konfiguration.STUFEN);
+        for (String stufe : List.of("minimal", "small", "good", "maximal_compact", "maximal")) {
+            var eine = Konfiguration.aus(yaml("renderer:\n  binary: r\n  quality: " + stufe + "\ntrees:\n  - camera: \"2:1\"\n"), server, server);
+            assertEquals(stufe, eine.baeume().getFirst().stufe());
+        }
+        // Alles andere ist ein Fehler, für alle und je Baum, beide auf einmal.
+        var e = assertThrows(IllegalArgumentException.class, () -> Konfiguration.aus(yaml("""
+                renderer:
+                  binary: r
+                  quality: lossless
+                trees:
+                  - camera: "2:1"
+                    quality: 2
+                """), server, server));
+        assertTrue(e.getMessage().contains("renderer.quality: lossless ist keine Stufe, nur minimal, small, good, maximal_compact, maximal"),
+                e.getMessage());
+        assertTrue(e.getMessage().contains("trees: quality: 2 ist keine Stufe, nur minimal"), e.getMessage());
     }
 
     @Test

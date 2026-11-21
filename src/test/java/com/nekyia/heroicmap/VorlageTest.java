@@ -2,6 +2,7 @@ package com.nekyia.heroicmap;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -113,6 +114,10 @@ class VorlageTest {
         // Liest sich wie eine Konfiguration des Plugins.
         var k = Konfiguration.aus(neu, tmp, tmp);
         assertEquals(5, k.updateMinuten());
+        // Die Stufe kommt leer dazu: Kein bestehender Baum weicht nach dem Update von seiner Config ab.
+        assertTrue(e.neu().contains("renderer.quality"), e.neu().toString());
+        assertEquals("", neu.getString("renderer.quality"));
+        assertNull(k.baeume().getFirst().stufe());
         assertEquals("0.0.0.0:8123", k.webserver().adresse());
 
         var zweiter = Vorlage.ergaenze(e.text(), v);

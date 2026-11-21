@@ -246,6 +246,8 @@ class EinrichtungTest {
         assertEquals("/heroicmap render 2x1-se", Einrichtung.befehl(Ampeln.karte("2x1-se", tmp.resolve("fehlt"), null).satz()));
         assertEquals("/heroicmap render top-north-s-flat",
                 Einrichtung.befehl("braucht einen vollen Lauf, neuer Renderer: /heroicmap render top-north-s-flat"));
+        assertEquals("/heroicmap render top-north-s", Einrichtung.befehl(Laeufe.abweichung(
+                new Konfiguration.Baum("top-north", "s", 4, false, true, true, false, null, "good"), "maximal")), "die Abweichung der Stufe");
         assertEquals("/heroicmap update", Einrichtung.befehl(Ampeln.updates(0).satz()), "das Wort dahinter ist kein Ordner");
         assertEquals("/heroicmap render", Einrichtung.befehl("2. /heroicmap render zeichnet die Karten."));
         assertEquals("/heroicmap setup", Einrichtung.befehl("3. /heroicmap setup zeigt, ob alles grün ist."));
