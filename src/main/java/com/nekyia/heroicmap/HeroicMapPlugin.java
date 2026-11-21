@@ -631,6 +631,9 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
      */
     private void starteWebserver(Konfiguration konf, Path geheimnisDatei, byte[] g) {
         Webserver.warnung(konf.webserver()).ifPresent(getLogger()::warning);
+        if (!Webserver.bereite(konf.kacheln())) {
+            getLogger().warning("Der Ordner der Kacheln " + konf.kacheln() + " lässt sich nicht anlegen; ohne ihn startet der Webserver nicht.");
+        }
         Path web = getDataFolder().toPath().resolve("web");
         try {
             if (!Webserver.packeKarteAus(getFile().toPath(), web)) {
