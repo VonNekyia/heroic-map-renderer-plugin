@@ -27,9 +27,15 @@ renderer:
   download-client-jar: false
   # Die Version des Client-Jars, etwa "26.2"; leer: die zur Welt.
   client-version: ""
-  # true: jeder volle Lauf packt kompakt (--compact), rund die Hälfte der
-  # Bytes für ein Mehrfaches der Zeit beim Kodieren. Gilt nur für einen neuen
-  # Baum; einen bestehenden packt /heroicmap compact nach.
+  # Wie genau die Karten packen: minimal, small, good, maximal_compact oder
+  # maximal. good, small und minimal legen ähnliche Farben zusammen und
+  # sparen Platz; maximal_compact und maximal behalten jeden Pixel. Leer:
+  # Jeder Baum packt, wie er ist, ein neuer packt good. Eine andere Stufe
+  # nimmt ein bestehender Baum erst mit /heroicmap render, das zeichnet ihn
+  # ganz neu. Je Baum: quality unter trees.
+  quality: ""
+  # Veraltet, gilt weiter: true heisst für einen neuen Baum ohne quality
+  # maximal_compact. Einen bestehenden packt /heroicmap compact nach.
   compact: false
 
 # Die Weltwurzel mit level.dat; leer: die Hauptwelt des Servers.
@@ -65,6 +71,7 @@ update-minutes: 2
 # ohne direction, scale, cinematic und download.
 # relief: slope oder shadows zeichnet ein Relief, nur mit camera "top-north",
 # direction s, ohne cinematic und flat; none, die Vorgabe: keins.
+# quality: eine Stufe nur für diesen Baum, sonst gilt renderer.quality.
 trees:
   - camera: "2:1"
 

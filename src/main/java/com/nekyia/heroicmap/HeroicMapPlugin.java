@@ -133,6 +133,10 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
             if (veraltet != null) {
                 getLogger().warning(veraltet);
             }
+            String kompakt = Konfiguration.kompaktVeraltet(getConfig());
+            if (kompakt != null) {
+                getLogger().info(kompakt);
+            }
         } catch (IllegalArgumentException e) {
             getLogger().severe("config.yml: " + e.getMessage());
             getServer().getPluginManager().disablePlugin(this);

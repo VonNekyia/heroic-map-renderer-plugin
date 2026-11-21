@@ -420,6 +420,52 @@ class LaeufeTest {
         assertEquals(List.of("json", "--manifest", "--compact"), ende(kompakt(true, OBEN).plane(Art.VOLL), 3));
     }
 
+    /** Der Baum mit dieser Stufe aus config.yml. */
+    private static Konfiguration.Baum mitStufe(Konfiguration.Baum b, String stufe) {
+        return new Konfiguration.Baum(b.kamera(), b.richtung(), b.scale(), b.cinematic(), b.download(), b.web(), b.flat(), b.relief(), stufe);
+    }
+
+    @Test
+    void nur_volle_laeufe_nennen_die_stufe() throws Exception {
+        var small = mitStufe(KARTE, "small");
+        assertEquals(List.of("--threads", "6", "--low-priority", "--progress", "json", "--quality", "small"),
+                ende(kompakt(false, small).plane(Art.VOLL), 7));
+        // Nie beide Schalter: Der Renderer lehnt --compact neben --quality ab, die Stufe gewinnt.
+        var mitBeiden = kompakt(true, small).plane(Art.VOLL).getFirst().befehl();
+        assertTrue(mitBeiden.contains("--quality") && !mitBeiden.contains("--compact"), mitBeiden::toString);
+        // Ein Baum mit Stufe neben einem ohne: der eine --quality, der andere wie bisher --compact.
+        var plan = kompakt(true, small, OBEN).plane(Art.VOLL);
+        assertEquals(List.of("--quality", "small"), ende(plan, 2));
+        assertEquals(List.of("--manifest", "--compact"), plan.get(1).befehl().subList(plan.get(1).befehl().size() - 2, plan.get(1).befehl().size()));
+        standNeu(1, 0);
+        assertEquals(List.of("--quality", "small", "--resume"), ende(kompakt(false, small).plane(Art.VOLL), 3), "auch fortgesetzt");
+        Files.delete(baum().resolve("stand-neu.bin"));
+        Files.createFile(baum().resolve("stand.bin"));
+        var update = kompakt(true, small).plane(Art.UPDATE).getFirst().befehl();
+        assertTrue(update.contains("--update") && !update.contains("--quality") && !update.contains("--compact"),
+                "ein Update packt wie der Baum und bricht so nie an der Stufe ab: " + update);
+    }
+
+    @Test
+    void die_stufe_eines_baums_aus_map_json() throws Exception {
+        assertNull(Laeufe.stufe(baum()), "ohne map.json ein neuer Baum");
+        for (var fall : java.util.Map.of("{\"quality\":\"good\",\"compact\":true}", "good", "{\"quality\":\"maximal\"}", "maximal",
+                "{\"compact\":true}", "maximal_compact", "{\"compact\":false}", "maximal", "{\"minZoom\":0}", "maximal").entrySet()) {
+            Files.writeString(baum().resolve("map.json"), fall.getKey());
+            assertEquals(fall.getValue(), Laeufe.stufe(baum()), fall.getKey());
+        }
+        Files.writeString(baum().resolve("map.json"), "kaputt");
+        assertNull(Laeufe.stufe(baum()));
+        // Weicht config.yml ab, sagt eine Zeile, was zu tun ist; beim Baum zum Download mit dem Hinweis auf den Mod.
+        assertNull(Laeufe.abweichung(KARTE, "maximal"), "ohne Stufe in der Config weicht nichts ab");
+        assertNull(Laeufe.abweichung(mitStufe(KARTE, "good"), "good"));
+        assertNull(Laeufe.abweichung(mitStufe(KARTE, "good"), null), "ein neuer Baum");
+        assertEquals("config will good: /heroicmap render 2x1-se stellt um und zeichnet jede Kachel neu",
+                Laeufe.abweichung(mitStufe(KARTE, "good"), "maximal"));
+        assertEquals("config will small: /heroicmap render top-north-s stellt um und zeichnet jede Kachel neu; danach lädt jeder "
+                + "Spieler mit dem Mod die Karte einmal ganz neu", Laeufe.abweichung(mitStufe(OBEN, "small"), "good"));
+    }
+
     @Test
     void nachverdichten_je_baum_mit_map_json() throws Exception {
         var l = kompakt(false, KARTE, OBEN);
@@ -430,11 +476,24 @@ class LaeufeTest {
         Files.createDirectories(tmp.resolve("tiles/top-north-s"));
         Files.writeString(tmp.resolve("tiles/top-north-s/map.json"), "{}");
         var plan = l.plane(Art.VERDICHTEN);
+        assertEquals(2, plan.size(), "ohne Feld und mit maximal oder maximal_compact packt compact nach");
         assertEquals(List.of(JAVA.toString(), "--compact-tree", baum().toString(), "--threads", "6", "--low-priority"),
                 plan.get(0).befehl(), "Threads wie ein voller Lauf, ohne Welt, Assets und --progress");
         assertFalse(plan.get(0).leise());
         assertEquals(List.of(JAVA.toString(), "--compact-tree", tmp.resolve("tiles/top-north-s").toString(), "--threads", "6",
                 "--low-priority", "--manifest"), plan.get(1).befehl(), "sonst entfernte der Renderer das Manifest");
+        // Unter maximal_compact packt ein Baum schon kompakt; --compact-tree lehnte ihn ab.
+        log.clear();
+        Files.writeString(baum().resolve("map.json"), "{\"quality\":\"good\"}");
+        Files.writeString(tmp.resolve("tiles/top-north-s/map.json"), "{\"quality\":\"maximal\"}");
+        assertEquals(List.of("top-north-s"), l.plane(Art.VERDICHTEN).stream().map(Auftrag::baum).toList());
+        assertEquals(List.of("2x1-se: packt mit good schon kompakt, /heroicmap compact lässt ihn aus"), log);
+        for (String stufe : List.of("minimal", "small")) {
+            Files.writeString(tmp.resolve("tiles/top-north-s/map.json"), "{\"quality\":\"" + stufe + "\"}");
+            assertEquals(List.of(), l.plane(Art.VERDICHTEN), stufe);
+        }
+        Files.writeString(baum().resolve("map.json"), "{\"quality\":\"maximal_compact\",\"compact\":true}");
+        assertEquals(List.of("2x1-se"), l.plane(Art.VERDICHTEN).stream().map(Auftrag::baum).toList(), "setzt ein abgebrochenes fort");
     }
 
     @Test
@@ -514,12 +573,21 @@ class LaeufeTest {
         Files.writeString(baum().resolve("map.json"), "{\"minZoom\":0}");
         Files.createDirectories(tmp.resolve("tiles/top-north-s"));
         Files.writeString(tmp.resolve("tiles/top-north-s/map.json"), "{\"minZoom\":0,\"compact\":true}");
-        assertEquals("Kein Lauf seit dem Start.\nPackung: 2x1-se schnell; top-north-s kompakt",
+        assertEquals("Kein Lauf seit dem Start.\nPackung: 2x1-se maximal; top-north-s maximal_compact",
                 kompakt(false, KARTE, OBEN).status());
-        assertEquals("Kein Lauf seit dem Start.\nPackung: 2x1-se schnell, renderer.compact gilt nur für einen neuen Baum, "
-                + "/heroicmap compact packt ihn nach; top-north-s kompakt", kompakt(true, KARTE, OBEN).status());
+        assertEquals("Kein Lauf seit dem Start.\nPackung: 2x1-se maximal, renderer.compact gilt nur für einen neuen Baum, "
+                + "/heroicmap compact packt ihn nach; top-north-s maximal_compact", kompakt(true, KARTE, OBEN).status());
+        // Mit einer Stufe in config.yml: Stimmt sie, steht nur sie da; weicht sie ab, der Befehl, und beim Baum zum
+        // Download in derselben Zeile der Hinweis auf den Mod.
+        Files.writeString(baum().resolve("map.json"), "{\"quality\":\"good\"}");
+        assertEquals("Kein Lauf seit dem Start.\nPackung: 2x1-se good; top-north-s maximal_compact, config will good: /heroicmap render "
+                + "top-north-s stellt um und zeichnet jede Kachel neu; danach lädt jeder Spieler mit dem Mod die Karte einmal ganz neu",
+                kompakt(true, mitStufe(KARTE, "good"), mitStufe(OBEN, "good")).status());
+        // Mit einer eigenen Stufe zählt renderer.compact für den Baum nicht, auch der Hinweis darauf entfällt.
+        Files.writeString(baum().resolve("map.json"), "{\"minZoom\":0}");
+        assertEquals("Kein Lauf seit dem Start.\nPackung: 2x1-se maximal", kompakt(true, mitStufe(KARTE, "maximal")).status());
         Files.writeString(baum().resolve("map.json"), "kaputt");
-        assertEquals("Kein Lauf seit dem Start.\nPackung: top-north-s kompakt", kompakt(false, KARTE, OBEN).status());
+        assertEquals("Kein Lauf seit dem Start.\nPackung: top-north-s maximal_compact", kompakt(false, KARTE, OBEN).status());
     }
 
     private Path baum() throws Exception {
