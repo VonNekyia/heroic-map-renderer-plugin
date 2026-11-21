@@ -37,7 +37,22 @@ final class Setzer {
 
         /** Die Karte für den Mod: {@code download} an einem Baum, der taugt, sonst ein eigener Baum. */
         record Mod(boolean an) implements Wunsch {}
+
+        /**
+         * Die Zustimmung zum Client-Jar von Mojang, {@code renderer.download-client-jar: true}. Nur der Dialog gibt
+         * sie, mit dem vollen Text davor. Siehe docs/einrichten.md, „Texturen“.
+         */
+        record Texturen() implements Wunsch {}
+
+        /**
+         * Kamera und Cinematic des ersten Baums, mit {@code scale} auch dieser, sonst bleibt er; nur solange der Baum
+         * nie gezeichnet wurde. Siehe docs/einrichten.md.
+         */
+        record Aussehen(String kamera, boolean cinematic, Integer scale) implements Wunsch {}
     }
+
+    /** Die Kameras, die der Dialog anbietet. */
+    static final List<String> KAMERAS = List.of("2:1", "4:3", "top-north");
 
     /** Der neue Text und je Änderung eine Zeile für Log und Antwort; ohne Änderung der alte Text und keine Zeile. */
     record Ergebnis(String text, List<String> aenderungen) {}
@@ -74,19 +89,43 @@ final class Setzer {
      * daneben und getauscht. Ohne Änderung schreibt es nicht.
      */
     static Ergebnis setze(Path datei, Wunsch w, Consumer<YamlConfiguration> gueltig) throws IOException, Abgelehnt {
-        var e = setze(Files.readString(datei, StandardCharsets.UTF_8), w);
+        return setze(datei, List.of(w), gueltig);
+    }
+
+    /** Wie oben mit mehreren Wünschen nacheinander; geschrieben wird einmal, oder gar nicht. */
+    static Ergebnis setze(Path datei, List<Wunsch> wuensche, Consumer<YamlConfiguration> gueltig) throws IOException, Abgelehnt {
+        var e = setze(Files.readString(datei, StandardCharsets.UTF_8), wuensche, gueltig);
         if (e.aenderungen().isEmpty()) {
             return e;
-        }
-        try {
-            gueltig.accept(yaml(e.text()));
-        } catch (IllegalArgumentException x) {
-            throw new Abgelehnt("danach wäre config.yml ungültig: " + x.getMessage(), List.of());
         }
         Path neu = datei.resolveSibling(datei.getFileName() + ".neu");
         Files.writeString(neu, e.text(), StandardCharsets.UTF_8);
         Files.move(neu, datei, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
         return e;
+    }
+
+    /** Wie {@link #setze(String, List)}, und wirft auch, wenn {@code gueltig} den neuen Text nicht annimmt. */
+    static Ergebnis setze(String text, List<Wunsch> wuensche, Consumer<YamlConfiguration> gueltig) throws Abgelehnt {
+        var e = setze(text, wuensche);
+        if (!e.aenderungen().isEmpty()) {
+            try {
+                gueltig.accept(yaml(e.text()));
+            } catch (IllegalArgumentException x) {
+                throw new Abgelehnt("danach wäre config.yml ungültig: " + x.getMessage(), List.of());
+            }
+        }
+        return e;
+    }
+
+    /** Der Text mit jedem Wunsch nacheinander; der erste, der nicht geht, wirft, und nichts gilt. */
+    static Ergebnis setze(String text, List<Wunsch> wuensche) throws Abgelehnt {
+        var aenderungen = new ArrayList<String>();
+        for (Wunsch w : wuensche) {
+            var e = setze(text, w);
+            text = e.text();
+            aenderungen.addAll(e.aenderungen());
+        }
+        return new Ergebnis(text, List.copyOf(aenderungen));
     }
 
     /** Der Text mit dem Wunsch; wirft, statt etwas zu ändern, was sich danach anders läse als gewollt. */
@@ -114,6 +153,8 @@ final class Setzer {
                 skalar(zeilen, alt, "webserver.listen", '"' + jetzt.substring(0, doppelpunkt + 1) + port.port() + '"', aenderungen);
             }
             case Wunsch.Mod mod -> mod(zeilen, alt, mod.an(), aenderungen);
+            case Wunsch.Texturen texturen -> skalar(zeilen, alt, "renderer.download-client-jar", "true", aenderungen);
+            case Wunsch.Aussehen aussehen -> aussehen(zeilen, alt, aussehen, aenderungen);
         }
         if (aenderungen.isEmpty()) {
             return new Ergebnis(text, List.of());
@@ -238,6 +279,54 @@ final class Setzer {
         }
     }
 
+    /**
+     * Der erste Baum, wie er nach dem Wunsch gelesen werden soll: die Kamera gesetzt; {@code cinematic} auf true, oder
+     * auf false, wenn der Schlüssel dasteht.
+     */
+    static List<Map<?, ?>> soll(List<Map<?, ?>> alt, Wunsch.Aussehen w) {
+        var neu = new ArrayList<Map<?, ?>>(alt);
+        var erster = new LinkedHashMap<Object, Object>(alt.getFirst());
+        erster.put("camera", w.kamera());
+        if (w.cinematic() || erster.containsKey("cinematic")) {
+            erster.put("cinematic", w.cinematic());
+        }
+        if (w.scale() != null) {
+            erster.put("scale", w.scale());
+        }
+        neu.set(0, erster);
+        return neu;
+    }
+
+    private static void aussehen(List<String> zeilen, YamlConfiguration alt, Wunsch.Aussehen w, List<String> aenderungen)
+            throws Abgelehnt {
+        if (!KAMERAS.contains(w.kamera())) {
+            throw new Abgelehnt("Kamera " + w.kamera() + " ist keine von " + String.join(", ", KAMERAS), List.of());
+        }
+        var baeume = baeume(alt);
+        if (baeume.isEmpty()) {
+            throw new Abgelehnt("trees hat keinen Baum", List.of("trees:", "  - camera: \"" + w.kamera() + "\""));
+        }
+        var erster = baeume.getFirst();
+        var soll = soll(baeume, w).getFirst();
+        if (soll.equals(erster)) {
+            return;
+        }
+        var e = liste(zeilen, baeume.size()).getFirst();
+        // Erst, was eine neue Zeile sein kann: Sie kommt hinter den Eintrag und verschiebt die Zeile der Kamera nicht.
+        if (!Objects.equals(erster.get("cinematic"), soll.get("cinematic"))) {
+            setze(zeilen, e, "cinematic", String.valueOf(w.cinematic()));
+            aenderungen.add("trees: cinematic: " + w.cinematic() + " am ersten Baum");
+        }
+        if (!Objects.equals(erster.get("scale"), soll.get("scale"))) {
+            setze(zeilen, e, "scale", String.valueOf(w.scale()));
+            aenderungen.add("trees: scale: " + w.scale() + " am ersten Baum");
+        }
+        if (!Objects.equals(erster.get("camera"), soll.get("camera"))) {
+            setze(zeilen, e, "camera", '"' + w.kamera() + '"');
+            aenderungen.add("trees: camera: " + erster.get("camera") + " → " + w.kamera() + " am ersten Baum");
+        }
+    }
+
     /** Setzt {@code schluessel} im Eintrag: an seiner Zeile, sonst als neue Zeile hinter der letzten des Eintrags. */
     private static void setze(List<String> zeilen, Eintrag e, String schluessel, String wert) {
         Integer zeile = e.zeilen().get(schluessel);
@@ -323,6 +412,8 @@ final class Setzer {
             case Wunsch.Web web -> Set.of("webserver.enabled");
             case Wunsch.Port port -> Set.of("webserver.listen");
             case Wunsch.Mod mod -> Set.of("trees", "webserver.enabled");
+            case Wunsch.Texturen texturen -> Set.of("renderer.download-client-jar");
+            case Wunsch.Aussehen aussehen -> Set.of("trees");
         };
         var alle = new TreeSet<>(alt.getKeys(true));
         alle.addAll(neu.getKeys(true));
@@ -341,6 +432,8 @@ final class Setzer {
             case Wunsch.Mod mod -> baeume(neu).equals(soll(baeume(alt), mod.an()))
                     && (!mod.an() || neu.getBoolean("webserver.enabled"))
                     && (mod.an() || neu.getBoolean("webserver.enabled") == alt.getBoolean("webserver.enabled"));
+            case Wunsch.Texturen texturen -> neu.isBoolean("renderer.download-client-jar") && neu.getBoolean("renderer.download-client-jar");
+            case Wunsch.Aussehen aussehen -> baeume(neu).equals(soll(baeume(alt), aussehen));
         };
         if (!gewollt) {
             throw new Abgelehnt("geändert läse sich config.yml nicht wie gewollt", List.of());

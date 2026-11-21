@@ -29,6 +29,7 @@ ist die Entscheidung des Maintainers in heroic-map-renderer#153.
 | `update` | Update über alle Bäume, `--update` |
 | `compact` | Nachverdichten über alle Bäume mit `maximal` nach `maximal_compact`, `--compact-tree`, siehe „Kompakt“ |
 | `status` | was läuft, seit wann, mit PID und letzter Zeile; dazu je Baum Dauer und Ausgang des letzten Aufrufs, siehe „Status“ |
+| `setup` | die geführte Einrichtung als Dialog im Spiel, nur für Spieler, siehe [Einrichten](einrichten.md) |
 | `check` | die Ampeln: je Punkt, an dem die Karte hängen kann, eine Zeile mit Farbe und Grund, auch ohne Renderer, siehe [Ampeln](ampeln.md) |
 | `set …` | schreibt Webkarte, Port oder die Karte für den Mod in `config.yml`, gilt nach dem Neustart, siehe [Einstellen](einstellen.md) |
 | `cancel` | bricht den Lauf ab |
@@ -282,6 +283,7 @@ Läuft seit 01:12:03: Voller Lauf, Baum 2x1-se, PID 4711. Basis: 200/17820 Kache
 | `level` | `Stufe level: tiles/of Kacheln, rate je s, noch …` |
 | `pyramid` | `Pyramide: Stufe level, tiles Kacheln` |
 | `done` | `fertig nach s` |
+| `estimate` | `Schätzung fertig`; nur bei „Schätzen“ im Dialog, siehe [Einrichten](einrichten.md), „Schätzen“ |
 
 - **Restzeit:** `noch …` fehlt, solange `eta_s` `null` ist. Im Vorlauf ist
   sie grob, denn Regionen am Rand halten weniger Chunks.
@@ -298,7 +300,7 @@ Läuft seit 01:12:03: Voller Lauf, Baum 2x1-se, PID 4711. Basis: 200/17820 Kache
 - **Wann:** wie lange der Aufruf her ist.
 - **Dauer:** vom Start des Prozesses bis zu seinem Ende, unter einer Minute
   mit einer Nachkommastelle, sonst in min oder h.
-- **Ausgang:** „nichts zu zeichnen“, „Kacheln gezeichnet“, „verdichtet“,
+- **Ausgang:** „nichts zu zeichnen“, „Kacheln gezeichnet“, „verdichtet“, „geschätzt“,
   „abgebrochen“ oder „Fehler, …“ mit dem Grund.
 - **Nur im Status:** Die Dauer kommt nicht ins Log. Leise Updates bleiben
   leise, siehe „Zeitplan“.

@@ -144,6 +144,7 @@ The documentation is in German.
 | `/heroicmap update` | render what changed in every view, now |
 | `/heroicmap compact` | pack the existing views smaller |
 | `/heroicmap status` | what runs, since when, and how the last run of each view ended |
+| `/heroicmap setup` | a guided setup as a dialog in the game: traffic lights, each one a button that opens only its point, a few questions, then what to do next |
 | `/heroicmap check` | a traffic light for each thing the map depends on, with the reason |
 | `/heroicmap set web an`, `set web port 8081`, `set mod an` | change the web map, its port and the map for the mod in `config.yml` without opening it (`an` is on, `aus` is off); takes effect after a restart |
 | `/heroicmap cancel` | stop the current run |

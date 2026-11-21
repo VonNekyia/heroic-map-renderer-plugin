@@ -60,6 +60,8 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
     /** Wer sie hat, bekommt im Mod die Ebenen. Siehe docs/ebenen.md, „Mod“. */
     static final String LAYERS = "heroicmap.layers";
     static final String WEB = "heroicmap.web";
+    /** Wer sie hat, startet Läufe und stellt ein. */
+    static final String ADMIN = "heroicmap.admin";
     /** Ein Anmeldelink gilt 5 min; einen neuen gibt es frühestens 15 s nach dem letzten. Siehe docs/anmeldung.md. */
     private static final long ANMELDUNG_GILT = 300;
     private static final long ANMELDUNG_ABSTAND = 15;
@@ -110,6 +112,8 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
     private boolean geheimnisLesbar = true;
     /** Was /heroicmap set seit dem Start in config.yml schrieb; es gilt erst nach einem Neustart. */
     private final List<String> wartet = new CopyOnWriteArrayList<>();
+    /** Die geführte Einrichtung als Dialog. Siehe docs/einrichten.md. */
+    private final EinrichtungDialog einrichtung = new EinrichtungDialog(this);
     /** Der Ordner des Servers und die Hauptwelt, wie beim Lesen der Einstellungen. */
     private Path serverOrdner;
     private Path hauptwelt;
@@ -442,6 +446,7 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
             k.verlassen(e.getPlayer().getUniqueId());
         }
         letzteAnmeldung.remove(e.getPlayer().getUniqueId());
+        einrichtung.vergiss(e.getPlayer().getUniqueId());
         if (fuerMod != null) {
             fuerMod.vergiss(e.getPlayer().getUniqueId());
         }
@@ -741,6 +746,14 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
             pruefe(sender);
             return true;
         }
+        if (args[0].equals("setup")) {
+            if (sender instanceof Player p) {
+                einrichtung.oeffne(p);
+            } else {
+                sender.sendMessage("Den Dialog öffnet nur ein Spieler. Von der Konsole: /heroicmap check und /heroicmap set.");
+            }
+            return true;
+        }
         if (ohneRenderer != null && BEFEHLE.contains(args[0])) {
             sender.sendMessage(ohneRenderer + (args[0].equals("status") ? "\n" + ebenenStatus() : ""));
             return true;
@@ -765,12 +778,7 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
      * Port prüft es ausserhalb. Siehe docs/ampeln.md.
      */
     private void pruefe(CommandSender sender) {
-        var k = einstellungen;
-        var w = webserver;
-        boolean autosaveAus = getServer().getWorlds().stream()
-                .anyMatch(welt -> !welt.isAutoSave() && Ampeln.istWelt(welt.getWorldFolder().toPath(), k.welt()));
-        var lage = new Ampeln.Lage(k, ohneRenderer, laeufe == null ? Map.of() : laeufe.ausgaenge(), w == null ? null : w.zustand(),
-                w != null && w.bereit(), geheimnisLesbar, simpleVoiceChat, autosaveAus, getServer().getPort(), List.copyOf(wartet));
+        var lage = lage();
         getServer().getAsyncScheduler().runNow(this, t -> {
             var ampeln = Ampeln.pruefe(lage);
             getServer().getGlobalRegionScheduler().execute(this,
@@ -810,6 +818,65 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
         return true;
     }
 
+    /** Im Hauptthread: was das Plugin und Paper gerade wissen, für die Ampeln. */
+    Ampeln.Lage lage() {
+        var k = einstellungen;
+        var w = webserver;
+        boolean autosaveAus = getServer().getWorlds().stream()
+                .anyMatch(welt -> !welt.isAutoSave() && Ampeln.istWelt(welt.getWorldFolder().toPath(), k.welt()));
+        return new Ampeln.Lage(k, ohneRenderer, laeufe == null ? Map.of() : laeufe.ausgaenge(), w == null ? null : w.zustand(),
+                w != null && w.bereit(), geheimnisLesbar, simpleVoiceChat, autosaveAus, getServer().getPort(), List.copyOf(wartet));
+    }
+
+    Path configDatei() {
+        return getDataFolder().toPath().resolve("config.yml");
+    }
+
+    /** Liest Einstellungen wie beim Start; wirft mit allen Fehlern auf einmal. */
+    Konfiguration lies(org.bukkit.configuration.ConfigurationSection c) {
+        return Konfiguration.aus(c, serverOrdner, hauptwelt);
+    }
+
+    /**
+     * Wie {@link #lies}, für den Setzer: wirft auch, wenn zwei Bäume denselben Ordner bekämen. Beim Start ist das kein
+     * Fehler, damit ein Server mit einer solchen Datei weiter lädt.
+     */
+    void pruefeFuerSetzer(org.bukkit.configuration.ConfigurationSection c) {
+        String doppelt = lies(c).doppelterOrdner();
+        if (doppelt != null) {
+            throw new IllegalArgumentException("trees: Zwei Karten hätten denselben Ordner " + doppelt + ". Für den Mod braucht eine "
+                    + "Karte von oben scale: 4 und download: true; setz das dort von Hand, oder wähl für den Browser einen anderen Blick");
+        }
+    }
+
+    /** Der Port, auf dem der eigene Webserver gerade lauscht, sonst 0. */
+    int eigenerPort() {
+        var w = webserver;
+        return w != null && w.bereit() ? einstellungen.webserver().port() : 0;
+    }
+
+    /** Die Läufe; null ohne Renderer. */
+    Laeufe laeufe() {
+        return laeufe;
+    }
+
+    /**
+     * Ausserhalb des Hauptthreads: schreibt die Wünsche in config.yml und gibt die Änderungen. Jede steht im Log und
+     * wartet auf den Neustart; die Zustimmung zum Client-Jar mit eigenem Satz und der Zeit.
+     */
+    synchronized List<String> schreibe(List<Setzer.Wunsch> wuensche, String wer) throws IOException, Setzer.Abgelehnt {
+        var e = Setzer.setze(configDatei(), wuensche, this::pruefeFuerSetzer);
+        for (String a : e.aenderungen()) {
+            getLogger().info("Einstellung: " + wer + " setzt " + a);
+            if (a.startsWith("renderer.download-client-jar")) {
+                getLogger().info("Zustimmung: " + wer + " bestätigt am " + Instant.now() + " im Dialog, Minecraft: Java Edition zu "
+                        + "besitzen, nimmt die Minecraft-EULA an und lässt den Renderer das Client-Jar von Mojang laden.");
+            }
+            wartet.add(a);
+        }
+        return e.aenderungen();
+    }
+
     /** Ausserhalb des Hauptthreads: prüft einen neuen Port, schreibt und gibt die Zeilen der Antwort. */
     private synchronized List<String> setze(Setzer.Wunsch wunsch, String wer, String lauscht, int spielPort) {
         if (wunsch instanceof Setzer.Wunsch.Port(int port) && port >= 1024 && port <= 65535 && lauscht.contains(":")) {
@@ -823,17 +890,12 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
             }
         }
         try {
-            var e = Setzer.setze(getDataFolder().toPath().resolve("config.yml"), wunsch,
-                    c -> Konfiguration.aus(c, serverOrdner, hauptwelt));
-            if (e.aenderungen().isEmpty()) {
+            var geaendert = schreibe(List.of(wunsch), wer);
+            if (geaendert.isEmpty()) {
                 return List.of("Schon so eingestellt.");
             }
             var zeilen = new ArrayList<String>();
-            for (String a : e.aenderungen()) {
-                getLogger().info("Einstellung: " + wer + " setzt " + a);
-                wartet.add(a);
-                zeilen.add("Geändert: " + a);
-            }
+            geaendert.forEach(a -> zeilen.add("Geändert: " + a));
             zeilen.add("Gilt nach dem Neustart des Servers.");
             return zeilen;
         } catch (Setzer.Abgelehnt e) {
@@ -999,7 +1061,7 @@ public final class HeroicMapPlugin extends JavaPlugin implements PluginMessageLi
                     : args.length == 3 && args[1].equals("mod") ? Stream.of("an", "aus") : Stream.<String>empty();
             return w.filter(b -> b.startsWith(args[args.length - 1])).toList();
         }
-        return args.length == 1 ? Stream.concat(BEFEHLE.stream(), Stream.of("layers", "check", "set"))
+        return args.length == 1 ? Stream.concat(BEFEHLE.stream(), Stream.of("layers", "check", "set", "setup"))
                 .filter(b -> b.startsWith(args[0])).toList() : List.of();
     }
 }

@@ -72,6 +72,9 @@ public final class FalscherRenderer {
                 out.println("Update:     nichts zu zeichnen");
             }
             case "sleep" -> Thread.sleep(60_000);
+            case "schaetzung" -> out.println("{\"phase\":\"estimate\",\"chunks\":2398,\"finished\":1.0,\"levels\":1,\"tiles\":[300,340],"
+                    + "\"bytes\":[3000000000,5200000000],\"files\":[400,450],\"s\":[1500,2400],\"existing_bytes\":0,"
+                    + "\"free_bytes\":212000000000,\"enough\":true,\"probe_s\":3.2}");
             case "kurz" -> Thread.sleep(1_500);
             case "server" -> {
                 out.println("Server:     http://127.0.0.1:1234 mit kacheln unter /tiles/, 1 Threads");

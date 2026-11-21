@@ -8,8 +8,8 @@ website: https://github.com/VonNekyia/heroic-map-renderer-plugin
 softdepend: [voicechat]
 commands:
   heroicmap:
-    description: Karte rendern, Update, Nachverdichten, Status, Ampeln, Einstellen, Abbruch, Ebenen neu laden
-    usage: /<command> render [baum]|update|compact|status|check|set web an|aus|set web port <zahl>|set mod an|aus|cancel|layers
+    description: Karte rendern, Update, Nachverdichten, Status, Einrichten, Ampeln, Einstellen, Abbruch, Ebenen neu laden
+    usage: /<command> render [baum]|update|compact|status|setup|check|set web an|aus|set web port <zahl>|set mod an|aus|cancel|layers
     permission: heroicmap.admin
   karte:
     description: Auf der Webkarte an- oder abmelden, für eigene Ebenen und Knöpfe

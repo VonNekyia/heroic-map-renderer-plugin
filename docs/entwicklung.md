@@ -292,6 +292,21 @@ Plugin das seiner Plattform aus, siehe [Konfiguration](konfiguration.md),
   und nennt die Zeilen für die Hand; die Datei wird nur geschrieben, wenn
   die Konfiguration gültig bleibt; die Vorlage aus dem Jar bleibt nach
   jedem Wunsch gültig für `Konfiguration.aus`.
+  Dazu die Zustimmung zu den Texturen, das Aussehen des ersten Baums mit
+  und ohne die Zeile `cinematic`, und mehrere Wünsche, die zusammen gelten
+  oder gar nicht.
+- **`EinrichtungTest`:** die geführte Einrichtung ohne Dialog: welche
+  Schritte anstehen; die Wahl beginnt beim Stand der Datei und nie mit der
+  Zustimmung; Titel, Eingaben und Knöpfe jeder Seite; was aus den Antworten
+  wird; der Port mit jedem Grund und dem Vorschlag; die Wünsche an den
+  Setzer, auch „von oben und Mod an“ als eine Karte mit scale 4; die
+  Zusammenfassung an der Vorlage aus dem Jar, ohne Änderung und abgelehnt;
+  nie zwei Karten im selben Ordner; „Als Nächstes“; der Satz der Schätzung
+  in jeder Form. Den Dialog von Paper selbst prüft kein Test, siehe
+  [Einrichten](einrichten.md), „Noch nicht an einem Client geprüft“.
+- **`LaeufeTest`, Schätzen:** eine Schätzung läuft eingereiht wie ein Lauf,
+  gibt die Zeile `estimate` und den Ausgang „geschätzt“, ruft keine Hooks
+  und zählt nicht als fertiger Lauf; scheitert sie, kommt nur der Ausgang.
 - **`KnoepfeTest`:** Label und Grenzen der Knöpfe, Anhängen, Zustand je
   Spieler und Objekt, vier je Objekt in der Reihenfolge des Anhängens,
   Anhang und Zustand zusammen, Löschen.

@@ -91,6 +91,17 @@ Nicht geändert: Port 25565 ist der Port des Spielservers. Frei wäre 8081.
   `Konfiguration.aus` nimmt die Datei an. Sonst schreibt er nichts.
 - **Geschrieben** wird daneben als `config.yml.neu` und dann getauscht.
 - **Ohne Änderung** schreibt er nicht und antwortet „Schon so eingestellt.“
+- **Mehrere Wünsche in einem Zug:** Der Dialog gibt eine Liste; sie gilt
+  ganz oder gar nicht, und geschrieben wird einmal.
+- **Nie zwei Karten im selben Ordner:** Der Ordner eines Baums nennt Kamera,
+  Richtung und Cinematic, aber weder `scale` noch `download`
+  (`Konfiguration.doppelterOrdner`). Bekämen zwei Bäume denselben Ordner,
+  etwa eine gezeichnete Karte von oben mit `scale: 8` und daneben die Karte
+  für den Mod, lehnt der Setzer ab und sagt, was von Hand zu tun ist. Beim
+  Start ist eine solche Datei kein Fehler, damit ein Server mit ihr weiter
+  lädt.
+- **Nur über den Dialog:** die Zustimmung zu den Texturen und das Aussehen
+  des ersten Baums, siehe [Einrichten](einrichten.md).
 
 **Was er ablehnt.** Er fasst nur an, was einfach dasteht:
 

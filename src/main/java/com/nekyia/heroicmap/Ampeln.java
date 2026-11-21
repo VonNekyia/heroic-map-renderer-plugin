@@ -39,6 +39,11 @@ final class Ampeln {
         String zeile() {
             return farbe.zeichen + " " + name + ": " + satz;
         }
+
+        /** Zeichen und Name ohne den Satz, für einen Knopf. */
+        String kurz() {
+            return farbe.zeichen + " " + name;
+        }
     }
 
     /**

@@ -202,6 +202,56 @@ class SetzerTest {
     }
 
     @Test
+    void die_zustimmung_zu_den_texturen_setzt_nur_ihre_zeile() throws Abgelehnt {
+        String text = "renderer:\n  assets: []\n  # Zustimmung, siehe docs\n  download-client-jar: false   # noch nicht\n" + CONFIG;
+        var ja = Setzer.setze(text.replace("# Unser Server, von Hand gepflegt.\n\nrenderer:\n  assets: [mein-pack]   # das eigene Pack\n", ""),
+                new Wunsch.Texturen());
+        assertTrue(ja.text().contains("  download-client-jar: true   # noch nicht\n"), ja.text());
+        assertEquals(List.of("renderer.download-client-jar: false → true"), ja.aenderungen());
+        assertSame(ja.text(), Setzer.setze(ja.text(), new Wunsch.Texturen()).text(), "schon zugestimmt");
+        var fehlt = abgelehnt(CONFIG, new Wunsch.Texturen());
+        assertEquals("renderer.download-client-jar steht nicht in config.yml", fehlt.getMessage());
+        assertEquals(List.of("renderer:", "  download-client-jar: true"), fehlt.vonHand());
+    }
+
+    @Test
+    void das_aussehen_aendert_kamera_und_cinematic_am_ersten_baum() throws Abgelehnt {
+        var oben = Setzer.setze(CONFIG, new Wunsch.Aussehen("top-north", false, null));
+        assertEquals(CONFIG.replace("- camera: \"2:1\"   # schräg\n    cinematic: true", "- camera: \"top-north\"   # schräg\n    cinematic: false"),
+                oben.text());
+        assertEquals(List.of("trees: cinematic: false am ersten Baum", "trees: camera: 2:1 → top-north am ersten Baum"), oben.aenderungen());
+        assertSame(CONFIG, Setzer.setze(CONFIG, new Wunsch.Aussehen("2:1", true, null)).text(), "schon so");
+        // Ohne die Zeile cinematic kommt sie nur dazu, wenn Cinematic an sein soll.
+        String ohne = CONFIG.replace("    cinematic: true\n", "");
+        assertEquals(ohne.replace("\"2:1\"", "\"4:3\""), Setzer.setze(ohne, new Wunsch.Aussehen("4:3", false, null)).text());
+        assertEquals(ohne.replace("- camera: \"2:1\"   # schräg\n", "- camera: \"2:1\"   # schräg\n    cinematic: true\n"),
+                Setzer.setze(ohne, new Wunsch.Aussehen("2:1", true, null)).text());
+        // Nur der erste Baum, auch wenn ein zweiter folgt.
+        String zwei = Setzer.setze(CONFIG, new Wunsch.Mod(true)).text();
+        assertEquals(zwei.replace("\"2:1\"", "\"4:3\""), Setzer.setze(zwei, new Wunsch.Aussehen("4:3", true, null)).text());
+        assertEquals("Kamera north-45 ist keine von 2:1, 4:3, top-north", abgelehnt(CONFIG, new Wunsch.Aussehen("north-45", false, null)).getMessage());
+    }
+
+    @Test
+    void mehrere_wuensche_gelten_zusammen_oder_gar_nicht() throws Abgelehnt {
+        var alle = Setzer.setze(CONFIG, List.of(new Wunsch.Aussehen("top-north", false, null), new Wunsch.Mod(true), new Wunsch.Port(8100)), c -> {});
+        assertEquals(List.of("trees: cinematic: false am ersten Baum", "trees: camera: 2:1 → top-north am ersten Baum",
+                "trees: neuer Baum top-north mit scale 4, download: true und web: false",
+                "webserver.listen: \"0.0.0.0:8080\" → \"0.0.0.0:8100\""), alle.aenderungen());
+        // Der letzte Wunsch geht nicht: Dann gilt auch der erste nicht.
+        var e = assertThrows(Abgelehnt.class, () -> Setzer.setze(CONFIG, List.of(new Wunsch.Mod(true), new Wunsch.Port(80)), c -> {}));
+        assertEquals("Port 80 ist keine Zahl von 1024 bis 65535", e.getMessage());
+        // Was die Konfiguration nicht annimmt, lehnt auch der Text ab, ohne Datei.
+        var ungueltig = assertThrows(Abgelehnt.class, () -> Setzer.setze(CONFIG, List.of(new Wunsch.Web(false)), c -> {
+            throw new IllegalArgumentException("so nicht");
+        }));
+        assertEquals("danach wäre config.yml ungültig: so nicht", ungueltig.getMessage());
+        assertSame(CONFIG, Setzer.setze(CONFIG, List.of(new Wunsch.Web(true), new Wunsch.Mod(false)), c -> {
+            throw new IllegalArgumentException("ohne Änderung fragt niemand");
+        }).text());
+    }
+
+    @Test
     void eine_aenderung_an_der_falschen_stelle_faellt_beim_neu_lesen_auf() {
         // Ein Text über mehrere Zeilen, der wie der Abschnitt aussieht: Die Suche nach der Zeile findet ihn, das Neu-Lesen
         // merkt, dass sich webserver.enabled nicht geändert hat und notiz schon.

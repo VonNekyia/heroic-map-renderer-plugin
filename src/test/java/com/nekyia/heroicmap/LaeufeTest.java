@@ -81,6 +81,33 @@ class LaeufeTest {
         return b;
     }
 
+    @Test
+    void eine_schaetzung_laeuft_wie_ein_lauf_zaehlt_aber_nicht_als_einer() throws Exception {
+        var l = laeufe(KARTE);
+        var hook = new java.util.concurrent.atomic.AtomicBoolean();
+        l.nachLauf(() -> hook.set(true));
+        var fertig = new java.util.concurrent.CompletableFuture<String[]>();
+        assertEquals(null, l.schaetze("2x1-se", falscher("schaetzung"), (zeile, ausgang) -> fertig.complete(new String[] {zeile, ausgang})));
+        // Der Faden des Laufs nennt bald auch den Baum; beides heisst: eingereiht wie ein Lauf, nie neben einem.
+        String zweiter = l.schaetze("x", falscher("schaetzung"), (zeile, ausgang) -> hook.set(true));
+        assertTrue(String.valueOf(zweiter).startsWith("Es läuft schon: Schätzung"), zweiter);
+        var e = fertig.get(30, java.util.concurrent.TimeUnit.SECONDS);
+        assertTrue(e[0].startsWith("{\"phase\":\"estimate\",\"chunks\":2398"), e[0]);
+        assertEquals("geschätzt", e[1]);
+        assertTrue(l.warte(30_000));
+        assertTrue(l.status().contains("2x1-se, zuletzt Schätzung"), l::status);
+        assertTrue(l.status().contains("geschätzt"), l::status);
+        assertFalse(hook.get(), "kein Hook nach dem Lauf, und der zweite Aufruf lief nie");
+        assertFalse(l.ruht(KARTE, tmp.resolve("tiles").resolve("2x1-se")), "eine Schätzung ist kein fertiger Lauf");
+        // Scheitert sie, gibt es keine Zeile, nur den Ausgang.
+        var gescheitert = new java.util.concurrent.CompletableFuture<String[]>();
+        assertEquals(null, l.schaetze("2x1-se", falscher("zustimmung"), (zeile, ausgang) -> gescheitert.complete(new String[] {zeile, ausgang})));
+        var g = gescheitert.get(30, java.util.concurrent.TimeUnit.SECONDS);
+        assertEquals(null, g[0]);
+        assertTrue(g[1].startsWith("Fehler, Code 1: ohne --assets braucht der Lauf das Client-Jar von Mojang"), g[1]);
+        assertEquals("Schätzung fertig", Laeufe.beschreibe("{\"phase\":\"estimate\",\"chunks\":0}"));
+    }
+
     private void warteAufZeile(String text) throws InterruptedException {
         for (int i = 0; i < 3000 && log.stream().noneMatch(z -> z.contains(text)); i++) {
             Thread.sleep(10);
